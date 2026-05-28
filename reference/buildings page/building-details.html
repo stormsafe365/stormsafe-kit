@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title id="page-title">Building Details — StormSafe Steel</title>
+<meta name="description" id="page-desc" content="Custom hurricane-rated steel buildings in Florida.">
+<meta name="theme-color" content="#08121d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://static.wixstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --teal:#22d3c8;--teal-dim:#1ab5ab;--teal-glow:rgba(34,211,200,.10);
+  --dark:#08121d;--dark-2:#111827;--dark-3:#1a2436;--dark-4:#1f2d42;
+  --border:#1e2d42;--border-vis:#2a3d55;
+  --text:#e2e8f0;--sub:#94a3b8;--muted:#64748b;
+  --h:"Orbitron",system-ui,sans-serif;--b:"Inter",system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:var(--dark);color:var(--text);font-family:var(--b);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:72px}
+@media(min-width:768px){body{padding-bottom:0}}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+
+/* ─── NAV (same as main page) ─── */
+nav.top{position:sticky;top:0;z-index:200;background:rgba(8,18,29,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border-vis);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:56px}
+@media(min-width:768px){nav.top{padding:0 32px;height:60px}}
+.nav-logo{font-family:var(--h);font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--text)}
+.nav-logo span{color:var(--teal)}
+@media(min-width:768px){.nav-logo{font-size:14px}}
+.nav-right{display:flex;align-items:center;gap:12px}
+.nav-phone{display:none;font-weight:600;font-size:13px;color:var(--teal)}
+@media(min-width:768px){.nav-phone{display:inline}}
+.nav-menu-btn{background:none;border:1px solid var(--border-vis);color:var(--text);width:38px;height:38px;font-size:18px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}
+@media(min-width:768px){.nav-menu-btn{display:none}}
+.nav-links{display:none;align-items:center;gap:24px;font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+@media(min-width:900px){.nav-links{display:flex}}
+.nav-links a:hover,.nav-links a.active{color:var(--teal)}
+.nav-cta{display:none;background:var(--teal);color:#08121d;font-family:var(--b);font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:9px 16px;transition:background .2s}
+.nav-cta:hover{background:var(--teal-dim)}
+@media(min-width:900px){.nav-cta{display:inline-block}}
+.mobile-menu{position:fixed;inset:56px 0 0 0;z-index:190;background:var(--dark);padding:8px 20px 28px;transform:translateX(100%);transition:transform .25s;display:flex;flex-direction:column;overflow-y:auto}
+.mobile-menu.open{transform:translateX(0)}
+.mobile-menu a{padding:18px 4px;border-bottom:1px solid var(--border-vis);font-family:var(--h);font-size:14px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.mobile-menu a:hover{color:var(--teal)}
+.mobile-menu .mm-cta{background:var(--teal);color:#08121d;text-align:center;margin-top:20px;border:none}
+@media(min-width:900px){.mobile-menu{display:none}}
+
+/* ─── BREADCRUMB ─── */
+.breadcrumb{
+  background:var(--dark-2);border-bottom:1px solid var(--border-vis);
+  padding:12px 16px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  font-family:var(--h);font-weight:600;color:var(--sub);
+}
+@media(min-width:768px){.breadcrumb{padding:14px 32px}}
+.breadcrumb a{color:var(--teal)}
+.breadcrumb a:hover{color:var(--teal-dim)}
+.breadcrumb .sep{color:var(--muted);margin:0 8px}
+.breadcrumb #bc-current{color:var(--text)}
+
+/* ─── DETAIL HERO ─── */
+.detail-hero{padding:24px 16px 32px;background:linear-gradient(180deg,var(--dark-2) 0%,var(--dark) 100%);position:relative}
+.detail-hero::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent,transparent 64px,rgba(34,211,200,.02) 64px,rgba(34,211,200,.02) 65px);pointer-events:none}
+@media(min-width:768px){.detail-hero{padding:40px 32px 56px}}
+.dh-inner{max-width:1280px;margin:0 auto;position:relative}
+.dh-grid{display:grid;grid-template-columns:1fr;gap:24px}
+@media(min-width:900px){.dh-grid{grid-template-columns:1.15fr 1fr;gap:24px 36px;align-items:start;grid-template-areas:"image info" "specs info"}}
+.dh-image{grid-area:image}
+.dh-info{grid-area:info}
+.dh-specs{grid-area:specs;align-self:start}
+
+/* ─── HERO SPECS STRIP (features moved up under the photo) ─── */
+.dh-specs-title{
+  font-family:var(--h);font-weight:700;font-size:10px;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--teal);
+  margin-bottom:10px;display:flex;align-items:center;gap:10px;
+}
+.dh-specs-title::before{content:"";width:24px;height:1px;background:var(--teal)}
+.dh-specs .d-features-grid{
+  grid-template-columns:repeat(2,1fr);
+}
+@media(min-width:560px){.dh-specs .d-features-grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:900px){.dh-specs .d-features-grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:1100px){.dh-specs .d-features-grid{grid-template-columns:repeat(6,1fr)}}
+.dh-specs .d-feat{padding:16px 10px;gap:8px}
+.dh-specs .d-feat-icon{width:36px;height:36px}
+.dh-specs .d-feat-icon svg{width:18px;height:18px}
+.dh-specs .d-feat-label{font-size:9.5px;letter-spacing:.1em;font-weight:500}
+.dh-specs .d-feat-val{font-size:12.5px;line-height:1.35;font-weight:500}
+
+.dh-image{position:relative;background:#06101a;border:1px solid var(--border-vis);overflow:hidden;aspect-ratio:16/10}
+.dh-image img{width:100%;height:100%;object-fit:contain;display:block}
+.dh-badge{
+  position:absolute;top:14px;left:14px;
+  background:rgba(8,18,29,.92);backdrop-filter:blur(8px);
+  border:1px solid var(--teal);color:var(--teal);
+  font-family:var(--h);font-weight:700;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;padding:6px 12px;
+}
+.dh-3d{
+  position:absolute;top:14px;right:14px;
+  background:rgba(8,18,29,.92);backdrop-filter:blur(8px);
+  border:1px solid var(--border-vis);color:var(--text);
+  font-family:var(--h);font-weight:700;font-size:10px;
+  letter-spacing:.08em;text-transform:uppercase;padding:7px 12px;
+  display:inline-flex;align-items:center;gap:6px;transition:all .2s;
+}
+.dh-3d:hover{border-color:var(--teal);color:var(--teal)}
+.dh-3d svg{width:12px;height:12px}
+
+.dh-info{display:flex;flex-direction:column;gap:14px}
+.dh-eyebrow{
+  font-family:var(--h);font-weight:600;font-size:10px;
+  letter-spacing:.3em;text-transform:uppercase;color:var(--teal);
+  display:inline-flex;align-items:center;gap:10px;
+}
+.dh-eyebrow::before{content:"";width:24px;height:1px;background:var(--teal)}
+.dh-info h1{
+  font-family:var(--h);font-weight:800;
+  font-size:clamp(24px,4.5vw,38px);
+  text-transform:uppercase;letter-spacing:.015em;
+  line-height:1.05;
+}
+.dh-id{
+  font-family:var(--b);font-weight:500;font-size:13px;
+  letter-spacing:.01em;color:var(--sub);
+}
+.dh-id span{color:var(--teal);margin-left:6px;font-weight:600;letter-spacing:.04em;font-family:var(--b)}
+.dh-price{
+  background:var(--dark-3);border:1px solid var(--border-vis);
+  padding:18px 20px;display:flex;align-items:baseline;gap:12px;
+  flex-wrap:wrap;margin-top:4px;
+}
+.dh-price-label{
+  font-family:var(--h);font-weight:600;font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--sub);
+}
+.dh-price-num{
+  font-family:var(--h);font-weight:900;color:var(--teal);
+  font-size:clamp(28px,4vw,36px);line-height:1;letter-spacing:.005em;
+}
+
+.dh-ctas{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.btn-primary,.btn-secondary,.btn-ghost{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-family:var(--b);font-weight:700;font-size:13px;
+  letter-spacing:.1em;text-transform:uppercase;
+  padding:15px 22px;cursor:pointer;border:none;transition:all .2s;
+  min-height:52px;
+}
+.btn-primary{background:var(--teal);color:#08121d}
+.btn-primary:hover{background:var(--teal-dim);transform:translateY(-1px)}
+.btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border-vis)}
+.btn-secondary:hover{border-color:var(--teal);color:var(--teal)}
+.btn-ghost{background:transparent;color:var(--sub);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-glow)}
+.btn-arrow{transition:transform .2s}
+.btn-primary:hover .btn-arrow{transform:translateX(3px)}
+
+.dh-pricing-note{
+  background:linear-gradient(180deg,rgba(34,211,200,.05),rgba(34,211,200,0));
+  border:1px solid var(--border-vis);border-left:2px solid var(--teal);
+  padding:14px 16px;margin-top:-2px;
+}
+.dh-pricing-note-title{
+  font-family:var(--h);font-weight:700;font-size:10px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--teal);
+  margin-bottom:6px;
+}
+.dh-pricing-note p{
+  font-size:12.5px;color:var(--sub);line-height:1.6;
+  font-family:var(--b);font-weight:400;
+}
+.dh-pricing-note p strong{color:var(--text);font-weight:500}
+.dh-pricing-note p a{color:var(--teal);font-weight:600;border-bottom:1px solid var(--teal)}
+
+.dh-trust{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:1px;
+  background:var(--border-vis);
+  border:1px solid var(--border-vis);margin-top:6px;
+}
+@media(min-width:520px){.dh-trust{grid-template-columns:repeat(4,1fr)}}
+.dh-trust-item{
+  background:var(--dark-3);padding:14px 10px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+}
+.dh-trust-item svg{width:22px;height:22px;color:var(--teal)}
+.dh-trust-label{
+  font-family:var(--b);font-weight:500;font-size:10.5px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--text);line-height:1.25;
+}
+
+/* ─── CONTENT SECTIONS ─── */
+.d-section{
+  padding:40px 16px;border-bottom:1px solid var(--border-vis);
+}
+@media(min-width:768px){.d-section{padding:56px 32px}}
+.d-inner{max-width:1100px;margin:0 auto}
+.d-section h2{
+  font-family:var(--h);font-weight:800;font-size:clamp(20px,3vw,28px);
+  text-transform:uppercase;letter-spacing:.02em;line-height:1.15;
+  margin-bottom:20px;
+  display:flex;align-items:center;gap:14px;
+}
+.d-section h2::before{
+  content:"";width:32px;height:2px;background:var(--teal);flex-shrink:0;
+}
+#d-description{font-size:15px;color:var(--text);line-height:1.7;max-width:780px}
+.d-config-note{font-size:13px;color:var(--sub);line-height:1.6;margin-top:18px;padding-left:18px;border-left:2px solid var(--teal);max-width:720px}
+.d-config-note a{color:var(--teal);font-weight:500;border-bottom:1px solid var(--teal)}
+
+/* Includes */
+.d-includes-list{
+  list-style:none;display:grid;grid-template-columns:1fr;gap:12px;
+}
+@media(min-width:640px){.d-includes-list{grid-template-columns:repeat(2,1fr)}}
+.d-includes-list li{
+  display:flex;align-items:flex-start;gap:12px;
+  background:var(--dark-2);border:1px solid var(--border-vis);
+  padding:14px 16px;
+  font-size:13.5px;line-height:1.5;
+}
+.d-includes-list li svg{
+  width:18px;height:18px;color:var(--teal);flex-shrink:0;margin-top:1px;
+}
+
+/* Features */
+.d-features-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:1px;
+  background:var(--border-vis);border:1px solid var(--border-vis);
+}
+@media(min-width:640px){.d-features-grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:900px){.d-features-grid{grid-template-columns:repeat(6,1fr)}}
+.d-feat{
+  background:var(--dark-2);padding:24px 14px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+}
+.d-feat-icon{
+  width:44px;height:44px;border:1px solid var(--teal);
+  display:flex;align-items:center;justify-content:center;color:var(--teal);
+}
+.d-feat-icon svg{width:22px;height:22px}
+.d-feat-label{
+  font-family:var(--b);font-weight:500;font-size:10px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--sub);
+}
+.d-feat-val{
+  font-family:var(--b);font-weight:500;font-size:14px;
+  color:var(--text);line-height:1.3;letter-spacing:.005em;
+}
+
+/* Related buildings */
+.d-related-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:14px;
+}
+@media(min-width:768px){.d-related-grid{grid-template-columns:repeat(4,1fr)}}
+.d-rel-card{
+  background:var(--dark-2);border:1px solid var(--border-vis);
+  overflow:hidden;display:flex;flex-direction:column;
+  transition:all .25s;cursor:pointer;
+}
+.d-rel-card:hover{border-color:var(--teal);transform:translateY(-2px)}
+.d-rel-img{aspect-ratio:4/3;background:var(--dark-3);overflow:hidden}
+.d-rel-img img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
+.d-rel-card:hover .d-rel-img img{transform:scale(1.05)}
+.d-rel-body{padding:12px;display:flex;flex-direction:column;gap:6px}
+.d-rel-dim{font-family:var(--b);font-weight:600;font-size:14.5px;color:var(--text);letter-spacing:.005em}
+.d-rel-price{font-family:var(--b);font-weight:500;font-size:13px;color:var(--teal);letter-spacing:.005em}
+
+/* ─── BIG CTA (same as main page) ─── */
+.bigcta{padding:64px 20px 80px;text-align:center;background:radial-gradient(circle at center,rgba(34,211,200,.08),transparent 60%),var(--dark);border-top:2px solid var(--teal);position:relative;overflow:hidden}
+.bigcta::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 48px,rgba(34,211,200,.018) 48px,rgba(34,211,200,.018) 49px);pointer-events:none}
+.bigcta-inner{position:relative;max-width:700px;margin:0 auto}
+.bigcta-eyebrow{font-weight:600;font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--teal);margin-bottom:16px;display:inline-block}
+.bigcta h2{font-family:var(--h);font-weight:900;font-size:clamp(26px,5vw,42px);text-transform:uppercase;letter-spacing:.015em;line-height:1.05;margin-bottom:16px}
+.bigcta h2 .teal{color:var(--teal)}
+.bigcta h2::before{display:none}
+.bigcta p{font-size:15px;color:var(--sub);margin-bottom:28px;line-height:1.65;max-width:520px;margin-left:auto;margin-right:auto}
+.bigcta-ctas{display:flex;flex-direction:column;gap:10px;max-width:460px;margin:0 auto}
+@media(min-width:520px){.bigcta-ctas{flex-direction:row}}
+
+/* ─── QUOTE MODAL ─── */
+.qm-overlay{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(8,18,29,.85);backdrop-filter:blur(8px);
+  display:none;align-items:center;justify-content:center;
+  padding:20px;animation:fadeIn .2s;
+}
+.qm-overlay.open{display:flex}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.qm-modal{
+  background:var(--dark-2);border:1px solid var(--teal);
+  width:100%;max-width:440px;padding:28px 24px 24px;
+  position:relative;animation:slideUp .25s;
+}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.qm-close{
+  position:absolute;top:12px;right:12px;
+  background:none;border:none;color:var(--sub);
+  font-size:24px;line-height:1;cursor:pointer;
+  width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+}
+.qm-close:hover{color:var(--text)}
+.qm-eyebrow{
+  font-family:var(--h);font-weight:600;font-size:10px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--teal);
+  margin-bottom:8px;
+}
+.qm-title{
+  font-family:var(--h);font-weight:800;font-size:18px;
+  text-transform:uppercase;letter-spacing:.015em;margin-bottom:6px;
+  line-height:1.2;
+}
+.qm-sub{font-size:13px;color:var(--sub);margin-bottom:18px;line-height:1.5}
+.qm-form{display:flex;flex-direction:column;gap:10px}
+.qf-input{
+  background:var(--dark-3);border:1px solid var(--border-vis);
+  color:var(--text);padding:13px 14px;
+  font-family:var(--b);font-size:14px;width:100%;
+  transition:border-color .15s;
+}
+.qf-input:focus{outline:none;border-color:var(--teal)}
+.qf-input::placeholder{color:var(--muted)}
+.qm-submit{
+  background:var(--teal);color:#08121d;border:none;
+  font-family:var(--h);font-weight:700;font-size:12px;
+  letter-spacing:.1em;text-transform:uppercase;
+  padding:14px;cursor:pointer;margin-top:6px;
+  transition:background .15s;
+}
+.qm-submit:hover{background:var(--teal-dim)}
+.qm-success{text-align:center;padding:20px 0;color:var(--teal);font-size:14px;line-height:1.55}
+
+/* ─── STICKY MOBILE CTA ─── */
+.mob-cta{position:fixed;bottom:0;left:0;right:0;z-index:150;background:rgba(8,18,29,.97);backdrop-filter:blur(12px);border-top:1px solid var(--border-vis);display:grid;grid-template-columns:1fr 1.2fr;gap:1px;background-color:var(--border-vis);padding-bottom:env(safe-area-inset-bottom)}
+@media(min-width:768px){.mob-cta{display:none}}
+.mob-cta button,.mob-cta a{background:var(--dark);padding:12px 8px;text-align:center;font-family:var(--h);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--text);line-height:1.2;min-height:60px;border:none;cursor:pointer}
+.mob-cta .primary{background:var(--teal);color:#08121d}
+.mob-cta-sub{font-size:9px;font-weight:500;opacity:.7;letter-spacing:.04em;text-transform:none;margin-top:1px}
+
+/* ─── DETAIL PAGE: PHOTO GALLERY (thumbnail strip under main image) ─── */
+.dh-gallery{
+  display:flex;gap:8px;margin-top:10px;
+  flex-wrap:wrap;
+}
+.dh-gallery:empty{display:none}
+.dh-thumb{
+  width:96px;height:72px;cursor:pointer;
+  border:2px solid var(--border-vis);background:var(--dark-2);
+  position:relative;overflow:hidden;
+  transition:all .2s;flex-shrink:0;
+}
+.dh-thumb img{
+  width:100%;height:100%;object-fit:cover;
+  transition:transform .25s;
+}
+.dh-thumb:hover{border-color:rgba(34,211,200,.55)}
+.dh-thumb:hover img{transform:scale(1.06)}
+.dh-thumb.active{border-color:var(--teal);box-shadow:0 0 0 1px var(--teal) inset}
+@media(max-width:480px){
+  .dh-thumb{width:80px;height:60px}
+}
+
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <a href="https://www.stormsafesteel.com/" class="nav-logo">Storm<span>Safe</span> Steel</a>
+  <div class="nav-links">
+    <a href="/" class="active">Buildings</a>
+    <a href="https://www.stormsafesteel.com/customize">Customize</a>
+    <a href="https://www.stormsafesteel.com/why-steel">Why Steel</a>
+    <a href="https://www.stormsafesteel.com/about-us">About</a>
+    <a href="https://www.stormsafesteel.com/contact">Contact</a>
+  </div>
+  <div class="nav-right">
+    <a href="tel:5617715555" class="nav-phone">561-771-5555</a>
+    <a href="https://www.stormsafesteel.com/customize" class="nav-cta">Design Yours →</a>
+    <button class="nav-menu-btn" onclick="toggleMenu()" aria-label="Menu">☰</button>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mm">
+  <a href="https://www.stormsafesteel.com/">Home</a>
+  <a href="/">Buildings</a>
+  <a href="https://www.stormsafesteel.com/customize">Customize</a>
+  <a href="https://www.stormsafesteel.com/hurricane-rated-steel-buildings">Hurricane-Rated</a>
+  <a href="https://www.stormsafesteel.com/why-steel">Why Steel</a>
+  <a href="https://www.stormsafesteel.com/about-us">About</a>
+  <a href="https://www.stormsafesteel.com/contact">Contact</a>
+  <a href="tel:5617715555" class="mm-cta">Call 561-771-5555</a>
+</div>
+
+<!-- BREADCRUMB -->
+<div class="breadcrumb">
+  <a href="/">Buildings</a>
+  <span class="sep">/</span>
+  <span id="bc-current">Loading…</span>
+</div>
+
+<!-- DETAIL HERO -->
+<section class="detail-hero">
+  <div class="dh-inner">
+    <div class="dh-grid">
+      <div class="dh-image">
+        <span class="dh-badge" id="d-badge">Garage</span>
+        <a href="https://www.stormsafesteel.com/customize" class="dh-3d">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          <span>Design in 3D</span>
+        </a>
+        <img id="d-image" src="" alt="Building rendering">
+        <div class="dh-gallery" id="d-gallery"></div>
+      </div>
+      <div class="dh-info">
+        <div class="dh-eyebrow" id="d-category">Loading</div>
+        <h1 id="d-name">Loading…</h1>
+        <div class="dh-id">Building ID:<span id="d-id">—</span></div>
+        <div class="dh-price">
+          <span class="dh-price-label">Starting at</span>
+          <span class="dh-price-num" id="d-price">$—</span>
+        </div>
+        <div class="dh-pricing-note">
+          <div class="dh-pricing-note-title">⚡ Note on Pricing</div>
+          <p>Starting price reflects a base configuration. Final price varies by <strong>your state, location, customization, and current steel market conditions.</strong> Areas with heavy snow loads (Midwest, Northeast) or hurricane wind loads (Florida, Southeast coast) may run higher due to local code requirements. Call <a href="tel:5617715555">561-771-5555</a> for an accurate quote based on your zip code and specs.</p>
+        </div>
+        <div class="dh-ctas">
+          <button class="btn-primary" onclick="openQuote()">Request a Free Quote <span class="btn-arrow">→</span></button>
+          <a href="https://www.stormsafesteel.com/customize" class="btn-secondary">Customize in Builder</a>
+          <a href="tel:5617715555" class="btn-ghost">Call 561-771-5555 for Discounts</a>
+        </div>
+        <div class="dh-trust">
+          <div class="dh-trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 3h15v13H1zM16 8h4l3 3v5h-7z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            <span class="dh-trust-label">FREE Delivery</span>
+          </div>
+          <div class="dh-trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            <span class="dh-trust-label">FREE Install</span>
+          </div>
+          <div class="dh-trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L3 7v6c0 5 4 9 9 10 5-1 9-5 9-10V7l-9-5z"/><path d="M9 12l2 2 4-4" stroke-linecap="round"/></svg>
+            <span class="dh-trust-label">20-Yr Warranty</span>
+          </div>
+          <div class="dh-trust-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+            <span class="dh-trust-label">FL Certified</span>
+          </div>
+        </div>
+      </div>
+      <div class="dh-specs">
+        <div class="dh-specs-title">At a Glance</div>
+        <div class="d-features-grid">
+      <div class="d-feat">
+        <div class="d-feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-7h4v7h4a1 1 0 0 0 1-1V9.5"/></svg></div>
+        <div class="d-feat-label">Use</div>
+        <div class="d-feat-val" id="f-use">—</div>
+      </div>
+      <div class="d-feat">
+        <div class="d-feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 3 3 3 3 9"/><polyline points="15 3 21 3 21 9"/><polyline points="3 15 3 21 9 21"/><polyline points="21 15 21 21 15 21"/></svg></div>
+        <div class="d-feat-label">Size</div>
+        <div class="d-feat-val" id="f-size">—</div>
+      </div>
+      <div class="d-feat">
+        <div class="d-feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 13 12 5 21 13"/><line x1="12" y1="5" x2="12" y2="13"/></svg></div>
+        <div class="d-feat-label">Roof Type</div>
+        <div class="d-feat-val" id="f-roof">—</div>
+      </div>
+      <div class="d-feat">
+        <div class="d-feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="14" y1="3" x2="14" y2="21"/></svg></div>
+        <div class="d-feat-label">Wall Type</div>
+        <div class="d-feat-val" id="f-wall">—</div>
+      </div>
+      <div class="d-feat">
+        <div class="d-feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18"/><line x1="4" y1="8" x2="20" y2="8"/><line x1="4" y1="13" x2="20" y2="13"/><line x1="4" y1="18" x2="20" y2="18"/></svg></div>
+        <div class="d-feat-label">Roll-Up Doors</div>
+        <div class="d-feat-val" id="f-rollup">—</div>
+      </div>
+      <div class="d-feat">
+        <div class="d-feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><line x1="3" y1="21" x2="21" y2="21"/><circle cx="15.5" cy="12" r="1" fill="currentColor" stroke="none"/></svg></div>
+        <div class="d-feat-label">Walk Doors</div>
+        <div class="d-feat-val" id="f-walk">—</div>
+      </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DESCRIPTION -->
+<section class="d-section">
+  <div class="d-inner">
+    <h2>Building Description</h2>
+    <p id="d-description">Loading…</p>
+  </div>
+</section>
+
+<!-- CONFIGURATION (what this specific build includes) -->
+<section class="d-section" id="d-config-section">
+  <div class="d-inner">
+    <h2>This Build Includes</h2>
+    <ul class="d-includes-list" id="d-config-list"></ul>
+    <p class="d-config-note">Every spec above is included at the listed price. Want different doors, windows, walls, or insulation? Adjust everything in the <a href="https://www.stormsafesteel.com/customize">builder</a> and we'll re-quote in real time.</p>
+  </div>
+</section>
+
+<!-- INCLUDES (universal, every build) -->
+<section class="d-section">
+  <div class="d-inner">
+    <h2>Standard With Every Order</h2>
+    <ul class="d-includes-list" id="d-includes-list"></ul>
+  </div>
+</section>
+
+<!-- RELATED -->
+<section class="d-section" id="related-section">
+  <div class="d-inner">
+    <h2>Similar Buildings</h2>
+    <div class="d-related-grid" id="d-related-grid"></div>
+  </div>
+</section>
+
+<!-- BIG CTA -->
+<section class="bigcta">
+  <div class="bigcta-inner">
+    <span class="bigcta-eyebrow">Ready to build?</span>
+    <h2>Get Your <span class="teal">Free Quote</span> Today.</h2>
+    <p>No-pressure quote in your inbox within one business day. Or pick up the phone and we'll talk you through the options.</p>
+    <div class="bigcta-ctas">
+      <button class="btn-primary" onclick="openQuote()">Request Free Quote <span class="btn-arrow">→</span></button>
+      <a href="tel:5617715555" class="btn-secondary">Call 561-771-5555</a>
+    </div>
+  </div>
+</section>
+
+<!-- QUOTE MODAL -->
+<div class="qm-overlay" id="qm-overlay" onclick="if(event.target===this)closeQuote()">
+  <div class="qm-modal" id="qm-modal">
+    <button class="qm-close" onclick="closeQuote()" aria-label="Close">×</button>
+    <div class="qm-eyebrow">Request Quote</div>
+    <div class="qm-title" id="qm-title">—</div>
+    <p class="qm-sub">Fill in your details and we'll send pricing & lead time within one business day. No spam, no callback unless you ask.</p>
+    <div class="qm-form" id="qm-form">
+      <input type="text" class="qf-input qf-name" placeholder="Your Name *" autocomplete="name">
+      <input type="email" class="qf-input qf-email" placeholder="Email Address *" autocomplete="email">
+      <input type="tel" class="qf-input qf-phone" placeholder="Phone (optional)" autocomplete="tel">
+      <button class="qm-submit" onclick="submitQuote()">Send Request →</button>
+    </div>
+  </div>
+</div>
+
+<!-- STICKY MOBILE CTA -->
+<div class="mob-cta">
+  <a href="tel:5617715555">
+    <span>📞 Call</span>
+    <span class="mob-cta-sub">561-771-5555</span>
+  </a>
+  <button class="primary" onclick="openQuote()">
+    <span>✓ Request Quote</span>
+    <span class="mob-cta-sub">for this building</span>
+  </button>
+</div>
+
+<script>
+// ─── BUILDING DATA ───
+// Each entry powers the detail page. Edit prices, descriptions, features here.
+// All standard buildings include: free delivery & install (FL), FL certified engineering,
+// 20-year rust warranty, lifetime structural warranty. Customize in the builder.
+const STD_INCLUDES = [
+  'FREE Delivery to Your Building Site',
+  'FREE Professional Installation on a Prepared Pad',
+  'Engineered to Meet Local Wind & Snow Load Requirements',
+  '20-Year Rust-Through Warranty on Roof & Wall Panels',
+  '1-Year Workmanship Warranty',
+  '26-Gauge Roofing + 14-Gauge 2½″ Framing',
+  'Cement & Mobile-Home Anchors Included',
+  'Hurricane Bracing Available — Required in Coastal Zones',
+];
+
+const IMG = (h) => `https://static.wixstatic.com/media/${h}/v1/fill/w_900,h_675,q_85,enc_avif/img.jpg`;
+const IMG_PNG = (h) => `https://static.wixstatic.com/media/${h}/v1/fill/w_900,h_675,q_85,enc_avif/img.png`;
+
+const BUILDINGS = {
+  // ─── GARAGES (from PDF catalog) ───
+  'g-24x30x9-1c': {
+    name: '24×30×9 Single-Car Garage',
+    id: 'SS-2430-09-G', category: 'Residential Garage', badge: '1 Car Garage',
+    image: '24x30x9-1.jpg', gallery: ['24x30x9-2.jpg'],
+    price: 9670, dims: "24' × 30' × 9'",
+    description: "Our cleanest entry-price single-car garage. A standard daily-driver footprint with a comfortable 9' eave, one 8'×8' roll-up, one walk-through, and one window for natural light. Tight enough for a typical lot, big enough to fit truck plus workbench.",
+    use: 'Single-Car Garage', roof: 'Vertical', wall: 'Horizontal (Std)', rollup: '1', walk: '1',
+    config: ["One 8'×8' Roll-Up Door","One Walk-Through Door","One Window","Horizontal Walls / Vertical Roof"],
+    related: ['g-26x50x10','g-24x25x9-2c','g-24x30x12-2c'],
+  },
+  'g-26x50x10': {
+    name: '26×50×10 Long Single-Car Garage',
+    id: 'SS-2650-10-G', category: 'Residential Garage', badge: '1 Car Garage',
+    image: '26x50x10-1.jpg', gallery: ['26x50x10-2.jpg'],
+    price: 16005, dims: "26' × 50' × 10'",
+    description: "A long single-car garage built for the buyer who needs depth more than width — fits a vehicle plus a trailer parked nose-in, or a vehicle plus a full workshop along the back wall. 10' eave height handles taller trucks without going premium.",
+    use: 'Deep Single-Car Garage', roof: 'Vertical', wall: 'Horizontal (Std)', rollup: '1', walk: '1',
+    config: ["One 8'×10' Roll-Up Door","One Walk-Through Door"],
+    related: ['g-24x30x9-1c','g-30x60x12','g-24x50x12-2c'],
+  },
+  'g-24x25x9-2c': {
+    name: '24×25×9 Two-Car Garage with Wainscot',
+    id: 'SS-2425-09-G', category: 'Residential Garage', badge: '2 Car Garage',
+    image: '24x25x9.jpg', gallery: [],
+    price: 11140, dims: "24' × 25' × 9'",
+    description: "A compact two-car garage upgraded with vertical sidewalls and wainscot trim — looks like a premium build but priced like an entry one. Twin 8'×7' roll-ups on the gable end, walk-through door on the side. Tight footprint, finished look.",
+    use: 'Two-Car Garage', roof: 'Vertical', wall: 'Vertical Sidewalls (Upgraded) w/ Wainscot', rollup: '2', walk: '1',
+    config: ["Two 8'×7' Roll-Up Doors","One Walk-Through Door","UPGRADE: Vertical Sidewalls","Wainscot Trim"],
+    related: ['g-24x30x12-2c','g-28x30x12-2c','g-24x30x9-1c'],
+  },
+  'g-24x30x12-2c': {
+    name: '24×30×12 Two-Car Garage',
+    id: 'SS-2430-12-G', category: 'Residential Garage', badge: '2 Car Garage',
+    image: '24x30x12-1.jpg', gallery: ['24x30x12-2.jpg'],
+    price: 12225, dims: "24' × 30' × 12'",
+    description: "Standard two-car footprint with the bigger 10×10 roll-up doors. The 12' eave height handles full-size pickups without ducking, and the side-by-side roll-ups give you flexible parking. Walk-through door for daily access.",
+    use: 'Two-Car Garage', roof: 'Vertical', wall: 'Horizontal (Std)', rollup: '2', walk: '1',
+    config: ["Two 10'×10' Roll-Up Doors","One Walk-Through Door"],
+    related: ['g-28x30x12-2c','g-24x25x9-2c','g-30x60x12'],
+  },
+  'g-28x30x12-2c': {
+    name: '28×30×12 Two-Car Garage',
+    id: 'SS-2830-12-G', category: 'Residential Garage', badge: '2 Car Garage',
+    image: '28x30x12-1.jpg', gallery: ['28x30x12-2.jpg'],
+    price: 14395, dims: "28' × 30' × 12'",
+    description: "Same depth as the 24-wide, but with extra room between vehicles. The 28' width means you don't have to fold mirrors getting in and out — useful if you've got a wider truck or want elbow room around your tools.",
+    use: 'Two-Car Garage', roof: 'Vertical', wall: 'Horizontal (Std)', rollup: '2', walk: '1',
+    config: ["Two 10'×10' Roll-Up Doors","One Walk-Through Door"],
+    related: ['g-24x30x12-2c','g-30x60x12','g-24x50x12-2c'],
+  },
+  'g-30x60x12': {
+    name: '30×60×12 Long Two-Car Garage',
+    id: 'SS-3060-12-G', category: 'Residential Garage', badge: '2 Car Garage',
+    image: '30x60x12-1.jpg', gallery: ['30x60x12-2.jpg'],
+    price: 21226, dims: "30' × 60' × 12'",
+    description: "60' of depth with a wide-open two-bay front. The space inside is what you make of it — split it into three bays with interior framing, dedicate the back to RV storage, or run a full-length workshop down one side and parking down the other.",
+    use: 'Deep Two-Bay Garage', roof: 'Vertical', wall: 'Horizontal (Std)', rollup: '2', walk: '1',
+    config: ["Two 10'×10' Roll-Up Doors","One Walk-Through Door"],
+    related: ['g-28x30x12-2c','g-30x40x12-3c','g-24x40x10-3c'],
+  },
+  'g-30x40x12-3c': {
+    name: '30×40×12 Three-Car Garage (Vertical Sidewalls)',
+    id: 'SS-3040-12-3C', category: 'Residential Garage', badge: '3 Car Garage',
+    image: '30x40x12-1.jpg', gallery: ['30x40x12-2.jpg'],
+    price: 19314, dims: "30' × 40' × 12'",
+    description: "A three-bay garage with the vertical-sidewall upgrade — more rigid panels, faster water shedding, crisper visual line than horizontal siding. Three side-by-side roll-ups, one walk-through door, one window. The most-quoted 3-car configuration.",
+    use: 'Three-Car Garage', roof: 'Vertical', wall: 'Vertical Sidewalls (Upgraded)', rollup: '3', walk: '1',
+    config: ["Three 10'×10' Roll-Up Doors","One Walk-Through Door","One Window","UPGRADE: Vertical Sidewalls"],
+    related: ['g-24x40x10-3c','g-30x60x12','g-28x30x12-2c'],
+  },
+  'g-24x40x10-3c': {
+    name: '24×40×10 Three-Car Garage',
+    id: 'SS-2440-10-3C', category: 'Residential Garage', badge: '3 Car Garage',
+    image: '24x40x10.jpg', gallery: [],
+    price: 15300, dims: "24' × 40' × 10'",
+    description: "Our value-priced three-car garage. At 24 feet wide it keeps the footprint tight for narrower lots, while the 40-foot depth still gives each bay enough room for a full-size vehicle. The 10-foot eave height handles most pickup trucks without ducking. Three side-by-side 10×8 roll-up doors, a 36×80 walk-through, and two 30×30 windows for natural light.",
+    use: 'Three-Car Garage', roof: 'Vertical', wall: 'Horizontal (Std)', rollup: '3', walk: '1',
+    config: ["Three 10'×8' Roll-Up Doors","One 36\"×80\" Walk-Through Door","Two 30\"×30\" Windows","Horizontal Walls / Vertical Roof"],
+    related: ['g-30x40x12-3c','g-30x60x12','g-24x30x12-2c'],
+  },
+
+  // ─── CUSTOM: Garage-Carport Hybrids (GCH) ───
+  'gch-22x40x10': {
+    name: '22×40×10 Garage-Carport Hybrid',
+    id: 'SS-2240-10-H', category: 'Garage-Carport Hybrid', badge: 'GCH',
+    image: '22x40x10-1.jpg', gallery: ['22x40x10-2.jpg'],
+    price: 11301, dims: "22' × 40' × 10'",
+    description: "30' of enclosed garage on one end + 10' of extended-gable carport on the other. Park a daily driver under the cover for easy access, store tools and a project car inside the enclosed section. Upgraded vertical sidewalls included.",
+    use: 'Garage + Carport Cover', roof: 'Vertical', wall: 'Vertical Sidewalls (Upgraded)', rollup: '1', walk: '1',
+    config: ["30' Enclosed + 10' Extended-Gable Carport","One 10'×9' Roll-Up Door","One Walk-Through Door","One Window","UPGRADE: Vertical Sidewalls"],
+    related: ['gch-24x40x10','gch-24x50x10','gch-26x45x12'],
+  },
+  'gch-24x40x10': {
+    name: '24×40×10 GCH with Side-Eave Door',
+    id: 'SS-2440-10-H', category: 'Garage-Carport Hybrid', badge: 'GCH',
+    image: '24x40x10-1.jpg', gallery: ['24x40x10-2.jpg'],
+    price: 10966, dims: "24' × 40' × 10'",
+    description: "Two roll-up doors positioned for flexibility — one on the front gable, one on the right eave side. Lets you drive in one end and out the other, or load equipment from the side without backing in. Two windows, walk-through door on the front gable.",
+    use: 'Drive-Through Hybrid', roof: 'Vertical', wall: 'Mixed Open / Enclosed', rollup: '2', walk: '1',
+    config: ["One 10'×8' Roll-Up Door (Front Gable)","One 10'×8' Roll-Up Door (Right Eave)","One Walk-Through Door (Front Gable)","Two Windows"],
+    related: ['gch-22x40x10','gch-24x50x10','gch-26x45x12'],
+  },
+  'gch-24x50x10': {
+    name: '24×50×10 GCH (15\' Open + 35\' Enclosed)',
+    id: 'SS-2450-10-H', category: 'Garage-Carport Hybrid', badge: 'GCH',
+    image: '24x50x10-1.jpg', gallery: ['24x50x10-2.jpg','24x50x10-3.jpg'],
+    price: 14775, dims: "24' × 50' × 10'",
+    description: "A long hybrid — 35' of fully enclosed garage with two roll-ups and two windows, plus a 15' open carport section at one end. Useful when you want both serious enclosed storage AND a quick-access covered parking spot under one roof.",
+    use: 'Long Hybrid Garage', roof: 'Vertical', wall: 'Partial Enclosed', rollup: '2', walk: '1',
+    config: ["35' Enclosed + 15' Open Carport","Two 8'×8' Roll-Up Doors","One Walk-Through Door","Two Windows"],
+    related: ['gch-22x40x10','gch-24x40x10','gch-26x45x12'],
+  },
+  'gch-28x40x12': {
+    name: '28×40×12 Mid-Size GCH',
+    id: 'SS-2840-12-H', category: 'Garage-Carport Hybrid', badge: 'GCH · Larger',
+    image: '28x40x12-1.jpg', gallery: ['28x40x12-2.jpg','28x40x12-3.jpg'],
+    price: 19525, dims: "28' × 40' × 12'",
+    description: "A larger GCH for buyers who need more enclosed space and taller clearance. The 12-foot eave height handles full-size trucks (and lifted ones) under the extended-gable carport AND inside the enclosed bay. Three roll-up doors give you bay-by-bay access — two 10×10 for vehicles, one 8×8 for shop or storage access. Two windows for natural light. Two-tone finish (white sides with black wainscot) gives it a sharper look than the entry GCH builds.",
+    use: 'Larger GCH', roof: 'Vertical', wall: 'Mixed Enclosed / Open Gable', rollup: '3', walk: '1',
+    config: ["Two 10'×10' Roll-Up Doors","One 8'×8' Roll-Up Door","One Walk-Through Door","Two Windows","Extended-Gable Carport Section","12' Eave Height"],
+    related: ['gch-26x45x12','gch-24x50x10','gch-22x40x10'],
+  },
+  'gch-26x45x12': {
+    name: '26×45×12 Insulated Premium GCH',
+    id: 'SS-2645-12-H', category: 'Garage-Carport Hybrid', badge: 'GCH · Insulated',
+    image: '26x45x12-1.jpg', gallery: ['26x45x12-2.jpg','26x45x12-3.jpg'],
+    price: 23271, dims: "26' × 45' × 12'",
+    description: "Our top-spec hybrid. 28' fully enclosed and insulated with double-bubble insulation throughout (the same insulation we use on certified hurricane-rated builds), plus a 17' open carport section. The insulation makes the enclosed bay usable year-round — workshop, gym, or climate-sensitive storage.",
+    use: 'Insulated Hybrid', roof: 'Vertical', wall: 'Insulated Enclosed + Open', rollup: '2', walk: '2',
+    config: ["28' Enclosed + 17' Open Section","Two 10'×10' Roll-Up Doors","Two Walk-Through Doors","Four Windows","Fully Insulated — Double-Bubble Throughout"],
+    related: ['gch-24x50x10','gch-22x40x10','gch-24x40x10'],
+  },
+
+  // ─── CUSTOM: Garages with Lean-Tos ───
+  'lt-34x30x10': {
+    name: '34×30×10 Garage with Twin Lean-Tos',
+    id: 'SS-3430-10-L', category: 'Garage w/ Lean-Tos', badge: 'Twin Lean-Tos',
+    image: 'https://static.wixstatic.com/media/f8c53c_53e02e0be01a4e48bce811da4db108b3~mv2.jpg/v1/fill/w_900,h_675,q_85,enc_avif/img.jpg',
+    price: 9690, dims: "34' × 30' × 10'",
+    description: "An 18'-wide enclosed center bay flanked by two 8'-wide open lean-tos. Park a vehicle in the middle, keep yard equipment or a boat under the lean-tos. Affordable way to get covered storage on three different building styles in one footprint.",
+    use: 'Garage w/ Twin Lean-Tos', roof: 'Vertical', wall: 'Center Enclosed / Lean-Tos Open', rollup: '1', walk: '1',
+    config: ["18'×30' Enclosed Center Bay","Two 8'×30'×8' Open Lean-Tos","One 10'×10' Roll-Up Door","One Walk-Through Door"],
+    related: ['lt-28x40x10','gch-22x40x10','gch-24x40x10'],
+  },
+  'lt-28x40x10': {
+    name: '28×40×10 Garage/Workshop with Lean-To',
+    id: 'SS-2840-10-L', category: 'Garage w/ Lean-To', badge: 'Lean-To',
+    image: 'https://static.wixstatic.com/media/f8c53c_edef92911a134cf3a3b139c4afb67783~mv2.jpg/v1/fill/w_900,h_675,q_85,enc_avif/img.jpg',
+    price: 13240, dims: "28' × 40' × 10'",
+    description: "A 20×40 enclosed workshop bay paired with a full-length 8'×40' lean-to attached to one side. The lean-to gives you covered outdoor working room for messy projects without bringing them inside. One 10×10 roll-up, walk-through, and a window.",
+    use: 'Workshop w/ Lean-To', roof: 'Vertical', wall: 'Enclosed + Open Lean-To', rollup: '1', walk: '1',
+    config: ["20'×40' Enclosed Workshop","8'×40'×8' Open Lean-To","One 10'×10' Roll-Up Door","One Walk-Through Door","One Window"],
+    related: ['lt-34x30x10','gch-24x50x10','gch-26x45x12'],
+  },
+
+
+    // ─── CARPORTS / RV / BOAT SHELTERS (from real catalog slideshow) ───
+  'c-20x40x14-carport': {
+    name: '20×40×14 Tall Open Carport',
+    id: 'SS-2040-14-C', category: 'Carport', badge: 'Carport',
+    image: '20x40x14.jpg',
+    price: 6335, dims: "20' × 40' × 14'",
+    description: "Roof-only open carport with 14' clearance — covers a daily driver, a boat trailer, a side-by-side, or a small RV all under the same shade. Fully open on every side. The most economical way to get covered storage for tall vehicles without committing to walls.",
+    use: 'Open Carport', roof: 'Vertical', wall: 'Open (Roof Only)', rollup: '0', walk: '0',
+    config: ["Roof-Only Sheeting","No Walls","No Doors"],
+    related: ['c-18x40x14-rv','c-22x40x14-rv','c-30x50x14-rv'],
+  },
+  'c-18x40x14-rv': {
+    name: '18×40×14 RV / Boat Shelter (Gable Closed)',
+    id: 'SS-1840-14-R', category: 'RV / Boat Storage', badge: 'RV / Boat',
+    image: '18x40x14.jpg',
+    price: 11535, dims: "18' × 40' × 14'",
+    description: "Long-vehicle shelter with the gable ends closed off — so wind-driven rain doesn't blow straight through. Includes a walk-through door and one window. 14' tall handles most RVs, fishing boats with towers, and full-size cargo trailers.",
+    use: 'RV / Boat Shelter', roof: 'Vertical', wall: 'Gable-End Sheeting', rollup: '0', walk: '1',
+    config: ["Gable-End Sheeting (Both Ends Closed)","Open Sides","One Walk-Through Door","One Window"],
+    related: ['c-22x40x14-rv','c-30x50x14-rv','c-20x40x14-carport'],
+  },
+  'c-22x40x14-rv': {
+    name: '22×40×14 RV / Boat Shelter',
+    id: 'SS-2240-14-R', category: 'RV / Boat Storage', badge: 'RV / Boat',
+    image: '22x40x14.jpg',
+    price: 13285, dims: "22' × 40' × 14'",
+    description: "Slightly wider RV/Boat shelter for trailers with bow towers, wider-track RVs, or anyone who just wants more elbow room around the vehicle. Gable-end sheeting on the front and back closes off prevailing wind; sides stay open for ventilation.",
+    use: 'RV / Boat Shelter', roof: 'Vertical', wall: 'Gable-End Sheeting', rollup: '0', walk: '0',
+    config: ["Gable-End Sheeting (Both Ends Closed)","Open Sides"],
+    related: ['c-30x50x14-rv','c-18x40x14-rv','c-20x40x14-carport'],
+  },
+  'c-30x50x14-rv': {
+    name: '30×50×14 Drive-Through RV / Boat Shelter',
+    id: 'SS-3050-14-R', category: 'RV / Boat Storage', badge: 'Premium RV',
+    image: '30x50x14.jpg',
+    price: 17590, dims: "30' × 50' × 14'",
+    description: "Our largest RV shelter — comfortable enough to park a Class A motorhome plus a tow vehicle side-by-side, or an RV plus a boat. Sides and back gable are closed for storm protection; front gable stays open so you can drive straight in without raising a door. 14' clearance handles rooftop A/Cs and antennas.",
+    use: 'Premium RV Shelter', roof: 'Vertical', wall: 'Three-Sided Enclosed', rollup: '0', walk: '0',
+    config: ["Sides Closed","Back Gable Closed","Front Gable Open (Drive-Through)"],
+    related: ['c-22x40x14-rv','c-18x40x14-rv','g-30x60x12'],
+  },
+
+  // ─── COMMERCIAL (keep — no slideshow data yet) ───
+  'co-40x60x16': {
+    name: '40×60×16 Commercial Shop',
+    id: 'SS-4060-16-C', category: 'Commercial', badge: 'Shop',
+    image: IMG('f8c53c_d3fa06901cd84546822d7acb5b84eb11~mv2.jpg'),
+    price: 46200, dims: "40' × 60' × 16'",
+    description: "Contractor shop or small warehouse with clear-span interior — no columns in the middle of your floor. 16' eave height fits a vehicle lift and gives overhead crane clearance for engine pulls. Built to 170 MPH commercial wind rating with stamped engineering drawings — ready for permitting in any code-required jurisdiction.",
+    use: 'Contractor Shop', roof: 'Vertical', wall: 'Vertical Enclosed', rollup: '1', walk: '1',
+    config: ["170 MPH Commercial Wind Rating","Clear-Span Trusses (No Interior Columns)","Stamped Engineering for Permitting"],
+    related: ['co-50x80x18','co-30x40x14','g-30x60x12'],
+  },
+  'co-50x80x18': {
+    name: '50×80×18 Mid-Size Warehouse',
+    id: 'SS-5080-18-C', category: 'Commercial', badge: 'Warehouse',
+    image: IMG('f8c53c_9e1c678246394314857b814d3c59a44d~mv2.jpg'),
+    price: 62000, dims: "50' × 80' × 18'",
+    description: "Mid-size warehouse footprint engineered to 170 MPH commercial wind rating. The 18' eave opens up vertical rack storage, mezzanine builds, or heavy equipment movement. Clear-span trusses mean no interior columns.",
+    use: 'Warehouse', roof: 'Vertical', wall: 'Vertical Enclosed', rollup: '1', walk: '1',
+    config: ["170 MPH Commercial Wind Rating","Clear-Span Trusses","Stamped Engineering for Permitting"],
+    related: ['co-40x60x16','co-40x100x18','co-30x40x14'],
+  },
+  'co-30x40x14': {
+    name: '30×40×14 Retail / Office Building',
+    id: 'SS-3040-14-C', category: 'Commercial', badge: 'Retail',
+    image: IMG('f8c53c_baccb10e3a7d4dc09db582b8857e294c~mv2.jpg'),
+    price: 18800, dims: "30' × 40' × 14'",
+    description: "Compact commercial footprint for storefront, office, or contractor service bay. Still qualifies for stamped commercial certification. The 14' eave gives commercial-grade interior height without the warehouse-scale price.",
+    use: 'Retail / Office', roof: 'Vertical', wall: 'Vertical Enclosed', rollup: '1', walk: '1',
+    config: ["Stamped Commercial Engineering","Clear-Span Trusses"],
+    related: ['co-40x60x16','g-30x40x12-3c','g-30x60x12'],
+  },
+  'co-40x100x18': {
+    name: '40×100×18 Industrial Building',
+    id: 'SS-4010-18-C', category: 'Commercial', badge: 'Industrial',
+    image: IMG('f8c53c_1f40bcc5d7c8477ab72c19686fd92d00~mv2.jpg'),
+    price: 76700, dims: "40' × 100' × 18'",
+    description: "Industrial / manufacturing scale. 100' depth with clear-span trusses for uninterrupted floor space. 18' eave height is lift-ready everywhere on the floor, with room overhead for crane runs or mezzanines. 170 MPH commercial certified — engineered for hurricane-zone code compliance.",
+    use: 'Industrial / Manufacturing', roof: 'Vertical', wall: 'Vertical Enclosed', rollup: '2', walk: '1',
+    config: ["170 MPH Commercial Wind Rating","Clear-Span 100-Ft Trusses","Stamped Engineering for Permitting"],
+    related: ['co-50x80x18','co-40x60x16','a-36x40x14'],
+  },
+
+  // ─── AGRICULTURAL (from real catalog slideshow) ───
+  'a-32x30x13': {
+    name: '32×30 Three-Section Barn with Twin Lean-Tos',
+    id: 'SS-3230-13-A', category: 'Steel Barn', badge: '3-Section',
+    image: '32x30x13.jpg',
+    price: 19608, dims: "32' × 30' × 13'/10'",
+    description: "The classic three-section barn — a 12'-wide tall center bay flanked by two 10'-wide lean-tos. Drive equipment through the 13'-tall middle, store implements, hay, or livestock under the 10' lean-to sides. Loaded out of the gate with three roll-ups, three walk-through doors, and two windows for natural light.",
+    use: 'Three-Section Barn', roof: 'Vertical', wall: 'Vertical Siding', rollup: '3', walk: '3',
+    config: ["Main Section: 12'×30'×13' Tall","Two Lean-Tos: 10'×30'×10' Tall (one each side)","Vertical Siding / Vertical Roof","One 10'×10' Roll-Up Door (Main)","Two 9'×8' Roll-Up Doors (Lean-Tos)","Three Walk-In Doors (one with window)","Two 24\"×36\" Windows","Delivered &amp; Installed","Engineer Certified"],
+    related: ['a-45x30x12','a-44x40x14','a-36x40x14'],
+  },
+  'a-45x30x12': {
+    name: '45×30 Three-Section Steel Barn',
+    id: 'SS-4530-12-A', category: 'Steel Barn', badge: 'Drive-Through',
+    image: '45x30x12.jpg',
+    price: 22335, dims: "45' × 30' × 12'/9'",
+    description: "A wider three-section steel-frame barn with a 25'-wide center bay and two 10' lean-tos. Each lean-to is configured differently out of the box: left side is fully enclosed for tool or tack storage, right side has the front and back gable open so you can drive equipment straight through. Horizontal siding on the main, vertical-rib roof.",
+    use: 'Steel Barn w/ Lean-Tos', roof: 'Vertical', wall: 'Horizontal Siding', rollup: '3', walk: '1',
+    config: ["Main Section: 25'×30'×12' Tall","Two Lean-Tos: 10'×30'×9' Tall","Left Lean-To: Fully Enclosed","Right Lean-To: Side Wall Enclosed, Front &amp; Back Gable Open (Drive-Through)","Horizontal Siding / Vertical Roof","Two 10'×10' Roll-Up Doors","One 9'×8' Roll-Up Door","One Walk-In Door","Delivered &amp; Installed","Engineer Certified"],
+    related: ['a-32x30x13','a-44x40x14','a-36x40x14'],
+  },
+  'a-44x40x14': {
+    name: '44×40 Steel Equipment Barn with Lean-To',
+    id: 'SS-4440-14-A', category: 'Steel Barn', badge: 'Equipment',
+    image: '44x40x14.png',
+    price: 33490, dims: "44' × 40' × 14'/12'",
+    description: "A 32'-wide main bay with a full-length 12'×40' lean-to attached on the side. The lean-to gives you covered outdoor working space — handy for messy projects, hay overflow, or just keeping a tractor out of the sun without locking it inside. Vertical siding and roof throughout, with a tall 14' eave on the main.",
+    use: 'Steel Equipment Barn', roof: 'Vertical', wall: 'Vertical Siding', rollup: '2', walk: '1',
+    config: ["Main Section: 32'×40'×14' Tall","Lean-To: 12'×40'×11' Tall","Vertical Siding / Vertical Roof","One 10'×10' Roll-Up Door (Gable End)","One 8'×10' Roll-Up Door (Right Eave Side)","One Walk-In Door","Two 30\"×30\" Windows","Delivered &amp; Installed","Engineer Certified"],
+    related: ['a-36x40x14','a-32x30x13','a-45x30x12'],
+  },
+  'a-36x40x14': {
+    name: '36×40 Premium Steel Barn with Lean-To',
+    id: 'SS-3640-14-A', category: 'Steel Barn', badge: 'Premium',
+    image: '36x40x14.png',
+    price: 21592.50, dims: "36' × 40' × 14'/10'",
+    description: "A 24'×40' main steel bay paired with a 12'×40' lean-to — sized for hay storage, equipment, or a working horse barn. Upgraded with vertical siding and a vertical roof for a premium finish that sheds rain and looks crisper than horizontal panels. Two oversized walk-in doors make moving large items in and out painless.",
+    use: 'Steel Barn w/ Lean-To', roof: 'Vertical (Upgraded)', wall: 'Vertical Siding (Upgraded)', rollup: '1', walk: '2',
+    config: ["Main Section: 24'×40'×14' Tall","Lean-To: 12'×40'×10' Tall","UPGRADED: Vertical Siding / Vertical Roof","One 10'×12' Roll-Up Door","Two 36\"×80\" Walk-In Doors","Two Windows","Delivered &amp; Installed","Engineer Certified"],
+    related: ['a-44x40x14','a-32x30x13','a-45x30x12'],
+  },
+};
+
+
+// ─── DOM POPULATOR ───
+const DEFAULT_SLUG = 'g-30x60x12';
+
+function loadBuilding(){
+  const hash = window.location.hash.slice(1);
+  const b = BUILDINGS[hash];
+  if(!b){
+    // Unknown hash (or no hash) — redirect to the default build, but only if
+    // we aren't already there (prevents infinite redirect loop if DEFAULT_SLUG
+    // ever disappears from BUILDINGS).
+    if(hash !== DEFAULT_SLUG){
+      window.location.replace('#' + DEFAULT_SLUG);
+    }
+    return;
+  }
+  const shortName = b.name.replace(/^\d+×\d+×\d+\s/, '');
+  document.getElementById('bc-current').textContent = b.dims + ' ' + shortName;
+  document.title = b.name + ' — StormSafe Steel';
+  document.getElementById('page-desc').setAttribute('content',
+    b.description.length > 158 ? b.description.slice(0,155)+'…' : b.description);
+  document.getElementById('d-name').textContent = b.name;
+  document.getElementById('d-id').textContent = ' ' + b.id;
+  document.getElementById('d-category').textContent = b.category;
+  document.getElementById('d-badge').textContent = b.badge;
+  // Hero image + gallery
+  const heroImg = document.getElementById('d-image');
+  heroImg.src = b.image;
+  heroImg.alt = b.name;
+  const gal = document.getElementById('d-gallery');
+  gal.innerHTML = '';
+  if (b.gallery && b.gallery.length > 0){
+    const allImgs = [b.image, ...b.gallery];
+    allImgs.forEach((src, i) => {
+      const t = document.createElement('div');
+      t.className = 'dh-thumb' + (i === 0 ? ' active' : '');
+      t.innerHTML = `<img loading="lazy" src="${src}" alt="View ${i+1} of ${b.name}">`;
+      t.onclick = () => {
+        heroImg.src = src;
+        gal.querySelectorAll('.dh-thumb').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+      };
+      gal.appendChild(t);
+    });
+  }
+  document.getElementById('d-price').textContent = '$' + b.price.toLocaleString();
+  document.getElementById('d-description').textContent = b.description;
+  document.getElementById('f-use').textContent = b.use;
+  document.getElementById('f-size').textContent = b.dims;
+  document.getElementById('f-roof').textContent = b.roof;
+  document.getElementById('f-wall').textContent = b.wall;
+  document.getElementById('f-rollup').textContent = b.rollup;
+  document.getElementById('f-walk').textContent = b.walk;
+
+  // Universal includes
+  const ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const ul = document.getElementById('d-includes-list');
+  ul.innerHTML = STD_INCLUDES.map(i => `<li>${ICON}<span>${i}</span></li>`).join('');
+
+  // Building-specific configuration
+  const cfgUl = document.getElementById('d-config-list');
+  const cfg = b.config || [];
+  if (cfg.length){
+    cfgUl.innerHTML = cfg.map(i => `<li>${ICON}<span>${i}</span></li>`).join('');
+    document.getElementById('d-config-section').style.display = '';
+  } else {
+    document.getElementById('d-config-section').style.display = 'none';
+  }
+
+  // Related
+  const grid = document.getElementById('d-related-grid');
+  grid.innerHTML = (b.related || []).map(id => {
+    const r = BUILDINGS[id]; if(!r) return '';
+    return `<a href="#${id}" class="d-rel-card">
+      <div class="d-rel-img"><img src="${r.image}" alt="${r.name}" loading="lazy"></div>
+      <div class="d-rel-body">
+        <div class="d-rel-dim">${r.dims}</div>
+        <div class="d-rel-price">From $${r.price.toLocaleString()}</div>
+      </div>
+    </a>`;
+  }).join('');
+
+  // Modal title
+  document.getElementById('qm-title').textContent = b.dims + ' ' + shortName;
+}
+
+// ─── NAV ───
+function toggleMenu(){
+  document.getElementById('mm').classList.toggle('open');
+  document.body.style.overflow = document.getElementById('mm').classList.contains('open') ? 'hidden' : '';
+}
+
+// ─── QUOTE ───
+function openQuote(){
+  document.getElementById('qm-overlay').classList.add('open');
+  document.body.style.overflow='hidden';
+  setTimeout(()=>document.querySelector('.qf-name')?.focus(), 150);
+}
+function closeQuote(){
+  document.getElementById('qm-overlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+function submitQuote(){
+  const hash = window.location.hash.slice(1);
+  const b = BUILDINGS[hash] || {};
+  const name = document.querySelector('.qf-name').value.trim();
+  const email = document.querySelector('.qf-email').value.trim();
+  const phone = document.querySelector('.qf-phone').value.trim() || 'Not provided';
+  if(!name || !email){ alert('Please enter your name and email.'); return; }
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ alert('Please enter a valid email.'); return; }
+  const subject = encodeURIComponent('Quote Request: ' + (b.dims||'Custom') + ' ' + (b.category||''));
+  const body = encodeURIComponent(
+    'New quote request from the building detail page:\n\n' +
+    'BUILDING\n──────────────────\n' +
+    'Name: ' + (b.name||'Custom') + '\n' +
+    'Building ID: ' + (b.id||'—') + '\n' +
+    'Dimensions: ' + (b.dims||'—') + '\n' +
+    'Listed Price: $' + (b.price ? b.price.toLocaleString() : '—') + '\n' +
+    'URL: ' + window.location.href + '\n\n' +
+    'CUSTOMER\n──────────────────\n' +
+    'Name: ' + name + '\nEmail: ' + email + '\nPhone: ' + phone + '\n\n' +
+    '— Sent from stormsafesteel.com/building-details'
+  );
+  // mailto fallback — swap to Formspree/Web3Forms/etc. when ready (see comment on main page)
+  window.location.href = 'mailto:connect@stormsafesteel.com?subject=' + subject + '&body=' + body;
+  document.getElementById('qm-form').innerHTML =
+    '<div class="qm-success">✓ Opening your email client.<br>Send the message and we\'ll respond within one business day.</div>';
+  setTimeout(closeQuote, 5000);
+}
+
+// ─── LOAD & ROUTE ───
+window.addEventListener('hashchange', () => { loadBuilding(); window.scrollTo({top:0,behavior:'smooth'}); });
+loadBuilding();
+
+// ESC closes modal
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeQuote(); });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,2183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StormSafe Steel — Custom Steel Buildings, Engineered for the Storm</title>
+<meta name="description" content="Custom steel buildings certified to 170 MPH. Residential, commercial, agricultural — fully galvanized, fast installation. Get your free quote.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800;900&family=Rajdhani:wght@500;600;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+/* ==========================================================================
+   STORMSAFE STEEL — HOME PAGE
+   Industrial / blueprint aesthetic. Dark navy + teal accents.
+   ========================================================================== */
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#070d17;
+  --bg-2:#0b1220;
+  --bg-3:#111c2e;
+  --bg-4:#192742;
+  --teal:#22d3c8;
+  --teal-dim:#1a9e94;
+  --teal-glow:rgba(34,211,200,.12);
+  --orange:#FF5A36;
+  --orange-glow:rgba(255,90,54,.12);
+  --text:#e8edf5;
+  --text-2:#8fa3bc;
+  --text-3:#5b7290;
+  --border:rgba(255,255,255,.08);
+  --border-2:rgba(34,211,200,.25);
+  --danger:#f87171;
+  --success:#34d399;
+
+  /* Aliases for the inlined planning-tool CSS (no-hyphen variant) */
+  --bg2:#0b1220;
+  --bg3:#111c2e;
+  --bg4:#192742;
+  --text2:#8fa3bc;
+  --text3:#5b7290;
+  --border2:rgba(34,211,200,.25);
+  --warning:#fbbf24;
+  --r:10px;
+  --rs:6px;
+
+  --display:'Orbitron',sans-serif;
+  --sub:'Rajdhani',sans-serif;
+  --body:'Inter',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+
+  /* Emil-style motion easings */
+  --ease-out-expo:cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring:cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth:cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-quart:cubic-bezier(0.25, 1, 0.5, 1);
+  --camo:url(data:image/jpeg;base64,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);
+}
+
+html{scroll-behavior:smooth;background:var(--bg)}
+body{font-family:var(--body);font-size:15px;line-height:1.7;color:var(--text);background:var(--bg);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+img{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+/* ── Reusable atoms ────────────────────────────────────────────────── */
+.wrap{max-width:1280px;margin:0 auto;padding:0 32px}
+@media(max-width:640px){.wrap{padding:0 20px}}
+
+.eyebrow{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--teal);display:inline-flex;align-items:center;gap:14px;line-height:1}
+.eyebrow::before{content:"";display:inline-block;width:28px;height:2px;background:var(--teal);box-shadow:0 0 10px rgba(34,211,200,.55);flex-shrink:0}
+
+.h-display{font-family:var(--display);font-weight:900;letter-spacing:.01em;text-transform:uppercase;line-height:1.02}
+.h-sub{font-family:var(--sub);font-weight:700;letter-spacing:.02em;text-transform:uppercase;line-height:1.1}
+
+.btn{display:inline-flex;align-items:center;gap:10px;padding:15px 28px;font-family:var(--sub);font-weight:700;font-size:14px;letter-spacing:.12em;text-transform:uppercase;border:1px solid;transition:all .2s;cursor:pointer}
+.btn i{font-size:18px}
+.btn-primary{background:var(--teal);color:#03101a;border-color:var(--teal)}
+.btn-primary:hover{background:#3aebdf;border-color:#3aebdf;transform:translateY(-1px)}
+.btn-ghost{background:transparent;color:var(--text);border-color:var(--border)}
+.btn-ghost:hover{border-color:var(--teal);color:var(--teal)}
+
+/* ── NAV ────────────────────────────────────────────────────────────── */
+nav.top{position:sticky;top:0;z-index:100;background:rgba(7,13,23,.85);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 32px;max-width:1440px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:42px;height:42px;display:block;object-fit:contain;flex-shrink:0}
+.brand-name{font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;line-height:1.1}
+.brand-name span{color:var(--teal)}
+.nav-links{display:flex;gap:32px;align-items:center}
+.nav-links a{font-family:var(--sub);font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-2);transition:color .15s;position:relative}
+.nav-links a:hover{color:var(--teal)}
+.nav-cta{display:flex;align-items:center;gap:16px}
+.nav-phone{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--teal);letter-spacing:.04em;display:flex;align-items:center;gap:6px}
+.nav-phone i{font-size:16px}
+.nav-quote-btn{padding:10px 18px;font-family:var(--sub);font-weight:700;font-size:12px;letter-spacing:.1em;text-transform:uppercase;background:var(--teal);color:#03101a;border:none;transition:background .15s;white-space:nowrap;line-height:1}
+.nav-quote-btn:hover{background:#3aebdf}
+.nav-burger{display:none;font-size:24px;color:var(--text);background:none;border:none;cursor:pointer}
+@media(max-width:960px){
+  .nav-links{display:none}
+  .nav-phone span{display:none}
+}
+@media(max-width:640px){
+  .nav-inner{padding:11px 16px;gap:10px}
+  .brand-mark{width:34px;height:34px}
+  .brand-name{font-size:12px;letter-spacing:.04em}
+  .nav-cta{gap:10px}
+  .nav-quote-btn{padding:9px 12px;font-size:10px;letter-spacing:.08em}
+  .nav-phone i{font-size:18px}
+}
+
+/* ── HERO ───────────────────────────────────────────────────────────── */
+.hero{position:relative;min-height:420px;display:flex;flex-direction:column;justify-content:center;overflow:hidden;padding:44px 0 40px}
+.hero-video-wrap{position:absolute;inset:0;z-index:0;overflow:hidden}
+.hero-video-wrap::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,13,23,.55) 0%,rgba(7,13,23,.7) 50%,rgba(7,13,23,.95) 100%);z-index:2}
+.hero-video-wrap::after{display:none}
+.hero-video-wrap video,.hero-video-wrap .hero-fallback-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1}
+
+.hero-inner{position:relative;z-index:5;padding:24px 0}
+.hero-tag{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--teal);margin-bottom:14px;line-height:1.4;display:inline-flex;align-items:center;gap:14px}
+.hero-tag::before{content:"";display:inline-block;width:28px;height:2px;background:var(--teal);box-shadow:0 0 10px rgba(34,211,200,.55);flex-shrink:0}
+.hero h1{font-family:var(--display);font-weight:900;font-size:clamp(30px,5vw,58px);line-height:.98;letter-spacing:.005em;text-transform:uppercase;margin-bottom:14px;max-width:1000px}
+.hero h1 .stack{display:block}
+.hero h1 .accent{color:var(--teal);display:inline-block;position:relative}
+.hero h1 .accent::after{content:"";position:absolute;bottom:-5px;left:0;width:100%;height:3px;background:var(--teal);box-shadow:0 0 16px rgba(34,211,200,.55)}
+.hero-lede{max-width:540px;font-size:15px;line-height:1.55;color:var(--text-2);margin-bottom:22px;font-weight:300}
+.hero-cta-row{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+
+.hero-specs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:680px}
+.hero-spec{background:rgba(7,13,23,.55);backdrop-filter:blur(8px);padding:10px 14px;border:1px solid rgba(34,211,200,.12)}
+.hero-spec-num{font-family:var(--display);font-weight:700;font-size:20px;color:var(--teal);line-height:1;margin-bottom:3px;letter-spacing:.02em}
+.hero-spec-lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-2);line-height:1.4}
+@media(max-width:760px){
+  .hero-specs{grid-template-columns:1fr 1fr}
+  .hero-spec-num{font-size:22px}
+}
+@media(max-width:640px){
+  .hero{min-height:380px;padding-top:28px;padding-bottom:28px}
+  .hero-inner{padding:16px 0 12px}
+  .hero-tag{font-size:9px;letter-spacing:.18em;margin-bottom:10px}
+  .hero h1{font-size:30px;line-height:1;margin-bottom:12px}
+  .hero-lede{font-size:13px;line-height:1.55;margin-bottom:18px}
+  .hero-cta-row{gap:8px;margin-bottom:18px;flex-direction:column}
+  .hero-cta-row .btn{width:100%;justify-content:center;padding:12px 18px;font-size:12px}
+  .hero-spec{padding:9px 10px}
+  .hero-spec-num{font-size:16px}
+  .hero-spec-lbl{font-size:8px;letter-spacing:.08em}
+}
+
+/* Scroll indicator */
+.hero-scroll{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:6;font-family:var(--mono);font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--text-2);display:flex;flex-direction:column;align-items:center;gap:8px;opacity:.7}
+.hero-scroll i{font-size:18px;animation:bob 1.8s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+@media(max-width:760px){.hero-scroll{display:none}}
+
+/* ── SECTION SHELL ──────────────────────────────────────────────────── */
+section{padding:80px 0;position:relative}
+@media(max-width:760px){section{padding:54px 0}}
+.section-head{margin-bottom:56px;max-width:760px}
+.section-head h2{font-family:var(--display);font-weight:900;font-size:clamp(28px,4.2vw,52px);line-height:1.05;letter-spacing:.01em;text-transform:uppercase;margin:14px 0 18px}
+.section-head h2 .accent{color:var(--teal)}
+.section-head p{font-size:16px;color:var(--text-2);line-height:1.7;max-width:620px}
+
+/* ── BUILDINGS GRID ─────────────────────────────────────────────────── */
+.bldgs{background:var(--bg-2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.bldgs::before{display:none}
+.bldgs>*{position:relative;z-index:1}
+.bldgs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:960px){.bldgs-grid{grid-template-columns:1fr}}
+.bcard{position:relative;overflow:hidden;background:var(--bg-3);border:1px solid var(--border);min-height:380px;display:flex;flex-direction:column;justify-content:flex-end;transition:transform .35s,border-color .35s;text-decoration:none;color:inherit}
+.bcard:hover{transform:translateY(-4px);border-color:var(--border-2)}
+.bcard-img{position:absolute;inset:0;z-index:0;overflow:hidden}
+.bcard-img img{width:100%;height:100%;object-fit:cover;transition:transform .8s,filter .35s;filter:grayscale(40%) brightness(.7)}
+.bcard:hover .bcard-img img{transform:scale(1.07);filter:grayscale(0) brightness(.85)}
+.bcard-img::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(7,13,23,.1) 0%,rgba(7,13,23,.4) 45%,rgba(7,13,23,.95) 100%);z-index:1}
+.bcard-body{position:relative;z-index:2;padding:24px}
+.bcard-num{font-family:var(--mono);font-size:10.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--teal);margin-bottom:10px;opacity:.85}
+.bcard h3{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:.02em;text-transform:uppercase;margin-bottom:10px;line-height:1.02}
+.bcard p{font-size:13.5px;color:var(--text-2);line-height:1.6;margin-bottom:18px;max-width:340px}
+.bcard-link{display:inline-flex;align-items:center;gap:10px;font-family:var(--sub);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);transition:gap .2s}
+.bcard:hover .bcard-link{gap:14px}
+.bcard-link i{font-size:18px;transition:transform .2s}
+.bcard:hover .bcard-link i{transform:translateX(3px)}
+@media(max-width:640px){
+  .bcard{min-height:280px}
+  .bcard-body{padding:20px}
+  .bcard-num{font-size:10px;letter-spacing:.22em;margin-bottom:8px}
+  .bcard h3{font-size:22px;letter-spacing:.01em;margin-bottom:8px}
+  .bcard p{font-size:13px;margin-bottom:14px}
+  .bcard-link{font-size:11px}
+}
+
+/* ── RESOURCES EMBED ────────────────────────────────────────────────── */
+.tools{background:var(--bg);border-bottom:1px solid var(--border);position:relative}
+.tools::before{content:"";position:absolute;inset:0;background-image:var(--camo);background-size:480px auto;background-repeat:repeat;opacity:.22;pointer-events:none}
+.tools .section-head{position:relative;z-index:1}
+
+/* ── WHY STEEL ──────────────────────────────────────────────────────── */
+.why{background:var(--bg-2);border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.why::before{display:none}
+.why>*{position:relative;z-index:1}
+.why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:960px){.why-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.why-grid{grid-template-columns:1fr}}
+.wcell{background:var(--bg-2);padding:28px 26px;transition:background .25s,border-color .25s;position:relative;border:1px solid var(--border);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.wcell:hover,.wcell:focus-visible{background:var(--bg-3);border-color:var(--border-2);outline:none}
+.wcell.is-open{background:var(--bg-3);border-color:var(--teal)}
+.wcell-num{font-family:var(--mono);font-size:10.5px;letter-spacing:.28em;color:var(--text-3);margin-bottom:18px}
+.wcell-icon{width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--teal);margin-bottom:18px;border:1px solid var(--border-2);background:var(--teal-glow)}
+.wcell-icon i{font-size:22px}
+.wcell h3{font-family:var(--sub);font-weight:700;font-size:17px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:10px;color:var(--text)}
+.wcell p{font-size:13.5px;line-height:1.65;color:var(--text-2)}
+.wcell-toggle{display:inline-flex;align-items:center;gap:6px;margin-top:14px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:var(--teal);transition:gap .2s}
+.wcell-toggle i{font-size:14px;transition:transform .45s var(--ease-spring)}
+.wcell.is-open .wcell-toggle i{transform:rotate(180deg)}
+.wcell:hover .wcell-toggle{gap:10px}
+.wcell-more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .5s var(--ease-out-expo)}
+.wcell-more-inner{overflow:hidden}
+.wcell.is-open .wcell-more{grid-template-rows:1fr}
+.wcell-more p{margin-top:18px;padding-top:18px;border-top:1px solid var(--border);font-size:13.5px;line-height:1.75}
+.wcell-more strong{color:var(--teal);font-weight:600}
+
+/* ── STATS COUNTER BAND ───────────────────────────────────────────── */
+.stats-band{background:var(--bg);padding:48px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.stats-band::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:60px;height:1px;background:var(--teal);box-shadow:0 0 12px rgba(34,211,200,.6)}
+.stats-band-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);max-width:880px;margin:0 auto}
+.stat-cell{background:var(--bg);padding:28px 24px;text-align:center;transition:background .3s ease}
+.stat-cell:hover{background:var(--bg-2)}
+.stat-num{font-family:var(--display);font-weight:700;font-size:clamp(36px,4.8vw,58px);line-height:1;color:var(--teal);letter-spacing:.01em;margin-bottom:8px;display:inline-flex;align-items:baseline;gap:2px}
+.stat-num .unit{font-size:.42em;color:var(--teal);font-weight:700;margin-left:2px}
+.stat-lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-2);line-height:1.4}
+@media(max-width:880px){.stats-band-grid{grid-template-columns:1fr}.stat-cell{padding:22px 18px}}
+
+/* ── FAQ ─────────────────────────────────────────────────────────── */
+.faq{background:var(--bg-2);padding:70px 0;position:relative;overflow:hidden}
+.faq-head{text-align:center;max-width:740px;margin:0 auto 50px}
+.faq-list{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.faq-item{background:var(--bg-3);border:1px solid var(--border);transition:border-color .25s;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.faq-item:hover,.faq-item:focus-visible{border-color:var(--border-2);outline:none}
+.faq-item.is-open{border-color:var(--teal)}
+.faq-q{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:22px 28px;font-family:var(--sub);font-weight:600;font-size:17px;color:var(--text);line-height:1.35;letter-spacing:.01em}
+.faq-q-icon{flex-shrink:0;width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-2);color:var(--teal);transition:transform .35s var(--ease-out-expo),background .35s var(--ease-out-expo)}
+.faq-q-icon i{font-size:18px;transition:transform .5s var(--ease-spring)}
+.faq-item.is-open .faq-q-icon{background:var(--teal-glow)}
+.faq-item.is-open .faq-q-icon i{transform:rotate(180deg)}
+.faq-a{display:grid;grid-template-rows:0fr;transition:grid-template-rows .55s var(--ease-out-expo)}
+.faq-a-inner{overflow:hidden}
+.faq-item.is-open .faq-a{grid-template-rows:1fr}
+.faq-a-text{padding:0 28px 24px;font-size:14.5px;line-height:1.75;color:var(--text-2)}
+.faq-a-text p{margin-bottom:12px}
+.faq-a-text p:last-child{margin-bottom:0}
+.faq-a-text strong{color:var(--teal);font-weight:600}
+@media(max-width:640px){
+  .faq{padding:60px 0}
+  .faq-head{margin-bottom:32px}
+  .faq-q{padding:18px 20px;font-size:15px;gap:14px}
+  .faq-q-icon{width:30px;height:30px}
+  .faq-q-icon i{font-size:16px}
+  .faq-a-text{padding:0 20px 20px;font-size:14px}
+}
+
+/* ── STICKY QUOTE BUTTON ─────────────────────────────────────────── */
+.sticky-quote{position:fixed;bottom:24px;right:24px;z-index:9998;display:inline-flex;align-items:center;gap:8px;padding:14px 22px;background:var(--teal);color:#070d17;font-family:var(--sub);font-weight:700;font-size:14px;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;border:2px solid var(--teal);border-radius:50px;cursor:pointer;box-shadow:0 8px 24px rgba(34,211,200,.35),0 0 0 0 rgba(34,211,200,.5);opacity:0;visibility:hidden;transform:translateY(20px);transition:opacity .35s ease,transform .35s ease,visibility 0s linear .35s,box-shadow .25s;-webkit-tap-highlight-color:transparent}
+.sticky-quote.is-visible{opacity:1;visibility:visible;transform:translateY(0);transition:opacity .35s ease,transform .35s ease,visibility 0s linear 0s,box-shadow .25s}
+.sticky-quote:hover{box-shadow:0 10px 28px rgba(34,211,200,.5),0 0 0 6px rgba(34,211,200,.15)}
+.sticky-quote i{font-size:16px}
+@media(max-width:640px){
+  .sticky-quote{bottom:18px;right:18px;padding:12px 18px;font-size:12px;letter-spacing:.06em}
+  .sticky-quote i{font-size:14px}
+}
+
+/* ── ANIMATED BUILDING ASSEMBLY ──────────────────────────────────── */
+.bld-section{background:var(--bg);position:relative;overflow:hidden;padding:80px 0}
+.bld-section::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:60px;height:1px;background:var(--teal);box-shadow:0 0 12px rgba(34,211,200,.5)}
+.bld-head{text-align:center;max-width:720px;margin:0 auto 44px}
+.bld-head h2{margin-top:12px}
+.bld-sub{font-size:15px;line-height:1.6;color:var(--text-2);margin-top:14px;font-weight:300}
+.builder{max-width:920px;margin:0 auto;position:relative}
+.builder.reveal{opacity:1;transform:none;filter:none;transition:none}
+.builder-svg{width:100%;height:auto;display:block}
+.bld-part{opacity:0;transition:opacity .8s var(--ease-out-expo),transform 1s var(--ease-out-expo)}
+.builder.in .bld-part{opacity:1;transform:none}
+.bld-foundation{transform:translateY(24px)}
+.bld-columns{transform:translateY(160px)}
+.bld-topbeam{transform:scaleX(0);transform-origin:50% 50%}
+.bld-trusses{transform:translateY(-30px)}
+.bld-panels{transform:scale(.97);transform-origin:50% 90%}
+.bld-roof{transform:translateY(-50px)}
+.bld-door{transform:scaleY(0);transform-origin:50% 100%}
+.bld-check{transform:scale(0);transform-origin:50% 50%;transition:opacity .5s var(--ease-out-expo),transform .7s var(--ease-spring)}
+.builder.in .bld-foundation{transition-delay:.15s}
+.builder.in .bld-columns{transition-delay:.55s}
+.builder.in .bld-topbeam{transition-delay:1.05s}
+.builder.in .bld-trusses{transition-delay:1.3s}
+.builder.in .bld-panels{transition-delay:1.65s}
+.builder.in .bld-roof{transition-delay:2.0s}
+.builder.in .bld-door{transition-delay:2.4s}
+.builder.in .bld-check{transition-delay:2.8s}
+/* Clickable building features (roll-up door, walk door, window) */
+.bld-clickable{cursor:pointer;transition:filter .35s var(--ease-out-expo);-webkit-tap-highlight-color:transparent}
+.bld-clickable:hover{filter:brightness(1.35) drop-shadow(0 0 4px rgba(34,211,200,.35))}
+.bld-clickable.is-active{filter:brightness(1.5) drop-shadow(0 0 8px rgba(34,211,200,.55))}
+@media(hover:none){.bld-clickable:hover{filter:none}}
+
+/* Floating tooltip that points to the clicked feature */
+.bld-tooltip{position:absolute;z-index:5;background:var(--bg-2);border:1px solid var(--teal);padding:9px 14px;font-family:var(--mono);font-size:11.5px;font-weight:600;letter-spacing:.06em;color:var(--teal);white-space:nowrap;box-shadow:0 10px 28px rgba(0,0,0,.55),0 0 0 1px rgba(34,211,200,.18);pointer-events:none;opacity:0;transform:translate(-50%,calc(-100% - 16px));transition:opacity .35s var(--ease-out-expo),transform .45s var(--ease-out-expo)}
+.bld-tooltip.is-visible{opacity:1;transform:translate(-50%,calc(-100% - 22px))}
+.bld-tooltip::after{content:"";position:absolute;left:50%;bottom:-5px;width:8px;height:8px;background:var(--bg-2);border-right:1px solid var(--teal);border-bottom:1px solid var(--teal);transform:translateX(-50%) rotate(45deg)}
+@media(max-width:640px){.bld-tooltip{font-size:10.5px;padding:8px 12px;letter-spacing:.04em}}
+
+/* Hint text below SVG */
+.bld-hint{text-align:center;margin-top:18px;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-3);opacity:.55}
+.bld-hint i{margin-right:6px;font-size:11px;vertical-align:middle;color:var(--teal)}
+
+.bld-stages{display:flex;justify-content:center;align-items:center;gap:10px;margin-top:32px;flex-wrap:wrap;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.2em;text-transform:uppercase}
+.bld-stage{color:var(--text-3);transition:color .5s var(--ease-out-expo);position:relative;padding:0 4px}
+.bld-stage::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:8px;vertical-align:middle;transition:box-shadow .5s var(--ease-out-expo)}
+.builder.in .bld-stage{color:var(--teal)}
+.builder.in .bld-stage::before{box-shadow:0 0 8px rgba(34,211,200,.7)}
+.builder.in .bld-stage[data-bld-stage="0"]{transition-delay:.4s}
+.builder.in .bld-stage[data-bld-stage="0"]::before{transition-delay:.4s}
+.builder.in .bld-stage[data-bld-stage="1"]{transition-delay:1.0s}
+.builder.in .bld-stage[data-bld-stage="1"]::before{transition-delay:1.0s}
+.builder.in .bld-stage[data-bld-stage="2"]{transition-delay:1.95s}
+.builder.in .bld-stage[data-bld-stage="2"]::before{transition-delay:1.95s}
+.builder.in .bld-stage[data-bld-stage="3"]{transition-delay:2.35s}
+.builder.in .bld-stage[data-bld-stage="3"]::before{transition-delay:2.35s}
+.builder.in .bld-stage[data-bld-stage="4"]{transition-delay:2.75s}
+.builder.in .bld-stage[data-bld-stage="4"]::before{transition-delay:2.75s}
+.builder.in .bld-stage[data-bld-stage="5"]{transition-delay:3.2s}
+.builder.in .bld-stage[data-bld-stage="5"]::before{transition-delay:3.2s;box-shadow:0 0 12px rgba(34,211,200,.9)}
+.bld-stage-sep{color:var(--text-3);opacity:.35;font-size:10px}
+@media(max-width:640px){
+  .bld-section{padding:54px 0}
+  .bld-head{margin-bottom:28px}
+  .bld-stages{gap:6px;font-size:9px;letter-spacing:.14em}
+  .bld-stage{padding:0 2px}
+  .bld-stage::before{width:5px;height:5px;margin-right:5px}
+  .bld-stage-sep{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .bld-part{opacity:1;transform:none;transition:none}
+  .bld-stage{color:var(--teal)}
+}
+
+/* ── MARQUEE TICKER ──────────────────────────────────────────────── */
+.marquee{background:var(--bg);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:22px 0;overflow:hidden;position:relative}
+.marquee::before,.marquee::after{content:"";position:absolute;top:0;bottom:0;width:80px;z-index:2;pointer-events:none}
+.marquee::before{left:0;background:linear-gradient(90deg,var(--bg),transparent)}
+.marquee::after{right:0;background:linear-gradient(270deg,var(--bg),transparent)}
+.marquee-track{display:flex;align-items:center;animation:marquee 52s linear infinite;will-change:transform}
+.marquee:hover .marquee-track{animation-play-state:paused}
+.marquee-set{display:flex;align-items:center;flex-shrink:0;gap:36px;padding-right:36px}
+.marq-item{font-family:var(--display);font-weight:700;font-size:14px;letter-spacing:.16em;text-transform:uppercase;color:var(--text);white-space:nowrap}
+.marq-item.accent{color:var(--teal)}
+.marq-dot{width:5px;height:5px;background:var(--teal);border-radius:50%;box-shadow:0 0 8px rgba(34,211,200,.6);flex-shrink:0}
+@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media(max-width:640px){
+  .marquee{padding:16px 0}
+  .marquee::before,.marquee::after{width:40px}
+  .marq-item{font-size:11px;letter-spacing:.12em}
+  .marquee-set{gap:22px;padding-right:22px}
+  .marquee-track{animation-duration:28s}
+}
+@media(prefers-reduced-motion:reduce){.marquee-track{animation:none}}
+
+/* ── PROCESS ────────────────────────────────────────────────────────── */
+.process{background:var(--bg);position:relative;overflow:hidden}
+.process::before{content:"";position:absolute;inset:0;background-image:var(--camo);background-size:480px auto;background-repeat:repeat;opacity:.22;pointer-events:none}
+.proc-grid{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:24px;align-items:stretch}
+@media(max-width:880px){.proc-grid{grid-template-columns:1fr;gap:20px}}
+.pstep{position:relative;background:var(--bg-2);border:1px solid var(--border);padding:38px 32px;transition:border-color .25s}
+.pstep:hover{border-color:var(--border-2)}
+.pstep-num{font-family:var(--display);font-weight:800;font-size:84px;line-height:.9;color:transparent;-webkit-text-stroke:1.5px var(--teal-dim);letter-spacing:0;margin-bottom:14px}
+.pstep-tag{font-family:var(--mono);font-size:11px;letter-spacing:.3em;text-transform:uppercase;color:var(--teal);margin-bottom:10px}
+.pstep h3{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:14px}
+.pstep p{font-size:14px;line-height:1.7;color:var(--text-2);margin-bottom:22px}
+.pstep-link{font-family:var(--sub);font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);display:inline-flex;align-items:center;gap:8px;transition:gap .2s}
+.pstep-link:hover{gap:12px}
+.pstep-link i{font-size:16px}
+
+/* ── COMPARISON ─────────────────────────────────────────────────────── */
+.compare{background:var(--bg-2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);position:relative;overflow:hidden}
+.compare::before{display:none}
+.compare>*{position:relative;z-index:1}
+.cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:stretch}
+@media(max-width:880px){.cmp-grid{grid-template-columns:1fr}}
+.cmp-col{padding:36px 32px;border:1px solid var(--border);position:relative}
+.cmp-col.bad{background:var(--bg-3)}
+.cmp-col.good{background:var(--bg);border-color:var(--border-2);overflow:hidden}
+.cmp-col.good::before{content:"";position:absolute;inset:0;background-image:var(--camo);background-size:480px auto;background-repeat:repeat;opacity:.22;pointer-events:none;z-index:0}
+.cmp-col.good>*{position:relative;z-index:1}
+.cmp-head{display:flex;align-items:center;gap:14px;margin-bottom:24px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.cmp-badge{width:48px;height:48px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px}
+.cmp-col.bad .cmp-badge{background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.25)}
+.cmp-col.good .cmp-badge{background:transparent;border:none;padding:0}
+.cmp-col.good .cmp-badge img{width:100%;height:100%;object-fit:contain;display:block}
+.cmp-title{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:.03em;text-transform:uppercase;line-height:1.1}
+.cmp-sub{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--text-3);margin-top:6px}
+.cmp-col.good .cmp-sub{color:var(--teal)}
+.cmp-list{list-style:none}
+.cmp-item{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);font-size:14px;line-height:1.65;color:var(--text-2)}
+.cmp-item:last-child{border-bottom:none}
+.cmp-item i{flex-shrink:0;font-size:18px;margin-top:2px}
+.cmp-col.bad .cmp-item i{color:var(--danger)}
+.cmp-col.good .cmp-item i{color:var(--teal)}
+
+/* ── FINAL CTA / FORM ───────────────────────────────────────────────── */
+.cta-final{background:var(--bg);position:relative;overflow:hidden}
+
+/* ── SERVICE AREA ─────────────────────────────────────────────── */
+.service-area{background:var(--bg-2);padding:70px 0;position:relative;overflow:hidden}
+.service-area::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:60px;height:1px;background:var(--teal);box-shadow:0 0 12px rgba(34,211,200,.6)}
+.sa-head{text-align:center;max-width:760px;margin:0 auto 48px}
+.sa-title{font-size:clamp(28px,4vw,46px);margin-top:14px;line-height:1.05}
+.sa-sub{font-size:16px;line-height:1.65;color:var(--text-2);margin-top:18px;font-weight:300}
+.sa-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:920px;margin:0 auto 48px}
+.sa-chip{display:inline-flex;align-items:center;justify-content:center;min-width:56px;padding:11px 16px;background:var(--bg-3);border:1px solid var(--border);font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.08em;color:var(--text);transition:all .22s ease;cursor:default;position:relative}
+.sa-chip:hover{background:var(--bg-4);border-color:var(--teal);color:var(--teal);transform:translateY(-2px);box-shadow:0 6px 18px rgba(34,211,200,.18)}
+.sa-chip::after{content:attr(data-region);position:absolute;top:-30px;left:50%;transform:translateX(-50%);background:var(--bg);color:var(--teal);font-size:10px;font-family:var(--mono);font-weight:600;letter-spacing:.08em;padding:5px 10px;border:1px solid var(--border-2);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s}
+.sa-chip:hover::after{opacity:1}
+.sa-foot{display:flex;justify-content:center;align-items:stretch;gap:32px;padding-top:34px;border-top:1px solid var(--border);max-width:660px;margin:0 auto}
+.sa-foot-item{text-align:center;flex:1}
+.sa-foot-num{font-family:var(--display);font-weight:800;font-size:34px;color:var(--teal);line-height:1;margin-bottom:6px;letter-spacing:.02em}
+.sa-foot-num-fl{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.sa-palm{width:28px;height:28px;flex-shrink:0}
+.sa-foot-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-2)}
+.sa-foot-divider{width:1px;background:var(--border)}
+@media(max-width:640px){
+  .service-area{padding:60px 0}
+  .sa-head{margin-bottom:34px}
+  .sa-sub{font-size:14px}
+  .sa-chips{gap:6px;margin-bottom:36px}
+  .sa-chip{min-width:48px;padding:9px 12px;font-size:12.5px}
+  .sa-foot{gap:18px;padding-top:26px}
+  .sa-foot-num{font-size:26px}
+  .sa-palm{width:22px;height:22px}
+  .sa-foot-lbl{font-size:9px}
+}
+.cta-final::before{content:"";position:absolute;inset:0;background-image:var(--camo);background-size:480px auto;background-repeat:repeat;opacity:.22;pointer-events:none}
+.cta-grid{position:relative;display:grid;grid-template-columns:1.1fr .9fr;gap:60px;align-items:start}
+@media(max-width:960px){.cta-grid{grid-template-columns:1fr;gap:40px}}
+.cta-grid h2{margin-bottom:24px}
+.cta-grid .lede{font-size:16px;color:var(--text-2);line-height:1.75;margin-bottom:32px;max-width:520px}
+.cta-points{margin-bottom:0}
+.cta-points li{display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border);font-size:14px;color:var(--text-2);list-style:none}
+.cta-points li:last-child{border-bottom:none}
+.cta-points i{color:var(--teal);font-size:20px;flex-shrink:0}
+
+.qform{background:var(--bg-2);border:1px solid var(--border);padding:36px 32px;position:relative}
+.qform::before{content:"GET YOUR QUOTE";position:absolute;top:-9px;left:24px;background:var(--bg);padding:0 12px;font-family:var(--mono);font-size:10px;letter-spacing:.25em;color:var(--teal)}
+.qform-row{margin-bottom:18px}
+.qform-row.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.qform label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-2);margin-bottom:8px}
+.qform input,.qform select,.qform textarea{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:13px 14px;font-family:var(--body);font-size:14px;outline:none;transition:border-color .15s;border-radius:0;-webkit-appearance:none}
+.qform input:focus,.qform select:focus,.qform textarea:focus{border-color:var(--teal)}
+.qform textarea{resize:vertical;min-height:90px;line-height:1.6}
+.qform-submit{width:100%;margin-top:8px;background:var(--teal);color:#03101a;padding:16px;font-family:var(--sub);font-weight:700;font-size:13px;letter-spacing:.15em;text-transform:uppercase;border:none;cursor:pointer;transition:background .15s}
+.qform-submit:hover{background:#3aebdf}
+.qform-fineprint{font-size:11px;color:var(--text-3);margin-top:14px;line-height:1.6}
+
+/* ── FOOTER ─────────────────────────────────────────────────────────── */
+footer{background:#03080f;padding:64px 0 28px;border-top:1px solid var(--border)}
+.foot-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:40px;margin-bottom:48px}
+@media(max-width:880px){.foot-grid{grid-template-columns:1fr 1fr;gap:32px}}
+@media(max-width:520px){.foot-grid{grid-template-columns:1fr}}
+.foot-brand .brand{margin-bottom:18px}
+.foot-tagline{font-size:14px;color:var(--text-2);line-height:1.7;max-width:340px;margin-bottom:20px}
+.foot-phone{font-family:var(--mono);font-size:18px;color:var(--teal);letter-spacing:.04em;margin-bottom:6px;display:inline-block}
+.foot-addr{font-size:13px;color:var(--text-3);line-height:1.6}
+.foot-col h4{font-family:var(--sub);font-size:13px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--teal);margin-bottom:18px}
+.foot-col ul{list-style:none}
+.foot-col li{margin-bottom:10px}
+.foot-col a{font-size:14px;color:var(--text-2);transition:color .15s}
+.foot-col a:hover{color:var(--teal)}
+.foot-bottom{padding-top:28px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--text-3);font-family:var(--mono);letter-spacing:.05em}
+.foot-bottom a{color:var(--text-3);transition:color .15s}
+.foot-bottom a:hover{color:var(--teal)}
+.foot-socials{display:flex;gap:12px}
+.foot-socials a{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);color:var(--text-2);transition:all .15s}
+.foot-socials a:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-glow)}
+
+/* ── REVEAL ANIMATIONS (Emil-style: blur + lift + scale) ─────────── */
+.reveal{
+  opacity:0;
+  transform:translateY(32px) scale(.98);
+  filter:blur(6px);
+  transition:opacity .9s var(--ease-out-expo),
+             transform 1s var(--ease-out-expo),
+             filter .9s var(--ease-out-expo);
+  transition-delay:calc(var(--reveal-i, 0) * 70ms);
+}
+.reveal.in{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+.reveal[data-delay="1"]{--reveal-i:1}
+.reveal[data-delay="2"]{--reveal-i:2}
+.reveal[data-delay="3"]{--reveal-i:3}
+.reveal[data-delay="4"]{--reveal-i:4}
+@media(prefers-reduced-motion:reduce){
+  .reveal{transition:none;transform:none;filter:none;opacity:1}
+}
+
+/* ── EMIL-STYLE MICRO-INTERACTIONS ───────────────────────────────── */
+/* Magnetic: button tracks cursor on hover */
+.magnetic{
+  display:inline-flex;
+  transition:transform .35s var(--ease-spring);
+  will-change:transform;
+}
+@media(hover:none){.magnetic{transition:none}}
+
+/* Spotlight: subtle radial gradient follows cursor inside element */
+.spotlight{position:relative;overflow:hidden}
+.spotlight::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:radial-gradient(600px circle at var(--spot-x, -100px) var(--spot-y, -100px),
+             rgba(34,211,200,.12) 0%,
+             rgba(34,211,200,.04) 25%,
+             transparent 60%);
+  opacity:0;
+  transition:opacity .5s var(--ease-out-expo);
+  pointer-events:none;
+  z-index:1;
+}
+.spotlight:hover::after{opacity:1}
+.spotlight>*{position:relative;z-index:2}
+@media(hover:none){.spotlight::after{display:none}}
+
+/* Lift: cards rise gently on hover */
+.lift{transition:transform .45s var(--ease-out-expo),box-shadow .45s var(--ease-out-expo),border-color .35s var(--ease-out-expo),background .35s var(--ease-out-expo)}
+.lift:hover{transform:translateY(-4px);box-shadow:0 16px 40px -16px rgba(0,0,0,.4),0 0 0 1px rgba(34,211,200,.15)}
+@media(hover:none){.lift{transition:none}.lift:hover{transform:none;box-shadow:none}}
+
+/* Animated underline for inline text links */
+.link-line{position:relative;display:inline-block}
+.link-line::after{
+  content:"";
+  position:absolute;
+  left:0;right:0;bottom:-2px;
+  height:1px;
+  background:currentColor;
+  transform-origin:right;
+  transform:scaleX(0);
+  transition:transform .55s var(--ease-out-expo);
+}
+.link-line:hover::after{transform-origin:left;transform:scaleX(1)}
+
+/* Initial hero fade-up on load */
+.hero-anim{animation:slideUp .9s cubic-bezier(.2,.6,.2,1) both}
+.hero-anim[data-delay="1"]{animation-delay:.15s}
+.hero-anim[data-delay="2"]{animation-delay:.3s}
+.hero-anim[data-delay="3"]{animation-delay:.45s}
+.hero-anim[data-delay="4"]{animation-delay:.6s}
+.hero-anim[data-delay="5"]{animation-delay:.75s}
+@keyframes slideUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Resources tool styles (inlined) ─────────────────────────────── */
+.tools-app{font-family:'Inter',sans-serif;color:var(--text);font-size:14px;line-height:1.6}
+
+
+
+
+
+
+
+.tab-bar{display:flex;margin-bottom:24px;border-bottom:1px solid var(--border)}
+.tab-btn{flex:1;padding:14px 8px 12px;border:none;border-bottom:2px solid transparent;background:transparent;color:var(--text3);font-family:'Rajdhani',sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:all .18s;margin-bottom:-1px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.tab-btn:hover{color:var(--text2);border-bottom-color:var(--border2)}
+.tab-btn.active{color:var(--teal);border-bottom-color:var(--teal);background:transparent}
+.tab-btn .tab-num{font-size:19px;font-weight:700;letter-spacing:.08em;line-height:1}
+.tab-btn .tab-lbl{font-size:16px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;line-height:1}
+.tab-btn i{display:none}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+.hint{font-size:13px;color:var(--text2);margin-bottom:16px}
+/* Grid layout */
+.cg{display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:10px}
+.fg{display:flex;flex-direction:column;gap:3px;flex:0 0 auto}
+.fg label{font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}
+.fg select,.fg input{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);padding:6px 10px;font-size:13px;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s;width:auto;min-width:120px}
+.fg select:focus,.fg input:focus{border-color:var(--border2)}
+.fg select option,select option{background-color:#0f1a2a;color:#e8edf5;font-weight:500;padding:8px}
+.fg select optgroup,select optgroup{background-color:#1a2436;color:#22d3c8;font-weight:700;font-style:normal;letter-spacing:.05em;text-transform:uppercase;padding:6px 0}
+.fw{width:auto;min-width:180px}
+/* Doors/windows row */
+.dw-grid{display:flex;flex-wrap:wrap;gap:8px 12px;margin-bottom:14px}
+/* Result */
+.result-box{background:linear-gradient(135deg,rgba(34,211,200,.08),rgba(34,211,200,.03));border:1px solid var(--border2);border-radius:var(--r);padding:12px 20px;margin:14px 0 6px;display:inline-block}
+.rl{font-size:11px;color:var(--teal-dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.rv{font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;color:var(--teal)}
+.rs2{font-size:12px;color:var(--text3);margin-top:4px}
+.hi-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);border-radius:20px;padding:3px 10px;font-size:11px;color:var(--danger);margin-top:8px}
+.bkdn{margin-top:10px}
+.brow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.brow:last-child{border-bottom:none;font-weight:500;color:var(--text)}
+.bk{color:var(--text2)}.bv2{color:var(--text)}
+/* Pricing factors */
+.fc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;overflow:hidden;transition:border-color .15s}
+.fc:hover{border-color:rgba(255,255,255,.14)}
+.fh{display:flex;justify-content:space-between;align-items:center;padding:13px 16px;cursor:pointer;user-select:none}
+.ft{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;color:var(--text)}
+.ft i{font-size:17px;color:var(--teal-dim)}
+.fr{display:flex;align-items:center;gap:8px}
+.fi{font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500}
+.fi-h{background:rgba(248,113,113,.12);color:var(--danger);border:1px solid rgba(248,113,113,.2)}
+.fi-m{background:rgba(251,191,36,.1);color:var(--warning);border:1px solid rgba(251,191,36,.2)}
+.fi-l{background:rgba(52,211,153,.1);color:var(--success);border:1px solid rgba(52,211,153,.2)}
+.fchev{font-size:16px;color:var(--text3);transition:transform .2s}
+.fb{display:none;padding:0 16px 14px;color:var(--text);font-size:13px;line-height:1.75;border-top:1px solid var(--border)}
+.fb strong{color:var(--teal);font-weight:600}
+.fb.open{display:block}
+.chips{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);padding:4px 10px;font-size:12px;color:var(--teal)}
+/* Finance */
+.fnote{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:16px}
+.fnt{font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.rrow{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.rrow label{font-size:12px;color:var(--text2);min-width:110px;text-transform:uppercase;letter-spacing:.05em}
+.rrow input[type=range]{flex:1;-webkit-appearance:none;height:4px;background:var(--bg4);border-radius:2px;outline:none}
+.rrow input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--teal);cursor:pointer;border:2px solid var(--bg)}
+.rval{font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:600;color:var(--teal);min-width:68px;text-align:right}
+.mg{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}
+.mc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center}
+.mn{font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:var(--teal)}
+.ml{font-size:11px;color:var(--text2);margin-top:3px;text-transform:uppercase;letter-spacing:.05em}
+/* Checklist */
+.pw{margin-bottom:18px}
+.pl2{font-size:12px;color:var(--text2);margin-bottom:6px;display:flex;justify-content:space-between}
+.pt{height:5px;background:var(--bg3);border-radius:3px}
+.pf{height:5px;border-radius:3px;background:var(--teal);transition:width .3s}
+.pht{font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:700;color:var(--teal-dim);text-transform:uppercase;letter-spacing:.1em;margin:16px 0 6px}
+.ci{display:flex;align-items:flex-start;gap:10px;padding:9px 10px;border-radius:var(--rs);cursor:pointer;transition:background .12s}
+.ci:hover{background:var(--bg3)}
+.ci.done .ct{color:var(--text3);text-decoration:line-through}
+.cb{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:all .15s}
+.ci.done .cb{background:var(--teal-glow);border-color:var(--teal)}
+.cb i{font-size:11px;color:var(--teal);display:none}
+.ci.done .cb i{display:block}
+.ct{font-size:14px;color:var(--text)}
+.cs{font-size:12px;color:var(--text3);margin-top:2px}
+/* CTA */
+.cta{display:inline-block;margin-top:12px;padding:10px 28px;background:var(--teal-glow);border:1px solid var(--border2);border-radius:var(--r);color:var(--teal);font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;letter-spacing:.04em;text-align:center;text-decoration:none;cursor:pointer;transition:all .15s}
+.cta{touch-action:manipulation;-webkit-tap-highlight-color:transparent}.cta:hover{background:rgba(34,211,200,.18)}
+.disc{font-size:11px;color:var(--text3);margin-top:8px}
+@media(max-width:520px){
+  body{padding:10px;max-width:100%}
+  .cg,.dw-grid{gap:5px}
+  .mg{grid-template-columns:1fr 1fr}
+  .tab-btn .tab-lbl{font-size:11px;letter-spacing:.06em}
+  .tab-btn .tab-num{font-size:14px}
+  .tab-btn{padding:10px 4px 8px}
+  .rrow label{min-width:80px;font-size:11px}
+  .fg{width:100%}
+  .fg select,.fg input,.fg textarea{width:100%;min-width:0;box-sizing:border-box}
+  .fw{width:100%}
+  .cta{display:block;width:100%;box-sizing:border-box}
+  a.cta,a[style*="inline-block"]{display:block!important;width:100%!important;box-sizing:border-box!important}
+  .result-box{display:block;width:100%;box-sizing:border-box}
+  #quote-form,#quote-success{width:100%;box-sizing:border-box}
+  .cg{flex-direction:column}
+  .dw-grid{flex-direction:column}
+}
+
+
+
+/* ── Tools host styling ─────────────────────────────────────────────── */
+.tools-host{background:var(--bg-2);border:1px solid var(--border);padding:32px 36px;position:relative}
+@media(max-width:640px){.tools-host{padding:20px 18px}}
+
+</style>
+</head>
+<body>
+
+
+<!-- ── PLAN YOUR BUILD — RESOURCES EMBED ──────────────────────────── -->
+<section class="tools" id="plan">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">Plan Your Build</div>
+      <h2>Estimate. Finance. <span class="accent">Plan.</span></h2>
+      <p>Real pricing from our actual quote builder. Run scenarios, see what drives your cost, model a loan, and track your project from idea to install.</p>
+    </div>
+    <div class="tools-host reveal">
+<div class="tools-app">
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('budget',this)"><span class="tab-num">01</span><span class="tab-lbl">Estimator</span></button>
+  <button class="tab-btn" onclick="switchTab('pricing',this)"><span class="tab-num">02</span><span class="tab-lbl">Pricing Factors</span></button>
+  <button class="tab-btn" onclick="switchTab('financing',this)"><span class="tab-num">03</span><span class="tab-lbl">Financing</span></button>
+  <button class="tab-btn" onclick="switchTab('checklist',this)"><span class="tab-num">04</span><span class="tab-lbl">Checklist</span></button>
+</div>
+
+<!-- ── BUDGET ──────────────────────────────────────────────────────── -->
+<div id="tab-budget" class="tab-panel active">
+  <p class="hint">Select your building specs to see a real starting price. Final quote may vary based on site conditions.</p>
+
+  <div class="cg">
+    <div class="fg">
+      <label>Width (ft)</label>
+      <select id="bwidth" onchange="onWidthChange()">
+        <optgroup label="Standard  (12–30 ft)">
+          <option value="12">12 ft</option>
+          <option value="14">14 ft</option>
+          <option value="16">16 ft</option>
+          <option value="18">18 ft</option>
+          <option value="20" selected>20 ft</option>
+          <option value="22">22 ft</option>
+          <option value="24">24 ft</option>
+          <option value="26">26 ft</option>
+          <option value="28">28 ft</option>
+          <option value="30">30 ft</option>
+        </optgroup>
+        <optgroup label="Commercial  (32–60 ft)">
+          <option value="32">32 ft</option>
+          <option value="34">34 ft</option>
+          <option value="36">36 ft</option>
+          <option value="38">38 ft</option>
+          <option value="40">40 ft</option>
+          <option value="42">42 ft</option>
+          <option value="44">44 ft</option>
+          <option value="46">46 ft</option>
+          <option value="48">48 ft</option>
+          <option value="50">50 ft</option>
+          <option value="52">52 ft</option>
+          <option value="60">60 ft</option>
+        </optgroup>
+      </select>
+    </div>
+
+    <div class="fg">
+      <label>Length (ft)</label>
+      <select id="blength" onchange="calcBudget()">
+        <option value="20">20 ft</option>
+        <option value="24">24 ft</option>
+        <option value="26">26 ft</option>
+        <option value="28">28 ft</option>
+        <option value="30">30 ft</option>
+        <option value="32">32 ft</option>
+        <option value="36">36 ft</option>
+        <option value="40" selected>40 ft</option>
+        <option value="44">44 ft</option>
+        <option value="48">48 ft</option>
+        <option value="52">52 ft</option>
+        <option value="56">56 ft</option>
+        <option value="60">60 ft</option>
+      </select>
+    </div>
+
+    <div class="fg" id="style-group">
+      <label>Roof style</label>
+      <select id="bstyle" onchange="calcBudget()">
+        <option value="V">Vertical Roof (recommended)</option>
+        <option value="R">Regular Style</option>
+        <option value="B">Boxed Eve Style</option>
+      </select>
+    </div>
+
+    <div class="fg">
+      <label>Side height</label>
+      <select id="bheight" onchange="calcBudget()">
+        <option value="6">6 ft</option>
+        <option value="8">8 ft</option>
+        <option value="10">10 ft</option>
+        <option value="12">12 ft</option>
+        <option value="14">14 ft</option>
+        <option value="16">16 ft</option>
+        <option value="18">18 ft</option>
+        <option value="20">20 ft</option>
+      </select>
+    </div>
+
+    <div class="fg fw">
+      <label>Building type</label>
+      <select id="benclosed" onchange="calcBudget()">
+        <option value="enclosed">Fully Enclosed</option>
+        <option value="open">Open / Carport</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Live building summary -->
+  <div id="bsummary" style="display:none;font-size:11px;color:var(--text2);letter-spacing:.04em;margin:-4px 0 10px;padding:0 2px"></div>
+
+  <!-- Doors & Windows -->
+  <div class="fg fw" style="margin-bottom:14px">
+    <label>Doors &amp; Windows</label>
+  </div>
+  <div class="dw-grid">
+    <div class="fg">
+      <label>Walk-in doors</label>
+      <select id="wtd-qty" onchange="calcBudget()">
+        <option value="0">None</option>
+        <option value="1">1 door</option>
+        <option value="2">2 doors</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Walk-in type</label>
+      <select id="wtd-type" onchange="calcBudget()">
+        <option value="std">Standard</option>
+        <option value="hi">Hi-Impact</option>
+      </select>
+    </div>
+    <div class="fg" style="visibility:hidden" id="wtd-spacer"></div>
+
+    <div class="fg">
+      <label>Roll-up door size</label>
+      <select id="rud-size" onchange="calcBudget()">
+        <option value="none">None</option>
+        <optgroup label="6 ft wide">
+          <option value="6x6">6×6</option>
+          <option value="6x7">6×7</option>
+          <option value="6x8">6×8</option>
+        </optgroup>
+        <optgroup label="8 ft wide">
+          <option value="8x7">8×7</option>
+          <option value="8x8">8×8</option>
+          <option value="8x10">8×10</option>
+        </optgroup>
+        <optgroup label="9 ft wide">
+          <option value="9x7">9×7</option>
+          <option value="9x8">9×8</option>
+          <option value="9x9">9×9</option>
+          <option value="9x10">9×10</option>
+        </optgroup>
+        <optgroup label="10 ft wide">
+          <option value="10x7">10×7</option>
+          <option value="10x8">10×8</option>
+          <option value="10x9">10×9</option>
+          <option value="10x10">10×10</option>
+        </optgroup>
+        <optgroup label="12 ft wide">
+          <option value="12x8">12×8</option>
+          <option value="12x10">12×10</option>
+          <option value="12x12">12×12</option>
+          <option value="12x14">12×14</option>
+          <option value="12x16">12×16</option>
+        </optgroup>
+        <optgroup label="14 ft wide">
+          <option value="14x8">14×8</option>
+          <option value="14x10">14×10</option>
+          <option value="14x12">14×12</option>
+          <option value="14x14">14×14</option>
+          <option value="14x16">14×16</option>
+        </optgroup>
+        <optgroup label="16 ft wide">
+          <option value="16x8">16×8</option>
+          <option value="16x10">16×10</option>
+          <option value="16x12">16×12</option>
+          <option value="16x14">16×14</option>
+          <option value="16x16">16×16</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Roll-up qty</label>
+      <select id="rud-qty" onchange="calcBudget()">
+        <option value="1">1 door</option>
+        <option value="2">2 doors</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Roll-up type</label>
+      <select id="rud-type" onchange="calcBudget()">
+        <option value="std">Standard</option>
+        <option value="hi">Hi-Impact</option>
+      </select>
+    </div>
+
+    <div class="fg">
+      <label>Windows</label>
+      <select id="win-qty" onchange="calcBudget()">
+        <option value="0">None</option>
+        <option value="1">1 window</option>
+        <option value="2">2 windows</option>
+        <option value="4">4 windows</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Window type</label>
+      <select id="win-type" onchange="calcBudget()">
+        <option value="std">Standard</option>
+        <option value="hi">Hi-Impact</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="budget-result" style="text-align:left"></div>
+
+  <p style="font-size:11px;color:var(--text3);margin:8px 0 4px;line-height:1.6"><i class="ti ti-info-circle" style="color:var(--text3);margin-right:4px"></i>Rough estimate only — excludes foundation, site prep &amp; permitting. Contact StormSafe for exact pricing.</p>
+
+  <!-- Quote request form -->
+  <div id="quote-form" style="display:none;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:16px;margin-top:14px">
+    <div style="font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;color:var(--teal);margin-bottom:4px">Request Your Free Quote &amp; 3D Rendering</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.6">Fill in your info below and we'll call you to confirm your specs and send over a full proposal with a 3D rendering.</div>
+    <div class="cg" style="margin-bottom:10px">
+      <div class="fg">
+        <label>Name</label>
+        <input type="text" id="qf-name" placeholder="First &amp; last name" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);padding:9px 12px;font-size:14px;font-family:'Inter',sans-serif;outline:none">
+      </div>
+      <div class="fg">
+        <label>#</label>
+        <input type="tel" id="qf-phone" placeholder="(555) 000-0000" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);padding:9px 12px;font-size:14px;font-family:'Inter',sans-serif;outline:none">
+      </div>
+    </div>
+    <div class="fg" style="margin-bottom:10px">
+      <label>Zip Code</label>
+      <input type="text" id="qf-zip" placeholder="e.g. 33401" maxlength="10" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);padding:9px 12px;font-size:14px;font-family:'Inter',sans-serif;outline:none">
+    </div>
+    <div class="fg" style="margin-bottom:14px">
+      <label>Any additional notes</label>
+      <textarea id="qf-notes" placeholder="e.g. needs concrete slab, specific color, timeline..." rows="3" style="width:100%;box-sizing:border-box;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);padding:9px 12px;font-size:14px;font-family:'Inter',sans-serif;outline:none;resize:vertical"></textarea>
+    </div>
+    <div id="qf-error" style="display:none;font-size:13px;padding:10px 14px;border-radius:var(--rs);margin-bottom:12px;text-align:center;background:rgba(220,38,38,.12);color:#f87171;border:1px solid #f87171"></div>
+    <button id="qf-btn" class="cta" onclick="sendQuoteEmail()" style="margin-top:0">Send My Quote Request &mdash; We'll Call You &#8594;</button>
+  </div>
+
+  <!-- Success screen -->
+  <div id="quote-success" style="display:none;background:var(--bg2);border:1px solid var(--teal);border-radius:var(--r);padding:28px 20px;margin-top:14px;text-align:center">
+    <div style="font-size:48px;margin-bottom:12px">✅</div>
+    <div style="font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;color:var(--teal);margin-bottom:8px;line-height:1.2">Request Received!</div>
+    <div style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:24px">Your quote request has been sent to the StormSafe team.<br>We'll give you a call shortly to discuss your building and put together a full proposal with a <strong style="color:var(--text)">free 3D rendering</strong>.</div>
+    <a href="https://www.stormsafesteel.com/buildings" target="_blank" style="display:block;width:100%;box-sizing:border-box;padding:14px 20px;background:var(--teal);border:none;border-radius:var(--r);color:#0a1628;font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;letter-spacing:.04em;text-align:center;text-decoration:none;cursor:pointer;margin-bottom:10px">Browse Our Buildings &#8594;</a>
+  </div>
+
+  <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);text-align:center">
+    <div style="font-family:'Rajdhani',sans-serif;font-size:17px;font-weight:700;color:var(--teal);letter-spacing:.04em;margin-bottom:6px">Want a fully custom build?</div>
+    <p style="font-size:13px;color:var(--text2);line-height:1.7;margin:0 auto 18px;max-width:580px">For exact door &amp; window placement, custom add-ons, and finalized pricing, request a free quote and one of our building specialists will reach out within one business day. In the meantime, jump into the <strong style="color:var(--text)">Customize tool</strong> to design and visualize your build down to the detail.</p>
+    <div style="display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap">
+      <button id="cta-main" class="cta" onclick="showQuoteForm()" style="margin:0">Get Your Free Quote &amp; 3D Rendering Today →</button>
+      <a href="https://www.stormsafesteel.com/customize" target="_blank" style="display:inline-block;padding:10px 28px;background:transparent;border:1px solid var(--teal);border-radius:var(--r);color:var(--teal);font-family:'Rajdhani',sans-serif;font-size:15px;font-weight:700;letter-spacing:.06em;text-align:center;text-decoration:none;cursor:pointer;transition:all .18s" onmouseover="this.style.background='rgba(34,211,200,.1)'" onmouseout="this.style.background='transparent'">⚡ Design &amp; Visualize Your Building →</a>
+    </div>
+    <p class="disc" style="margin-top:14px">Prices subject to change based on steel market conditions and local engineering requirements.</p>
+  </div>
+</div>
+
+<!-- ── PRICING FACTORS ────────────────────────────────────────────── -->
+<div id="tab-pricing" class="tab-panel">
+  <p class="hint">Steel building pricing is primarily driven by width, roof style, and your local engineering requirements. Tap any factor to learn more.</p>
+
+  <div class="fc">
+    <div class="fh" onclick="toggleF(this)">
+      <div class="ft"><i class="ti ti-arrows-horizontal"></i> Building width vs. length</div>
+      <div class="fr"><span class="fi fi-h">Highest impact</span><i class="ti ti-chevron-down fchev"></i></div>
+    </div>
+    <div class="fb">
+      <strong style="display:block;margin-bottom:6px">Width is the biggest cost driver.</strong>
+      Exceeding a standard 30-foot span requires a fundamental engineering change — from simple single-bar trusses to reinforced double truss or ladder leg designs — which can cause a price jump of 25–35%. Wider buildings also require heavier machinery to install (see Installation below).<br><br>
+      <strong >Length, by contrast, is more cost-effective to add.</strong> Increasing the length of your building typically doesn't change the truss design, so you get more square footage for less money per foot compared to going wider.
+      <div class="chips"><span class="chip">Under 30ft wide → single truss design</span><span class="chip">Over 30ft → double trusses / ladder legs</span><span class="chip">+25–35% price jump at 31ft+</span></div>
+    </div>
+  </div>
+
+  <div class="fc">
+    <div class="fh" onclick="toggleF(this)">
+      <div class="ft"><i class="ti ti-home"></i> Roof style</div>
+      <div class="fr"><span class="fi fi-h">High impact</span><i class="ti ti-chevron-down fchev"></i></div>
+    </div>
+    <div class="fb">
+      <strong style="display:block;margin-bottom:6px">Three styles, three price points.</strong>
+      <strong >Regular / Standard</strong> — The most economical option, featuring rounded eaves. Good for simple storage.<br><br>
+      <strong >A-Frame (Boxed Eve)</strong> — Mid-range pricing; panels run horizontally with a cleaner boxed corner look.<br><br>
+      <strong >Vertical Roof</strong> — The most expensive and recommended for all buildings. Panels run vertically, allowing water and debris to shed effectively, preventing leaks and handling heavier loads.
+      <div class="chips"><span class="chip">Regular → most affordable</span><span class="chip">Boxed Eve → mid-range</span><span class="chip">Vertical → best for 30ft+ &amp; wet climates</span></div>
+    </div>
+  </div>
+
+  <div class="fc">
+    <div class="fh" onclick="toggleF(this)">
+      <div class="ft"><i class="ti ti-trending-up"></i> Steel market &amp; tariffs</div>
+      <div class="fr"><span class="fi fi-h">External factor</span><i class="ti ti-chevron-down fchev"></i></div>
+    </div>
+    <div class="fb">
+      <strong style="display:block;margin-bottom:6px">Prices reflect global market conditions.</strong>
+      Steel is a globally traded commodity — prices change daily based on supply, demand, and geopolitical events. Recent trade policies and tariffs (including those enacted in 2025–2026) have caused significant spikes in raw material costs that flow directly into building prices.<br><br>
+      This is why locking in a quote sooner rather than later is often in your best interest. Prices quoted today may not be available in 60–90 days.
+      <div class="chips"><span class="chip">Steel prices fluctuate daily</span><span class="chip">2025–2026 tariffs impacting costs</span><span class="chip">Lock in pricing when you're ready</span></div>
+    </div>
+  </div>
+
+  <div class="fc">
+    <div class="fh" onclick="toggleF(this)">
+      <div class="ft"><i class="ti ti-map-pin"></i> Local engineering &amp; wind/snow loads</div>
+      <div class="fr"><span class="fi fi-h">High impact</span><i class="ti ti-chevron-down fchev"></i></div>
+    </div>
+    <div class="fb">
+      <strong style="display:block;margin-bottom:6px">Your zip code determines your requirements.</strong>
+      Every building must be engineered to meet the wind speed and snow load ratings for its specific location. Higher load requirements mean upgrading from standard 14-gauge tubing to thicker 12-gauge, along with more frequent bracing — both of which add cost.<br><br>
+      In Florida, many coastal counties also require Hi-Impact rated doors and windows, adding further to the total. This is determined at time of engineering, not at the time of quoting.
+      <div class="chips"><span class="chip">14-gauge → standard</span><span class="chip">12-gauge → high wind/load areas</span><span class="chip">Hi-Impact required in most coastal FL counties</span></div>
+    </div>
+  </div>
+
+  <div class="fc">
+    <div class="fh" onclick="toggleF(this)">
+      <div class="ft"><i class="ti ti-building-warehouse"></i> Foundation &amp; site prep</div>
+      <div class="fr"><span class="fi fi-m">Not included in price</span><i class="ti ti-chevron-down fchev"></i></div>
+    </div>
+    <div class="fb">
+      <strong style="display:block;margin-bottom:6px">Site work is separate — and often the biggest variable.</strong>
+      Wider commercial-grade buildings often require specialized concrete footers or thicker monolithic slabs to support heavier trusses. The building price you see in the estimator does not include grading, clearing, drainage, or concrete work — these are contracted separately and vary significantly by property.
+      <div class="chips"><span class="chip">Concrete slab: ~$6–10/sq ft</span><span class="chip">Wider buildings → heavier foundation requirements</span><span class="chip">Not included in building quote</span></div>
+    </div>
+  </div>
+
+  <div class="fc">
+    <div class="fh" onclick="toggleF(this)">
+      <div class="ft"><i class="ti ti-crane"></i> Installation &amp; equipment</div>
+      <div class="fr"><span class="fi fi-m">Medium impact</span><i class="ti ti-chevron-down fchev"></i></div>
+    </div>
+    <div class="fb">
+      <strong style="display:block;margin-bottom:6px">Wider buildings require specialized equipment.</strong>
+      Standard tubular buildings under 30 feet can typically be erected by small crews without heavy machinery. Buildings over 30 feet wide — what we call "widespan" — require specialized equipment such as sky tracks or scissor lifts for safe installation. This equipment cost is factored into the installation price and is one reason the 30-foot threshold represents such a meaningful price jump.
+      <div class="chips"><span class="chip">Under 30ft → small crew, no heavy equipment</span><span class="chip">31ft+ → sky track or scissor lift required</span><span class="chip">Equipment cost included in installation</span></div>
+    </div>
+  </div>
+
+  <a class="cta" href="https://www.stormsafesteel.com/contact" target="_blank">Talk to StormSafe About Pricing →</a>
+</div>
+
+<!-- ── FINANCING ───────────────────────────────────────────────────── -->
+<div id="tab-financing" class="tab-panel">
+  <div class="fnote">
+    <div class="fnt"><i class="ti ti-info-circle" style="color:var(--teal);font-size:18px"></i> About Financing</div>
+    <p style="font-size:13px;color:var(--text2);line-height:1.7">StormSafe doesn't offer in-house financing, but most customers fund their build through their own bank or credit union. Common options include home equity loans, HELOCs, personal loans, and construction loans. Use the calculator below to get a monthly estimate to take to your lender.</p>
+  </div>
+  <div class="rrow"><label>Building cost</label><input type="range" id="fcost" min="5000" max="150000" step="500" value="25000" oninput="calcF()"><span class="rval" id="fcost-o">$25,000</span></div>
+  <div class="rrow"><label>Down payment</label><input type="range" id="fdown" min="0" max="50" step="5" value="20" oninput="calcF()"><span class="rval" id="fdown-o">20%</span></div>
+  <div class="rrow"><label>Loan term</label><input type="range" id="fterm" min="3" max="20" step="1" value="10" oninput="calcF()"><span class="rval" id="fterm-o">10 yrs</span></div>
+  <div class="rrow"><label>Interest rate</label><input type="range" id="frate" min="4" max="15" step="0.25" value="7.5" oninput="calcF()"><span class="rval" id="frate-o">7.50%</span></div>
+  <div class="mg" id="f-metrics"></div>
+  <div class="bkdn" id="f-bkdn"></div>
+  <p class="disc" style="margin-top:12px">For reference only. Actual loan terms depend on your lender and credit profile. StormSafe does not arrange or guarantee financing.</p>
+  <a class="cta" href="https://www.stormsafesteel.com/contact" target="_blank">Get a Quote to Take to Your Lender →</a>
+</div>
+
+<!-- ── CHECKLIST ───────────────────────────────────────────────────── -->
+<div id="tab-checklist" class="tab-panel">
+  <p class="hint">Track your project from planning to final inspection.</p>
+  <div class="pw">
+    <div class="pl2"><span id="prog-lbl">0 of 16 complete</span><span id="prog-pct">0%</span></div>
+    <div class="pt"><div class="pf" id="prog-bar" style="width:0%"></div></div>
+  </div>
+  <div class="pht">Phase 1 — Planning</div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Define intended use &amp; must-have features</div><div class="cs">Size, doors, height, insulation needs</div></div></div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Set total budget including 10–15% contingency</div><div class="cs">Don't forget site prep and foundation</div></div></div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Verify zoning &amp; HOA restrictions</div><div class="cs">Check setbacks, height limits, and allowed uses</div></div></div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Check if your county requires Hi-Impact components</div><div class="cs">Most coastal FL counties do — StormSafe can confirm</div></div></div>
+  <div class="pht">Phase 2 — Design &amp; Quote</div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Request a free quote from StormSafe</div></div></div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Review layout and finalize dimensions</div></div></div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Choose roof style, colors, doors &amp; windows</div></div></div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Confirm payment method or arrange financing</div></div></div>
+  <div class="pht">Phase 3 — Site &amp; Permitting</div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Site survey &amp; soil assessment if needed</div></div></div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Clear and grade the building site</div></div></div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Submit permit application</div></div></div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Pour foundation / concrete slab</div><div class="cs">Cure time: 28 days for full strength</div></div></div>
+  <div class="pht">Phase 4 — Build &amp; Closeout</div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Coordinate delivery &amp; installation date</div></div></div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Complete installation with StormSafe crew</div></div></div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Final inspection &amp; certificate of occupancy</div></div></div>
+  <div class="ci" onclick="toggleCI(this)"><div class="cb"><i class="ti ti-check"></i></div><div><div class="ct">Document warranty &amp; register your building</div></div></div>
+</div>
+
+<script>
+// ── PRICE TABLES (from StormSafe Quote Builder) ──────────────────────
+var WIDTHS=[12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60];
+var LENGTHS=[21,25,26,29,31,33,36,37,41,45,46,49,51,53];
+var STD_T=[21,26,31,36,41,46,51];
+var WS_T=[21,25,29,33,37,41,45,49,53];
+
+var PV={21:[1895,1928,1962,1995,2395,2595,2895,3495,3595,3695,7295,7695,8195,8595,9195,9595,10095,10695,11295,11995,12495,13295,13995,14795,15495],25:[2295,2328,2362,2395,2875,3155,3455,4135,4315,4415,8595,8995,9495,9995,10595,10895,11395,11995,12695,13395,13895,14695,15395,16095,16895],26:[2395,2428,2462,2495,2995,3295,3595,4295,4495,4595,8895,9320,9820,10320,10920,11220,11720,12320,13020,13745,14220,15045,15745,16445,17220],29:[2695,2748,2802,2855,3355,3715,4015,4835,5035,5195,9795,10295,10795,11295,11895,12195,12695,13295,13995,14795,15195,16095,16795,17495,18195],31:[2895,2962,3028,3095,3595,3995,4295,5195,5395,5595,10445,10945,11445,11945,12545,12895,13345,13945,14695,15445,15895,16795,17495,18195,18895],33:[3095,3162,3228,3295,3835,4235,4575,5555,5755,5955,11095,11595,12095,12595,13195,13595,13995,14595,15395,16095,16595,17495,18195,18895,19595],36:[3395,3462,3528,3595,4195,4595,4995,6095,6295,6495,12070,12645,13070,13570,14170,14570,15045,15645,16445,17145,17645,18470,19245,19945,20645],37:[3475,3548,3622,3695,4315,4735,5155,6275,6475,6675,12395,12995,13395,13895,14495,14895,15395,15995,16795,17495,17995,18795,19595,20295,20995],41:[3795,3895,3995,4095,4795,5295,5795,6995,7195,7395,13595,14295,14795,15195,15795,16195,16695,17295,18195,18895,19395,20195,20895,21695,22395],45:[4191,4264,4338,4411,5271,5771,6351,7631,7911,8111,14895,15595,16095,16595,17195,17495,17995,18595,19595,20295,20795,21595,22295,22995,23795],46:[4290,4357,4423,4490,5390,5890,6490,7790,8090,8290,15195,15920,16420,16920,17520,17820,18320,18920,19920,20645,21120,21945,22645,23345,24120],49:[4590,4657,4723,4790,5750,6310,6910,8270,8630,8830,16095,16895,17395,17895,18495,18795,19295,19895,20895,21695,22095,22995,23695,24395,25095],51:[4790,4857,4923,4990,5990,6590,7190,8590,8990,9190,16745,17545,18045,18545,19145,19495,19945,20545,21595,22345,22795,23695,24395,25095,25795],53:[4990,5057,5123,5190,6230,6870,7470,8910,9350,9550,17395,18195,18695,19195,19795,20195,20595,21195,22295,22995,23495,24395,25095,25795,26495]};
+var PR={21:[1395,1462,1528,1595,1795,1995,2295,2895,2995,3095,7295,7695,8195,8595,9195,9595,10095,10695,11295,11995,12495,13295,13995,14795,15495],25:[1715,1755,1795,1835,2115,2395,2695,3455,3555,3735,8595,8995,9495,9995,10595,10895,11395,11995,12695,13395,13895,14695,15395,16095,16895],26:[1795,1828,1862,1895,2195,2495,2795,3595,3695,3895,8595,8995,9495,9995,10595,10895,11395,11995,12695,13395,13895,14695,15395,16095,16895],29:[1975,2028,2082,2135,2495,2855,3155,4015,4175,4375,9795,10295,10795,11295,11895,12195,12695,13295,13995,14795,15195,16095,16795,17495,18195],31:[2095,2162,2228,2295,2695,3095,3395,4295,4495,4695,9795,10295,10795,11295,11895,12195,12695,13295,13995,14795,15195,16095,16795,17495,18195],33:[2215,2295,2375,2455,2855,3295,3635,4575,4775,5015,11095,11595,12095,12595,13195,13595,13995,14595,15395,16095,16595,17495,18195,18895,19595],36:[2395,2495,2595,2695,3095,3595,3995,4995,5195,5495,11095,11595,12095,12595,13195,13595,13995,14595,15395,16095,16595,17495,18195,18895,19595],37:[2455,2562,2668,2775,3195,3715,4115,5135,5335,5655,12395,12995,13395,13895,14495,14895,15395,15995,16795,17495,17995,18795,19595,20295,20995],41:[2695,2828,2962,3095,3595,4195,4595,5695,5895,6295,13595,14295,14795,15195,15795,16195,16695,17295,18195,18895,19395,20195,20895,21695,22395],45:[2935,3095,3255,3415,3995,4675,5075,6255,6455,6935,14895,15595,16095,16595,17195,17495,17995,18595,19595,20295,20795,21595,22295,22995,23795],46:[2995,3162,3328,3495,4095,4795,5195,6395,6595,7095,14895,15595,16095,16595,17195,17495,17995,18595,19595,20295,20795,21595,22295,22995,23795],49:[3175,3362,3548,3735,4395,5155,5555,6815,7075,7575,16095,16895,17395,17895,18495,18795,19295,19895,20895,21695,22095,22995,23695,24395,25095],51:[3295,3495,3695,3895,4595,5395,5795,7095,7395,7895,16095,16895,17395,17895,18495,18795,19295,19895,20895,21695,22095,22995,23695,24395,25095],53:[3415,3628,3842,4055,4795,5635,6035,7375,7715,8215,17395,18195,18695,19195,19795,20195,20595,21195,22295,22995,23495,24395,25095,25795,26495]};
+var PB={21:[1595,1628,1662,1695,1995,2295,2495,2995,3095,3395,7295,7695,8195,8595,9195,9595,10095,10695,11295,11995,12495,13295,13995,14795,15495],25:[1835,1895,1955,2015,2395,2695,2975,3555,3735,4035,8595,8995,9495,9995,10595,10895,11395,11995,12695,13395,13895,14695,15395,16095,16895],26:[1895,1962,2028,2095,2495,2795,3095,3695,3895,4195,8595,8995,9495,9995,10595,10895,11395,11995,12695,13395,13895,14695,15395,16095,16895],29:[2135,2202,2268,2335,2855,3155,3515,4175,4375,4675,9795,10295,10795,11295,11895,12195,12695,13295,13995,14795,15195,16095,16795,17495,18195],31:[2295,2362,2428,2495,3095,3395,3795,4495,4695,4995,9795,10295,10795,11295,11895,12195,12695,13295,13995,14795,15195,16095,16795,17495,18195],33:[2455,2522,2588,2655,3295,3635,4035,4775,5015,5355,11095,11595,12095,12595,13195,13595,13995,14595,15395,16095,16595,17495,18195,18895,19595],36:[2695,2762,2828,2895,3595,3995,4395,5195,5495,5895,11095,11595,12095,12595,13195,13595,13995,14595,15395,16095,16595,17495,18195,18895,19595],37:[2775,2842,2908,2975,3715,4115,4535,5355,5655,6075,12395,12995,13395,13895,14495,14895,15395,15995,16795,17495,17995,18795,19595,20295,20995],41:[3095,3162,3228,3295,4195,4595,5095,5995,6295,6795,13595,14295,14795,15195,15795,16195,16695,17295,18195,18895,19395,20195,20895,21695,22395],45:[3415,3482,3548,3615,4675,5075,5655,6635,6935,7515,14895,15595,16095,16595,17195,17495,17995,18595,19595,20295,20795,21595,22295,22995,23795],46:[3495,3562,3628,3695,4795,5195,5795,6795,7095,7695,14895,15595,16095,16595,17195,17495,17995,18595,19595,20295,20795,21595,22295,22995,23795],49:[3735,3802,3868,3935,5155,5555,6215,7275,7575,8235,16095,16895,17395,17895,18495,18795,19295,19895,20895,21695,22095,22995,23695,24395,25095],51:[3895,3962,4028,4095,5395,5795,6495,7595,7895,8595,16095,16895,17395,17895,18495,18795,19295,19895,20895,21695,22095,22995,23695,24395,25095],53:[4055,4122,4188,4255,5635,6035,6775,7915,8215,8955,17395,18195,18695,19195,19795,20195,20595,21195,22295,22995,23495,24395,25095,25795,26495]};
+
+// Height upgrade — standard buildings (w≤24: HU_N, w≤30: HU_M)
+var HU_N={7:[70,90,90,90,110,110,125,125,149,165,169,181,189,197],8:[145,215,215,215,275,275,335,335,407,455,467,503,527,551],9:[215,305,305,305,385,385,460,460,556,620,636,684,716,748],10:[290,395,395,395,490,490,590,590,704,780,799,856,894,932],11:[360,485,485,485,600,600,715,715,853,945,968,1037,1083,1129],12:[430,575,575,575,710,710,840,840,996,1100,1126,1204,1256,1308],13:[625,815,815,815,995,995,1175,1175,1391,1535,1571,1679,1751,1823],14:[695,905,905,905,1105,1105,1300,1300,1540,1700,1740,1860,1940,2020],15:[1775,2230,2230,2230,2665,2665,3095,3095,3617,3965,4052,4313,4487,4661],16:[2015,2470,2470,2470,2905,2905,3335,3335,3857,4205,4292,4553,4727,4901],17:[2255,2710,2710,2710,3145,3145,3575,3575,4097,4445,4532,4793,4967,5141],18:[2495,2950,2950,2950,3385,3385,3815,3815,4337,4685,4772,5033,5207,5381],19:[2735,3190,3190,3190,3625,3625,4055,4055,4577,4925,5012,5273,5447,5621],20:[2975,3430,3430,3430,3865,3865,4295,4295,4817,5165,5252,5513,5687,5861]};
+var HU_M={7:[110,130,130,130,155,155,180,180,210,230,235,250,260,270],8:[215,265,265,265,310,310,360,360,420,460,470,500,520,540],9:[325,395,395,395,470,470,540,540,624,680,694,736,764,792],10:[430,530,530,530,625,625,720,720,834,910,929,986,1024,1062],11:[540,660,660,660,780,780,900,900,1044,1140,1164,1236,1284,1332],12:[840,995,995,995,1140,1140,1295,1295,1469,1585,1614,1701,1759,1817],13:[1190,1370,1370,1370,1775,1775,1955,1955,2303,2535,2593,2767,2883,2999],14:[1295,1500,1500,1500,1930,1930,2135,2135,2513,2765,2828,3017,3143,3269],15:[1920,2280,2280,2280,2640,2640,3120,3120,3696,4080,4176,4464,4656,4848],16:[2160,2520,2520,2520,2880,2880,3360,3360,3936,4320,4416,4704,4896,5088],17:[2400,2760,2760,2760,3120,3120,3600,3600,4176,4560,4656,4944,5136,5328],18:[2640,3000,3000,3000,3360,3360,3840,3840,4416,4800,4896,5184,5376,5568],19:[2880,3240,3240,3240,3600,3600,4080,4080,4656,5040,5136,5424,5616,5808],20:[3120,3480,3480,3480,3840,3840,4320,4320,4896,5280,5376,5664,5856,6048]};
+// Height upgrade — wide span (32-60ft), indexed by WIDTH bucket
+var SHC=[20,24,28,32,36,40,44,48,52];
+var SHT={10:[430,520,605,690,780,865,950,1035,1125],12:[865,1035,1210,1380,1555,1730,1900,2075,2245],14:[1535,1845,2150,2460,2765,3070,3380,3685,3995],16:[2450,2895,3340,3785,4235,4680,5125,5575,6020],18:[3360,3840,4320,4800,5280,5760,6240,6720,7200],20:[3790,4470,5115,5830,6510,7190,7865,8545,9225]};
+
+// Both-sides-closed pricing (total both sides) — keyed [height][length bucket 20/25/30/35/40]
+var SC={6:{20:440,25:520,30:620,35:700,40:860},7:{20:550,25:650,30:775,35:875,40:1075},8:{20:660,25:780,30:930,35:1050,40:1290},9:{20:660,25:780,30:930,35:1050,40:1290},10:{20:770,25:910,30:1085,35:1225,40:1505},11:{20:880,25:1040,30:1240,35:1400,40:1720},12:{20:880,25:1040,30:1240,35:1400,40:1720},13:{20:990,25:1170,30:1395,35:1575,40:1935},14:{20:1100,25:1300,30:1550,35:1750,40:2150},15:{20:1100,25:1300,30:1550,35:1750,40:2150},16:{20:1210,25:1430,30:1705,35:1925,40:2365}};
+// Each-end-closed pricing (per end) — keyed [width bucket][height]
+var EC={12:{6:540,7:640,8:685,9:685,10:830,11:1010,12:1010,13:1150,14:1370,15:1370,16:1475},14:{6:577,7:668,8:728,9:728,10:880,11:1073,12:1073,13:1223,14:1455,15:1455,16:1570},16:{6:613,7:697,8:772,9:772,10:930,11:1137,12:1137,13:1297,14:1540,15:1540,16:1665},18:{6:650,7:725,8:815,9:815,10:980,11:1200,12:1200,13:1370,14:1625,15:1625,16:1760},20:{6:755,7:840,8:940,9:940,10:1130,11:1400,12:1400,13:1585,14:1885,15:1885,16:2040},22:{6:865,7:960,8:1075,9:1075,10:1285,11:1590,12:1590,13:1800,14:2150,15:2150,16:2315},24:{6:970,7:1075,8:1200,9:1200,10:1435,11:1790,12:1790,13:2015,14:2405,15:2405,16:2600},26:{6:1370,7:1475,8:1585,9:1585,10:1690,11:1910,12:1910,13:2015,14:2340,15:2340,16:2450},28:{6:1535,7:1650,8:1765,9:1765,10:2000,11:2110,12:2110,13:2340,14:2575,15:2575,16:2690},30:{6:1705,7:1825,8:1945,9:1945,10:2190,11:2315,12:2315,13:2555,14:2800,15:2800,16:2930},32:{6:2575,7:2665,8:2755,10:2935,12:3115,14:3295,16:3475},34:{6:2695,7:2785,8:2875,10:3055,12:3235,14:3415,16:3595},36:{6:2815,7:2905,8:2995,10:3175,12:3355,14:3535,16:3715},38:{6:2935,7:3025,8:3115,10:3295,12:3475,14:3655,16:3835},40:{6:3055,7:3145,8:3235,10:3415,12:3595,14:3775,16:3955},42:{6:3175,7:3265,8:3355,10:3535,12:3715,14:3895,16:4075},44:{6:3295,7:3385,8:3475,10:3655,12:3835,14:4015,16:4195},46:{6:3415,7:3505,8:3595,10:3775,12:3955,14:4135,16:4315},48:{6:3535,7:3625,8:3715,10:3895,12:4075,14:4255,16:4435},50:{6:3655,7:3745,8:3835,10:4015,12:4195,14:4375,16:4555},52:{6:3775,7:3865,8:3955,10:4135,12:4315,14:4495,16:4675},54:{6:3895,7:3985,8:4075,10:4255,12:4435,14:4615,16:4795},56:{6:4015,7:4105,8:4195,10:4375,12:4555,14:4735,16:4915},58:{6:4135,7:4225,8:4315,10:4495,12:4675,14:4855,16:5035},60:{6:4255,7:4345,8:4435,10:4615,12:4795,14:4975,16:5155}};
+
+// Standard roll-up doors (no chain hoist)
+var RDP_STD={'6x6':750,'6x7':770,'6x8':790,'7x7':775,'7x8':795,'8x7':800,'8x8':800,'8x10':825,'9x7':825,'9x8':850,'9x9':875,'9x10':900,'10x7':925,'10x8':950,'10x9':1000,'10x10':1050};
+// Doors WITH chain hoist included (* = lift required on site)
+var RDP_CHAIN={'8x7':1275,'8x8':1350,'8x10':1450,'9x7':1325,'9x8':1390,'9x10':1480,'9x12':1450,'10x12':1550,'10x14':1625,'10x16':2235,'12x8':1380,'12x10':1750,'12x12':1900,'12x14':2000,'12x16':2400,'14x8':2200,'14x10':2300,'14x12':2400,'14x14':2500,'14x16':2650,'16x7':2200,'16x8':2350,'16x10':2425,'16x12':2475,'16x14':2550,'16x16':2700};
+// Hi-Impact roll-up (chain hoist incl.)
+var RDP_HI={'8x7':1500,'8x8':1600,'8x10':1810,'8x12':2000,'8x14':2275,'8x16':2400,'9x7':1600,'9x8':1720,'9x10':1900,'9x12':2150,'9x14':2375,'9x16':2550,'10x8':1740,'10x10':1920,'10x12':2225,'10x14':2410,'10x16':2650,'12x8':1880,'12x10':2120,'12x12':2350,'12x14':2650,'12x16':2920,'14x8':2030,'14x10':2300,'14x12':2600,'14x14':2890,'14x16':3100};
+// Sizes that require a lift on site
+var LIFT_REQ={'10x14':1,'10x16':1,'12x14':1,'12x16':1,'14x8':1,'14x10':1,'14x12':1,'14x14':1,'14x16':1,'16x7':1,'16x8':1,'16x10':1,'16x12':1,'16x14':1,'16x16':1};
+
+// ── WALL PRICING ──────────────────────────────────────────────────────
+function sBkt(l){ return l<=22?20:l<=27?25:l<=32?30:l<=37?35:40; }
+function eBkt(w){ return w<=12?12:w<=18?18:w<=20?20:w<=22?22:w<=24?24:w<=26?26:w<=28?28:30; }
+
+function getWallCost(w, l, h){
+  var hk = Math.min(h, 16);
+  // Both sides closed (SC table returns total for both sides)
+  var scBkt = sBkt(l);
+  var scRow = SC[hk] || SC[14] || {};
+  var sides = scRow[scBkt] || 0;
+  // Extrapolate SC beyond 40ft length
+  if(l > 40){
+    var s40 = scRow[40] || 0, s20 = scRow[20] || 0;
+    sides = Math.round(s40 + (s40 - s20) / 20 * (l - 40));
+  }
+  // Each end closed (EC table, per end × 2)
+  var wk = w >= 32 ? (w % 2 === 0 ? w : w - 1) : eBkt(w);
+  wk = Math.min(Math.max(wk, 12), 60);
+  var ecRow = EC[wk] || EC[30] || {};
+  var perEnd = ecRow[hk] || ecRow[14] || 0;
+  var ends = perEnd * 2;
+  return sides + ends;
+}
+
+
+function nearestStd(l){ for(var i=0;i<STD_T.length;i++){ if(STD_T[i]>=l) return STD_T[i]; } return 51; }
+function nearestWS(l){ for(var i=0;i<WS_T.length;i++){ if(WS_T[i]>=l) return WS_T[i]; } return 53; }
+
+function getBase(w,l,style){
+  var wi=WIDTHS.indexOf(w); if(wi<0) return 0;
+  var T=style==='V'?PV:(style==='R'?PR:PB);
+  var isWS=(w>=32);
+  var tier = isWS ? nearestWS(l) : nearestStd(l);
+  var row=T[tier]; if(!row) return 0;
+  var p=row[wi]||0;
+  // Extrapolate beyond last table tier
+  if((isWS&&l>53)||(!isWS&&l>51)){
+    var last=isWS?53:51, prev=isWS?49:46;
+    var pL=(T[last]||[])[wi]||0, pP=(T[prev]||[])[wi]||0;
+    if(!pL||!pP) return p;
+    p=Math.round(pL+(pL-pP)/(last-prev)*(l-last));
+  }
+  return p;
+}
+
+function getHeightAdd(w,l,h){
+  if(h<=6) return 0;
+  var hk=h<=10?h:(h<=12?12:(h<=14?14:(h<=16?16:(h<=18?18:20))));
+  if(w>=32){
+    var ci=0; for(var i=0;i<SHC.length;i++){ if(SHC[i]<=w) ci=i; else break; }
+    return (SHT[hk]||SHT[20]||[])[ci]||0;
+  }
+  var huT=w<=24?HU_N:HU_M;
+  var pl=nearestStd(l), li=LENGTHS.indexOf(pl);
+  if(li>=0) return (huT[hk]||huT[20]||[])[li]||0;
+  // Extrapolate
+  var i41=LENGTHS.indexOf(41), i21=LENGTHS.indexOf(21);
+  var v41=(huT[hk]||huT[20]||[])[i41]||0, v21=(huT[hk]||huT[20]||[])[i21]||0;
+  return Math.round(v41+(v41-v21)/20*(l-40));
+}
+
+function getDoorPrice(sizeKey, type){
+  if(type==='hi') return RDP_HI[sizeKey]||RDP_CHAIN[sizeKey]||RDP_STD[sizeKey]||0;
+  return RDP_CHAIN[sizeKey]||RDP_STD[sizeKey]||0;
+}
+
+function onWidthChange(){
+  var w=parseInt(document.getElementById('bwidth').value);
+  document.getElementById('style-group').style.display=w>=32?'none':'';
+  calcBudget();
+}
+
+function calcBudget(){
+  var w=parseInt(document.getElementById('bwidth').value);
+  var l=parseInt(document.getElementById('blength').value);
+  var style=document.getElementById('bstyle').value;
+  var h=parseInt(document.getElementById('bheight').value);
+
+  var wtdQty=parseInt(document.getElementById('wtd-qty').value)||0;
+  var wtdType=document.getElementById('wtd-type').value;
+  var rudSize=document.getElementById('rud-size').value;
+  var rudQty=parseInt(document.getElementById('rud-qty').value)||1;
+  var rudType=document.getElementById('rud-type').value;
+  var winQty=parseInt(document.getElementById('win-qty').value)||0;
+  var winType=document.getElementById('win-type').value;
+
+  var base=getBase(w,l,style);
+  if(!base){ document.getElementById('budget-result').innerHTML=''; return; }
+  var hAdd=getHeightAdd(w,l,h);
+  var enclosed=document.getElementById('benclosed').value==='enclosed';
+  var wallCost=enclosed?getWallCost(w,l,h):0;
+  var lines=[];
+  var addons=0;
+
+  // Walk-in doors
+  if(wtdQty>0){
+    var wv=(wtdType==='hi'?600:300)*wtdQty;
+    addons+=wv;
+    lines.push(['Walk-in door'+(wtdQty>1?' ×'+wtdQty:'')+(wtdType==='hi'?' (Hi-Impact)':''), wv]);
+  }
+  // Roll-up doors
+  if(rudSize!=='none'){
+    var rp=getDoorPrice(rudSize,rudType)*rudQty;
+    addons+=rp;
+    var liftNeeded=LIFT_REQ[rudSize]?true:false;
+    var chainIncl=RDP_CHAIN[rudSize]&&rudType!=='hi';
+    var rudLabel=rudSize+' roll-up'+(rudQty>1?' ×'+rudQty:'')
+      +(rudType==='hi'?' (Hi-Impact)':chainIncl?' (chain hoist incl.)':'')
+      +(liftNeeded?' ⚠ lift req.':'');
+    lines.push([rudLabel, rp]);
+  }
+  // Windows
+  if(winQty>0){
+    var wiv=(winType==='hi'?590:200)*winQty;
+    addons+=wiv;
+    lines.push(['Windows ×'+winQty+(winType==='hi'?' (Hi-Impact)':''), wiv]);
+  }
+
+  var total=base+hAdd+wallCost+addons;
+  var sqft=w*l;
+  var isWS=w>=32;
+  var styleLabel=isWS?'14 GA Steel Building':({V:'Vertical Roof',R:'Regular Style',B:'Boxed Eve Style'}[style]);
+  var anyHi=(wtdType==='hi'&&wtdQty>0)||(rudType==='hi'&&rudSize!=='none')||(winType==='hi'&&winQty>0);
+
+  // Live building summary line
+  var bsum=document.getElementById('bsummary');
+  if(bsum){
+    bsum.style.display='block';
+    bsum.innerHTML='<i class="ti ti-ruler-2" style="color:var(--teal);margin-right:6px"></i>'+w+'\u00d7'+l+' ft &nbsp;&middot;&nbsp; '+sqft.toLocaleString()+' sq ft &nbsp;&middot;&nbsp; '+styleLabel+(h>6?' &nbsp;&middot;&nbsp; '+h+"' side height":'');
+  }
+
+  var html='<div class="result-box">';
+  html+='<div class="rl">Starting Price \u2014 Building, Delivered &amp; Installed</div>';
+  html+='<div class="rv">$'+total.toLocaleString()+'</div>';
+  if(anyHi) html+='<div class="hi-badge"><i class="ti ti-alert-triangle" style="font-size:12px"></i> Hi-Impact components applied</div>';
+  html+='</div>';
+  html+='<div style="text-align:center;margin:10px 0 4px">';
+  html+='<div style="font-family:\'Rajdhani\',sans-serif;font-size:18px;font-weight:700;color:var(--teal);letter-spacing:.04em;margin-bottom:4px">\ud83d\udcac Ready to make it yours?</div>';
+  html+='<div style="font-size:12px;color:var(--text2);margin-bottom:0">Get a free 3D rendering of your building \u2014 no obligation.</div>';
+  html+='</div>';
+  document.getElementById('budget-result').innerHTML=html;
+}
+
+// ── TABS / FACTORS ────────────────────────────────────────────────────
+function showQuoteForm(){
+  var form=document.getElementById('quote-form');
+  var btn=document.getElementById('cta-main');
+  form.style.display='block';
+  btn.style.display='none';
+  form.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function sendQuoteEmail(){
+  var name=(document.getElementById('qf-name').value||'').trim();
+  var phone=(document.getElementById('qf-phone').value||'').trim();
+  var zip=(document.getElementById('qf-zip').value||'').trim();
+  var notes=(document.getElementById('qf-notes').value||'').trim();
+  if(!name||!phone){ showError('Please enter your name and phone number.'); return; }
+
+  var w=document.getElementById('bwidth').value;
+  var l=document.getElementById('blength').value;
+  var h=document.getElementById('bheight').value;
+  var styleSel=document.getElementById('bstyle');
+  var styleLabel=styleSel.options[styleSel.selectedIndex].text.replace(' (recommended)','');
+  var encSel=document.getElementById('benclosed');
+  var encLabel=encSel.options[encSel.selectedIndex].text.split('—')[0].trim();
+
+  var wtdQty=parseInt(document.getElementById('wtd-qty').value)||0;
+  var wtdSel=document.getElementById('wtd-type');
+  var wtdLabel=wtdSel.options[wtdSel.selectedIndex].text.split('—')[0].trim();
+  var rudSizeSel=document.getElementById('rud-size');
+  var rudSize=rudSizeSel.value;
+  var rudQty=document.getElementById('rud-qty').value;
+  var rudTypeSel=document.getElementById('rud-type');
+  var rudTypeLabel=rudTypeSel.options[rudTypeSel.selectedIndex].text;
+  var winQty=parseInt(document.getElementById('win-qty').value)||0;
+  var winSel=document.getElementById('win-type');
+  var winLabel=winSel.options[winSel.selectedIndex].text.split('—')[0].trim();
+
+  var priceEl=document.querySelector('.rv');
+  var price=priceEl?priceEl.textContent:'(see estimator)';
+
+  var btn=document.getElementById('qf-btn');
+  btn.disabled=true;
+  btn.textContent='Sending…';
+
+  var payload={
+    name: name,
+    phone: phone,
+    zip: zip||'Not provided',
+    notes: notes||'None',
+    building_size: w+'×'+l+' ft',
+    side_height: h+' ft',
+    roof_style: styleLabel,
+    building_type: encLabel,
+    walk_in_doors: wtdQty>0?(wtdQty+' — '+wtdLabel):'None',
+    roll_up_door: rudSize!=='none'?(rudSize+' ×'+rudQty+' — '+rudTypeLabel):'None',
+    windows: winQty>0?(winQty+' — '+winLabel):'None',
+    estimate: price,
+    _subject: 'Quote Request — '+w+'×'+l+' — '+name
+  };
+
+  var fd=new FormData();
+  fd.append('name',payload.name);
+  fd.append('phone',payload.phone);
+  fd.append('zip',payload.zip);
+  fd.append('notes',payload.notes);
+  fd.append('building_size',payload.building_size);
+  fd.append('side_height',payload.side_height);
+  fd.append('roof_style',payload.roof_style);
+  fd.append('building_type',payload.building_type);
+  fd.append('walk_in_doors',payload.walk_in_doors);
+  fd.append('roll_up_door',payload.roll_up_door);
+  fd.append('windows',payload.windows);
+  fd.append('estimate',payload.estimate);
+  fd.append('_subject',payload._subject);
+
+  fetch('https://formspree.io/f/mbdwbrzz',{
+    method:'POST',
+    headers:{'Accept':'application/json'},
+    body:fd
+  })
+  .then(function(r){return r.json();})
+  .then(function(data){
+    if(data.ok||data.next){
+      document.getElementById('quote-form').style.display='none';
+      document.getElementById('quote-success').style.display='block';
+      document.getElementById('cta-main').style.display='none';
+      document.getElementById('quote-success').scrollIntoView({behavior:'smooth',block:'nearest'});
+    } else {
+      showError('⚠️ Something went wrong. Please call us at (561) 777-2440.');
+      btn.disabled=false; btn.textContent='Send My Quote Request — We\'ll Call You →';
+    }
+  })
+  .catch(function(){
+    showError('⚠️ Could not send. Please call us at (561) 777-2440.');
+    btn.disabled=false; btn.textContent='Send My Quote Request — We\'ll Call You →';
+  });
+}
+
+function showError(msg){
+  var el=document.getElementById('qf-error');
+  el.style.display='block';
+  el.textContent=msg;
+}
+
+
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+function toggleF(header){
+  var body=header.nextElementSibling, chev=header.querySelector('.fchev'), open=body.classList.contains('open');
+  document.querySelectorAll('.fb').forEach(function(b){b.classList.remove('open');});
+  document.querySelectorAll('.fchev').forEach(function(c){c.style.transform='';});
+  if(!open){body.classList.add('open');chev.style.transform='rotate(180deg)';}
+}
+
+// ── FINANCE ───────────────────────────────────────────────────────────
+function calcF(){
+  var cost=parseFloat(document.getElementById('fcost').value);
+  var down=parseFloat(document.getElementById('fdown').value)/100;
+  var term=parseInt(document.getElementById('fterm').value);
+  var rate=parseFloat(document.getElementById('frate').value)/100;
+  document.getElementById('fcost-o').textContent='$'+cost.toLocaleString();
+  document.getElementById('fdown-o').textContent=Math.round(down*100)+'%';
+  document.getElementById('fterm-o').textContent=term+' yrs';
+  document.getElementById('frate-o').textContent=(rate*100).toFixed(2)+'%';
+  var p=cost*(1-down),r=rate/12,n=term*12;
+  var mo=r===0?p/n:p*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1);
+  var tot=mo*n,int=tot-p,dn=cost*down;
+  document.getElementById('f-metrics').innerHTML=
+    '<div class="mc"><div class="mn">$'+Math.round(mo).toLocaleString()+'</div><div class="ml">Monthly payment</div></div>'+
+    '<div class="mc"><div class="mn">$'+Math.round(tot+dn).toLocaleString()+'</div><div class="ml">Total cost</div></div>'+
+    '<div class="mc"><div class="mn">$'+Math.round(int).toLocaleString()+'</div><div class="ml">Total interest</div></div>';
+  document.getElementById('f-bkdn').innerHTML=
+    '<div class="brow"><span class="bk">Building cost</span><span class="bv2">$'+Math.round(cost).toLocaleString()+'</span></div>'+
+    '<div class="brow"><span class="bk">Down payment ('+Math.round(down*100)+'%)</span><span class="bv2">$'+Math.round(dn).toLocaleString()+'</span></div>'+
+    '<div class="brow"><span class="bk">Amount financed</span><span class="bv2">$'+Math.round(p).toLocaleString()+'</span></div>'+
+    '<div class="brow"><span class="bk">Term</span><span class="bv2">'+term+' yrs · '+n+' payments</span></div>';
+}
+
+// ── CHECKLIST ─────────────────────────────────────────────────────────
+function toggleCI(item){item.classList.toggle('done');updateProg();}
+function updateProg(){
+  var all=document.querySelectorAll('.ci').length,done=document.querySelectorAll('.ci.done').length,pct=Math.round(done/all*100);
+  document.getElementById('prog-bar').style.width=pct+'%';
+  document.getElementById('prog-lbl').textContent=done+' of '+all+' complete';
+  document.getElementById('prog-pct').textContent=pct+'%';
+}
+
+// Init
+onWidthChange();
+calcF();
+</script>
+</div>
+</div>
+    </div>
+</section>
+
+<!-- ── WHY STEEL ──────────────────────────────────────────────────── -->
+<section class="why" id="why-steel">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">Why Steel</div>
+      <h2>Six reasons steel wins. <span class="accent">Every time.</span></h2>
+      <p>The case for steel isn't sentiment — it's structural. Here's why our buildings outlast the cheap alternatives by decades.</p>
+    </div>
+
+    <div class="why-grid">
+      <div class="wcell reveal lift spotlight" data-wcell role="button" tabindex="0" aria-expanded="false">
+        <div class="wcell-num">01</div>
+        <div class="wcell-icon"><i class="ti ti-wind"></i></div>
+        <h3>170 MPH Wind Resistance</h3>
+        <p>Engineered to meet Florida's strictest wind codes. When the next storm hits, your building stands.</p>
+        <div class="wcell-more"><div class="wcell-more-inner"><p>Every StormSafe building is engineered to <strong>meet or exceed your local wind code</strong> — from standard 110 MPH ratings up to 170 MPH in coastal hurricane zones. We use 14-gauge primary framing with hurricane clips and a continuous load path from roof to foundation. Anchor bolts, brace patterns, and connection design are spec'd to your site's exposure category. The result: a structure rated to withstand winds that would tear apart a wood-frame building.</p></div></div>
+        <div class="wcell-toggle"><span>Learn more</span><i class="ti ti-chevron-down"></i></div>
+      </div>
+
+      <div class="wcell reveal lift spotlight" data-wcell data-delay="1" role="button" tabindex="0" aria-expanded="false">
+        <div class="wcell-num">02</div>
+        <div class="wcell-icon"><i class="ti ti-shield-check"></i></div>
+        <h3>Fully Galvanized Steel</h3>
+        <p>Zinc-coated at the molecular level. No rust, no corrosion, no maintenance headaches — ever.</p>
+        <div class="wcell-more"><div class="wcell-more-inner"><p>All structural steel and roof panels are <strong>hot-dip galvanized</strong> — bonded to zinc through an 850°F bath that creates a protective barrier at the molecular level. Unlike painted steel that chips and fades, galvanized steel self-heals minor scratches through cathodic protection. In coastal salt-air environments, galvanized buildings outlast painted alternatives by <strong>3–5x</strong>. You will never repaint or treat for rust.</p></div></div>
+        <div class="wcell-toggle"><span>Learn more</span><i class="ti ti-chevron-down"></i></div>
+      </div>
+
+      <div class="wcell reveal lift spotlight" data-wcell data-delay="2" role="button" tabindex="0" aria-expanded="false">
+        <div class="wcell-num">03</div>
+        <div class="wcell-icon" style="color:var(--orange);background:var(--orange-glow);border-color:rgba(255,90,54,.3)"><i class="ti ti-flame"></i></div>
+        <h3>Fire Resistant</h3>
+        <p>Steel doesn't burn. While wood-frame structures ignite, your building holds its ground.</p>
+        <div class="wcell-more"><div class="wcell-more-inner"><p>Steel has a <strong>Class A fire rating</strong> — the highest available. It won't ignite, won't fuel a fire, and won't add combustible material. Wood-frame buildings lose 80% of their load-bearing capacity at 600°F; steel holds structural integrity to over 1100°F. For commercial &amp; agricultural buildings, this often translates to <strong>20–40% lower fire insurance premiums</strong>. In wildfire-prone areas, your steel structure also acts as a firebreak between neighboring wood buildings.</p></div></div>
+        <div class="wcell-toggle"><span>Learn more</span><i class="ti ti-chevron-down"></i></div>
+      </div>
+
+      <div class="wcell reveal lift spotlight" data-wcell role="button" tabindex="0" aria-expanded="false">
+        <div class="wcell-num">04</div>
+        <div class="wcell-icon"><i class="ti ti-bug-off"></i></div>
+        <h3>Termite Proof</h3>
+        <p>Wood feeds termites. Steel starves them. Zero risk of structural damage from insects.</p>
+        <div class="wcell-more"><div class="wcell-more-inner"><p>Termites cause over <strong>$5 billion in damage each year</strong> in the US — and wood-frame buildings need treatment every 5–7 years. Steel offers nothing for termites, carpenter ants, powder-post beetles, or any wood-boring insect. You will never schedule a treatment, never inspect for damage, never replace structural members eaten from the inside. In Florida and the Southeast where aggressive Formosan termites are common, this is one of the largest hidden savings of going steel.</p></div></div>
+        <div class="wcell-toggle"><span>Learn more</span><i class="ti ti-chevron-down"></i></div>
+      </div>
+
+      <div class="wcell reveal lift spotlight" data-wcell data-delay="1" role="button" tabindex="0" aria-expanded="false">
+        <div class="wcell-num">05</div>
+        <div class="wcell-icon"><i class="ti ti-calendar-stats"></i></div>
+        <h3>50+ Year Lifespan</h3>
+        <p>A properly installed steel building outlasts wood by decades. This is the last building you'll need.</p>
+        <div class="wcell-more"><div class="wcell-more-inner"><p>Wood-frame buildings typically need major structural work at 25–30 years and full replacement around 40–50. Galvanized steel buildings routinely last <strong>60–80+ years</strong> with no structural intervention. StormSafe builds come standard with a <strong>50-year structural warranty</strong> on the frame and a <strong>40-year paint warranty</strong> on the panels. That makes the building a multi-generational asset — and on a per-year basis, one of the cheapest construction options available.</p></div></div>
+        <div class="wcell-toggle"><span>Learn more</span><i class="ti ti-chevron-down"></i></div>
+      </div>
+
+      <div class="wcell reveal lift spotlight" data-wcell data-delay="2" role="button" tabindex="0" aria-expanded="false">
+        <div class="wcell-num">06</div>
+        <div class="wcell-icon"><i class="ti ti-coin"></i></div>
+        <h3>Lower Long-Term Cost</h3>
+        <p>No termite treatment. No rot repair. No re-roofing every 15 years. Steel pays for itself.</p>
+        <div class="wcell-more"><div class="wcell-more-inner"><p>Look past the upfront price: wood-frame buildings average <strong>$1,800–$3,500/year</strong> in maintenance (paint, seal, termite treatment, re-roofing, board replacement). A comparable steel building averages <strong>$50–$150/year</strong>, mostly occasional power-washing. Over 30 years, that's <strong>$50K–$100K+ in maintenance savings</strong>. Insurance premiums run 15–25% lower for steel due to wind/fire/pest resistance, and steel buildings consistently appraise higher than wood equivalents at resale.</p></div></div>
+        <div class="wcell-toggle"><span>Learn more</span><i class="ti ti-chevron-down"></i></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PROCESS ────────────────────────────────────────────────────── -->
+<section class="process">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">The Process</div>
+      <h2>From consultation to <span class="accent">standing structure.</span></h2>
+      <p>Three phases. One team. We guide you through every step with the same precision we engineer into the steel.</p>
+    </div>
+
+    <div class="proc-grid">
+      <div class="pstep reveal">
+        <div class="pstep-num">01</div>
+        <div class="pstep-tag">Phase One</div>
+        <h3>Design</h3>
+        <p>Your vision, engineered. Custom layouts, dimensions, and finishes tailored to your exact specifications and site conditions.</p>
+        <a href="https://www.stormsafesteel.com/customize" target="_blank" class="pstep-link">Customize a build <i class="ti ti-arrow-right"></i></a>
+      </div>
+      <div class="pstep reveal" data-delay="1">
+        <div class="pstep-num">02</div>
+        <div class="pstep-tag">Phase Two</div>
+        <h3>Fabricate</h3>
+        <p>High-grade galvanized steel, precision-cut and engineered for decades of structural integrity in any climate.</p>
+        <a href="https://www.stormsafesteel.com/why-steel" target="_blank" class="pstep-link">Why our steel <i class="ti ti-arrow-right"></i></a>
+      </div>
+      <div class="pstep reveal" data-delay="2">
+        <div class="pstep-num">03</div>
+        <div class="pstep-tag">Phase Three</div>
+        <h3>Install</h3>
+        <p>From permitting to final bolt — professional installation with efficiency and craftsmanship. Most builds go up in under three weeks.</p>
+        <a href="https://www.stormsafesteel.com/contact" target="_blank" class="pstep-link">Talk to our team <i class="ti ti-arrow-right"></i></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── ANIMATED BUILDING ASSEMBLY ────────────────────────────────── -->
+<section class="bld-section">
+  <div class="wrap">
+    <div class="bld-head reveal">
+      <div class="eyebrow"><span class="eyebrow-bar"></span>Watch It Come Together</div>
+      <h2 class="h-display">From foundation to finished &mdash; <span style="color:var(--teal)">in order</span></h2>
+      <p class="bld-sub">Every StormSafe build, from the ground up. Scroll in to watch.</p>
+    </div>
+    <div class="builder reveal">
+      <svg viewBox="0 0 820 420" class="builder-svg" xmlns="http://www.w3.org/2000/svg" fill="none" aria-label="Animated steel building assembly">
+        <!-- subtle grid -->
+        <defs>
+          <pattern id="bld-grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(34,211,200,0.04)" stroke-width="0.5"/>
+          </pattern>
+        </defs>
+        <rect width="820" height="420" fill="url(#bld-grid)"/>
+        <!-- ground line -->
+        <line x1="20" y1="385" x2="800" y2="385" stroke="var(--teal)" stroke-width="0.6" stroke-dasharray="2 5" opacity=".5"/>
+
+        <!-- 0. FOUNDATION — 30' × 40' slab (slightly wider than building footprint, perspective-extended back) -->
+        <g class="bld-part bld-foundation">
+          <!-- Main slab -->
+          <rect x="100" y="378" width="620" height="9" fill="rgba(34,211,200,0.18)" stroke="var(--teal)" stroke-width="1.2"/>
+          <line x1="115" y1="383" x2="705" y2="383" stroke="var(--teal)" stroke-width="0.4" stroke-dasharray="3 4" opacity=".5"/>
+          <!-- Dimension label -->
+          <text x="410" y="408" text-anchor="middle" fill="var(--text-3)" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing=".14em" opacity=".65">30&apos; &times; 40&apos; &times; 12&apos;</text>
+        </g>
+
+        <!-- 1. CORNER COLUMNS — only 2, since 30' is a single clear-span (no interior columns needed) -->
+        <g class="bld-part bld-columns">
+          <rect x="110" y="140" width="11" height="240" fill="rgba(34,211,200,0.22)" stroke="var(--teal)" stroke-width="1.3"/>
+          <rect x="699" y="140" width="11" height="240" fill="rgba(34,211,200,0.22)" stroke="var(--teal)" stroke-width="1.3"/>
+        </g>
+
+        <!-- 2a. EAVE BEAM — barely-visible thin line at the eave (overlaps bottom chord cleanly) -->
+        <g class="bld-part bld-topbeam">
+          <line x1="110" y1="140" x2="710" y2="140" stroke="var(--teal)" stroke-width="1" opacity=".3"/>
+        </g>
+
+        <!-- 2b. FRONT TRUSS + DEPTH INDICATOR (trusses every 4' over 40' depth = 11 trusses total) -->
+        <g class="bld-part bld-trusses">
+          <!-- Main visible truss outline (front gable, 4:12 pitch) -->
+          <path d="M 110 140 L 410 41 L 710 140" stroke="var(--teal)" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+          <!-- Bottom chord -->
+          <line x1="110" y1="140" x2="710" y2="140" stroke="var(--teal)" stroke-width="0.8" opacity=".5"/>
+          <!-- King post (center vertical) -->
+          <line x1="410" y1="41" x2="410" y2="140" stroke="var(--teal)" stroke-width="0.8" opacity=".55"/>
+          <!-- W-truss interior diagonals (no floating secondary verticals — these are the actual web members) -->
+          <line x1="110" y1="140" x2="260" y2="91" stroke="var(--teal)" stroke-width="0.5" opacity=".42"/>
+          <line x1="260" y1="91" x2="410" y2="140" stroke="var(--teal)" stroke-width="0.5" opacity=".42"/>
+          <line x1="410" y1="140" x2="560" y2="91" stroke="var(--teal)" stroke-width="0.5" opacity=".42"/>
+          <line x1="560" y1="91" x2="710" y2="140" stroke="var(--teal)" stroke-width="0.5" opacity=".42"/>
+
+          <!-- DEPTH INDICATOR: small perspective lines from corners hint at 40' depth going back -->
+          <g opacity=".4" stroke="var(--teal)" stroke-width="0.5" stroke-dasharray="2 3">
+            <line x1="110" y1="140" x2="128" y2="133"/>
+            <line x1="710" y1="140" x2="728" y2="133"/>
+            <line x1="410" y1="41" x2="428" y2="34"/>
+            <line x1="110" y1="378" x2="128" y2="371"/>
+            <line x1="710" y1="378" x2="728" y2="371"/>
+          </g>
+          <!-- Ghost ridge line indicating roof extends back -->
+          <line x1="410" y1="41" x2="450" y2="26" stroke="var(--teal)" stroke-width="0.7" opacity=".35" stroke-dasharray="3 3"/>
+
+          <!-- Depth/spacing annotation -->
+          <g opacity=".7">
+            <text x="745" y="155" fill="var(--teal)" font-family="JetBrains Mono, monospace" font-size="8" font-weight="600" letter-spacing=".1em">40&apos; DEEP</text>
+            <text x="745" y="167" fill="var(--text-2)" font-family="JetBrains Mono, monospace" font-size="7" letter-spacing=".08em">11 trusses</text>
+            <text x="745" y="177" fill="var(--text-2)" font-family="JetBrains Mono, monospace" font-size="7" letter-spacing=".08em">at 4&apos; o.c.</text>
+          </g>
+        </g>
+
+        <!-- 3. WALL SIDING PANELS — vertical metal ridges -->
+        <g class="bld-part bld-panels">
+          <!-- Solid wall fill -->
+          <rect x="121" y="141" width="578" height="237" fill="rgba(7,13,23,0.82)" stroke="var(--border)" stroke-width="0.5"/>
+          <!-- Vertical panel seams every ~50 units — CUT around openings just like real wall framing -->
+          <!-- Openings: walk door 186-244/y246-378 · roll-up 310-510/y180-378 · window 581-629/y246-305 -->
+          <g stroke="var(--teal)" stroke-width="0.4" opacity=".22">
+            <!-- Full-height seams (no opening crossed) -->
+            <line x1="170" y1="141" x2="170" y2="378"/>
+            <line x1="270" y1="141" x2="270" y2="378"/>
+            <line x1="520" y1="141" x2="520" y2="378"/>
+            <line x1="570" y1="141" x2="570" y2="378"/>
+            <line x1="670" y1="141" x2="670" y2="378"/>
+            <!-- Through walk door: header portion only (stops at door top) -->
+            <line x1="220" y1="141" x2="220" y2="246"/>
+            <!-- Through roll-up door: header portion only (stops at door top y=180) -->
+            <line x1="320" y1="141" x2="320" y2="180"/>
+            <line x1="370" y1="141" x2="370" y2="180"/>
+            <line x1="420" y1="141" x2="420" y2="180"/>
+            <line x1="470" y1="141" x2="470" y2="180"/>
+            <!-- Through window: header (above) and sill (below) — window doesn't touch ground -->
+            <line x1="620" y1="141" x2="620" y2="246"/>
+            <line x1="620" y1="305" x2="620" y2="378"/>
+          </g>
+          <!-- Base trim — interrupted by the two doors that reach the ground (window sits above it) -->
+          <g stroke="var(--teal)" stroke-width="0.6" opacity=".4">
+            <line x1="121" y1="370" x2="186" y2="370"/>
+            <line x1="244" y1="370" x2="310" y2="370"/>
+            <line x1="510" y1="370" x2="699" y2="370"/>
+          </g>
+        </g>
+
+        <!-- 4. ROOF — clean dark gable with visible rake overhang, eave trim band, and ridge cap -->
+        <g class="bld-part bld-roof">
+          <!-- Main gable face: filled dark triangle extending slightly past walls (rake overhang) -->
+          <path d="M 94 145 L 410 33 L 726 145 Z" fill="rgba(7,13,23,0.9)" stroke="var(--teal)" stroke-width="1.2" stroke-linejoin="round"/>
+          <!-- Eave trim band — teal-tinted horizontal strip at gable bottom (visible across wall top + overhang fins on each side) -->
+          <rect x="94" y="140" width="632" height="6" fill="rgba(34,211,200,0.16)" stroke="var(--teal)" stroke-width="0.7" opacity=".75"/>
+          <!-- Ridge cap at peak (sits on top of where the two slopes meet) -->
+          <rect x="400" y="27" width="20" height="9" fill="var(--teal)"/>
+        </g>
+
+        <!-- 5. OPENINGS — roll-up door (10'×10') + walk door (36"×80") + window (30"×36") -->
+        <g class="bld-part bld-door">
+          <!-- ROLL-UP DOOR — 10' × 10', centered on the front wall -->
+          <g class="bld-clickable" data-info="10' × 10' Roll-Up Door" tabindex="0" role="button" aria-label="Roll-up door, 10 by 10 feet">
+            <rect x="310" y="180" width="200" height="198" fill="rgba(34,211,200,0.07)" stroke="var(--teal)" stroke-width="1.4"/>
+            <g stroke="var(--teal)" stroke-width="0.5" opacity=".55">
+              <line x1="310" y1="200" x2="510" y2="200"/>
+              <line x1="310" y1="220" x2="510" y2="220"/>
+              <line x1="310" y1="240" x2="510" y2="240"/>
+              <line x1="310" y1="260" x2="510" y2="260"/>
+              <line x1="310" y1="280" x2="510" y2="280"/>
+              <line x1="310" y1="300" x2="510" y2="300"/>
+              <line x1="310" y1="320" x2="510" y2="320"/>
+              <line x1="310" y1="340" x2="510" y2="340"/>
+              <line x1="310" y1="360" x2="510" y2="360"/>
+            </g>
+            <circle cx="410" cy="370" r="2.5" fill="var(--teal)" opacity=".75"/>
+          </g>
+
+          <!-- WALK DOOR — 36" × 80", centered between left wall and roll-up door -->
+          <g class="bld-clickable" data-info='Standard 36" &times; 80" Walk Door' tabindex="0" role="button" aria-label="Walk door, 36 by 80 inches">
+            <rect x="186" y="246" width="58" height="132" fill="rgba(34,211,200,0.04)" stroke="var(--teal)" stroke-width="1.1"/>
+            <circle cx="234" cy="312" r="1.8" fill="var(--teal)" opacity=".8"/>
+          </g>
+
+          <!-- WINDOW — 30" × 36", centered between roll-up door and right wall -->
+          <g class="bld-clickable" data-info='30" &times; 36" Window' tabindex="0" role="button" aria-label="Window, 30 by 36 inches">
+            <rect x="581" y="246" width="48" height="59" fill="rgba(34,211,200,0.08)" stroke="var(--teal)" stroke-width="1.1"/>
+            <line x1="581" y1="275" x2="629" y2="275" stroke="var(--teal)" stroke-width="0.5" opacity=".6"/>
+            <line x1="605" y1="246" x2="605" y2="305" stroke="var(--teal)" stroke-width="0.5" opacity=".6"/>
+          </g>
+        </g>
+
+        <!-- 6. Final checkmark badge -->
+        <g class="bld-part bld-check">
+          <circle cx="755" cy="58" r="20" fill="var(--teal)"/>
+          <path d="M 745 58 L 753 66 L 766 51" stroke="var(--bg)" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+      </svg>
+
+      <div class="bld-tooltip" id="bld-tooltip" role="status" aria-live="polite"></div>
+
+      <div class="bld-hint"><i class="ti ti-hand-finger"></i>Tap any door or window for specs</div>
+
+      <div class="bld-stages">
+        <span class="bld-stage" data-bld-stage="0">Foundation</span>
+        <span class="bld-stage-sep">/</span>
+        <span class="bld-stage" data-bld-stage="1">Frame</span>
+        <span class="bld-stage-sep">/</span>
+        <span class="bld-stage" data-bld-stage="2">Walls</span>
+        <span class="bld-stage-sep">/</span>
+        <span class="bld-stage" data-bld-stage="3">Roof</span>
+        <span class="bld-stage-sep">/</span>
+        <span class="bld-stage" data-bld-stage="4">Openings</span>
+        <span class="bld-stage-sep">/</span>
+        <span class="bld-stage" data-bld-stage="5">Ready</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── STATS COUNTER BAND ────────────────────────────────────────── -->
+<section class="stats-band" aria-label="Company stats">
+  <div class="wrap">
+    <div class="stats-band-grid reveal">
+      <div class="stat-cell">
+        <div class="stat-num"><span data-counter="170">0</span><span class="unit">MPH</span></div>
+        <div class="stat-lbl">Max Wind Rating</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-num"><span data-counter="17">0</span></div>
+        <div class="stat-lbl">States Serviced</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-num"><span data-counter="50">0</span><span class="unit">YR+</span></div>
+        <div class="stat-lbl">Structural Warranty</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── MARQUEE TICKER ──────────────────────────────────────────────── -->
+<section class="marquee" aria-label="Capability ticker">
+  <div class="marquee-track">
+    <div class="marquee-set">
+      <span class="marq-item">170 MPH Wind Rated</span><span class="marq-dot"></span>
+      <span class="marq-item">Fully Galvanized</span><span class="marq-dot"></span>
+      <span class="marq-item accent">17 States Serviced</span><span class="marq-dot"></span>
+      <span class="marq-item">50-Year Warranty</span><span class="marq-dot"></span>
+      <span class="marq-item">Engineered &amp; Certified</span><span class="marq-dot"></span>
+      <span class="marq-item accent">Storm-Rated</span><span class="marq-dot"></span>
+      <span class="marq-item">Termite Proof</span><span class="marq-dot"></span>
+      <span class="marq-item">Fire Resistant</span><span class="marq-dot"></span>
+      <span class="marq-item">Built to Outlast</span><span class="marq-dot"></span>
+    </div>
+    <div class="marquee-set" aria-hidden="true">
+      <span class="marq-item">170 MPH Wind Rated</span><span class="marq-dot"></span>
+      <span class="marq-item">Fully Galvanized</span><span class="marq-dot"></span>
+      <span class="marq-item accent">17 States Serviced</span><span class="marq-dot"></span>
+      <span class="marq-item">50-Year Warranty</span><span class="marq-dot"></span>
+      <span class="marq-item">Engineered &amp; Certified</span><span class="marq-dot"></span>
+      <span class="marq-item accent">Storm-Rated</span><span class="marq-dot"></span>
+      <span class="marq-item">Termite Proof</span><span class="marq-dot"></span>
+      <span class="marq-item">Fire Resistant</span><span class="marq-dot"></span>
+      <span class="marq-item">Built to Outlast</span><span class="marq-dot"></span>
+    </div>
+  </div>
+</section>
+
+<!-- ── COMPARISON ─────────────────────────────────────────────────── -->
+<section class="compare">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="eyebrow">Why Cheap Garages Fail</div>
+      <h2>The cheap build vs. <span class="accent">the StormSafe standard.</span></h2>
+      <p>Two ways to put a building on your property. Only one is engineered to still be standing in 50 years.</p>
+    </div>
+
+    <div class="cmp-grid">
+      <div class="cmp-col bad reveal">
+        <div class="cmp-head">
+          <div class="cmp-badge"><i class="ti ti-alert-triangle"></i></div>
+          <div>
+            <div class="cmp-title">The Cheap Build</div>
+            <div class="cmp-sub">Built to fail</div>
+          </div>
+        </div>
+        <ul class="cmp-list">
+          <li class="cmp-item"><i class="ti ti-x"></i><span>Exposed materials and fasteners rust and corrode in humid or coastal climates.</span></li>
+          <li class="cmp-item"><i class="ti ti-x"></i><span>Traditional materials weaken, warp, or degrade over time in harsh weather.</span></li>
+          <li class="cmp-item"><i class="ti ti-x"></i><span>Combustible materials raise fire risk and reduce overall structural safety.</span></li>
+          <li class="cmp-item"><i class="ti ti-x"></i><span>Not engineered for extreme storms — high risk of damage or failure.</span></li>
+          <li class="cmp-item"><i class="ti ti-x"></i><span>Weak, inconsistent connections create multiple failure points under wind stress.</span></li>
+        </ul>
+      </div>
+
+      <div class="cmp-col good reveal" data-delay="1">
+        <div class="cmp-head">
+          <div class="cmp-badge"><img src="https://static.wixstatic.com/media/f8c53c_e840dbf0d4a74b179385131354042bd0~mv2.png" alt="StormSafe Steel logo"></div>
+          <div>
+            <div class="cmp-title">The StormSafe Standard</div>
+            <div class="cmp-sub">Engineered to outlast</div>
+          </div>
+        </div>
+        <ul class="cmp-list">
+          <li class="cmp-item"><i class="ti ti-check"></i><span>Galvanized coating protects against rust, corrosion, and moisture damage.</span></li>
+          <li class="cmp-item"><i class="ti ti-check"></i><span>Steel maintains structural integrity after years of harsh weather exposure.</span></li>
+          <li class="cmp-item"><i class="ti ti-check"></i><span>Non-combustible materials improve fire resistance and overall safety.</span></li>
+          <li class="cmp-item"><i class="ti ti-check"></i><span>Properly engineered to outperform traditional construction in hurricanes.</span></li>
+          <li class="cmp-item"><i class="ti ti-check"></i><span>Engineered connections distribute wind loads across the entire structure.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SERVICE AREA ──────────────────────────────────────────────── -->
+<section class="service-area">
+  <div class="wrap reveal">
+    <div class="sa-head">
+      <div class="eyebrow"><span class="eyebrow-bar"></span>Where We Build</div>
+      <h2 class="h-display sa-title">Delivered &amp; installed across <span style="color:var(--teal)">17 states</span></h2>
+      <p class="sa-sub">Headquartered in West Palm Beach, Florida — engineering certified to each state's wind codes and permit requirements.</p>
+    </div>
+
+    <div class="sa-chips">
+      <span class="sa-chip" data-region="Southeast">FL</span>
+      <span class="sa-chip" data-region="Southeast">GA</span>
+      <span class="sa-chip" data-region="Southeast">SC</span>
+      <span class="sa-chip" data-region="Southeast">NC</span>
+      <span class="sa-chip" data-region="Southeast">VA</span>
+      <span class="sa-chip" data-region="Southeast">TN</span>
+      <span class="sa-chip" data-region="Southeast">AL</span>
+      <span class="sa-chip" data-region="Southeast">KY</span>
+      <span class="sa-chip" data-region="Midwest">OH</span>
+      <span class="sa-chip" data-region="Midwest">IN</span>
+      <span class="sa-chip" data-region="Midwest">IL</span>
+      <span class="sa-chip" data-region="Midwest">MI</span>
+      <span class="sa-chip" data-region="Mid-Atlantic">PA</span>
+      <span class="sa-chip" data-region="Mid-Atlantic">WV</span>
+      <span class="sa-chip" data-region="Mid-Atlantic">MD</span>
+      <span class="sa-chip" data-region="Mid-Atlantic">DE</span>
+      <span class="sa-chip" data-region="Mid-Atlantic">NJ</span>
+    </div>
+
+    <div class="sa-foot">
+      <div class="sa-foot-item"><div class="sa-foot-num">17</div><div class="sa-foot-lbl">States Serviced</div></div>
+      <div class="sa-foot-divider"></div>
+      <div class="sa-foot-item"><div class="sa-foot-num">3</div><div class="sa-foot-lbl">Regions</div></div>
+      <div class="sa-foot-divider"></div>
+      <div class="sa-foot-item"><div class="sa-foot-num sa-foot-num-fl"><svg viewBox="0 0 64 64" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="sa-palm"><path d="M30 60 Q 29 40 31 22 L 33 22 Q 35 40 34 60 Z"/><ellipse cx="32" cy="12" rx="3" ry="10"/><ellipse cx="32" cy="12" rx="3" ry="10" transform="rotate(45 32 22)"/><ellipse cx="32" cy="12" rx="3" ry="10" transform="rotate(-45 32 22)"/><ellipse cx="32" cy="12" rx="3" ry="11" transform="rotate(80 32 22)"/><ellipse cx="32" cy="12" rx="3" ry="11" transform="rotate(-80 32 22)"/><ellipse cx="32" cy="12" rx="3" ry="9" transform="rotate(110 32 22)"/><ellipse cx="32" cy="12" rx="3" ry="9" transform="rotate(-110 32 22)"/></svg><span>FL</span></div><div class="sa-foot-lbl">HQ &mdash; West Palm Beach</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FAQ ──────────────────────────────────────────────────────── -->
+<section class="faq" id="faq">
+  <div class="wrap">
+    <div class="faq-head reveal">
+      <div class="eyebrow"><span class="eyebrow-bar"></span>Frequently Asked</div>
+      <h2 class="h-display">Answers to the <span style="color:var(--teal)">big questions</span></h2>
+      <p style="font-size:16px;line-height:1.65;color:var(--text-2);margin-top:14px;font-weight:300">Everything customers ask before pulling the trigger. Tap any question.</p>
+    </div>
+
+    <div class="faq-list">
+      <div class="faq-item reveal spotlight" data-faq role="button" tabindex="0" aria-expanded="false">
+        <div class="faq-q">
+          <span>Do I need a foundation? Who builds it?</span>
+          <span class="faq-q-icon"><i class="ti ti-chevron-down"></i></span>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner"><div class="faq-a-text">
+          <p>Yes — every steel building needs a foundation. Most residential garages and small commercial buildings sit on a <strong>concrete slab (4&ndash;6&Prime; thick)</strong> with engineered anchor bolt placements. Larger structures may need pier-and-grade-beam or full perimeter footings.</p>
+          <p>We provide the <strong>engineered foundation drawings</strong> with your building plans, and you have two options: hire a local concrete contractor (we can recommend trusted ones), or roll site prep + foundation into your quote and we'll coordinate the entire package end to end.</p>
+        </div></div></div>
+      </div>
+
+      <div class="faq-item reveal spotlight" data-faq role="button" tabindex="0" aria-expanded="false">
+        <div class="faq-q">
+          <span>What permits do I need? Do you help?</span>
+          <span class="faq-q-icon"><i class="ti ti-chevron-down"></i></span>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner"><div class="faq-a-text">
+          <p>Almost every county and municipality requires a <strong>building permit</strong> for steel structures over a certain size (typically 100&ndash;200 sq ft). Some coastal counties also require <strong>hurricane impact certifications</strong> and special wind load engineering.</p>
+          <p>We provide all the documentation you need: <strong>stamped engineered drawings, foundation plans, wind load calculations, and material specifications</strong>. You (or your contractor) submit them to your local building department. If you'd rather we handle the permit application directly, we offer that as a service — just ask.</p>
+        </div></div></div>
+      </div>
+
+      <div class="faq-item reveal spotlight" data-faq role="button" tabindex="0" aria-expanded="false">
+        <div class="faq-q">
+          <span>Can I finance my steel building?</span>
+          <span class="faq-q-icon"><i class="ti ti-chevron-down"></i></span>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner"><div class="faq-a-text">
+          <p>StormSafe doesn't offer in-house financing, but most customers fund their build through their own bank or credit union. Common options include <strong>home equity loans, HELOCs, personal construction loans, and unsecured personal loans</strong>.</p>
+          <p>Use the <strong>Financing Calculator</strong> in our Plan Your Build tool above to get a monthly payment estimate — bring that number to your lender as a starting point. Many of our customers qualify for the best rates by using their home's equity since the structure adds permanent property value.</p>
+        </div></div></div>
+      </div>
+
+      <div class="faq-item reveal spotlight" data-faq role="button" tabindex="0" aria-expanded="false">
+        <div class="faq-q">
+          <span>Is the building delivered as a kit, or fully installed?</span>
+          <span class="faq-q-icon"><i class="ti ti-chevron-down"></i></span>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner"><div class="faq-a-text">
+          <p>Both options are available. <strong>Most customers choose full delivery &amp; installation</strong> — our crew arrives with the building, sets it up on your prepared foundation, and hands you the keys.</p>
+          <p>If you'd rather erect it yourself (or hire your own crew), we can deliver as a <strong>complete building kit</strong> with all framing, panels, fasteners, sealant, and assembly instructions included. Kits save 15&ndash;25% on the total cost but require comparable experience to assemble safely. Talk to a building specialist about which option fits your situation.</p>
+        </div></div></div>
+      </div>
+
+      <div class="faq-item reveal spotlight" data-faq role="button" tabindex="0" aria-expanded="false">
+        <div class="faq-q">
+          <span>What's covered under the warranty?</span>
+          <span class="faq-q-icon"><i class="ti ti-chevron-down"></i></span>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner"><div class="faq-a-text">
+          <p>Every StormSafe building comes with:</p>
+          <p>&bull; <strong>50-year structural warranty</strong> on the primary steel frame against rust-through, corrosion failure, or load-bearing failure.<br>
+          &bull; <strong>40-year paint warranty</strong> on roof &amp; wall panels against fade, chalk, and chip.<br>
+          &bull; <strong>20-year warranty</strong> on roll-up doors, walk doors, and windows against mechanical failure.<br>
+          &bull; <strong>Lifetime workmanship guarantee</strong> on our installation work — if something we built fails, we fix it.</p>
+          <p>Warranties transfer to the next owner if you sell the property.</p>
+        </div></div></div>
+      </div>
+
+      <div class="faq-item reveal spotlight" data-faq role="button" tabindex="0" aria-expanded="false">
+        <div class="faq-q">
+          <span>Can I add doors and windows wherever I want?</span>
+          <span class="faq-q-icon"><i class="ti ti-chevron-down"></i></span>
+        </div>
+        <div class="faq-a"><div class="faq-a-inner"><div class="faq-a-text">
+          <p>Yes — within structural limits. Roll-up doors, walk doors, and windows can be placed on any wall, in nearly any position, as long as we maintain <strong>minimum corner clearances</strong> (1&prime; on eave sides, 2&ndash;3&prime; on gable ends depending on door height) and <strong>1&prime; minimum spacing between adjacent openings</strong> for header support.</p>
+          <p>The <strong>Customize tool</strong> on our site lets you place doors and windows visually on each wall and shows you in real time if something won't fit. For complex layouts or unusual placements, talk to a building specialist — there are creative solutions for most situations.</p>
+        </div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FINAL CTA + QUOTE FORM ─────────────────────────────────────── -->
+<section class="cta-final" id="quote">
+  <div class="wrap">
+    <div class="cta-grid">
+      <div class="reveal">
+        <div class="eyebrow">Request a Quote</div>
+        <h2 class="h-display" style="font-size:clamp(28px,4.2vw,52px);margin-top:14px">Ready to build <span style="color:var(--teal)">something that lasts?</span></h2>
+        <p class="lede">Send us a few details and we'll come back to you with a real quote — usually within one business day. No spam, no pressure, no nonsense.</p>
+        <ul class="cta-points">
+          <li><i class="ti ti-circle-check-filled"></i><span>Free, no-obligation quote with itemized pricing</span></li>
+          <li><i class="ti ti-circle-check-filled"></i><span>Engineered &amp; certified to your local wind code &amp; permit requirements</span></li>
+          <li><i class="ti ti-circle-check-filled"></i><span>Honest guidance on what your build actually needs</span></li>
+          <li><i class="ti ti-circle-check-filled"></i><span>One team handles design, fabrication, and install</span></li>
+        </ul>
+      </div>
+
+      <form class="qform reveal" data-delay="1" action="https://formspree.io/f/xzdowwry" method="POST">
+        <div class="qform-row split">
+          <div>
+            <label>First Name</label>
+            <input type="text" name="first_name" required placeholder="John">
+          </div>
+          <div>
+            <label>Last Name</label>
+            <input type="text" name="last_name" required placeholder="Smith">
+          </div>
+        </div>
+        <div class="qform-row">
+          <label>Email</label>
+          <input type="email" name="email" required placeholder="john@example.com">
+        </div>
+        <div class="qform-row split">
+          <div>
+            <label>Phone</label>
+            <input type="tel" name="phone" required placeholder="(561) 000-0000">
+          </div>
+          <div>
+            <label>Zip Code</label>
+            <input type="text" name="zip" required placeholder="33411">
+          </div>
+        </div>
+        <div class="qform-row">
+          <label>Building Type</label>
+          <select name="building_type">
+            <option value="">Select one...</option>
+            <option>Residential — Garage / Workshop</option>
+            <option>Residential — RV / Boat Storage</option>
+            <option>Commercial — Warehouse / Workshop</option>
+            <option>Commercial — Storefront</option>
+            <option>Agricultural — Barn / Equipment</option>
+            <option>Other / Not Sure</option>
+          </select>
+        </div>
+        <div class="qform-row">
+          <label>Tell us about your build</label>
+          <textarea name="notes" rows="3" placeholder="Size (e.g. 30×40×12), doors, windows, anything special..."></textarea>
+        </div>
+        <button type="submit" class="qform-submit magnetic">Request My Quote →</button>
+        <p class="qform-fineprint">By submitting, you agree to receive SMS &amp; email updates. Msg &amp; data rates may apply. Reply STOP to opt out anytime.</p>
+      </form>
+    </div>
+  </div>
+</section>
+
+<script>
+// Reveal-on-scroll observer (Emil-style: auto-stagger siblings)
+(function(){
+  if(!('IntersectionObserver' in window)){
+    document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('in');});
+    return;
+  }
+  // Auto-assign stagger index to .reveal children that don't already have data-delay
+  var groups={};
+  document.querySelectorAll('.reveal').forEach(function(el){
+    if(el.hasAttribute('data-delay'))return;
+    var parentKey=el.parentElement&&el.parentElement.tagName+'-'+(el.parentElement.className||'');
+    if(!parentKey)return;
+    groups[parentKey]=groups[parentKey]||0;
+    if(groups[parentKey]>0){
+      el.style.setProperty('--reveal-i',groups[parentKey]);
+    }
+    groups[parentKey]++;
+  });
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  },{threshold:.12,rootMargin:'0px 0px -60px 0px'});
+  document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+})();
+
+// Magnetic buttons (Emil-style: button gently tracks cursor)
+(function(){
+  var magnetic=document.querySelectorAll('.magnetic');
+  if(!magnetic.length||window.matchMedia('(hover: none)').matches)return;
+  magnetic.forEach(function(el){
+    var rect=null;
+    el.addEventListener('mouseenter',function(){rect=el.getBoundingClientRect();});
+    el.addEventListener('mousemove',function(e){
+      if(!rect)rect=el.getBoundingClientRect();
+      var x=(e.clientX-rect.left-rect.width/2)*.22;
+      var y=(e.clientY-rect.top-rect.height/2)*.22;
+      el.style.transform='translate('+x+'px,'+y+'px)';
+    });
+    el.addEventListener('mouseleave',function(){
+      el.style.transform='';
+      rect=null;
+    });
+  });
+})();
+
+// Spotlight cursor tracking (Emil-style: subtle radial glow follows mouse inside card)
+(function(){
+  var spots=document.querySelectorAll('.spotlight');
+  if(!spots.length||window.matchMedia('(hover: none)').matches)return;
+  spots.forEach(function(el){
+    el.addEventListener('mousemove',function(e){
+      var rect=el.getBoundingClientRect();
+      el.style.setProperty('--spot-x',(e.clientX-rect.left)+'px');
+      el.style.setProperty('--spot-y',(e.clientY-rect.top)+'px');
+    });
+  });
+})();
+
+// Building feature info tooltips (click any door/window to see specs)
+(function(){
+  var clickables=document.querySelectorAll('.bld-clickable');
+  var tooltip=document.getElementById('bld-tooltip');
+  var container=document.querySelector('.builder');
+  if(!clickables.length||!tooltip||!container)return;
+  var activeEl=null;
+  function show(el){
+    if(activeEl)activeEl.classList.remove('is-active');
+    activeEl=el;
+    el.classList.add('is-active');
+    tooltip.textContent=el.getAttribute('data-info')||'';
+    var rect=el.getBoundingClientRect();
+    var cRect=container.getBoundingClientRect();
+    var x=(rect.left+rect.width/2)-cRect.left;
+    var y=rect.top-cRect.top;
+    // Keep tooltip from running off the container's right/left edges
+    var margin=80;
+    x=Math.max(margin,Math.min(cRect.width-margin,x));
+    tooltip.style.left=x+'px';
+    tooltip.style.top=y+'px';
+    tooltip.classList.add('is-visible');
+  }
+  function hide(){
+    if(activeEl){activeEl.classList.remove('is-active');activeEl=null;}
+    tooltip.classList.remove('is-visible');
+  }
+  clickables.forEach(function(el){
+    el.addEventListener('click',function(e){
+      e.stopPropagation();
+      if(activeEl===el)hide();
+      else show(el);
+    });
+    el.addEventListener('keydown',function(e){
+      if(e.key==='Enter'||e.key===' '){
+        e.preventDefault();
+        if(activeEl===el)hide();
+        else show(el);
+      }
+    });
+  });
+  document.addEventListener('click',function(e){
+    if(!e.target.closest('.bld-clickable')&&!e.target.closest('.bld-tooltip')){
+      hide();
+    }
+  });
+  // Re-position tooltip on resize if visible (SVG scales with viewport)
+  window.addEventListener('resize',function(){
+    if(activeEl)show(activeEl);
+  });
+})();
+
+// Why Steel — expandable cards: click or keyboard activates each card
+(function(){
+  var cards=document.querySelectorAll('[data-wcell]');
+  if(!cards.length)return;
+  function toggle(card){
+    var open=card.classList.toggle('is-open');
+    card.setAttribute('aria-expanded',open?'true':'false');
+    var label=card.querySelector('.wcell-toggle span');
+    if(label)label.textContent=open?'Show less':'Learn more';
+  }
+  cards.forEach(function(card){
+    card.addEventListener('click',function(){toggle(card);});
+    card.addEventListener('keydown',function(e){
+      if(e.key==='Enter'||e.key===' '){
+        e.preventDefault();
+        toggle(card);
+      }
+    });
+  });
+})();
+
+// FAQ — expandable items
+(function(){
+  var items=document.querySelectorAll('[data-faq]');
+  if(!items.length)return;
+  function toggle(item){
+    var open=item.classList.toggle('is-open');
+    item.setAttribute('aria-expanded',open?'true':'false');
+  }
+  items.forEach(function(item){
+    item.addEventListener('click',function(){toggle(item);});
+    item.addEventListener('keydown',function(e){
+      if(e.key==='Enter'||e.key===' '){
+        e.preventDefault();
+        toggle(item);
+      }
+    });
+  });
+})();
+
+// Animated counters — count up when stats band scrolls into view
+(function(){
+  var counters=document.querySelectorAll('[data-counter]');
+  if(!counters.length||!('IntersectionObserver' in window)){
+    counters.forEach(function(el){el.textContent=el.getAttribute('data-counter');});
+    return;
+  }
+  function animate(el){
+    var target=parseInt(el.getAttribute('data-counter'),10)||0;
+    var duration=1400;
+    var start=performance.now();
+    function tick(now){
+      var elapsed=now-start;
+      var progress=Math.min(elapsed/duration,1);
+      // ease-out expo (Emil-style smooth tail)
+      var eased=progress===1?1:1-Math.pow(2,-10*progress);
+      el.textContent=Math.round(target*eased);
+      if(progress<1)requestAnimationFrame(tick);
+      else el.textContent=target;
+    }
+    requestAnimationFrame(tick);
+  }
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        animate(e.target);
+        io.unobserve(e.target);
+      }
+    });
+  },{threshold:.4});
+  counters.forEach(function(el){io.observe(el);});
+})();
+
+// Video fallback — if video fails to load OR is still a placeholder, show poster image
+(function(){
+  var v=document.querySelector('.hero-video-wrap video');
+  var fb=document.querySelector('.hero-fallback-img');
+  if(!v||!fb)return;
+  var src=v.querySelector('source');
+  var url=src?src.getAttribute('src'):'';
+  // Placeholder still in place? Hide video, show poster image.
+  if(!url||url==='WIX_VIDEO_URL'||url.indexOf('YOUR_')>-1){
+    v.style.display='none';
+    fb.style.display='block';
+    return;
+  }
+  v.addEventListener('error',function(){v.style.display='none';fb.style.display='block';});
+  v.addEventListener('stalled',function(){if(v.readyState<2){v.style.display='none';fb.style.display='block';}});
+})();
+
+// Smooth scroll for anchor links — explicit JS handler so it works inside iframes
+(function(){
+  document.querySelectorAll('a[href^="#"]').forEach(function(link){
+    link.addEventListener('click',function(e){
+      var id=link.getAttribute('href');
+      if(!id||id==='#')return;
+      var target=document.querySelector(id);
+      if(target){
+        e.preventDefault();
+        target.scrollIntoView({behavior:'smooth',block:'start'});
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

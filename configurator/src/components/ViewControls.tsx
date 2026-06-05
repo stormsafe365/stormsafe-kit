@@ -26,7 +26,7 @@ export function ViewControls() {
   const goToView = useEditorStore((s) => s.goToView);
 
   return (
-    <div className="pointer-events-auto absolute right-4 top-4 flex w-[200px] flex-col gap-2 rounded-xl border border-border-vis bg-dark-2/95 p-2.5 shadow-lg backdrop-blur">
+    <div className="pointer-events-auto absolute right-4 top-4 flex w-[256px] max-w-[calc(100%-2rem)] flex-col gap-2 rounded-xl border border-border-vis bg-dark-2/95 p-2.5 shadow-lg backdrop-blur">
       <div>
         <p className="mb-1.5 font-head text-[10px] uppercase tracking-wide2 text-sub">View Mode</p>
         <div className="flex gap-1 rounded-lg bg-dark p-1">
@@ -35,7 +35,7 @@ export function ViewControls() {
               key={m.value}
               type="button"
               onClick={() => setViewMode(m.value)}
-              className={`flex-1 rounded-md px-1.5 py-1.5 font-head text-[10px] uppercase tracking-wide2 transition-colors ${
+              className={`flex-1 whitespace-nowrap rounded-md px-1 py-1.5 font-head text-[10px] uppercase tracking-wide transition-colors ${
                 viewMode === m.value ? 'bg-teal text-dark' : 'text-sub hover:text-text'
               }`}
             >

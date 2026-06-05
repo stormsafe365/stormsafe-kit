@@ -1,0 +1,508 @@
+/**
+ * BuildHost — the side-by-side "price + 3D" shell for the merge.
+ *
+ * LEFT:  your validated quote-builder program, untouched, in an iframe. It stays
+ *        the single source of truth for price, notes, rules, and PDFs.
+ * RIGHT: the live 3D model, driven from what you configure on the left.
+ *
+ * The bridge READS the program's input fields (same-origin, same approach the
+ * CRM already uses) and drives the 3D store. It does NOT modify the program or
+ * its pricing — it only listens. We hook the program's `rc()` recalc so the 3D
+ * updates the instant anything changes, with a slow poll as a safety net.
+ *
+ * A fresh quote starts with a BARE building (no doors/windows) — components are
+ * drawn in as you add them on the left.
+ */
+
+import { useEffect, useRef } from 'react';
+import { Viewport } from '@/components/Viewport';
+import { useBuildingStore } from '@/store/useBuildingStore';
+import { useEditorStore } from '@/store/useEditorStore';
+import type { BuildingType, OpeningType, WallSide } from '@/types/building';
+
+/** Map the program's btype → the 3D building family. */
+const TYPE_MAP: Record<string, BuildingType> = {
+  carport: 'carport',
+  gch: 'utility',
+  standard: 'garage',
+  widespan: 'garage',
+};
+
+/** Program's location dropdown → 3D wall side. */
+const SIDE_MAP: Record<string, WallSide> = {
+  'Front Gable End': 'front',
+  'Back Gable End': 'back',
+  'Left Eave Side': 'left',
+  'Right Eave Side': 'right',
+  'Partition Wall': 'partition',
+};
+
+/**
+ * Inject a "Partition Wall" location option into the component dropdowns for GCH
+ * builds — done at runtime from the bridge so the program file is untouched. A
+ * partition door prices like a gable-end door (the program adds no eave header
+ * for a non-eave location), and the 3D renders it on the divider plane. Removed
+ * (and any selection reset) when the build isn't a GCH.
+ */
+function ensurePartitionOption(win: BuilderWindow) {
+  const G = win.G;
+  if (typeof G !== 'function') return;
+  const isGCH = (G('btype')?.value || '') === 'gch';
+  win.document.querySelectorAll('.rloc, .wloc, .nloc, .fo-loc').forEach((node) => {
+    const sel = node as HTMLSelectElement;
+    const existing = Array.from(sel.options).find((o) => o.value === 'Partition Wall');
+    if (isGCH && !existing) {
+      const opt = win.document.createElement('option');
+      opt.value = 'Partition Wall';
+      opt.textContent = 'Partition Wall';
+      sel.appendChild(opt);
+    } else if (!isGCH && existing) {
+      const wasSelected = sel.value === 'Partition Wall';
+      existing.remove();
+      if (wasSelected) {
+        sel.value = sel.options[0]?.value || 'Front Gable End';
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+  });
+}
+
+/** getPosItems item.type → 3D opening type. */
+const OTYPE_MAP: Record<string, OpeningType> = {
+  rollup: 'rollUpDoor',
+  wtd: 'walkDoor',
+  win: 'window',
+  fo: 'frameOut',
+};
+
+interface DesiredOpening {
+  type: OpeningType;
+  side: WallSide;
+  offset: number;
+  width: number;
+  height: number;
+  sillHeight: number;
+  /** Source program entry + item index — lets a 3D drag write back to the program. */
+  entry: Element;
+  itemIndex: number;
+}
+
+/**
+ * Read the program's doors/windows and compute their 3D placement by calling
+ * the program's OWN positioning function (getPosItems) — so the 3D mirrors
+ * exactly where the program puts them. Eave sides use building length as the
+ * face width; gable ends use building width.
+ */
+function readOpenings(
+  win: Window & {
+    G?: (id: string) => HTMLInputElement | null;
+    getPosItems?: (el: Element, qty: number, itemW: number, faceW: number, itemH: number, type: string, extraH?: number) => Array<{ x: number; w: number; h: number; yo?: number }>;
+    document: Document;
+  },
+  W: number,
+  L: number,
+): DesiredOpening[] {
+  const getPos = win.getPosItems;
+  if (typeof getPos !== 'function' || !W || !L) return [];
+  const out: DesiredOpening[] = [];
+  const faceFor = (loc: string) => (loc === 'Left Eave Side' || loc === 'Right Eave Side' ? L : W);
+  const qv = (el: Element, sel: string, d: number) => {
+    const e = el.querySelector(sel) as HTMLInputElement | null;
+    const n = e ? parseInt(e.value, 10) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : d;
+  };
+  const lv = (el: Element, sel: string) => {
+    const e = el.querySelector(sel) as HTMLInputElement | null;
+    return e ? String(e.value || '') : '';
+  };
+
+  const push = (el: Element, loc: string, qty: number, itemW: number, itemH: number, type: string, extraH?: number) => {
+    const side = SIDE_MAP[loc];
+    if (!side) return;
+    const face = faceFor(loc);
+    const items = getPos(el, qty, itemW, face, itemH, type, extraH);
+    items.forEach((it, i) => {
+      const center = it.x + it.w / 2; // centerline from the program's frame edge
+      // The LEFT eave and BACK gable are the "far" walls — viewed from the
+      // opposite side, so their left/right is mirrored vs the program's frame.
+      // (getPosItems also special-flips left-eave for its 2D drawing.) Undo both
+      // by measuring from the far edge. Front gable + right eave map directly
+      // (confirmed correct).
+      const mirror = side === 'left' || side === 'back';
+      const offset = mirror ? face - center : center;
+      out.push({
+        type: OTYPE_MAP[type] ?? 'frameOut',
+        side,
+        offset,
+        width: it.w,
+        height: it.h,
+        sillHeight: it.yo ?? 0,
+        entry: el,
+        itemIndex: i,
+      });
+    });
+  };
+
+  win.document.querySelectorAll('.re').forEach((el) => {
+    const sz = (lv(el, '.rsz') || '10x8').split('x');
+    push(el, lv(el, '.rloc'), qv(el, '.rqt', 1), parseFloat(sz[0]) || 10, parseFloat(sz[1]) || 8, 'rollup');
+  });
+  win.document.querySelectorAll('.we').forEach((el) => {
+    push(el, lv(el, '.wloc'), qv(el, '.wqt', 1), 3, 6.67, 'wtd');
+  });
+  win.document.querySelectorAll('.ne').forEach((el) => {
+    push(el, lv(el, '.nloc'), qv(el, '.nqt', 1), 2.5, 2.5, 'win', 4.5);
+  });
+
+  // Framed openings (in "Additional Components" / .ace): only entries whose
+  // component is a "Framed Opening" with a visible wall-location row. Size +
+  // sill mirror the program's own logic (builder lines 6075–6096).
+  const fnum = (el: Element, sel: string) => {
+    const e = el.querySelector(sel) as HTMLInputElement | null;
+    const n = e ? parseFloat(e.value) : NaN;
+    return Number.isFinite(n) ? n : NaN;
+  };
+  win.document.querySelectorAll('.ace').forEach((el) => {
+    const comp = lv(el, '.act');
+    if (comp.indexOf('Framed Opening') < 0) return;
+    const locRow = el.querySelector('.fo-loc-row');
+    if (!locRow || locRow.classList.contains('hidden')) return;
+    const loc = lv(el, '.fo-loc');
+    const qty = qv(el, '.acq', 1);
+    let foW = 2.5;
+    let foH = 2.5;
+    let foYo = 4.5;
+    if (comp.indexOf('(Custom Size)') >= 0) {
+      foW = fnum(el, '.fo-cw') || 10;
+      foH = fnum(el, '.fo-ch') || 8;
+      foYo = comp.indexOf('Window') >= 0 ? 4.5 : 0;
+    } else if (comp.indexOf('Garage Door') >= 0 || comp.indexOf('Side Opening') >= 0) {
+      const m = comp.match(/(\d+)' Wide/);
+      foW = m ? parseInt(m[1], 10) : 10;
+      foH = 8;
+      foYo = 0;
+    } else if (comp.indexOf('Double Door') >= 0) {
+      foW = 6;
+      foH = 6.67;
+      foYo = 0;
+    } else if (comp.indexOf('Walk-Through') >= 0) {
+      foW = 3;
+      foH = 6.67;
+      foYo = 0;
+    }
+    push(el, loc, qty, foW, foH, 'fo', foYo);
+  });
+
+  return out;
+}
+
+const TYPE_LABEL: Record<BuildingType, string> = {
+  garage: 'Garage',
+  carport: 'Carport',
+  utility: 'Garage-Carport Hybrid',
+};
+
+type BuilderWindow = Window & {
+  G?: (id: string) => HTMLInputElement | null;
+  getPosItems?: (el: Element, qty: number, itemW: number, faceW: number, itemH: number, type: string, extraH?: number) => Array<{ x: number; w: number; h: number; yo?: number }>;
+  rc?: (...a: unknown[]) => unknown;
+  updatePosSection?: (entry: Element, qty: number, label?: string) => void;
+  __ssWrapped?: boolean;
+  __ssViewHooked?: boolean;
+  __ssOpenSig?: string;
+  __ssOpenMap?: Record<string, { entry: Element; itemIndex: number; side: WallSide; width: number }>;
+};
+
+/**
+ * Write a 3D drag back into the program: convert the opening's 3D centerline to
+ * the program's "from-edge" position and set the entry's position inputs + side
+ * toggles. The reverse of readOpenings' mapping → round-trips exactly:
+ *   program pos = centerline − width/2 ; side = 'right' on back gable, else 'left'.
+ *
+ * To keep multi-quantity rows stable, ALL items in the dragged entry are frozen
+ * to their current 3D positions (written explicitly) — so moving one no longer
+ * re-auto-spaces its siblings. Positions snap to the nearest inch (exact enough
+ * for a quote; matches what the drag shows).
+ */
+function writeBackDrag(win: BuilderWindow, id: string | null) {
+  const map = win.__ssOpenMap;
+  if (!id || !map || !map[id]) return;
+  const { entry, side } = map[id];
+
+  // Every opening sourced from this same entry (one row may hold several items).
+  const siblings = Object.keys(map)
+    .map((oid) => ({ oid, ...map[oid] }))
+    .filter((m) => m.entry === entry)
+    .sort((a, b) => a.itemIndex - b.itemIndex);
+  if (!siblings.length) return;
+
+  let rows = entry.querySelectorAll('.pos-section .pos-row');
+  if (rows.length < siblings.length && typeof win.updatePosSection === 'function') {
+    win.updatePosSection(entry, siblings.length);
+    rows = entry.querySelectorAll('.pos-section .pos-row');
+  }
+
+  const openings = useBuildingStore.getState().openings;
+  const targetSide = side === 'back' ? 'right' : 'left'; // uniform per wall
+  let wrote = false;
+  for (const sib of siblings) {
+    const op = openings.find((o) => o.id === sib.oid);
+    const row = rows[sib.itemIndex];
+    if (!op || !row) continue;
+    const pos = Math.max(0, Math.round((op.offset - op.width / 2) * 12) / 12); // nearest inch
+    const input = row.querySelector('input') as HTMLInputElement | null;
+    if (input) input.value = String(Number(pos.toFixed(3))); // tidy "4.333" not "4.33333333"
+    row.querySelectorAll('.pos-toggle button').forEach((b) => {
+      const btn = b as HTMLElement;
+      btn.classList.toggle('active', btn.dataset.side === targetSide);
+    });
+    wrote = true;
+  }
+  if (wrote && typeof win.rc === 'function') win.rc();
+}
+
+/** Read the program's current building config and push it into the 3D store. */
+function syncFromBuilder(win: BuilderWindow) {
+  const G = win.G;
+  if (typeof G !== 'function') return;
+  const num = (id: string, d = 0) => {
+    const el = G(id);
+    const v = el ? parseFloat(el.value) : NaN;
+    return Number.isFinite(v) ? v : d;
+  };
+  const val = (id: string) => {
+    const el = G(id);
+    return el ? String(el.value || '') : '';
+  };
+
+  const st = useBuildingStore.getState();
+  const w = num('bw');
+  const l = num('bl');
+  const h = num('bh', 6);
+  const bt = val('btype');
+  const rs = val('rs');
+  const ws = val('ws');
+
+  if (w && w !== st.width) st.setWidth(w);
+  if (l && l !== st.length) st.setLength(l);
+  if (h && h !== st.legHeight) st.setLegHeight(h);
+
+  const mapped = TYPE_MAP[bt];
+  if (mapped && mapped !== st.buildingType) st.setBuildingType(mapped);
+
+  const panel = ws === 'Vertical' ? 'Vertical' : 'Horizontal';
+  if (ws && panel !== st.panelOrientation) st.setPanelOrientation(panel);
+
+  const roof = rs === 'Vertical' ? 'Vertical' : 'Horizontal';
+  if (rs && roof !== st.roofOrientation) st.setRoofOrientation(roof);
+
+  if (bt === 'gch') {
+    const enc = num('gch-enc');
+    if (enc && enc !== st.enclosedLengthFt) st.setEnclosedLength(enc);
+  }
+
+  // Gable-only sheeting on the OPEN end (carport / GCH open bay): the 3D needs
+  // openEndGableSheeting=true to draw the sheeted gable triangle over an open end.
+  const fg = val('wfg');
+  const bg = val('wbg');
+  const gableOnly =
+    bt === 'gch'
+      ? fg === 'Gable Only' // GCH open bay is the front
+      : bt === 'carport'
+        ? fg === 'Gable Only' || bg === 'Gable Only'
+        : false;
+  if (gableOnly !== st.openEndGableSheeting) st.setOpenEndGableSheeting(gableOnly);
+
+  // GCH open-bay side panels (the "Side Panels" dropdown) → partial eave bands.
+  // none | full | half | 1 | 2 | 3  →  band height (ft from slab), per chosen side.
+  let leftFt = 0;
+  let rightFt = 0;
+  if (bt === 'gch') {
+    const pv = val('gch-panels');
+    const sides = val('gch-sides') || 'both';
+    let band = 0;
+    if (pv === 'full') band = h;
+    else if (pv === 'half') band = 1.5;
+    else {
+      const n = parseInt(pv, 10);
+      if (n > 0) band = n * 3;
+    }
+    leftFt = sides === 'both' || sides === 'left' ? band : 0;
+    rightFt = sides === 'both' || sides === 'right' ? band : 0;
+  }
+  if (leftFt !== st.eavePanelFt.left || rightFt !== st.eavePanelFt.right) {
+    st.setEavePanels({ left: leftFt, right: rightFt });
+  }
+
+  // ── Colors (roof / wall / trim / wainscot) → 3D ──
+  // Program selects: cr=roof, cw=wall, ct=trim, cwn=wainscot. Each option's
+  // .value is the on-screen hex and its text is "Name (CODE)". Prefer the CODE
+  // (so Galvalume reads metallic); fall back to the raw hex. 'TBD' = leave as-is.
+  const colorOf = (id: string): string | null => {
+    const el = G(id) as HTMLSelectElement | null;
+    if (!el) return null;
+    const v = String(el.value || '');
+    if (!v || v === 'TBD') return null;
+    const opt = el.options ? el.options[el.selectedIndex] : null;
+    const m = opt && opt.textContent ? opt.textContent.match(/\(([^)]+)\)\s*$/) : null;
+    return m ? m[1] : v;
+  };
+  const COLOR_FIELDS = [
+    ['roof', 'cr'],
+    ['walls', 'cw'],
+    ['trim', 'ct'],
+    ['wainscot', 'cwn'],
+  ] as const;
+  for (const [target, id] of COLOR_FIELDS) {
+    const c = colorOf(id);
+    if (c && c !== st.colors[target]) st.setColor(target, c);
+  }
+
+  // ── Doors / windows → 3D openings ──
+  // Source the wall sizes from the store (authoritative + snapped) rather than
+  // the program's bw/bl, which can read empty mid-update. Only rebuild when the
+  // set actually changes (cheap signature compare) so the poll/rc hook don't thrash.
+  const live = useBuildingStore.getState();
+  const desired = readOpenings(win as Parameters<typeof readOpenings>[0], live.width, live.length);
+  const sig = JSON.stringify(desired);
+  if (sig !== win.__ssOpenSig) {
+    win.__ssOpenSig = sig;
+    const cur = useBuildingStore.getState();
+    cur.openings.slice().forEach((o) => cur.removeOpening(o.id));
+    const map: NonNullable<BuilderWindow['__ssOpenMap']> = {};
+    for (const d of desired) {
+      const id = cur.addOpening(d.type, d.side);
+      cur.updateOpening(id, { offset: d.offset, width: d.width, height: d.height, sillHeight: d.sillHeight });
+      map[id] = { entry: d.entry, itemIndex: d.itemIndex, side: d.side, width: d.width };
+    }
+    win.__ssOpenMap = map;
+  }
+}
+
+export default function BuildHost() {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const width = useBuildingStore((s) => s.width);
+  const length = useBuildingStore((s) => s.length);
+  const legHeight = useBuildingStore((s) => s.legHeight);
+  const buildingType = useBuildingStore((s) => s.buildingType);
+
+  useEffect(() => {
+    // Start a fresh quote with a BARE building — strip the demo openings.
+    const store = useBuildingStore.getState();
+    store.openings.slice().forEach((o) => store.removeOpening(o.id));
+
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    let poll: number | undefined;
+    let unsubDrag: (() => void) | undefined;
+
+    function onLoad() {
+      const win = iframe!.contentWindow as BuilderWindow | null;
+      if (!win) return;
+      const sync = () => {
+        try {
+          ensurePartitionOption(win);
+          syncFromBuilder(win);
+        } catch {
+          /* ignore transient reads while the program is still booting */
+        }
+      };
+      if (typeof win.rc === 'function' && !win.__ssWrapped) {
+        const orig = win.rc;
+        win.rc = function wrappedRc(...args: unknown[]) {
+          const r = orig.apply(this, args);
+          sync();
+          return r;
+        };
+        win.__ssWrapped = true;
+      }
+      sync();
+      poll = window.setInterval(sync, 800);
+      (window as unknown as Record<string, unknown>).__ssStore = useBuildingStore;
+      (window as unknown as Record<string, unknown>).__ssEditor = useEditorStore;
+      (window as unknown as Record<string, unknown>).__ssSync = sync;
+
+      // Auto-rotate the 3D to whatever wall you're working on: any time you focus
+      // or change a field inside a door/window row, snap the camera to that wall.
+      if (!win.__ssViewHooked) {
+        win.__ssViewHooked = true;
+        const snapToEntryWall = (target: EventTarget | null) => {
+          const el = target as Element | null;
+          if (!el || typeof el.closest !== 'function') return;
+          const entry = el.closest('.re, .we, .ne');
+          if (!entry) return;
+          const loc = entry.querySelector('.rloc, .wloc, .nloc') as HTMLInputElement | null;
+          const wall = loc ? SIDE_MAP[loc.value] : undefined;
+          if (wall && wall !== 'partition') {
+            useEditorStore.getState().goToView(wall);
+          }
+        };
+        win.document.addEventListener('focusin', (e) => snapToEntryWall(e.target));
+        win.document.addEventListener('change', (e) => snapToEntryWall(e.target));
+      }
+
+      // Two-way: when a 3D drag ends, write the new position back into the program.
+      if (!unsubDrag) {
+        unsubDrag = useEditorStore.subscribe((s, prev) => {
+          if (prev.dragging && !s.dragging) {
+            writeBackDrag(win, prev.selectedOpeningId ?? s.selectedOpeningId);
+          }
+        });
+      }
+    }
+
+    iframe.addEventListener('load', onLoad);
+    return () => {
+      iframe.removeEventListener('load', onLoad);
+      if (poll) clearInterval(poll);
+      if (unsubDrag) unsubDrag();
+    };
+  }, []);
+
+  const fmt = (n: number) => (Number.isFinite(n) ? `${n}′` : '—');
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', background: '#08121d', overflow: 'hidden', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      {/* ── Unified top bar ── */}
+      <header
+        style={{
+          height: 52,
+          flex: '0 0 52px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 18,
+          padding: '0 18px',
+          background: 'rgba(8,18,29,.97)',
+          borderBottom: '1px solid #1e2d42',
+        }}
+      >
+        <div style={{ fontFamily: 'Orbitron, sans-serif', fontWeight: 800, fontSize: 16, letterSpacing: '.04em', textTransform: 'uppercase', color: '#e2e8f0' }}>
+          Storm<span style={{ color: '#22d3c8' }}>Safe</span> Steel
+        </div>
+        <div style={{ width: 1, height: 22, background: '#1e2d42' }} />
+        <div style={{ fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: '#1ab5ab' }}>Quote + Live 3D</div>
+        <div style={{ flex: 1 }} />
+        <div style={{ fontSize: 12.5, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
+          <span style={{ color: '#e2e8f0', fontWeight: 600 }}>
+            {fmt(width)} × {fmt(length)} × {fmt(legHeight)}
+          </span>
+          <span style={{ margin: '0 8px', color: '#1e2d42' }}>|</span>
+          {TYPE_LABEL[buildingType]}
+        </div>
+      </header>
+
+      {/* ── Two panes ── */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 0 }}>
+        {/* Left: the program (untouched) */}
+        <div style={{ position: 'relative', minWidth: 0, background: '#fff' }}>
+          <iframe ref={iframeRef} src="/quote-builder.html" title="StormSafe Pricing" style={{ border: 'none', width: '100%', height: '100%', display: 'block' }} />
+        </div>
+
+        {/* Right: the 3D preview */}
+        <div style={{ position: 'relative', minWidth: 0, borderLeft: '1px solid #22d3c8' }}>
+          <Viewport />
+        </div>
+      </div>
+    </div>
+  );
+}

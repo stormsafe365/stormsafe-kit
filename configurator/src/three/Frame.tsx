@@ -55,6 +55,10 @@ export function Frame({ members, framingGauge, trimColor = '#aeb6bf', emphasize 
             size = HAT_CHANNEL_VISUAL_FT;
             color = HAT_COLOR;
             break;
+          case 'brace':
+            size = frameSize * 0.8; // a touch lighter than the leg/rafter
+            color = PRIMARY_COLOR;
+            break;
           default:
             break; // legs + rafters use full gauge size
         }

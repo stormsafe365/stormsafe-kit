@@ -49,6 +49,8 @@ function selectConfig(s: ReturnType<typeof useBuildingStore.getState>): Building
     roofOverhangFt: s.roofOverhangFt,
     colors: s.colors,
     wainscot: s.wainscot,
+    eavePanelFt: s.eavePanelFt,
+    walls: s.walls,
     windSpeedMph: s.windSpeedMph,
     exposureCategory: s.exposureCategory,
     groundSnowPsf: s.groundSnowPsf,

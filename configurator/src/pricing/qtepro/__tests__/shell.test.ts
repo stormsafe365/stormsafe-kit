@@ -1,0 +1,122 @@
+import { describe, expect, it } from 'vitest';
+import { getMfr } from '../manufacturers';
+import { eaveHeaderCost, ecLookup, scLookup } from '../closures';
+import { gLeg, gWalls, gConnectionFees } from '../shell';
+import { gRUD, gWTD, gWIN } from '../openings';
+import type { PricingConfig } from '../config';
+
+const CA = getMfr('CA');
+const CCI = getMfr('CCI');
+
+/** Minimal building config with sensible defaults; override per test. */
+function cfg(over: Partial<PricingConfig>): PricingConfig {
+  return {
+    width: 20,
+    length: 30,
+    height: 8,
+    roofStyle: 'Vertical',
+    wallStyle: 'Horizontal',
+    buildingType: 'standard',
+    frontGable: 'Open',
+    backGable: 'Open',
+    rightEave: 'Open',
+    leftEave: 'Open',
+    ...over,
+  };
+}
+
+describe('eaveHeaderCost (structural header for eave-side roll-up)', () => {
+  it('standard building (12–30W) tiers', () => {
+    expect(eaveHeaderCost(10, 24)).toBe(200);
+    expect(eaveHeaderCost(14, 24)).toBe(360);
+    expect(eaveHeaderCost(18, 24)).toBe(720);
+  });
+  it('wide-span building (32W+) tiers', () => {
+    expect(eaveHeaderCost(4, 40)).toBe(360);
+    expect(eaveHeaderCost(10, 40)).toBe(425);
+    expect(eaveHeaderCost(18, 40)).toBe(850);
+  });
+});
+
+describe('closure lookups', () => {
+  it('ecLookup CA 12W×6H per end = $540', () => {
+    expect(ecLookup(12, 6, CA)).toBe(540);
+  });
+  it('ecLookup CA 20W×8H per end = $940', () => {
+    expect(ecLookup(20, 8, CA)).toBe(940);
+  });
+  it('scLookup CA 20W 8H 20L per side = $330 (SC[8][20]/2)', () => {
+    expect(scLookup(8, 20, 20, CA)).toBe(330);
+  });
+});
+
+describe('gLeg (leg/eave-height upcharge)', () => {
+  it('h≤6 → $0', () => {
+    expect(gLeg(cfg({ height: 6 }), CA)).toBe(0);
+  });
+  it('CCI 100×200×20 widespan ≈ $62,740 (verified vs Sensei)', () => {
+    expect(gLeg(cfg({ width: 100, length: 200, height: 20, buildingType: 'widespan' }), CCI)).toBe(62740);
+  });
+  it('standard path is wired to huN (12–24W)', () => {
+    const got = gLeg(cfg({ width: 12, length: 21, height: 10 }), CA);
+    expect(got).toBe(CA.huN[10][0]); // LENGTHS index 0 = tier 21
+    expect(got).toBeGreaterThan(0);
+  });
+});
+
+describe('gWalls (gables + sides + GCH)', () => {
+  it('CA 20×30×8 fully closed = $2,810', () => {
+    const c = cfg({ frontGable: 'Closed', backGable: 'Closed', rightEave: 'Closed', leftEave: 'Closed' });
+    // 2×ecLookup(20,8)=1880  +  2×(scLookup(8,30,20))=930  = 2810
+    expect(gWalls(c, CA)).toBe(2810);
+  });
+  it('Gable Only is a flat charge, not a full end close', () => {
+    const c = cfg({ frontGable: 'Gable Only' });
+    expect(gWalls(c, CA)).toBe(CA.gableOnlyPrice);
+    expect(gWalls(c, CA)).toBeLessThan(ecLookup(20, 8, CA));
+  });
+  it('GCH always adds the internal divider end wall', () => {
+    const open = cfg({ buildingType: 'gch', gchEnclosedLength: 0 });
+    const enc = cfg({ buildingType: 'gch', gchEnclosedLength: 10, rightEave: 'Closed', leftEave: 'Closed' });
+    // enc adds: 2 closed sides scLookup + divider ecLookup; open adds nothing (encL=0)
+    expect(gWalls(open, CA)).toBe(0);
+    expect(gWalls(enc, CA)).toBe(scLookup(8, 30, 20, CA) * 2 + ecLookup(20, 8, CA));
+  });
+});
+
+describe('gConnectionFees (lean-to attachment)', () => {
+  it('30ft gable lean-to on a standard building = $750 (matches Sensei)', () => {
+    const c = cfg({ width: 30, leanTos: [{ width: 12, length: 30, placement: 'Front Gable' }] });
+    expect(gConnectionFees(c)).toBe(750);
+  });
+  it('free-standing lean-tos do not connect', () => {
+    const c = cfg({ leanTos: [{ width: 12, length: 30, placement: 'Front Gable', attachment: 'freestanding' }] });
+    expect(gConnectionFees(c)).toBe(0);
+  });
+});
+
+describe('gRUD (roll-up doors)', () => {
+  it('standard 10×10 on an end = base price only', () => {
+    const c = cfg({ rollUpDoors: [{ type: 'standard', size: '10x10', qty: 1, location: 'Front End' }] });
+    expect(gRUD(c, CA)).toBe(1050); // RDP_STD['10x10']
+  });
+  it('same door on an eave side adds the structural header', () => {
+    const c = cfg({ width: 24, rollUpDoors: [{ type: 'standard', size: '10x10', qty: 1, location: 'Left Eave Side' }] });
+    expect(gRUD(c, CA)).toBe(1050 + 200); // + eaveHeaderCost(10,24)
+  });
+});
+
+describe('gWTD / gWIN (walk doors & windows)', () => {
+  it('walk doors: qty × price + side-frame sqft × $425', () => {
+    const key = Object.keys(CA.wtdPrices)[0];
+    const c = cfg({ walkDoors: [{ type: key, qty: 2, sideFrameSqFt: 3 }] });
+    const r = gWTD(c, CA);
+    expect(r.wtd).toBe(2 * CA.wtdPrices[key]);
+    expect(r.sf).toBe(3 * 425);
+  });
+  it('windows: qty × price', () => {
+    const key = Object.keys(CA.winPrices)[0];
+    const c = cfg({ windows: [{ type: key, qty: 2 }] });
+    expect(gWIN(c, CA).win).toBe(2 * CA.winPrices[key]);
+  });
+});

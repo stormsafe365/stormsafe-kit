@@ -1,4 +1,4 @@
-import { useMemo, useRef, type CSSProperties } from 'react';
+import { useMemo, useRef } from 'react';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -25,9 +25,9 @@ function ftIn(ft: number): string {
 }
 
 const PANEL_COLOR: Record<OpeningType, string> = {
-  rollUpDoor: '#e9ebef',
-  garageDoor: '#e4e7ec',
-  walkDoor: '#d9dde3',
+  rollUpDoor: '#ffffff', // white doors (standard)
+  garageDoor: '#fbfcfd',
+  walkDoor: '#ffffff',
   window: '#bfe9ff',
   frameOut: '#0c1622',
 };
@@ -36,10 +36,13 @@ const PANEL_COLOR: Record<OpeningType, string> = {
 // doors a wider ~12" panel — both distinct from the wall rib profile.
 const _slatCache: Record<string, { map: THREE.CanvasTexture; bump: THREE.CanvasTexture }> = {};
 const slatTexFor = (type: OpeningType) =>
-  (_slatCache[type] ??= createSlatTexture('#eceef2', type === 'rollUpDoor' ? 4 : 1));
+  (_slatCache[type] ??= createSlatTexture('#f7f9fc', type === 'rollUpDoor' ? 4 : 1));
 
 export function Openings({ openings, structure, trimColor }: OpeningsProps) {
-  const visible = openings.filter((o) => structure.walls[o.side]?.available);
+  // Render an opening wherever it's placed — doors / frame-outs commonly go on
+  // open carport ends, gable-only ends, and partial-sheeted sides. The only
+  // guard: a partition opening needs an actual partition (GCH split) to exist.
+  const visible = openings.filter((o) => o.side !== 'partition' || structure.enclosure.partitionZ !== null);
   const selectedId = useEditorStore((s) => s.selectedOpeningId);
   const sel = visible.find((o) => o.id === selectedId);
   return (
@@ -68,8 +71,6 @@ function DraggableOpening({
   trimColor: string;
 }) {
   const updateOpening = useBuildingStore((s) => s.updateOpening);
-  const removeOpening = useBuildingStore((s) => s.removeOpening);
-  const duplicateOpening = useBuildingStore((s) => s.duplicateOpening);
   const { selectedOpeningId, selectOpening, setActiveWall, setDragging } = useEditorStore();
   // Camera/renderer for manual drag raycasting; controls disabled while dragging.
   const gl = useThree((s) => s.gl);
@@ -102,11 +103,11 @@ function DraggableOpening({
       const tiles = Math.max(2, Math.round(h)); // 1 tile = 1 ft of slats
       map.repeat.set(1, tiles);
       bump.repeat.set(1, tiles);
-      return new THREE.MeshStandardMaterial({ map, bumpMap: bump, bumpScale: 0.03, color: PANEL_COLOR[opening.type], metalness: 0.28, roughness: 0.58 });
+      return new THREE.MeshStandardMaterial({ map, bumpMap: bump, bumpScale: 0.03, color: PANEL_COLOR[opening.type], metalness: 0.12, roughness: 0.5 });
     }
     if (isGlass) {
       // Neutral grey reflective glazing (matches IdeaRoom — not bright blue).
-      return new THREE.MeshStandardMaterial({
+      const m = new THREE.MeshStandardMaterial({
         color: '#aab4ba',
         metalness: 0.35,
         roughness: 0.08,
@@ -114,13 +115,33 @@ function DraggableOpening({
         transparent: true,
         opacity: 0.78,
       });
+      // Don't let the view-mode shell-opacity pass stomp the glass back to solid.
+      m.userData.keepTransparent = true;
+      return m;
+    }
+    if (isFrameOut) {
+      // A framed opening is an OPEN cut: just framing, you see right through it.
+      // The wall sheeting is actually cut around it, so this pane only needs to
+      // READ as a faint open void — very low opacity, depthWrite off so it never
+      // hides what's behind. keepTransparent stops ShellGroup forcing it opaque.
+      const m = new THREE.MeshStandardMaterial({
+        color: '#cfe0ec',
+        transparent: true,
+        opacity: 0.08,
+        metalness: 0.1,
+        roughness: 0.1,
+        envMapIntensity: 0.6,
+        depthWrite: false,
+      });
+      m.userData.keepTransparent = true;
+      return m;
     }
     return new THREE.MeshStandardMaterial({
       color: PANEL_COLOR[opening.type],
       metalness: 0.3,
       roughness: 0.6,
     });
-  }, [isSlat, isGlass, opening.type, h]);
+  }, [isSlat, isGlass, isFrameOut, opening.type, h]);
 
   const emissive = selected ? '#22d3c8' : '#000000';
 
@@ -179,7 +200,7 @@ function DraggableOpening({
         {!onFloor && <TrimBar pos={[0, -h / 2 - t / 2, 0]} size={[w + 2 * t, t, trimDepth]} color={tc} />}
 
         {/* Panel — flush slab (door) or recessed glazing (window) — grab + drag */}
-        <mesh position={[0, 0, panelZ]} material={panelMat} castShadow onPointerDown={onDown}>
+        <mesh position={[0, 0, panelZ]} material={panelMat} castShadow={!isFrameOut} onPointerDown={onDown}>
           <boxGeometry args={[w, h, panelDepth]} />
         </mesh>
         {selected && (
@@ -244,61 +265,13 @@ function DraggableOpening({
           </group>
         )}
 
-        {/* On-component toolbar — duplicate / delete right on the model */}
-        {selected && (
-          <Html position={[0, h / 2 + 0.9, 0]} center zIndexRange={[200, 0]} style={{ pointerEvents: 'auto' }}>
-            <div
-              onPointerDown={(e) => e.stopPropagation()}
-              style={{
-                display: 'flex',
-                gap: 6,
-                background: '#0d1826',
-                border: '1px solid #2a3d55',
-                borderRadius: 7,
-                padding: '4px 6px',
-                boxShadow: '0 2px 8px rgba(0,0,0,.55)',
-                fontSize: 14,
-              }}
-            >
-              <button
-                title="Duplicate"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const nid = duplicateOpening(opening.id);
-                  if (nid) selectOpening(nid);
-                }}
-                style={toolBtn}
-              >
-                ⧉
-              </button>
-              <button
-                title="Delete"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeOpening(opening.id);
-                  selectOpening(null);
-                }}
-                style={{ ...toolBtn, color: '#fca5a5' }}
-              >
-                🗑
-              </button>
-            </div>
-          </Html>
-        )}
+        {/* Components are added / duplicated / removed in the pricing program
+            (the source of truth that also prices them); the 3D only positions
+            them, so no on-model add/dup/delete toolbar here. */}
       </group>
     </group>
   );
 }
-
-const toolBtn: CSSProperties = {
-  background: 'transparent',
-  border: 'none',
-  cursor: 'pointer',
-  color: '#cbd5e1',
-  lineHeight: 1,
-  padding: '2px 5px',
-  borderRadius: 4,
-};
 
 /** World-space plane of a wall's outer (sheeting) face, for drag raycasting. */
 function plyForWall(side: WallSide, structure: StructureModel): THREE.Plane {
@@ -510,7 +483,7 @@ function pushOut(pos: Vec3, side: WallSide, d: number): Vec3 {
 
 function worldToOffset(side: WallSide, point: THREE.Vector3, structure: StructureModel): number {
   const halfW = structure.width / 2;
-  const sideStart = structure.enclosure.sideZ?.start ?? -structure.length / 2;
+  const eaveStart = -structure.length / 2; // eaves span the full length from the front
   switch (side) {
     case 'front':
     case 'partition':
@@ -519,6 +492,6 @@ function worldToOffset(side: WallSide, point: THREE.Vector3, structure: Structur
       return halfW - point.x;
     case 'left':
     case 'right':
-      return point.z - sideStart;
+      return point.z - eaveStart;
   }
 }

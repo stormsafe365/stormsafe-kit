@@ -47,6 +47,16 @@ export const DEFAULT_CONFIG: BuildingConfig = {
   // Defaults mirror the real StormSafe quote palette.
   colors: { roof: 'WXA0090L', walls: 'WXA0095L', trim: 'WXB107L', wainscot: 'WXA0090L' },
   wainscot: { enabled: false, heightFt: 3 },
+  eavePanelFt: { left: 0, right: 0 },
+  // Default = fully enclosed (garage). Type presets overwrite this.
+  walls: {
+    preset: 'enclosed',
+    front: 'closed',
+    back: 'closed',
+    left: 'closed',
+    right: 'closed',
+    storage: { mode: 'none', lengthFt: 0 },
+  },
   windSpeedMph: 150,
   exposureCategory: 'C',
   groundSnowPsf: 0,

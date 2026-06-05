@@ -74,14 +74,15 @@ export function CameraRig() {
         };
       }
       case 'structure': {
-        // low 3/4 angle, slightly closer, to read frame loops + purlins
-        const dir = new THREE.Vector3(1, 0.5, 1.05).normalize();
+        // low 3/4 angle (front-facing), slightly closer, to read frame + purlins
+        const dir = new THREE.Vector3(1, 0.5, -1.05).normalize();
         const d = fitDistance(Math.max(W, L), top) * 1.05 + Math.max(halfW, halfL) * 0.4;
         return { pos: center.clone().add(dir.multiplyScalar(d)), look: center };
       }
       case 'iso':
       default: {
-        const dir = new THREE.Vector3(1, 0.72, 1).normalize();
+        // Front-facing 3/4 (front gable at -Z, so dir uses -Z).
+        const dir = new THREE.Vector3(1, 0.72, -1).normalize();
         const d = fitDistance(Math.max(W, L), top) + Math.max(halfW, halfL) * 0.5;
         return {
           pos: new THREE.Vector3(0, top * 0.45, 0).add(dir.multiplyScalar(d)),
@@ -115,6 +116,12 @@ export function CameraRig() {
     prevKey.current = key;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [W, L, top]);
+
+  // Dev: expose camera + controls so a precise view can be set for screenshots.
+  useEffect(() => {
+    (window as unknown as Record<string, unknown>).__ssCam = camera;
+    (window as unknown as Record<string, unknown>).__ssControls = controls;
+  }, [camera, controls]);
 
   // Grabbing the mouse to orbit cancels any in-flight animation.
   useEffect(() => {

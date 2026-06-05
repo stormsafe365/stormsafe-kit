@@ -46,6 +46,7 @@ export interface BuildingStore extends BuildingConfig {
   setColor: (target: keyof BuildingConfig['colors'], code: string) => void;
   setWainscotEnabled: (on: boolean) => void;
   setWainscotHeight: (ft: number) => void;
+  setEavePanels: (panels: { left: number; right: number }) => void;
   setWindSpeed: (mph: number) => void;
   setExposure: (e: ExposureCategory) => void;
   setGroundSnow: (psf: number) => void;
@@ -54,6 +55,8 @@ export interface BuildingStore extends BuildingConfig {
   updateOpening: (id: string, patch: Partial<Opening>) => void;
   duplicateOpening: (id: string) => string | null;
   removeOpening: (id: string) => void;
+  /** Evenly space all openings on `wall` across `spanFt`. */
+  distributeOpenings: (wall: WallSide, spanFt: number) => void;
 
   reset: () => void;
 }
@@ -64,7 +67,25 @@ const nextId = (type: OpeningType) => `${type}-${++openingSeq}`;
 export const useBuildingStore = create<BuildingStore>((set) => ({
   ...DEFAULT_CONFIG,
 
-  setBuildingType: (t) => set(() => ({ buildingType: t })),
+  setBuildingType: (t) =>
+    set((s) => {
+      let openings = s.openings;
+      if (t === 'utility' && s.buildingType !== 'utility') {
+        // The open-end gable becomes the carport opening + a partition wall is
+        // added to close the storage bay — move that gable's openings (e.g. the
+        // garage door) onto the new partition so nothing is left floating.
+        openings = s.openings.map((o) =>
+          o.side === s.openEnd ? { ...o, side: 'partition' as WallSide } : o,
+        );
+      } else if (t !== 'utility' && s.buildingType === 'utility') {
+        // Leaving utility: the partition is removed — move its openings back to
+        // the (now solid) end wall they belonged to.
+        openings = s.openings.map((o) =>
+          o.side === 'partition' ? { ...o, side: s.openEnd as WallSide } : o,
+        );
+      }
+      return { buildingType: t, openings };
+    }),
 
   setWidth: (ft) =>
     set(() => ({ width: snap(ft, WIDTH_RANGE.min, WIDTH_RANGE.max, WIDTH_RANGE.step) })),
@@ -97,6 +118,7 @@ export const useBuildingStore = create<BuildingStore>((set) => ({
 
   setColor: (target, code) => set((s) => ({ colors: { ...s.colors, [target]: code } })),
   setWainscotEnabled: (on) => set((s) => ({ wainscot: { ...s.wainscot, enabled: on } })),
+  setEavePanels: (panels) => set(() => ({ eavePanelFt: { left: panels.left, right: panels.right } })),
   setWainscotHeight: (ft) =>
     set((s) => ({
       wainscot: {
@@ -132,6 +154,28 @@ export const useBuildingStore = create<BuildingStore>((set) => ({
     return newId;
   },
   removeOpening: (id) => set((s) => ({ openings: s.openings.filter((o) => o.id !== id) })),
+
+  // Evenly distribute every opening on a wall across its span (equal gaps,
+  // including the two end gaps). Keeps each opening fully on the wall.
+  distributeOpenings: (wall, spanFt) =>
+    set((s) => {
+      const onWall = s.openings
+        .filter((o) => o.side === wall)
+        .sort((a, b) => a.offset - b.offset);
+      const n = onWall.length;
+      if (n === 0 || spanFt <= 0) return {};
+      const newOffsets = new Map<string, number>();
+      onWall.forEach((o, i) => {
+        const ideal = (spanFt * (i + 1)) / (n + 1);
+        const clamped = Math.max(o.width / 2, Math.min(spanFt - o.width / 2, ideal));
+        newOffsets.set(o.id, Math.round(clamped * 10) / 10);
+      });
+      return {
+        openings: s.openings.map((o) =>
+          newOffsets.has(o.id) ? { ...o, offset: newOffsets.get(o.id)! } : o,
+        ),
+      };
+    }),
 
   reset: () => set(() => ({ ...DEFAULT_CONFIG })),
 }));

@@ -25,6 +25,32 @@ export type OpenEnd = 'front' | 'back';
 /** How a gable end is sheeted. */
 export type EndSheeting = 'closed' | 'open' | 'gableOnly';
 
+/**
+ * Per-wall state (Sensei "Custom" walls):
+ *  - open:   no sheeting (posts only)
+ *  - closed: fully sheeted
+ *  - gable:  sheet only the gable triangle above the eave (end walls only)
+ */
+export type WallState = 'open' | 'closed' | 'gable';
+
+/** Wall preset selector — maps the building family to per-wall states. */
+export type WallPreset = 'open' | 'enclosed' | 'custom';
+
+/** Enclosed "Storage" section of a utility carport, and where it sits. */
+export type StorageMode = 'none' | 'end' | 'endBack' | 'left' | 'right';
+
+/** The full wall/enclosure model (mirrors Sensei's Walls panel). */
+export interface WallsConfig {
+  preset: WallPreset;
+  /** Per-wall states (used when preset === 'custom'). */
+  front: WallState;
+  back: WallState;
+  left: WallState;
+  right: WallState;
+  /** Enclosed storage bay: which part of the building is walled-in. */
+  storage: { mode: StorageMode; lengthFt: number };
+}
+
 export type WallSide = 'front' | 'back' | 'left' | 'right' | 'partition';
 
 export type OpeningType = 'rollUpDoor' | 'garageDoor' | 'walkDoor' | 'window' | 'frameOut';
@@ -91,6 +117,21 @@ export interface BuildingConfig {
 
   colors: BuildingColors;
   wainscot: Wainscot;
+
+  /**
+   * Partial side-panel sheeting on the OPEN eave portion (carport / GCH open
+   * bay), as a band height in ft measured up from the slab (0 = open,
+   * legHeight = fully closed). The enclosed portion's sides are always fully
+   * sheeted. (Top-band / fractional variants are a future addition.)
+   */
+  eavePanelFt: { left: number; right: number };
+
+  /**
+   * Per-wall enclosure model (Sensei "Walls" panel). The building-type buttons
+   * set `preset`; 'custom' unlocks independent per-wall states + storage.
+   * `deriveEnclosure` reads this to build the geometry.
+   */
+  walls: WallsConfig;
 
   // --- Engineering loads (drive the rule engine) ---
   /** Design wind speed (mph). StormSafe standard envelope is 170+. */

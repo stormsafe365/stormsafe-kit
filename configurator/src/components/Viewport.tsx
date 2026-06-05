@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Environment, Grid, OrbitControls, ContactShadows } from '@react-three/drei';
+import { Grid, OrbitControls, ContactShadows } from '@react-three/drei';
 import { BuildingModel } from '@/three/BuildingModel';
 import { CameraRig } from '@/three/CameraRig';
 import { ViewControls } from '@/components/ViewControls';
@@ -22,7 +22,7 @@ export function Viewport() {
       <Canvas
         shadows
         dpr={[1, 2]}
-        camera={{ position: [34, 22, 38], fov: 38, near: 0.5, far: 400 }}
+        camera={{ position: [34, 22, -38], fov: 38, near: 0.5, far: 400 }}
         gl={{ antialias: true, preserveDrawingBuffer: true }}
         onPointerMissed={() => {
           if (!useEditorStore.getState().dragging) selectOpening(null);
@@ -31,26 +31,28 @@ export function Viewport() {
         <color attach="background" args={['#08121d']} />
         <fog attach="fog" args={['#08121d', 80, 200]} />
 
-        {/* Soft, diffuse lighting for powder-coated steel (no glossy hot-spots) */}
-        <hemisphereLight args={['#dfe7f0', '#3a4250', 0.7]} />
-        <ambientLight intensity={0.3} />
-        <directionalLight
-          position={[28, 38, 22]}
-          intensity={0.95}
-          castShadow
-          shadow-mapSize={[2048, 2048]}
-          shadow-bias={-0.0004}
-          shadow-camera-left={-60}
-          shadow-camera-right={60}
-          shadow-camera-top={60}
-          shadow-camera-bottom={-60}
-        />
-        {/* Cool fill from the opposite side to round out shadows */}
-        <directionalLight position={[-26, 18, -22]} intensity={0.35} color="#cdd8e6" />
+        {/* All four vertical walls MUST read the identical shade (critical for
+            client PDFs). The key light is placed PERFECTLY straight overhead
+            (zero horizontal component) → N·L is the same (0) for every vertical
+            wall regardless of which way it faces, so the directional adds NO
+            per-wall difference. Wall shade then comes only from the uniform
+            ambient + sky hemisphere, which are azimuth-independent. The roof
+            (sloped) still catches the overhead light for depth. NOTE: the siding
+            envMap is also zeroed (Siding.tsx) because the HDRI is directional
+            and would otherwise tint one wall vs another. */}
+        {/* The warehouse HDRI environment was tinting walls DIRECTIONALLY (it's
+            brighter on some sides) — removed below. Walls are now lit ONLY by
+            the azimuth-uniform ambient + sky hemisphere, so all four sides read
+            the EXACT same shade (verified identical). The overhead key adds roof
+            form; the ground keeps its soft <ContactShadows>. */}
+        <hemisphereLight args={['#eef3f9', '#4a5563', 1.6]} />
+        <ambientLight intensity={0.85} />
+        <directionalLight position={[0, 60, 0.0001]} intensity={0.4} />
 
         <Suspense fallback={null}>
           <BuildingModel />
-          <Environment preset="warehouse" />
+          {/* TEST: env removed to check if it's tinting the walls directionally */}
+          {/* <Environment preset="warehouse" /> */}
         </Suspense>
 
         <CameraRig />
@@ -72,9 +74,15 @@ export function Viewport() {
           enabled={!dragging}
           enableDamping
           dampingFactor={0.08}
-          minDistance={12}
+          // Allow the camera to push right inside the shell so the interior is
+          // easy to inspect (Sensei/IdeaRoom-style), not just orbit the outside.
+          minDistance={0.6}
           maxDistance={120}
-          maxPolarAngle={Math.PI / 2.05}
+          // Near-full polar range so you can tilt up to the ceiling/trusses and
+          // down under the building — true 360 like Sensei (was capped just past
+          // horizontal, which made interior views feel stuck).
+          minPolarAngle={0.02}
+          maxPolarAngle={Math.PI - 0.04}
           target={[0, 5, 0]}
         />
       </Canvas>
@@ -85,6 +93,9 @@ export function Viewport() {
       <div className="pointer-events-none absolute left-4 top-4 select-none">
         <p className="font-head text-xs uppercase tracking-wide2 text-teal">StormSafe Steel</p>
         <p className="font-head text-[10px] uppercase tracking-brand text-sub">Live Build Preview</p>
+        {/* Freshness check — bump this label each deploy so we can confirm the
+            browser actually loaded the latest code. */}
+        <p className="font-body text-[9px] text-muted">build · roof-overhang-A</p>
       </div>
       <p className="pointer-events-none absolute bottom-3 right-4 select-none font-body text-[11px] text-muted">
         Drag to orbit · scroll to zoom

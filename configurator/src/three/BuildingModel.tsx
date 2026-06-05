@@ -35,6 +35,10 @@ function ShellGroup({ opacity, children }: { opacity: number; children: React.Re
       for (const m of mats) {
         const mm = m as THREE.MeshStandardMaterial;
         if (!mm) continue;
+        // Intrinsically-transparent panels (framed openings, window glass) own
+        // their own opacity — never force them back to solid for the view mode,
+        // or a see-through framed opening renders as a solid panel.
+        if (mm.userData?.keepTransparent) continue;
         mm.transparent = transparent;
         mm.opacity = opacity;
         mm.depthWrite = !transparent; // ghost shell shouldn't occlude the frame
@@ -68,6 +72,7 @@ export function BuildingModel() {
       <ShellGroup opacity={SHELL_OPACITY[viewMode]}>
         <Siding
           structure={structure}
+          openings={config.openings}
           wallOrientation={config.panelOrientation}
           roofOrientation={config.roofOrientation}
           colors={config.colors}

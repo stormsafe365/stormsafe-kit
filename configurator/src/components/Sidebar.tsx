@@ -219,6 +219,14 @@ export function Sidebar() {
                 </button>
               ))}
             </div>
+            {store.openings.filter((o) => o.side === targetWall).length >= 1 && (
+              <button
+                onClick={() => store.distributeOpenings(targetWall, structure.walls[targetWall].spanFt)}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-teal/60 bg-teal-glow py-2 font-head text-[11px] uppercase tracking-wide2 text-teal transition-colors hover:bg-teal hover:text-dark"
+              >
+                ⇿ Space Evenly · {wallLabel(targetWall)}
+              </button>
+            )}
 
             {/* All placed components — click to select, 🗑 to remove */}
             {store.openings.length > 0 && (

@@ -91,6 +91,23 @@ export function Trim({ structure, color, wainscot }: TrimProps) {
     }
   }
 
+  // --- Partition corner flashing: seals the gap where the interior partition
+  // wall (the "additional end wall" of a utility build) meets the side walls.
+  // Same folded-L as the building corners, placed at the partition Z. ---
+  if (enclosure.partitionZ !== null && enclosure.sideZ) {
+    const pz = enclosure.partitionZ;
+    const f = 0.25;
+    const tt = 0.04;
+    // Open bay sits on the side of the partition away from the enclosed span.
+    const openSign = Math.abs(pz - enclosure.sideZ.end) < 0.01 ? 1 : -1;
+    let pk = 0;
+    for (const sx of [-1, 1] as const) {
+      corners.push(<Box key={`ps${pk++}`} pos={[sx * (halfW + out + tt / 2), H / 2, pz - (openSign * f) / 2]} size={[tt, H, f]} />);
+      corners.push(<Box key={`pe${pk++}`} pos={[sx * (halfW - f / 2), H / 2, pz + openSign * (out / 2 + tt / 2)]} size={[f, H, tt]} />);
+      corners.push(<Box key={`pb${pk++}`} pos={[sx * (halfW + out / 2), H / 2, pz + openSign * (out / 2)]} size={[out * 1.5, H, tt]} rotY={Math.atan2(-openSign, -sx)} />);
+    }
+  }
+
   const dripY = eaveY + roofLiftY; // roof lower (drip) edge
   const fasciaH = 0.32; // ~3.8" clean fascia face
   return (
@@ -98,21 +115,26 @@ export function Trim({ structure, color, wainscot }: TrimProps) {
       {/* Ridge cap — extends to the gable overhang */}
       <SteelMember start={[0, peakHeight + 0.05, -gz]} end={[0, peakHeight + 0.05, gz]} size={0.16} color={color} metalness={0.1} roughness={0.5} />
 
-      {/* Eave fascia — a CLEAN thin white board hanging straight off the roof
-          drip edge (no chunky folded box / soffit), with a thin dark cut-edge
-          line on top. Matches IdeaRoom's simple eave. */}
-      {([-1, 1] as const).map((sx) => (
-        <group key={`eave${sx}`}>
-          <Box pos={[sx * eaveX, dripY - fasciaH / 2 + 0.02, 0]} size={[0.035, fasciaH, 2 * gz]} />
-          <Box pos={[sx * (eaveX + 0.006), dripY + 0.012, 0]} size={[0.022, 0.03, 2 * gz]} m={darkMat} />
-        </group>
-      ))}
+      {/* Eave fascia — the white board is TUCKED UNDER the roof (recessed inboard
+          by `tuck`) so the roof panel edge HANGS OVER it, with the dark folded
+          drip/rib-end edge at the overhanging lip. Matches IdeaRoom's overhang. */}
+      {([-1, 1] as const).map((sx) => {
+        const tuck = 0.11; // roof overhangs the fascia by ~1.3"
+        return (
+          <group key={`eave${sx}`}>
+            <Box pos={[sx * (eaveX - tuck), dripY - fasciaH / 2 + 0.02, 0]} size={[0.035, fasciaH, 2 * gz]} />
+            <Box pos={[sx * eaveX, dripY - 0.025, 0]} size={[0.028, 0.07, 2 * gz]} m={darkMat} />
+          </group>
+        );
+      })}
 
       {/* Gable rake — a clean FLAT fascia board following each roof slope to
           the overhung edge (not a chunky square tube), hanging just below the
           roof line like IdeaRoom/Sensei. */}
       {([-gz, gz] as const).map((z, i) => {
         const boards: JSX.Element[] = [];
+        const tuck = 0.11; // rake tucked inboard so the roof gable edge overhangs it
+        const zRake = z - Math.sign(z) * tuck;
         for (const sx of [-1, 1] as const) {
           const ax = sx * eaveX;
           const ay = eaveY;
@@ -133,13 +155,24 @@ export function Trim({ structure, color, wainscot }: TrimProps) {
           boards.push(
             <mesh
               key={`rk${i}_${sx}`}
-              position={[(ax + bx) / 2 + px * off, (ay + by) / 2 + py * off, z]}
+              position={[(ax + bx) / 2 + px * off, (ay + by) / 2 + py * off, zRake]}
               rotation={[0, 0, ang]}
               material={mat}
               castShadow
               receiveShadow
             >
-              <boxGeometry args={[len, 0.26, 0.045]} />
+              <boxGeometry args={[len, 0.24, 0.045]} />
+            </mesh>,
+          );
+          // dark drip/rib-edge along the roof's overhanging gable edge
+          boards.push(
+            <mesh
+              key={`rkd${i}_${sx}`}
+              position={[(ax + bx) / 2 + px * 0.01, (ay + by) / 2 + py * 0.01, z]}
+              rotation={[0, 0, ang]}
+              material={darkMat}
+            >
+              <boxGeometry args={[len, 0.06, 0.028]} />
             </mesh>,
           );
         }

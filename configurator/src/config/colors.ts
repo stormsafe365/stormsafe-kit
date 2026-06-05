@@ -11,23 +11,25 @@ export interface ColorSwatch {
 }
 
 export const COLOR_SWATCHES: ColorSwatch[] = [
-  { code: 'WXA0090L', name: 'Charcoal', hex: '#5c5b58' },
-  { code: 'WXA0095L', name: 'Light Gray', hex: '#9b9ea3' },
-  { code: 'WXA0107L', name: 'Black', hex: '#1b1b1d' },
-  { code: 'WXB1008L', name: 'Cocoa Brown', hex: '#5a3f36' },
-  { code: 'WXD0038L', name: 'Light Stone', hex: '#cab89f' },
-  { code: 'WXD0045L', name: 'Ivory', hex: '#ecd1bd' },
-  { code: 'WXD0046L', name: 'Sahara Tan', hex: '#b58e6c' },
-  { code: 'WXD0047L', name: 'Clay', hex: '#8c7269' },
-  { code: 'WXL0027L', name: 'Hawaiian Blue', hex: '#3b6a84' },
-  { code: 'WXR0077L', name: 'Barn Red', hex: '#9d3a31' },
-  { code: 'WXD0049L', name: 'Bright White', hex: '#e7e9ed' },
-  { code: 'WXG0020L', name: 'Ivy Green', hex: '#1f4d3f' },
-  { code: 'WXR0084', name: 'Bright Red', hex: '#b3282b' },
-  { code: 'WXB107L', name: 'Burnished Slate', hex: '#4b4842' },
-  { code: 'GALVALUME', name: 'Galvalume', hex: '#b9bcc0', metallic: true },
-  { code: 'WXR0081L', name: 'Burgundy', hex: '#5e2730' },
-  { code: 'KM2Y49352', name: 'Copper Penny', hex: '#c2782c' },
+  // Hexes mirror the program's COLORS array (quote-builder.html) so the 3D
+  // swatch matches exactly what the customer picks in the pricing program.
+  { code: 'WXA0090L', name: 'Charcoal', hex: '#6B6360' },
+  { code: 'WXA0095L', name: 'Light Gray', hex: '#9EA5A8' },
+  { code: 'WXA0107L', name: 'Black', hex: '#1A1A1A' },
+  { code: 'WXB1008L', name: 'Cocoa Brown', hex: '#5C3A2E' },
+  { code: 'WXD0038L', name: 'Light Stone', hex: '#C9B99A' },
+  { code: 'WXD0045L', name: 'Ivory', hex: '#EDD5C0' },
+  { code: 'WXD0046L', name: 'Sahara Tan', hex: '#B8956A' },
+  { code: 'WXD0047L', name: 'Clay', hex: '#9E8880' },
+  { code: 'WXL0027L', name: 'Hawaiian Blue', hex: '#3A6B8A' },
+  { code: 'WXR0077L', name: 'Barn Red', hex: '#7D3030' },
+  { code: 'WXD0049L', name: 'Bright White', hex: '#DDDDE8' },
+  { code: 'WXG0020L', name: 'Ivy Green', hex: '#1E4D3A' },
+  { code: 'WXR0084', name: 'Bright Red', hex: '#BC1E2D' },
+  { code: 'WXB107L', name: 'Burnished Slate', hex: '#555A4A' },
+  { code: 'GALVALUME', name: 'Galvalume', hex: '#B8BDC2', metallic: true },
+  { code: 'WXR0081L', name: 'Burgundy', hex: '#4A1E2A' },
+  { code: 'KM2Y49352', name: 'Copper Penny', hex: '#C47F2A' },
 ];
 
 const BY_CODE: Record<string, ColorSwatch> = Object.fromEntries(
@@ -35,7 +37,14 @@ const BY_CODE: Record<string, ColorSwatch> = Object.fromEntries(
 );
 
 export function swatch(code: string): ColorSwatch {
-  return BY_CODE[code] ?? COLOR_SWATCHES[0];
+  if (BY_CODE[code]) return BY_CODE[code];
+  // Tolerate a raw hex (e.g. a color forwarded straight from the pricing
+  // program for a manufacturer palette we don't have a code for). Galvalume
+  // can't be detected from a bare hex, so it renders non-metallic — acceptable.
+  if (/^#[0-9a-fA-F]{3,8}$/.test(code)) {
+    return { code, name: code, hex: code };
+  }
+  return COLOR_SWATCHES[0];
 }
 
 export function swatchHex(code: string): string {

@@ -11,53 +11,46 @@ import { SteelMember } from './SteelMember';
 interface FrameProps {
   members: Member[];
   framingGauge: FramingGauge;
-  /** Trim color applied to exposed edge members (base rails + ridge). */
-  trimColor?: string;
-  /** Structure/cutaway view — paint all members light steel so they read. */
+  /** Structure/cutaway view — paint all members a touch brighter so they read. */
   emphasize?: boolean;
 }
 
-const FRAME_COLOR = '#cfd6dd';
-const HAT_COLOR = '#7c8794';
-const STRUCTURE_PRIMARY = '#d6dde4'; // light galvanized steel
-const STRUCTURE_SECONDARY = '#aab4bf'; // purlins/girts a touch darker for depth
+// Every framing member is bare galvalume steel — columns, rafters, ridge, base
+// rails, purlins, girts, hat channels, bracing all read as the same galvanized
+// silver (a touch brighter in structure/cutaway so the frame pops). The colored
+// EXTERIOR trim (eave/base/corner/ridge cap) is drawn separately in Trim.tsx.
+const GALVALUME = '#c4cace';
+const GALVALUME_EMPHASIZED = '#d6dde4';
 
 /**
  * Renders the full steel skeleton. Primary members (legs, rafters, ridge,
  * base rails) scale their cross-section with the active gauge; secondary
- * members (purlins, girts, hat channels) use fixed thinner profiles. In
- * finished exterior the edge members take the trim color; in structure mode
- * everything switches to light galvanized steel so the frame is legible.
+ * members (purlins, girts, hat channels) use fixed thinner profiles. All
+ * members are galvalume — the framing is bare galvanized steel.
  */
-export function Frame({ members, framingGauge, trimColor = '#aeb6bf', emphasize = false }: FrameProps) {
+export function Frame({ members, framingGauge, emphasize = false }: FrameProps) {
   const frameSize = FRAME_PROFILES[framingGauge].visualSizeFt;
-  const PRIMARY_COLOR = emphasize ? STRUCTURE_PRIMARY : FRAME_COLOR;
-  const SECONDARY_COLOR = emphasize ? STRUCTURE_SECONDARY : trimColor;
+  const color = emphasize ? GALVALUME_EMPHASIZED : GALVALUME;
 
   return (
     <group>
       {members.map((m, i) => {
         let size = frameSize;
-        let color = PRIMARY_COLOR;
 
         switch (m.kind) {
           case 'baseRail':
           case 'ridge':
             size = Math.max(RAIL_VISUAL_FT, frameSize * 0.85);
-            color = SECONDARY_COLOR;
             break;
           case 'purlin':
           case 'girt':
             size = PURLIN_VISUAL_FT;
-            color = SECONDARY_COLOR;
             break;
           case 'hatChannel':
             size = HAT_CHANNEL_VISUAL_FT;
-            color = HAT_COLOR;
             break;
           case 'brace':
             size = frameSize * 0.8; // a touch lighter than the leg/rafter
-            color = PRIMARY_COLOR;
             break;
           default:
             break; // legs + rafters use full gauge size

@@ -63,12 +63,7 @@ export function BuildingModel() {
 
   return (
     <group>
-      <Frame
-        members={structure.members}
-        framingGauge={config.framingGauge}
-        trimColor={trimHex}
-        emphasize={showFrameProminent}
-      />
+      <Frame members={structure.members} framingGauge={config.framingGauge} emphasize={showFrameProminent} />
       <ShellGroup opacity={SHELL_OPACITY[viewMode]}>
         <Siding
           structure={structure}

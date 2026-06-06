@@ -296,6 +296,12 @@ function syncFromBuilder(win: BuilderWindow) {
   const roof = rs === 'Vertical' ? 'Vertical' : 'Horizontal';
   if (rs && roof !== st.roofOrientation) st.setRoofOrientation(roof);
 
+  // Roof overhang: 6" standard, upgradeable to 12" via the program's "1' Overhang"
+  // option (overhang-sel: none/eaves/gables/both). Any non-none selection → 12".
+  const ohSel = val('overhang-sel');
+  const ohFt = ohSel && ohSel !== 'none' ? 1 : 0.5;
+  if (ohFt !== st.roofOverhangFt) st.setRoofOverhang(ohFt);
+
   if (bt === 'gch') {
     const enc = num('gch-enc');
     if (enc && enc !== st.enclosedLengthFt) st.setEnclosedLength(enc);

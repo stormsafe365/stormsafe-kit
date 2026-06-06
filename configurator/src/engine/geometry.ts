@@ -315,43 +315,73 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   const frontHoles = holesForWall('front');
   const backHoles = holesForWall('back');
 
-  // --- Frame loops (bents): legs + gable rafters at each Z ---
-  // Knee braces (U-shaped corner brace, leg → roof bow) sit at every bent on
-  // both eaves — a real structural member, so they show on every building.
+  // --- Frame bents: legs + gable rafters + knee braces + peak collar tie ---
+  // The roof member is the simple single rafter ("bow"). Leg style varies:
+  //   • DOUBLE post + double base rail  when W > 31 (or H 14/15)
+  //   • LADDER leg (two posts + rungs)  when H >= 16
+  const doublePost = W > 31 || H === 14 || H === 15;
+  const ladderLeg = H >= 16;
+  const LADDER_W = Math.min(0.9, Math.max(0.5, H * 0.05)); // ladder/double post spacing along the wall
+
   const braceLen = Math.min(3, H * 0.45);
   const tBrace = rafterLength > 0 ? Math.min(0.5, braceLen / rafterLength) : 0;
-  for (const z of framePositionsZ) {
-    members.push(member('leg', [-halfW, 0, z], [-halfW, H, z]));
-    members.push(member('leg', [halfW, 0, z], [halfW, H, z]));
+  const pbx = Math.min(3, halfW * 0.5); // peak collar tie half-span from the ridge
+  const pby = H + rise * (1 - pbx / halfW);
+
+  // Column(s) at eave side `sx`, plane `z`: single post, DOUBLE post (two posts
+  // a short distance apart along the wall), or LADDER leg (two posts + rungs).
+  const pushLeg = (sx: number, z: number) => {
+    if (ladderLeg) {
+      const z1 = z - LADDER_W / 2;
+      const z2 = z + LADDER_W / 2;
+      members.push(member('leg', [sx, 0, z1], [sx, H, z1]));
+      members.push(member('leg', [sx, 0, z2], [sx, H, z2]));
+      const rungs = Math.max(2, Math.round(H / 4)); // ~every 4'
+      for (let i = 0; i <= rungs; i++) {
+        const y = (H * i) / rungs;
+        members.push(member('brace', [sx, y, z1], [sx, y, z2])); // ladder rung
+      }
+    } else if (doublePost) {
+      members.push(member('leg', [sx, 0, z - LADDER_W / 2], [sx, H, z - LADDER_W / 2]));
+      members.push(member('leg', [sx, 0, z + LADDER_W / 2], [sx, H, z + LADDER_W / 2]));
+    } else {
+      members.push(member('leg', [sx, 0, z], [sx, H, z]));
+    }
+  };
+
+  // One bent: columns + two gable rafters + knee braces + a peak collar tie.
+  const pushBent = (z: number) => {
+    pushLeg(-halfW, z);
+    pushLeg(halfW, z);
     members.push(member('rafter', [-halfW, H, z], [0, peakHeight, z]));
     members.push(member('rafter', [halfW, H, z], [0, peakHeight, z]));
     for (const sx of [-halfW, halfW]) {
-      const legPt: Vec3 = [sx, H - braceLen, z]; // down the leg from the eave
-      const rafterPt: Vec3 = [sx * (1 - tBrace), H + rise * tBrace, z]; // up the rafter
-      members.push(member('brace', legPt, rafterPt));
+      members.push(member('brace', [sx, H - braceLen, z], [sx * (1 - tBrace), H + rise * tBrace, z]));
     }
-    // Peak brace (collar tie at the center of the roof) tying the two rafter
-    // slopes together just below the ridge.
-    const pbx = Math.min(3, halfW * 0.5); // half-span out from the ridge
-    const pby = H + rise * (1 - pbx / halfW); // rafter height at that x
     members.push(member('brace', [-pbx, pby, z], [pbx, pby, z]));
-  }
+  };
 
-  // --- Base rails ---
+  for (const z of framePositionsZ) pushBent(z);
+
+  // --- Base rails (DOUBLED when double trusses are required) ---
   // Eave (side) rails run the full length on both sides, CUT where a floor-level
   // door (sill ≈ 0) crosses them — a garage door has no rail across its threshold.
-  for (const [s, e] of subtractSpans(-halfL, halfL, gapsAtHeight(leftHoles, 0)))
-    members.push(member('baseRail', [-halfW, 0, s], [-halfW, 0, e]));
-  for (const [s, e] of subtractSpans(-halfL, halfL, gapsAtHeight(rightHoles, 0)))
-    members.push(member('baseRail', [halfW, 0, s], [halfW, 0, e]));
-  // A gable-end base rail only exists when that end is CLOSED. An open or
-  // gable-only end is a drive-through — no rail across the ground there.
-  if (enclosure.front === 'closed')
-    for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(frontHoles, 0)))
-      members.push(member('baseRail', [s, 0, -halfL], [e, 0, -halfL]));
-  if (enclosure.back === 'closed')
-    for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(backHoles, 0)))
-      members.push(member('baseRail', [s, 0, halfL], [e, 0, halfL]));
+  // `inset` adds a second rail just inboard when the build needs double base rails.
+  const railInsets = doublePost ? [0, 0.5] : [0];
+  for (const inset of railInsets) {
+    for (const [s, e] of subtractSpans(-halfL, halfL, gapsAtHeight(leftHoles, 0)))
+      members.push(member('baseRail', [-halfW + inset, 0, s], [-halfW + inset, 0, e]));
+    for (const [s, e] of subtractSpans(-halfL, halfL, gapsAtHeight(rightHoles, 0)))
+      members.push(member('baseRail', [halfW - inset, 0, s], [halfW - inset, 0, e]));
+    // A gable-end base rail only exists when that end is CLOSED. An open or
+    // gable-only end is a drive-through — no rail across the ground there.
+    if (enclosure.front === 'closed')
+      for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(frontHoles, 0)))
+        members.push(member('baseRail', [s, 0, -halfL + inset], [e, 0, -halfL + inset]));
+    if (enclosure.back === 'closed')
+      for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(backHoles, 0)))
+        members.push(member('baseRail', [s, 0, halfL - inset], [e, 0, halfL - inset]));
+  }
 
   // --- Ridge ---
   members.push(member('ridge', [0, peakHeight, -halfL], [0, peakHeight, halfL]));

@@ -59,6 +59,9 @@ export function stripsAround(width: number, height: number, holes: LocalRect[]):
 }
 
 const TILE = 3; // feet per texture tile (≈2 ribs/ft)
+// Vertical gap between the colored top roof skin and the galvalume underside —
+// just enough that each is nearest the camera from its own side (no z-fight).
+const ROOF_UNDER_GAP = 0.06;
 
 /**
  * Sheet-metal skin. Panels sit OUTSIDE the framing (SHEET_OUTSET) so steel
@@ -76,6 +79,9 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
   const tex = useMemo(
     () => ({
       roof: createCorrugatedTexture(swatchHex(colors.roof), roofDir),
+      // Underside of the roof is ALWAYS bare galvalume (unpainted panel back),
+      // regardless of the chosen top-side roof color.
+      underRoof: createCorrugatedTexture(swatchHex('GALVALUME'), roofDir),
       walls: createCorrugatedTexture(swatchHex(colors.walls), wallDir),
       wainscot: createCorrugatedTexture(swatchHex(colors.wainscot), wallDir),
     }),
@@ -91,10 +97,16 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
         ry: number,
         metallic: boolean,
         bumped = true,
+        ox = 0,
+        oy = 0,
       ): THREE.MeshStandardMaterial => {
         const map = base.map.clone();
         map.needsUpdate = true;
         map.repeat.set(rx, ry);
+        // World-anchored phase: offset ties the rib grid to world position so
+        // panels cut around an opening keep their ribs lined up with the strips
+        // beside them (RepeatWrapping handles the wrap).
+        map.offset.set(ox, oy);
         // WALLS use bumped=false: a bumpMap reacts to light direction, and on a
         // back-facing wall panel (e.g. the right eave) the tangent handedness
         // flips, so the relief catches the overhead light slightly differently
@@ -106,6 +118,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           bumpMap = base.bump.clone();
           bumpMap.needsUpdate = true;
           bumpMap.repeat.set(rx, ry);
+          bumpMap.offset.set(ox, oy);
         }
         // Powder-coated steel = painted DIELECTRIC, not bare mirror metal.
         // NOTE: no roughnessMap — a mid-gray map would halve roughness → gloss.
@@ -132,10 +145,23 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
   const wallMetal = isMetallic(colors.walls);
   const wainMetal = isMetallic(colors.wainscot);
 
-  const planeMat = (base: typeof tex.walls, w: number, h: number, dir: RibDirection, metallic: boolean, bumped = false) =>
+  // anchorU / anchorV = the WORLD coordinate of the panel's U=0 / V=0 edge
+  // (along-wall start / bottom). The texture phase is locked to that world grid
+  // so a strip above/below an opening lines its ribs up with the strips beside
+  // it. Repeat is the exact size/M (no clamp) so the tiling is truly world-scale.
+  const planeMat = (
+    base: typeof tex.walls,
+    w: number,
+    h: number,
+    dir: RibDirection,
+    metallic: boolean,
+    bumped = false,
+    anchorU = 0,
+    anchorV = 0,
+  ) =>
     dir === 'horizontal'
-      ? makeMat(base, 1, Math.max(1, h / M), metallic, bumped) // horizontal ribs only — no vertical grid
-      : makeMat(base, Math.max(1, w / M), 1, metallic, bumped); // vertical ribs only — no horizontal grid
+      ? makeMat(base, 1, h / M, metallic, bumped, 0, anchorV / M) // horizontal ribs — phase by world Y
+      : makeMat(base, w / M, 1, metallic, bumped, anchorU / M, 0); // vertical ribs — phase by world along-wall
   const shapeMat = (base: typeof tex.walls, _dir: RibDirection, metallic: boolean, bumped = false) =>
     makeMat(base, 1 / M, 1 / M, metallic, bumped); // gable UVs are in feet → one module per 3 ft
 
@@ -174,9 +200,14 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
 
   return (
     <group>
-      {/* Roof slopes — overhang on eaves + gable ends */}
+      {/* Roof slopes — overhang on eaves + gable ends. Each slope is a colored
+          TOP panel plus a bare-galvalume UNDER panel sitting a hair below it, so
+          the top reads the chosen color and the underside is always galvalume
+          (the offset means whichever face you view, the right panel is nearest).*/}
       <BasisPanel center={roofCL} uVec={[0, 0, 1]} vVec={[halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.roof, roofLen, roofH, roofDir, roofMetal, true)} />
       <BasisPanel center={roofCR} uVec={[0, 0, 1]} vVec={[-halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.roof, roofLen, roofH, roofDir, roofMetal, true)} />
+      <BasisPanel center={[roofCL[0], roofCL[1] - ROOF_UNDER_GAP, roofCL[2]]} uVec={[0, 0, 1]} vVec={[halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.underRoof, roofLen, roofH, roofDir, true, true)} />
+      <BasisPanel center={[roofCR[0], roofCR[1] - ROOF_UNDER_GAP, roofCR[2]]} uVec={[0, 0, 1]} vVec={[-halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.underRoof, roofLen, roofH, roofDir, true, true)} />
 
       {/* Side walls (cut around openings so frame-outs/doors are real holes) + wainscot */}
       {side &&
@@ -195,7 +226,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
               vVec={[0, 1, 0]}
               w={st.w}
               h={st.h}
-              material={planeMat(tex.walls, st.w, st.h, wallDir, wallMetal)}
+              material={planeMat(tex.walls, st.w, st.h, wallDir, wallMetal, false, sideMidZ + st.u - st.w / 2, H / 2 + st.v - st.h / 2)}
             />
           ));
         })}
@@ -220,7 +251,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
               vVec={[0, 1, 0]}
               w={st.w}
               h={st.h}
-              material={planeMat(tex.wainscot, st.w, st.h, wallDir, wainMetal)}
+              material={planeMat(tex.wainscot, st.w, st.h, wallDir, wainMetal, false, sideMidZ + st.u - st.w / 2, wH / 2 + st.v - st.h / 2)}
             />
           ));
         })}
@@ -251,7 +282,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
                 vVec={[0, 1, 0]}
                 w={st.w}
                 h={st.h}
-                material={planeMat(tex.walls, st.w, st.h, wallDir, wallMetal)}
+                material={planeMat(tex.walls, st.w, st.h, wallDir, wallMetal, false, midZ + st.u - st.w / 2, bh / 2 + st.v - st.h / 2)}
               />
             ));
           });
@@ -267,12 +298,12 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           peak={peakHeight}
           mode={enclosure.front}
           holes={gableHoles('front', H)}
-          wallStripMat={(w, h) => planeMat(tex.walls, w, h, wallDir, wallMetal)}
+          wallStripMat={(w, h, au, av) => planeMat(tex.walls, w, h, wallDir, wallMetal, false, au, av)}
           gableMat={shapeMat(tex.walls, wallDir, wallMetal)}
           wH={enclosure.front === 'closed' ? wH : 0}
           wainZ={-(halfL + wOut)}
           wainHoles={gableHoles('front', wH, true)}
-          wainStripMat={(w, h) => planeMat(tex.wainscot, w, h, wallDir, wainMetal)}
+          wainStripMat={(w, h, au, av) => planeMat(tex.wainscot, w, h, wallDir, wainMetal, false, au, av)}
         />
       )}
       {enclosure.back !== 'open' && (
@@ -283,12 +314,12 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           peak={peakHeight}
           mode={enclosure.back}
           holes={gableHoles('back', H)}
-          wallStripMat={(w, h) => planeMat(tex.walls, w, h, wallDir, wallMetal)}
+          wallStripMat={(w, h, au, av) => planeMat(tex.walls, w, h, wallDir, wallMetal, false, au, av)}
           gableMat={shapeMat(tex.walls, wallDir, wallMetal)}
           wH={enclosure.back === 'closed' ? wH : 0}
           wainZ={halfL + wOut}
           wainHoles={gableHoles('back', wH, true)}
-          wainStripMat={(w, h) => planeMat(tex.wainscot, w, h, wallDir, wainMetal)}
+          wainStripMat={(w, h, au, av) => planeMat(tex.wainscot, w, h, wallDir, wainMetal, false, au, av)}
         />
       )}
       {enclosure.partitionZ !== null && (
@@ -299,12 +330,12 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           peak={peakHeight}
           mode="closed"
           holes={gableHoles('partition', H)}
-          wallStripMat={(w, h) => planeMat(tex.walls, w, h, wallDir, wallMetal)}
+          wallStripMat={(w, h, au, av) => planeMat(tex.walls, w, h, wallDir, wallMetal, false, au, av)}
           gableMat={shapeMat(tex.walls, wallDir, wallMetal)}
           wH={0}
           wainZ={enclosure.partitionZ}
           wainHoles={[]}
-          wainStripMat={(w, h) => planeMat(tex.wainscot, w, h, wallDir, wainMetal)}
+          wainStripMat={(w, h, au, av) => planeMat(tex.wainscot, w, h, wallDir, wainMetal, false, au, av)}
         />
       )}
     </group>
@@ -332,13 +363,13 @@ function EndWall({
   mode: 'closed' | 'gableOnly' | 'open';
   /** Openings on this wall (centered local coords) to cut from the rect 0..H. */
   holes: LocalRect[];
-  /** Fresh material per cut strip (texture repeat depends on the strip size). */
-  wallStripMat: (w: number, h: number) => THREE.Material;
+  /** Fresh material per cut strip; (w, h, anchorU, anchorV) world-anchors ribs. */
+  wallStripMat: (w: number, h: number, anchorU: number, anchorV: number) => THREE.Material;
   gableMat: THREE.Material;
   wH: number;
   wainZ: number;
   wainHoles: LocalRect[];
-  wainStripMat: (w: number, h: number) => THREE.Material;
+  wainStripMat: (w: number, h: number, anchorU: number, anchorV: number) => THREE.Material;
 }) {
   if (mode === 'open') return null;
   return (
@@ -349,7 +380,13 @@ function EndWall({
         // sits in a void) instead of sheeting covering the opening.
         <>
           {stripsAround(W, H, holes).map((st, i) => (
-            <mesh key={`r-${i}`} position={[st.u, H / 2 + st.v, z]} material={wallStripMat(st.w, st.h)} castShadow receiveShadow>
+            <mesh
+              key={`r-${i}`}
+              position={[st.u, H / 2 + st.v, z]}
+              material={wallStripMat(st.w, st.h, st.u - st.w / 2, H / 2 + st.v - st.h / 2)}
+              castShadow
+              receiveShadow
+            >
               <planeGeometry args={[st.w, st.h]} />
             </mesh>
           ))}
@@ -359,7 +396,13 @@ function EndWall({
       <GableTriangle z={z} halfW={W / 2} H={H} peak={peak} material={gableMat} />
       {wH > 0 &&
         stripsAround(W, wH, wainHoles).map((st, i) => (
-          <mesh key={`w-${i}`} position={[st.u, wH / 2 + st.v, wainZ]} material={wainStripMat(st.w, st.h)} castShadow receiveShadow>
+          <mesh
+            key={`w-${i}`}
+            position={[st.u, wH / 2 + st.v, wainZ]}
+            material={wainStripMat(st.w, st.h, st.u - st.w / 2, wH / 2 + st.v - st.h / 2)}
+            castShadow
+            receiveShadow
+          >
             <planeGeometry args={[st.w, st.h]} />
           </mesh>
         ))}

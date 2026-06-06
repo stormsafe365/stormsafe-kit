@@ -142,7 +142,9 @@ function eaveFrameSpansHeight(
 }
 
 describe('columns + knee braces are cut out of an eave opening (walk-through)', () => {
-  const base = { ...DEFAULT_CONFIG, buildingType: 'garage' as const, width: 30, length: 50, legHeight: 14, openings: [] };
+  // legHeight 12 + width 30 → SINGLE trusses, so the cut logic is tested in
+  // isolation (double/ladder truss styles are covered in trussStyles.test.ts).
+  const base = { ...DEFAULT_CONFIG, buildingType: 'garage' as const, width: 30, length: 50, legHeight: 12, openings: [] };
 
   it('a wide tall door over a bent removes the column/brace inside it, keeps the rest', () => {
     // First find an INTERIOR bent Z (not an end bent).
@@ -157,16 +159,16 @@ describe('columns + knee braces are cut out of an eave opening (walk-through)', 
     // Sanity: bare frame DOES span that bent at mid-height on the left eave.
     expect(eaveFrameSpansHeight(bare.members, halfW, 'left', bentZ, 7)).toBe(true);
 
-    // Now a 16'×13' opening centered on that bent.
-    const door = opening({ type: 'rollUpDoor', side: 'left', offset, width: 16, height: 13 });
+    // Now a 16'×9' opening centered on that bent (wall is 12' tall).
+    const door = opening({ type: 'rollUpDoor', side: 'left', offset, width: 16, height: 9 });
     const s = deriveStructure(resolveBuilding({ ...base, openings: [door] }));
 
     // No column/brace inside the doorway (mid-height) on the LEFT eave at the bent.
-    expect(eaveFrameSpansHeight(s.members, halfW, 'left', bentZ, 7)).toBe(false);
+    expect(eaveFrameSpansHeight(s.members, halfW, 'left', bentZ, 5)).toBe(false);
     // The RIGHT eave (no opening) still has its frame at that bent.
-    expect(eaveFrameSpansHeight(s.members, halfW, 'right', bentZ, 7)).toBe(true);
-    // Above the 13' opening, a stub of framing remains (header zone ~13.5').
-    expect(eaveFrameSpansHeight(s.members, halfW, 'left', bentZ, 13.5)).toBe(true);
+    expect(eaveFrameSpansHeight(s.members, halfW, 'right', bentZ, 5)).toBe(true);
+    // Above the 9' opening, a stub of column remains (header zone ~10.5').
+    expect(eaveFrameSpansHeight(s.members, halfW, 'left', bentZ, 10.5)).toBe(true);
   });
 
   it('leaves an eave bent untouched when no opening reaches it', () => {

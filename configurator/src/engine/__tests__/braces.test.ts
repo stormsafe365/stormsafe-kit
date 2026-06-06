@@ -5,6 +5,7 @@ import { DEFAULT_CONFIG } from '@/config/constants';
 
 describe('frame braces', () => {
   it('adds 3 braces per bent: 2 knee (both eaves) + 1 peak collar tie', () => {
+    // 24×36×10 → single truss, so brace count is clean (frameCount × 3).
     const s = deriveStructure(resolveBuilding(DEFAULT_CONFIG));
     const braces = s.members.filter((m) => m.kind === 'brace');
     expect(braces.length).toBe(s.frameCount * 3);

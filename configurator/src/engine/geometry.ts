@@ -383,18 +383,40 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         members.push(member('baseRail', [s, 0, halfL - inset], [e, 0, halfL - inset]));
   }
 
-  // --- Ridge ---
-  members.push(member('ridge', [0, peakHeight, -halfL], [0, peakHeight, halfL]));
+  // --- Ridge (clipped at openings) ---
+  // Ridge is at peak height, so it's only affected by openings that extend to the peak
+  const ridgeGaps = (config.openings ?? [])
+    .filter(o => (o.side === 'left' || o.side === 'right') && (o.sillHeight ?? 0) + o.height >= peakHeight * 0.95)
+    .map(o => {
+      const center = -halfL + o.offset;
+      return [center - o.width / 2, center + o.width / 2] as [number, number];
+    });
+  for (const [s, e] of subtractSpans(-halfL, halfL, ridgeGaps)) {
+    members.push(member('ridge', [0, peakHeight, s], [0, peakHeight, e]));
+  }
 
-  // --- Roof purlins ---
+  // --- Roof purlins (clipped at openings) ---
   const runs = purlinRunsPerSlope(rafterLength);
   for (let i = 1; i < runs; i++) {
     const t = i / runs;
     const yL = H + rise * t;
     const xL = -halfW + halfW * t;
     const xR = halfW - halfW * t;
-    members.push(member('purlin', [xL, yL, -halfL], [xL, yL, halfL]));
-    members.push(member('purlin', [xR, yL, -halfL], [xR, yL, halfL]));
+
+    // Clip purlins at opening locations along the Z-axis (length)
+    // Openings on eave sides (left/right) create Z-axis gaps
+    const zGaps = (config.openings ?? [])
+      .filter(o => (o.side === 'left' || o.side === 'right') && yL >= (o.sillHeight ?? 0) && yL <= (o.sillHeight ?? 0) + o.height)
+      .map(o => {
+        const center = -halfL + o.offset;
+        return [center - o.width / 2, center + o.width / 2] as [number, number];
+      });
+
+    // Generate purlin segments
+    for (const [s, e] of subtractSpans(-halfL, halfL, zGaps)) {
+      members.push(member('purlin', [xL, yL, s], [xL, yL, e]));
+      members.push(member('purlin', [xR, yL, s], [xR, yL, e]));
+    }
   }
 
   // --- Wall girts: horizontal members the sheeting screws to, on every framed

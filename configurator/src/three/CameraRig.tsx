@@ -104,9 +104,19 @@ export function CameraRig() {
   // Auto-frame on size change: keep the current orbit DIRECTION but refit the
   // distance + recentre, so a resized building stays fully in frame.
   const prevKey = useRef('');
+  const initialized = useRef(false);
   useEffect(() => {
     const key = `${W}x${L}x${top.toFixed(2)}`;
-    if (prevKey.current && prevKey.current !== key && controls) {
+
+    // On first load, auto-frame with 'iso' preset
+    if (!initialized.current && controls) {
+      initialized.current = true;
+      const { pos, look } = computePreset('iso');
+      goalPos.current = pos;
+      goalLook.current = look;
+    }
+    // On size change, auto-frame with current orbit direction
+    else if (prevKey.current && prevKey.current !== key && controls) {
       const center = new THREE.Vector3(0, top * 0.45, 0);
       const dir = camera.position.clone().sub(controls.target).normalize();
       const d = fitDistance(Math.max(W, L), top) + Math.max(W, L) * 0.25;

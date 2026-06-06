@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>About StormSafe Steel — Built for the Southeast, Built to Last</title>
+<meta name="description" content="StormSafe Steel builds hurricane-rated steel buildings from West Palm Beach, FL. Custom-engineered for Southeast weather, American-sourced galvanized steel, warranty in writing.">
+<meta name="theme-color" content="#08121d">
+<link rel="canonical" href="https://www.stormsafesteel.com/about-us">
+<meta property="og:type" content="website">
+<meta property="og:title" content="About StormSafe Steel — Built for the Southeast">
+<meta property="og:description" content="Why we started StormSafe Steel, how we build, and the warranty we put in writing. West Palm Beach, FL.">
+<meta property="og:image" content="https://static.wixstatic.com/media/f8c53c_d3fa06901cd84546822d7acb5b84eb11~mv2.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://static.wixstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --teal:#09d6dc;--teal-dim:#07bcc1;--teal-glow:rgba(9,214,220,.10);
+  --dark:#08121d;--dark-2:#111827;--dark-3:#1a2436;--dark-4:#1f2d42;
+  --border:#1e2d42;--border-vis:#2a3d55;
+  --text:#e2e8f0;--sub:#94a3b8;--muted:#64748b;
+  --h:"Orbitron",system-ui,sans-serif;--b:"Inter",system-ui,sans-serif;
+  --ease-out-expo:cubic-bezier(.16,1,.3,1);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+  --ease-smooth:cubic-bezier(.4,0,.2,1);
+  --ease-out-quart:cubic-bezier(.25,1,.5,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:var(--dark);color:var(--text);font-family:var(--b);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;padding-bottom:72px}
+@media(min-width:768px){body{padding-bottom:0}}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit}
+
+/* ─── NAV ─── */
+nav.top{position:sticky;top:0;z-index:200;background:rgba(8,18,29,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border-vis);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:56px}
+@media(min-width:768px){nav.top{padding:0 32px;height:60px}}
+.nav-logo{font-family:var(--h);font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--text)}
+.nav-logo span{color:var(--teal)}
+@media(min-width:768px){.nav-logo{font-size:14px}}
+.nav-right{display:flex;align-items:center;gap:12px}
+.nav-phone{display:none;font-weight:600;font-size:13px;color:var(--teal)}
+@media(min-width:768px){.nav-phone{display:inline}}
+.nav-menu-btn{background:none;border:1px solid var(--border-vis);color:var(--text);width:38px;height:38px;font-size:18px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center}
+@media(min-width:900px){.nav-menu-btn{display:none}}
+.nav-links{display:none;align-items:center;gap:24px;font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+@media(min-width:900px){.nav-links{display:flex}}
+.nav-links a:hover{color:var(--teal)}
+.nav-links a.active{color:var(--teal)}
+.nav-cta{display:none;background:var(--teal);color:#08121d;font-family:var(--b);font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:9px 16px;transition:background .2s}
+.nav-cta:hover{background:var(--teal-dim)}
+@media(min-width:900px){.nav-cta{display:inline-block}}
+
+.mobile-menu{position:fixed;inset:56px 0 0 0;z-index:190;background:var(--dark);padding:8px 20px 28px;transform:translateX(100%);transition:transform .25s;display:flex;flex-direction:column;overflow-y:auto}
+.mobile-menu.open{transform:translateX(0)}
+.mobile-menu a{padding:18px 4px;border-bottom:1px solid var(--border-vis);font-family:var(--h);font-size:14px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+.mobile-menu a:hover{color:var(--teal)}
+.mobile-menu .mm-cta{background:var(--teal);color:#08121d;text-align:center;margin-top:20px;border:none}
+@media(min-width:900px){.mobile-menu{display:none}}
+
+/* ─── BUTTONS ─── */
+.btn-primary,.btn-secondary,.btn-ghost{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:var(--b);font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase;padding:16px 20px;cursor:pointer;border:none;transition:all .2s;min-height:54px}
+.btn-primary{background:var(--teal);color:#08121d}
+.btn-primary:hover{background:var(--teal-dim);transform:translateY(-1px)}
+.btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border-vis)}
+.btn-secondary:hover{border-color:var(--teal);color:var(--teal)}
+.btn-ghost{background:transparent;color:var(--sub);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--teal);color:var(--teal);background:var(--teal-glow)}
+.btn-arrow{font-size:16px;font-weight:400;transition:transform .2s;display:inline-block}
+.btn-primary:hover .btn-arrow{transform:translateX(3px)}
+
+/* ─── PHOTO-LED FULL-BLEED HERO ─── */
+.ahero{position:relative;min-height:clamp(380px,56vh,560px);display:flex;align-items:flex-end;overflow:hidden;border-bottom:2px solid var(--teal)}
+.ahero-bg{position:absolute;inset:0;z-index:0}
+.ahero-bg img{width:100%;height:100%;object-fit:cover;object-position:center 38%;transform:scale(1.06);will-change:transform}
+.ahero-bg::after{content:"";position:absolute;inset:0;background:
+  linear-gradient(180deg, rgba(8,18,29,.55) 0%, rgba(8,18,29,.30) 38%, rgba(8,18,29,.72) 78%, rgba(8,18,29,.96) 100%),
+  linear-gradient(90deg, rgba(8,18,29,.75) 0%, rgba(8,18,29,.25) 55%, transparent 100%)}
+.ahero-inner{position:relative;z-index:1;width:100%;max-width:1200px;margin:0 auto;padding:0 20px 56px}
+@media(min-width:768px){.ahero-inner{padding:0 32px 88px}}
+.ahero-kicker{display:inline-flex;align-items:center;gap:10px;font-family:var(--h);font-weight:600;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--teal);margin-bottom:22px}
+.ahero-kicker::before{content:"";width:30px;height:1px;background:var(--teal)}
+@media(min-width:768px){.ahero-kicker{font-size:11px;letter-spacing:.3em}}
+.ahero h1{font-family:var(--h);font-weight:900;font-size:clamp(34px,8.5vw,80px);line-height:.98;letter-spacing:.005em;text-transform:uppercase;max-width:14ch}
+.ahero h1 .teal{color:var(--teal)}
+.ahero .sub{margin-top:22px;font-size:clamp(15px,2.4vw,20px);color:var(--text);max-width:46ch;line-height:1.5;font-weight:300}
+.ahero .sub b{font-weight:600;color:var(--teal)}
+.ahero-scroll{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:2;color:var(--sub);font-family:var(--h);font-size:9px;letter-spacing:.24em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:6px;opacity:.7}
+.ahero-scroll .arr{font-size:14px;animation:bob 2.2s var(--ease-smooth) infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
+@media(max-width:560px){.ahero-scroll{display:none}}
+
+/* ─── SHARED SECTION SHELL ─── */
+.section-inner{max-width:1100px;margin:0 auto}
+.section-eyebrow{font-family:var(--h);font-weight:600;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--teal);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.section-eyebrow::before{content:"";width:24px;height:1px;background:var(--teal)}
+
+/* ─── ORIGIN MANIFESTO ─── */
+.origin{padding:64px 20px;background:linear-gradient(180deg,var(--dark) 0%,var(--dark-2) 100%);border-bottom:1px solid var(--border-vis)}
+@media(min-width:768px){.origin{padding:96px 32px}}
+.origin-grid{display:grid;grid-template-columns:1fr;gap:32px;max-width:1100px;margin:0 auto}
+@media(min-width:900px){.origin-grid{grid-template-columns:1.15fr .85fr;gap:56px;align-items:start}}
+.manifesto{font-family:var(--h);font-weight:800;font-size:clamp(24px,4.4vw,42px);line-height:1.12;letter-spacing:.01em;text-transform:uppercase}
+.manifesto .teal{color:var(--teal)}
+.manifesto .dim{color:var(--muted)}
+.origin-body{display:flex;flex-direction:column;gap:18px}
+.origin-body p{font-size:15.5px;color:var(--sub);line-height:1.7}
+.origin-body p b{color:var(--text);font-weight:600}
+.origin-sign{margin-top:6px;padding-top:18px;border-top:1px solid var(--border-vis);font-family:var(--h);font-weight:700;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--text)}
+.origin-sign span{color:var(--teal);display:block;font-size:10px;letter-spacing:.18em;margin-top:5px;font-weight:600}
+
+/* ─── INTERACTIVE 3-WAY COMPARE ─── */
+.compare{padding:64px 20px;background:var(--dark);border-bottom:1px solid var(--border-vis);position:relative;overflow:hidden}
+@media(min-width:768px){.compare{padding:96px 32px}}
+.compare::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(135deg,transparent,transparent 40px,rgba(9,214,220,.012) 40px,rgba(9,214,220,.012) 41px);pointer-events:none}
+.compare-head{max-width:1100px;margin:0 auto 14px;position:relative}
+.compare-head h2{font-family:var(--h);font-weight:800;font-size:clamp(24px,4.6vw,40px);text-transform:uppercase;letter-spacing:.015em;line-height:1.1;margin-bottom:14px}
+.compare-head h2 .teal{color:var(--teal)}
+.compare-head p{font-size:15px;color:var(--sub);max-width:64ch;line-height:1.6}
+.compare-wrap{max-width:1100px;margin:30px auto 0;position:relative}
+.compare-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:18px}
+@media(min-width:560px){.compare-tabs{gap:12px}}
+.ctab{background:var(--dark-3);border:1px solid var(--border-vis);color:var(--sub);font-family:var(--h);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;padding:16px 10px;cursor:pointer;transition:all .3s var(--ease-out-expo);text-align:center;line-height:1.25;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+@media(min-width:560px){.ctab{font-size:13px;padding:18px 14px}}
+.ctab small{display:block;font-family:var(--b);font-weight:500;font-size:9px;letter-spacing:.04em;color:var(--muted);text-transform:none}
+.ctab:hover{border-color:var(--border-vis);color:var(--text);transform:translateY(-1px)}
+.ctab.active{color:var(--text)}
+.ctab[data-tab="stormsafe"].active{background:var(--teal-glow);border-color:var(--teal);color:var(--teal)}
+.ctab[data-tab="stormsafe"].active small{color:var(--teal-dim)}
+.ctab:not([data-tab="stormsafe"]).active{border-color:var(--danger)}
+
+.compare-panel{background:var(--dark-2);border:1px solid var(--border-vis);transition:border-color .5s var(--ease-out-expo),box-shadow .5s var(--ease-out-expo)}
+.compare-panel.is-good{border-color:var(--teal);box-shadow:0 0 0 1px rgba(9,214,220,.25),0 24px 60px -28px rgba(9,214,220,.35)}
+.crow{display:grid;grid-template-columns:30px 1fr;gap:14px;align-items:start;padding:18px 18px;border-bottom:1px solid var(--border)}
+@media(min-width:768px){.crow{grid-template-columns:38px 1fr;gap:18px;padding:22px 26px}}
+.crow:last-child{border-bottom:none}
+.cmark{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .4s var(--ease-spring)}
+@media(min-width:768px){.cmark{width:38px;height:38px}}
+.cmark svg{width:16px;height:16px}
+@media(min-width:768px){.cmark svg{width:19px;height:19px}}
+.cmark.bad{background:rgba(248,113,113,.10);color:var(--danger);border:1px solid rgba(248,113,113,.35)}
+.cmark.good{background:var(--teal-glow);color:var(--teal);border:1px solid var(--teal)}
+.ctext{min-width:0}
+.ctitle{font-family:var(--h);font-weight:700;font-size:13.5px;letter-spacing:.02em;text-transform:uppercase;line-height:1.25;color:var(--text)}
+@media(min-width:768px){.ctitle{font-size:15px}}
+.cnote{font-size:13.5px;color:var(--sub);line-height:1.55;margin-top:6px}
+.cnote.good{color:var(--text)}
+.crow.swapping .cmark{transform:scale(.6);opacity:0}
+.crow.swapping .ctext{opacity:0;transform:translateY(4px)}
+.crow .cmark,.crow .ctext{transition:opacity .32s var(--ease-out-expo),transform .42s var(--ease-spring)}
+
+/* ─── PRINCIPLES (offset, dynamic) ─── */
+.principles{padding:64px 20px;background:var(--dark-2);border-bottom:1px solid var(--border-vis)}
+@media(min-width:768px){.principles{padding:96px 32px}}
+.prin-head{max-width:1100px;margin:0 auto 38px}
+.prin-head h2{font-family:var(--h);font-weight:800;font-size:clamp(24px,4.6vw,40px);text-transform:uppercase;letter-spacing:.015em;line-height:1.1;margin-bottom:14px}
+.prin-head p{font-size:15px;color:var(--sub);max-width:62ch;line-height:1.6}
+.prin-grid{display:grid;grid-template-columns:1fr;gap:16px;max-width:1100px;margin:0 auto}
+@media(min-width:768px){.prin-grid{grid-template-columns:repeat(2,1fr);gap:20px}}
+.prin-card{background:var(--dark-3);border:1px solid var(--border-vis);padding:28px 24px;position:relative;overflow:hidden;transition:transform .5s var(--ease-out-expo),border-color .35s var(--ease-out-expo),box-shadow .5s var(--ease-out-expo)}
+.prin-card:hover{transform:translateY(-4px);border-color:rgba(9,214,220,.4);box-shadow:0 18px 44px -22px rgba(0,0,0,.6)}
+@media(min-width:768px){.prin-card:nth-child(even){transform:translateY(22px)}.prin-card:nth-child(even):hover{transform:translateY(18px)}}
+.prin-num{font-family:var(--h);font-weight:900;font-size:13px;letter-spacing:.14em;color:var(--teal);margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.prin-num::after{content:"";flex:1;height:1px;background:var(--border-vis)}
+.prin-card h3{font-family:var(--h);font-weight:800;font-size:18px;text-transform:uppercase;letter-spacing:.02em;line-height:1.2;margin-bottom:12px}
+.prin-card p{font-size:14px;color:var(--sub);line-height:1.65}
+.prin-card p b{color:var(--text);font-weight:600}
+
+/* ─── PROCESS STRIP ─── */
+.process{padding:64px 20px;background:var(--dark);border-bottom:1px solid var(--border-vis)}
+@media(min-width:768px){.process{padding:96px 32px}}
+.process-head{max-width:1100px;margin:0 auto}
+.process-head h2{font-family:var(--h);font-weight:800;font-size:clamp(24px,4.6vw,40px);text-transform:uppercase;letter-spacing:.015em;line-height:1.1;margin-bottom:14px}
+.process-head p{font-size:15px;color:var(--sub);max-width:60ch;line-height:1.6}
+.process-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:1100px;margin:36px auto 0}
+@media(min-width:768px){.process-grid{grid-template-columns:repeat(4,1fr);gap:24px}}
+.proc-step{position:relative;padding-top:14px}
+.proc-step::before{content:"";position:absolute;top:0;left:0;width:34px;height:2px;background:var(--teal)}
+.proc-num{font-family:var(--h);font-weight:800;font-size:11px;letter-spacing:.16em;color:var(--teal);margin-bottom:12px}
+.proc-title{font-family:var(--h);font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.02em;margin-bottom:10px;line-height:1.2}
+.proc-desc{font-size:13.5px;color:var(--sub);line-height:1.6}
+
+/* ─── WARRANTY PANEL ─── */
+.warranty{padding:64px 20px;background:var(--dark-2)}
+@media(min-width:768px){.warranty{padding:96px 32px}}
+.war-inner{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:1fr;gap:30px}
+@media(min-width:900px){.war-inner{grid-template-columns:.85fr 1.15fr;gap:52px;align-items:start}}
+.war-intro h2{font-family:var(--h);font-weight:800;font-size:clamp(24px,4.4vw,38px);text-transform:uppercase;letter-spacing:.015em;line-height:1.1;margin-bottom:16px}
+.war-intro h2 .teal{color:var(--teal)}
+.war-intro p{font-size:15px;color:var(--sub);line-height:1.7;margin-bottom:14px}
+.war-intro p b{color:var(--text);font-weight:600}
+.war-fine{font-size:12px;color:var(--muted);line-height:1.6;margin-top:18px;padding-top:16px;border-top:1px solid var(--border-vis)}
+.war-panel{background:var(--dark-3);border:1px solid var(--teal);position:relative;overflow:hidden}
+.war-panel::after{content:"In Writing";position:absolute;top:0;right:0;background:var(--teal);color:#08121d;font-family:var(--h);font-weight:700;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:6px 12px}
+.war-list{list-style:none}
+.war-list li{padding:20px 24px 20px 56px;border-bottom:1px solid var(--border);position:relative}
+.war-list li:last-child{border-bottom:none}
+.war-list li::before{content:"";position:absolute;left:22px;top:22px;width:20px;height:20px;background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2309d6dc' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") center/contain no-repeat}
+.war-term{font-family:var(--h);font-weight:700;font-size:14px;letter-spacing:.02em;text-transform:uppercase;color:var(--text);line-height:1.25}
+.war-term b{color:var(--teal)}
+.war-detail{font-size:13px;color:var(--sub);line-height:1.55;margin-top:6px}
+
+/* ─── BIG CTA ─── */
+.bigcta{padding:72px 20px 88px;text-align:center;background:radial-gradient(circle at center,rgba(9,214,220,.08),transparent 60%),var(--dark);border-top:2px solid var(--teal);position:relative;overflow:hidden}
+.bigcta::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(45deg,transparent,transparent 48px,rgba(9,214,220,.018) 48px,rgba(9,214,220,.018) 49px);pointer-events:none}
+.bigcta-inner{position:relative;max-width:720px;margin:0 auto}
+.bigcta-eyebrow{font-family:var(--h);font-weight:600;font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--teal);margin-bottom:16px;display:inline-block}
+.bigcta h2{font-family:var(--h);font-weight:900;font-size:clamp(28px,5.5vw,52px);text-transform:uppercase;letter-spacing:.015em;line-height:1.04;margin-bottom:18px}
+.bigcta h2 .teal{color:var(--teal)}
+.bigcta p{font-size:16px;color:var(--sub);margin-bottom:32px;line-height:1.65;max-width:540px;margin-left:auto;margin-right:auto}
+.bigcta-ctas{display:flex;flex-direction:column;gap:10px;max-width:440px;margin:0 auto}
+@media(min-width:560px){.bigcta-ctas{flex-direction:row;justify-content:center}.bigcta-ctas .btn-primary,.bigcta-ctas .btn-secondary{flex:1}}
+
+/* ─── FOOTER ─── */
+footer{background:var(--dark-2);border-top:1px solid var(--border-vis);padding:40px 20px 28px;font-size:13px;color:var(--sub);text-align:center;line-height:1.7}
+footer p{margin-bottom:6px}
+footer a{color:var(--teal)}
+footer a:hover{color:var(--teal-dim)}
+
+/* ─── STICKY MOBILE CTA BAR ─── */
+.mob-cta{position:fixed;bottom:0;left:0;right:0;z-index:150;background:rgba(8,18,29,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--border-vis);display:grid;grid-template-columns:1fr 1.2fr;gap:1px;background-color:var(--border-vis);padding-bottom:env(safe-area-inset-bottom)}
+@media(min-width:768px){.mob-cta{display:none}}
+.mob-cta a{background:var(--dark);padding:12px 8px;text-align:center;font-family:var(--h);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--text);line-height:1.2;min-height:60px}
+.mob-cta a.primary{background:var(--teal);color:#08121d}
+.mob-cta-sub{font-size:9px;font-weight:500;opacity:.7;letter-spacing:.04em;text-transform:none;margin-top:1px}
+
+/* ─── EMIL-STYLE MOTION ─── */
+.reveal{opacity:0;transform:translateY(28px) scale(.99);filter:blur(5px);transition:opacity .9s var(--ease-out-expo),transform 1s var(--ease-out-expo),filter .9s var(--ease-out-expo);transition-delay:calc(var(--reveal-i,0) * 70ms);will-change:opacity,transform,filter}
+.reveal.in{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}
+.hero-anim{animation:heroIn .95s var(--ease-out-expo) both;will-change:opacity,transform,filter}
+.hero-anim[data-d="1"]{animation-delay:.10s}
+.hero-anim[data-d="2"]{animation-delay:.26s}
+.hero-anim[data-d="3"]{animation-delay:.44s}
+@keyframes heroIn{from{opacity:0;transform:translateY(24px);filter:blur(8px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+.hero-zoom{animation:heroZoom 9s var(--ease-smooth) both}
+@keyframes heroZoom{from{transform:scale(1.14)}to{transform:scale(1.04)}}
+.magnetic{display:inline-flex;transition:transform .35s var(--ease-spring),background .15s,color .15s;will-change:transform}
+@media(hover:none){.magnetic{transition:none}}
+.spotlight{position:relative;overflow:hidden}
+.spotlight::after{content:"";position:absolute;inset:0;background:radial-gradient(440px circle at var(--spot-x,-200px) var(--spot-y,-200px),rgba(9,214,220,.14) 0%,rgba(9,214,220,.05) 28%,transparent 55%);opacity:0;transition:opacity .5s var(--ease-out-expo);pointer-events:none;z-index:0}
+.spotlight:hover::after{opacity:1}
+.spotlight > *{position:relative;z-index:1}
+@media(hover:none){.spotlight::after{display:none}}
+.btn-primary:active,.btn-secondary:active,.btn-ghost:active,.nav-cta:active,.ctab:active{transform:translateY(1px) scale(.99);transition-duration:.08s}
+.btn-primary:focus-visible,.btn-secondary:focus-visible,.btn-ghost:focus-visible,.nav-cta:focus-visible,.ctab:focus-visible{outline:none;box-shadow:0 0 0 2px var(--teal),0 0 0 6px rgba(9,214,220,.18)}
+@media(prefers-reduced-motion:reduce){
+  .reveal{transition:none;transform:none;filter:none;opacity:1}
+  .hero-anim,.hero-zoom{animation:none}
+  .ahero-scroll .arr{animation:none}
+  .magnetic{transition:none}
+  .spotlight::after{display:none}
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <a href="https://www.stormsafesteel.com/" class="nav-logo">Storm<span>Safe</span> Steel</a>
+  <div class="nav-links">
+    <a href="https://www.stormsafesteel.com/buildings">Buildings</a>
+    <a href="https://www.stormsafesteel.com/customize">Customize</a>
+    <a href="https://www.stormsafesteel.com/why-steel">Why Steel</a>
+    <a href="https://www.stormsafesteel.com/about-us" class="active">About</a>
+    <a href="https://www.stormsafesteel.com/contact">Contact</a>
+  </div>
+  <div class="nav-right">
+    <a href="tel:5617715555" class="nav-phone">561-771-5555</a>
+    <a href="https://www.stormsafesteel.com/customize" class="nav-cta">Design Yours →</a>
+    <button class="nav-menu-btn" onclick="toggleMenu()" aria-label="Menu">☰</button>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mm">
+  <a href="https://www.stormsafesteel.com/" onclick="closeMenu()">Home</a>
+  <a href="https://www.stormsafesteel.com/buildings" onclick="closeMenu()">Buildings</a>
+  <a href="https://www.stormsafesteel.com/customize" onclick="closeMenu()">Customize</a>
+  <a href="https://www.stormsafesteel.com/hurricane-rated-steel-buildings" onclick="closeMenu()">Hurricane-Rated</a>
+  <a href="https://www.stormsafesteel.com/contact" onclick="closeMenu()">Custom Builds</a>
+  <a href="https://www.stormsafesteel.com/why-steel" onclick="closeMenu()">Why Steel</a>
+  <a href="https://www.stormsafesteel.com/about-us" onclick="closeMenu()">About</a>
+  <a href="https://www.stormsafesteel.com/blog" onclick="closeMenu()">Blog</a>
+  <a href="https://www.stormsafesteel.com/contact" onclick="closeMenu()">Contact</a>
+  <a href="tel:5617715555" class="mm-cta" onclick="closeMenu()">Call 561-771-5555</a>
+</div>
+
+<!-- ─── PHOTO-LED FULL-BLEED HERO ─── -->
+<section class="ahero">
+  <div class="ahero-bg">
+    <img class="hero-zoom" src="reference/buildings%20page/30x60x12-1.jpg" alt="A large galvanized steel building engineered and built by StormSafe Steel">
+  </div>
+  <div class="ahero-inner">
+    <div class="ahero-kicker hero-anim" data-d="1">StormSafe Steel · West Palm Beach, FL</div>
+    <h1 class="hero-anim" data-d="2">We Build Like The <span class="teal">Storm Is Coming.</span></h1>
+    <p class="sub hero-anim" data-d="3">Because in Florida, it is. Every structure we put up is engineered for the weather that actually shows up here &mdash; <b>not adapted from a northern spec sheet.</b></p>
+  </div>
+  <div class="ahero-scroll" aria-hidden="true"><span>Our Story</span><span class="arr">↓</span></div>
+</section>
+
+<!-- ─── ORIGIN MANIFESTO ─── -->
+<section class="origin">
+  <div class="origin-grid">
+    <div class="manifesto reveal">
+      Getting a steel building<br>
+      shouldn&rsquo;t feel like<br>
+      <span class="dim">a gamble.</span><br>
+      <span class="teal">So we stopped making it one.</span>
+    </div>
+    <div class="origin-body">
+      <p class="reveal">For years, people across the Southeast had two bad options. Go with a faceless national outfit &mdash; quoted by someone who&rsquo;d never seen your land and wouldn&rsquo;t answer the phone after the deposit cleared. Or roll the dice on a local contractor who overbooked, underdelivered, and left you managing a project you never wanted to manage.</p>
+      <p class="reveal"><b>Either way, you absorbed all the risk</b> on one of the biggest investments you&rsquo;d ever make. We were tired of watching it happen.</p>
+      <p class="reveal">So we built StormSafe Steel around one conviction: a barn, a garage, a warehouse &mdash; these are real decisions with real stakes, and they deserve better than a web form and a toll-free number. We&rsquo;ve been proving it ever since.</p>
+      <div class="origin-sign reveal">Built for the Southeast. Built to last.<span>StormSafe Steel · West Palm Beach, FL</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── INTERACTIVE 3-WAY COMPARE ─── -->
+<section class="compare">
+  <div class="compare-head">
+    <div class="section-eyebrow reveal">The Choice You Used To Have</div>
+    <h2 class="reveal">Three Ways To Buy A Steel Building.<br><span class="teal">Only One Has Your Back.</span></h2>
+    <p class="reveal">Tap through how the typical national company and local contractor stack up against the way we do it &mdash; same five questions every buyer should ask.</p>
+  </div>
+
+  <div class="compare-wrap reveal">
+    <div class="compare-tabs" role="tablist" aria-label="Compare building companies">
+      <button class="ctab" data-tab="national" role="tab" aria-selected="false">National Outfit<small>The catalog giant</small></button>
+      <button class="ctab" data-tab="local" role="tab" aria-selected="false">Local Contractor<small>The one-truck crew</small></button>
+      <button class="ctab active" data-tab="stormsafe" role="tab" aria-selected="true">StormSafe<small>Built for here</small></button>
+    </div>
+    <div class="compare-panel is-good" id="comparePanel" role="tabpanel"></div>
+  </div>
+</section>
+
+<!-- ─── PRINCIPLES ─── -->
+<section class="principles">
+  <div class="prin-head">
+    <div class="section-eyebrow reveal">What We Stand For</div>
+    <h2 class="reveal">No Boxes Off A Shelf.<br>Buildings Engineered For You.</h2>
+    <p class="reveal">We don&rsquo;t hand you whatever&rsquo;s fastest for us to produce. Every build starts with your situation and ends with a structure that earns your trust the day it goes up.</p>
+  </div>
+  <div class="prin-grid">
+    <div class="prin-card spotlight reveal">
+      <div class="prin-num">01</div>
+      <h3>Listen Before We Quote</h3>
+      <p>Every project starts with a real conversation &mdash; not a form and a quote engine. We ask about <b>your land, your county&rsquo;s code, and what the building actually has to do.</b></p>
+    </div>
+    <div class="prin-card spotlight reveal">
+      <div class="prin-num">02</div>
+      <h3>Design Around You</h3>
+      <p>We engineer around your situation, not our catalog. <b>Custom-designed for what you need it to do</b> &mdash; not what&rsquo;s easiest for us to fabricate.</p>
+    </div>
+    <div class="prin-card spotlight reveal">
+      <div class="prin-num">03</div>
+      <h3>Built For This Climate</h3>
+      <p>Hurricane-force winds, brutal humidity, summer heat that warps lesser materials. Our <b>American-sourced galvanized steel is engineered for the Southeast</b> from the start.</p>
+    </div>
+    <div class="prin-card spotlight reveal">
+      <div class="prin-num">04</div>
+      <h3>Honest, Even When It Costs Us</h3>
+      <p>We&rsquo;ll tell you what you need &mdash; <b>even when that&rsquo;s not the most expensive thing on the list.</b> Transparent pricing, clear timelines, no surprises after the deposit.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── PROCESS ─── -->
+<section class="process">
+  <div class="process-head">
+    <div class="section-eyebrow reveal">How A Build Goes</div>
+    <h2 class="reveal">From First Call To Final Walkthrough.</h2>
+    <p class="reveal">We operate like the partner you actually wanted &mdash; the kind who shows up, communicates clearly, and doesn&rsquo;t disappear the moment a check is written.</p>
+  </div>
+  <div class="process-grid">
+    <div class="proc-step reveal">
+      <div class="proc-num">STEP 01</div>
+      <div class="proc-title">Listen</div>
+      <p class="proc-desc">We learn your site, your use, and your county&rsquo;s wind requirements before a single number gets quoted.</p>
+    </div>
+    <div class="proc-step reveal">
+      <div class="proc-num">STEP 02</div>
+      <div class="proc-title">Design</div>
+      <p class="proc-desc">A custom build engineered around your needs &mdash; with a free 3D rendering so you see it before you sign.</p>
+    </div>
+    <div class="proc-step reveal">
+      <div class="proc-num">STEP 03</div>
+      <div class="proc-title">Fabricate</div>
+      <p class="proc-desc">American-sourced galvanized steel, cut and built to Florida code. Fast, and built right.</p>
+    </div>
+    <div class="proc-step reveal">
+      <div class="proc-num">STEP 04</div>
+      <div class="proc-title">Stand Behind It</div>
+      <p class="proc-desc">We don&rsquo;t vanish at the final walkthrough. When you have a question later, we answer.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── WARRANTY ─── -->
+<section class="warranty">
+  <div class="war-inner">
+    <div class="war-intro">
+      <div class="section-eyebrow reveal">The Warranty</div>
+      <h2 class="reveal">Confidence Should Be <span class="teal">Contractual.</span></h2>
+      <p class="reveal">Anyone can say their building will hold. We put it in writing. Here&rsquo;s exactly what&rsquo;s covered on every StormSafe structure &mdash; no asterisks buried in the fine print.</p>
+      <p class="reveal"><b>When the storms roll in, your building doesn&rsquo;t blink.</b> That&rsquo;s not a tagline. It&rsquo;s the standard we build to, every single time.</p>
+      <p class="war-fine reveal">Warranties are limited and non-transferable, and assume normal care &mdash; the structure cleaned as needed with mild soap and water. Full warranty terms are provided with every build.</p>
+    </div>
+    <div class="war-panel reveal">
+      <ul class="war-list">
+        <li>
+          <div class="war-term"><b>20-Year</b> Rust-Through Warranty</div>
+          <div class="war-detail">On 14-gauge and 12-gauge framing and regular, boxed-eave, and vertical roof panels.</div>
+        </li>
+        <li>
+          <div class="war-term"><b>Limited Lifetime</b> Wind-Load Warranty</div>
+          <div class="war-detail">On certified units, against wind-load damage &mdash; rated up to 170 mph (3-second gust).</div>
+        </li>
+        <li>
+          <div class="war-term"><b>1-Year</b> Workmanship Warranty</div>
+          <div class="war-detail">Covering the installation from the date your building goes up.</div>
+        </li>
+        <li>
+          <div class="war-term"><b>American-Sourced</b> Galvanized Steel</div>
+          <div class="war-detail">Engineered for Southeast wind, humidity, and heat &mdash; not adapted from a northern spec.</div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ─── BIG CTA ─── -->
+<section class="bigcta">
+  <div class="bigcta-inner">
+    <span class="bigcta-eyebrow reveal">Built For The Southeast</span>
+    <h2 class="reveal">Your Building <span class="teal">Doesn&rsquo;t Blink.</span></h2>
+    <p class="reveal">Design yours in about 60 seconds and get a free 3D rendering &mdash; or call and talk to a real person in West Palm Beach.</p>
+    <div class="bigcta-ctas reveal">
+      <a href="https://www.stormsafesteel.com/customize" class="btn-primary magnetic">Design Your Build <span class="btn-arrow">→</span></a>
+      <a href="tel:5617715555" class="btn-secondary">Call 561-771-5555</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p><strong style="color:var(--text);font-family:var(--h);letter-spacing:.04em">Storm<span style="color:var(--teal)">Safe</span> Steel</strong> · West Palm Beach, FL · <a href="tel:5617715555">561-771-5555</a></p>
+  <p><a href="https://www.stormsafesteel.com/buildings">Buildings</a> · <a href="https://www.stormsafesteel.com/customize">Customize</a> · <a href="https://www.stormsafesteel.com/why-steel">Why Steel</a> · <a href="https://www.stormsafesteel.com/about-us">About</a> · <a href="https://www.stormsafesteel.com/contact">Contact</a></p>
+  <p style="font-size:11px;color:var(--muted);margin-top:14px">© <span id="yr"></span> StormSafe Steel. All rights reserved.</p>
+</footer>
+
+<!-- MOBILE STICKY CTA -->
+<div class="mob-cta">
+  <a href="tel:5617715555">
+    <span>📞 Call</span>
+    <span class="mob-cta-sub">561-771-5555</span>
+  </a>
+  <a href="https://www.stormsafesteel.com/customize" class="primary">
+    <span>⚡ Design Yours</span>
+    <span class="mob-cta-sub">60 seconds · no email</span>
+  </a>
+</div>
+
+<script>
+function toggleMenu(){document.getElementById('mm').classList.toggle('open');document.body.style.overflow=document.getElementById('mm').classList.contains('open')?'hidden':''}
+function closeMenu(){document.getElementById('mm').classList.remove('open');document.body.style.overflow=''}
+document.getElementById('yr').textContent=new Date().getFullYear();
+
+/* ─── INTERACTIVE 3-WAY COMPARE ─── */
+(function(){
+  var ICON_BAD = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>";
+  var ICON_GOOD = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>";
+
+  var criteria = [
+    {
+      title: "Knows your land & your county",
+      national: {ok:false, note:"Quoted by someone who has never seen your site, your soil, or your local wind code."},
+      local:    {ok:false, note:"Knows the area — but overbooked and stretched too thin to sweat the details."},
+      stormsafe:{ok:true,  note:"A local crew that designs around your county’s code and the pad it sits on."}
+    },
+    {
+      title: "Sticks around after the deposit",
+      national: {ok:false, note:"Good luck getting a callback once the check clears."},
+      local:    {ok:false, note:"Often disappears mid-project, leaving you to manage it yourself."},
+      stormsafe:{ok:true,  note:"The same point of contact from the first call to the final walkthrough — and after."}
+    },
+    {
+      title: "Engineered for Southeast weather",
+      national: {ok:false, note:"A northern spec sheet, adapted at best — not built for hurricane country."},
+      local:    {ok:false, note:"Quality varies wildly depending on who shows up that week."},
+      stormsafe:{ok:true,  note:"Galvanized steel engineered here for winds up to 170 mph, humidity, and heat."}
+    },
+    {
+      title: "Custom-built around your needs",
+      national: {ok:false, note:"A cookie-cutter structure pulled straight from the catalog."},
+      local:    {ok:false, note:"Whatever’s fastest to throw up — not what fits your situation."},
+      stormsafe:{ok:true,  note:"Designed around what your building has to do — not our inventory."}
+    },
+    {
+      title: "Honest about what you actually need",
+      national: {ok:false, note:"Steered toward the biggest package on the menu."},
+      local:    {ok:false, note:"Quoted low, then change-ordered higher once you’re committed."},
+      stormsafe:{ok:true,  note:"We tell you what you need — even when it’s not the priciest option."}
+    }
+  ];
+
+  var panel = document.getElementById('comparePanel');
+  var tabs  = document.querySelectorAll('.ctab');
+  var current = 'stormsafe';
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function build(){
+    panel.innerHTML = criteria.map(function(c){
+      var d = c[current];
+      return "<div class='crow'>"
+        + "<div class='cmark "+(d.ok?'good':'bad')+"'>"+(d.ok?ICON_GOOD:ICON_BAD)+"</div>"
+        + "<div class='ctext'><div class='ctitle'>"+c.title+"</div>"
+        + "<div class='cnote "+(d.ok?'good':'')+"'>"+d.note+"</div></div>"
+        + "</div>";
+    }).join('');
+  }
+
+  function render(tab){
+    current = tab;
+    panel.classList.toggle('is-good', tab === 'stormsafe');
+    tabs.forEach(function(t){
+      var on = t.dataset.tab === tab;
+      t.classList.toggle('active', on);
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    if(reduce){ build(); return; }
+    var rows = panel.querySelectorAll('.crow');
+    if(!rows.length){ build(); return; }
+    rows.forEach(function(r){ r.classList.add('swapping'); });
+    setTimeout(function(){
+      build();
+      var newRows = panel.querySelectorAll('.crow');
+      newRows.forEach(function(r,i){
+        r.classList.add('swapping');
+        requestAnimationFrame(function(){
+          setTimeout(function(){ r.classList.remove('swapping'); }, i*55);
+        });
+      });
+    }, 200);
+  }
+
+  tabs.forEach(function(t){
+    t.addEventListener('click', function(){ if(t.dataset.tab !== current) render(t.dataset.tab); });
+  });
+  build();
+})();
+
+/* ─── REVEAL ON SCROLL (auto-stagger siblings) ─── */
+(function(){
+  if(!('IntersectionObserver' in window)){
+    document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('in');});
+    return;
+  }
+  var groups = new Map();
+  document.querySelectorAll('.reveal').forEach(function(el){
+    if(el.hasAttribute('data-delay')) return;
+    var parent = el.parentElement;
+    if(!parent) return;
+    var i = groups.get(parent) || 0;
+    if(i > 0) el.style.setProperty('--reveal-i', Math.min(i, 8));
+    groups.set(parent, i + 1);
+  });
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  },{threshold:.12, rootMargin:'0px 0px -60px 0px'});
+  document.querySelectorAll('.reveal').forEach(function(el){io.observe(el);});
+})();
+
+/* ─── MAGNETIC BUTTONS ─── */
+(function(){
+  var els = document.querySelectorAll('.magnetic');
+  if(!els.length || window.matchMedia('(hover: none)').matches) return;
+  els.forEach(function(el){
+    var rect = null;
+    el.addEventListener('mouseenter', function(){ rect = el.getBoundingClientRect(); });
+    el.addEventListener('mousemove', function(e){
+      if(!rect) rect = el.getBoundingClientRect();
+      var x = (e.clientX - rect.left - rect.width/2) * .22;
+      var y = (e.clientY - rect.top - rect.height/2) * .22;
+      el.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+    });
+    el.addEventListener('mouseleave', function(){ el.style.transform = ''; rect = null; });
+  });
+})();
+
+/* ─── SPOTLIGHT ─── */
+(function(){
+  var els = document.querySelectorAll('.spotlight');
+  if(!els.length || window.matchMedia('(hover: none)').matches) return;
+  els.forEach(function(el){
+    el.addEventListener('mousemove', function(e){
+      var r = el.getBoundingClientRect();
+      el.style.setProperty('--spot-x', (e.clientX - r.left) + 'px');
+      el.style.setProperty('--spot-y', (e.clientY - r.top) + 'px');
+    });
+  });
+})();
+</script>
+</body>
+</html>

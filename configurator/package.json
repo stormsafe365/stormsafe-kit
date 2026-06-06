@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Parametric 3D configurator for StormSafe Steel tube-frame buildings (carports & garages).",
-  "main": "electron/main.js",
+  "main": "electron/main.cjs",
   "homepage": "./",
   "scripts": {
     "dev": "vite",

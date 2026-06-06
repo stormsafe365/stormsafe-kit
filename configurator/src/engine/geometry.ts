@@ -568,19 +568,11 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         // Add simple rafter (roof support) from inner post top to outer post top
         members.push(member('rafter', [xInner!, connH, z], [xOuter!, lh, z]));
 
-        // Add corner/knee braces (X-pattern diagonal bracing at the rafter-post joint)
-        // Create crossing diagonals for triangular/diamond bracing pattern
-        const mid3_X = xInner! + (xOuter! - xInner!) * (1/3);
-        const mid2_3_X = xInner! + (xOuter! - xInner!) * (2/3);
-        const mid3_Y = connH + (lh - connH) * (1/3);
-        const mid2_3_Y = connH + (lh - connH) * (2/3);
-
-        // X-pattern: diagonal from inner top going down-outward, diagonal from outer going up-inward
-        members.push(member('brace', [xInner!, connH, z], [mid2_3_X, mid3_Y, z])); // inner top to outer-side lower
-        members.push(member('brace', [xOuter!, lh, z], [mid3_X, mid2_3_Y, z])); // outer bottom to inner-side upper
-
-        // Additional cross-bracing for tighter X pattern
-        members.push(member('brace', [xInner!, connH - (connH - lh) * 0.2, z], [xOuter!, lh + (connH - lh) * 0.2, z])); // tight cross diagonal
+        // Add corner/knee braces (diagonal bracing at the rafter-post joint)
+        const rafterMidX = (xInner! + xOuter!) / 2;
+        const rafterMidY = (connH + lh) / 2;
+        members.push(member('brace', [xInner!, connH, z], [rafterMidX, rafterMidY, z])); // inner post to rafter mid
+        members.push(member('brace', [xOuter!, lh, z], [rafterMidX, rafterMidY, z])); // outer post to rafter mid
 
         // Connect to adjacent trusses with LONGITUDINAL base rails (along the length)
         if (i > 0) {
@@ -624,19 +616,11 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         // Add simple rafter (roof support) from inner post top to outer post top
         members.push(member('rafter', [x, connH, zInner!], [x, lh, zOuter!]));
 
-        // Add corner/knee braces (X-pattern diagonal bracing at the rafter-post joint)
-        // Create crossing diagonals for triangular/diamond bracing pattern
-        const mid3_Z = zInner! + (zOuter! - zInner!) * (1/3);
-        const mid2_3_Z = zInner! + (zOuter! - zInner!) * (2/3);
-        const mid3_Y = connH + (lh - connH) * (1/3);
-        const mid2_3_Y = connH + (lh - connH) * (2/3);
-
-        // X-pattern: diagonal from inner top going down-outward, diagonal from outer going up-inward
-        members.push(member('brace', [x, connH, zInner!], [x, mid3_Y, mid2_3_Z])); // inner top to outer-side lower
-        members.push(member('brace', [x, lh, zOuter!], [x, mid2_3_Y, mid3_Z])); // outer bottom to inner-side upper
-
-        // Additional cross-bracing for tighter X pattern
-        members.push(member('brace', [x, connH - (connH - lh) * 0.2, zInner!], [x, lh + (connH - lh) * 0.2, zOuter!])); // tight cross diagonal
+        // Add corner/knee braces (diagonal bracing at the rafter-post joint)
+        const rafterMidY = (connH + lh) / 2;
+        const rafterMidZ = (zInner! + zOuter!) / 2;
+        members.push(member('brace', [x, connH, zInner!], [x, rafterMidY, rafterMidZ])); // inner post to rafter mid
+        members.push(member('brace', [x, lh, zOuter!], [x, rafterMidY, rafterMidZ])); // outer post to rafter mid
 
         // Connect to adjacent trusses with LONGITUDINAL base rails (left to right)
         if (i > 0) {

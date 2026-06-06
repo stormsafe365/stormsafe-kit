@@ -565,6 +565,9 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         members.push(member('leg', [xInner!, 0, z], [xInner!, connH, z])); // inner post (high, at wall)
         members.push(member('leg', [xOuter!, 0, z], [xOuter!, lh, z])); // outer post (low, away from building)
 
+        // Add simple rafter (roof support) from inner post top to outer post top
+        members.push(member('rafter', [xInner!, connH, z], [xOuter!, lh, z]));
+
         // Connect to adjacent trusses with LONGITUDINAL base rails (along the length)
         if (i > 0) {
           const zPrev = uniqueZ[i - 1];
@@ -589,6 +592,9 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         // ONLY vertical posts at this truss location
         members.push(member('leg', [x, 0, zInner!], [x, connH, zInner!])); // inner post (high, at wall)
         members.push(member('leg', [x, 0, zOuter!], [x, lh, zOuter!])); // outer post (low, away from building)
+
+        // Add simple rafter (roof support) from inner post top to outer post top
+        members.push(member('rafter', [x, connH, zInner!], [x, lh, zOuter!]));
 
         // Connect to adjacent trusses with LONGITUDINAL base rails (left to right)
         if (i > 0) {

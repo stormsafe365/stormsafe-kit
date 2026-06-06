@@ -211,6 +211,7 @@ type BuilderWindow = Window & {
   __ssViewHooked?: boolean;
   __ssOpenSig?: string;
   __ssOpenMap?: Record<string, { entry: Element; itemIndex: number; side: WallSide; width: number }>;
+  __ssLeanToSig?: string;
 };
 
 /**
@@ -259,6 +260,83 @@ function writeBackDrag(win: BuilderWindow, id: string | null) {
     wrote = true;
   }
   if (wrote && typeof win.rc === 'function') win.rc();
+}
+
+/**
+ * Read the program's lean-to entries and sync them to the 3D store.
+ * Lean-to entries have class `.lte` and contain:
+ *   - `.lt-type` = type (attached/freestanding)
+ *   - `.lt-side` = attached side (Left Eave, Right Eave, Front Gable, Back Gable)
+ *   - `.ltw` = width (ft)
+ *   - `.ltl2` = length (ft)
+ *   - `.lth` = low leg height (ft, for attached)
+ *   - `.lt-tall-h` = tall leg height (ft, for attached slope)
+ *   - `.ltp` = roof pitch (e.g., "2:12", "3:12")
+ *   - `.lt-enc` = enclosure (open/enclosed/custom)
+ */
+function readLeanTos(win: Window & { document: Document }): Array<{
+  type: 'attached' | 'freestanding';
+  attachedSide?: 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable';
+  widthFt: number;
+  lengthFt: number;
+  lowLegHeightFt: number;
+  tallLegHeightFt?: number;
+  roofPitch: string;
+  enclosure: 'open' | 'enclosed' | 'custom';
+}> {
+  const out: Array<{
+    type: 'attached' | 'freestanding';
+    attachedSide?: 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable';
+    widthFt: number;
+    lengthFt: number;
+    lowLegHeightFt: number;
+    tallLegHeightFt?: number;
+    roofPitch: string;
+    enclosure: 'open' | 'enclosed' | 'custom';
+  }> = [];
+
+  const strVal = (el: Element, sel: string) => {
+    const e = el.querySelector(sel) as HTMLInputElement | null;
+    return e ? String(e.value || '') : '';
+  };
+  const numVal = (el: Element, sel: string, d = 0) => {
+    const e = el.querySelector(sel) as HTMLInputElement | null;
+    const n = e ? parseFloat(e.value) : NaN;
+    return Number.isFinite(n) ? n : d;
+  };
+
+  win.document.querySelectorAll('.lte').forEach((el) => {
+    const typeStr = strVal(el, '.lt-type');
+    const type = (typeStr === 'freestanding' ? 'freestanding' : 'attached') as 'attached' | 'freestanding';
+
+    const widthFt = numVal(el, '.ltw');
+    const lengthFt = numVal(el, '.ltl2');
+    const lowHeightFt = numVal(el, '.lth', 8);
+    const tallHeightFt = numVal(el, '.lt-tall-h', 10);
+    const roofPitchStr = strVal(el, '.ltp') || '2:12';
+    const enclosureStr = strVal(el, '.lt-enc') || 'open';
+    const enclosure = (['open', 'enclosed', 'custom'].includes(enclosureStr) ? enclosureStr : 'open') as 'open' | 'enclosed' | 'custom';
+
+    // Only add if it has dimensions
+    if (!widthFt || !lengthFt) return;
+
+    const sideStr = strVal(el, '.lts') || 'Left Eave'; // .lts = Attached Side selector
+    const validSides = ['Left Eave', 'Right Eave', 'Front Gable', 'Back Gable'];
+    const attachedSide = (validSides.includes(sideStr) ? sideStr : 'Left Eave') as 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable';
+
+    out.push({
+      type,
+      attachedSide: type === 'attached' ? attachedSide : undefined,
+      widthFt,
+      lengthFt,
+      lowLegHeightFt: lowHeightFt,
+      tallLegHeightFt: type === 'attached' ? tallHeightFt : undefined,
+      roofPitch: roofPitchStr,
+      enclosure,
+    });
+  });
+
+  return out;
 }
 
 /** Read the program's current building config and push it into the 3D store. */
@@ -382,6 +460,31 @@ function syncFromBuilder(win: BuilderWindow) {
       map[id] = { entry: d.entry, itemIndex: d.itemIndex, side: d.side, width: d.width };
     }
     win.__ssOpenMap = map;
+  }
+
+  // ── Lean-tos → 3D model ──
+  // Read lean-to entries from the pricing program and sync to the store.
+  const desiredLeanTos = readLeanTos(win);
+  const leanToSig = JSON.stringify(desiredLeanTos);
+  if (leanToSig !== win.__ssLeanToSig) {
+    win.__ssLeanToSig = leanToSig;
+    const cur = useBuildingStore.getState();
+    // Remove all existing lean-tos
+    cur.leanTos.slice().forEach((lt) => cur.removeLeanTo(lt.id));
+    // Add lean-tos from the program
+    for (const lt of desiredLeanTos) {
+      const id = cur.addLeanTo();
+      cur.updateLeanTo(id, {
+        type: lt.type,
+        attachedSide: lt.attachedSide,
+        widthFt: lt.widthFt,
+        lengthFt: lt.lengthFt,
+        lowLegHeightFt: lt.lowLegHeightFt,
+        tallLegHeightFt: lt.tallLegHeightFt,
+        roofPitch: lt.roofPitch,
+        enclosure: lt.enclosure,
+      });
+    }
   }
 }
 

@@ -514,6 +514,115 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     },
   };
 
+  // --- Lean-tos: SHED ROOF with intermediate trusses at building-matched spacing ---
+  // Key: lean-to truss spacing = main building truss spacing (4' or 5' OC)
+  // Trusses at each position: 2 posts (inner@connH, outer@lh) + rafters + ridge purlins
+  for (const lt of config.leanTos ?? []) {
+    if (!lt.widthFt || !lt.lengthFt || !lt.lowLegHeightFt) continue;
+
+    const lw = lt.widthFt;
+    const ll = lt.lengthFt;
+    const lh = lt.lowLegHeightFt;
+
+    const [riseStr, runStr] = (lt.roofPitch || '2:12').split(':');
+    const pitchNum = parseFloat(riseStr) || 2;
+    const runNum = parseFloat(runStr) || 12;
+    const rise = (lw * pitchNum) / runNum;
+    const connH = Math.min(H, lh + rise);
+
+    if (lt.type !== 'attached') continue;
+    const side = lt.attachedSide || 'Left Eave';
+
+    // Filter main building truss positions that fall within the lean-to span
+    const ltPositions = framePositionsZ.filter((z) => {
+      if (side === 'Left Eave' || side === 'Right Eave') {
+        return z >= -halfL && z <= Math.min(-halfL + ll, halfL);
+      } else {
+        // Front/Back: use X positions from -W/2 to W/2
+        return true;
+      }
+    });
+
+    const xInner = side === 'Left Eave' ? -halfW : side === 'Right Eave' ? halfW : null;
+    const xOuter = side === 'Left Eave' ? -halfW - lw : side === 'Right Eave' ? halfW + lw : null;
+
+    const zInner = side === 'Front Gable' ? -halfL : side === 'Back Gable' ? halfL : null;
+    const zOuter = side === 'Front Gable' ? -halfL - lw : side === 'Back Gable' ? halfL + lw : null;
+
+    // ===== EAVE-ATTACHED (Left or Right) =====
+    if (side === 'Left Eave' || side === 'Right Eave') {
+      // Ensure we have front and back trusses, plus intermediates
+      const zFront = -halfL;
+      const zBack = Math.min(-halfL + ll, halfL);
+      const allZ = [zFront, ...ltPositions.filter(z => z > zFront && z < zBack), zBack];
+      const uniqueZ = Array.from(new Set(allZ)).sort((a, b) => a - b);
+
+      // Create truss frames at each position (front + intermediates + back)
+      for (let i = 0; i < uniqueZ.length; i++) {
+        const z = uniqueZ[i];
+
+        // Posts at this truss location
+        members.push(member('leg', [xInner!, 0, z], [xInner!, connH, z])); // inner post
+        members.push(member('leg', [xOuter!, 0, z], [xOuter!, lh, z])); // outer post
+
+        // Connect to adjacent trusses with horizontal beams (like girts/purlins on the roof)
+        if (i > 0) {
+          const zPrev = ltPositions[i - 1];
+          // Base rail between trusses
+          members.push(member('baseRail', [xInner!, 0, zPrev], [xInner!, 0, z]));
+          members.push(member('baseRail', [xOuter!, 0, zPrev], [xOuter!, 0, z]));
+
+          // Roof rafter between trusses (from inner to outer at this truss)
+          members.push(member('rafter', [xInner!, connH, z], [xOuter!, lh, z]));
+
+          // Roof purlin mid-slope connecting the trusses
+          const xMid = xInner! + (xOuter! - xInner!) * 0.5;
+          const yMid = connH + (lh - connH) * 0.5;
+          members.push(member('purlin', [xMid, yMid, zPrev], [xMid, yMid, z]));
+        }
+      }
+
+      // If only one truss position, add front end members
+      if (ltPositions.length === 1) {
+        const z = ltPositions[0];
+        const xMid = xInner! + (xOuter! - xInner!) * 0.5;
+        const yMid = connH + (lh - connH) * 0.5;
+        members.push(member('rafter', [xInner!, connH, z], [xOuter!, lh, z]));
+        members.push(member('purlin', [xMid, yMid, z], [xMid, yMid, z]));
+      }
+    }
+    // ===== GABLE-ATTACHED (Front or Back) =====
+    else if (side === 'Front Gable' || side === 'Back Gable') {
+      // Ensure we have left and right trusses, plus intermediates
+      const xLeft = -halfW;
+      const xRight = halfW;
+      const allX = [xLeft, ...framePositionsZ.filter(x => x > xLeft && x < xRight), xRight];
+      const uniqueX = Array.from(new Set(allX)).sort((a, b) => a - b);
+
+      for (let i = 0; i < uniqueX.length; i++) {
+        const x = uniqueX[i];
+
+        // Posts at this truss location
+        members.push(member('leg', [x, 0, zInner!], [x, connH, zInner!])); // inner post
+        members.push(member('leg', [x, 0, zOuter!], [x, lh, zOuter!])); // outer post
+
+        // Connect to adjacent trusses
+        if (i > 0) {
+          const xPrev = xPos[i - 1];
+          if (xPrev >= -halfW && xPrev <= halfW) {
+            members.push(member('baseRail', [xPrev, 0, zInner!], [x, 0, zInner!]));
+            members.push(member('baseRail', [xPrev, 0, zOuter!], [x, 0, zOuter!]));
+            members.push(member('rafter', [x, connH, zInner!], [x, lh, zOuter!]));
+
+            const zMid = zInner! + (zOuter! - zInner!) * 0.5;
+            const yMid = connH + (lh - connH) * 0.5;
+            members.push(member('purlin', [xPrev, yMid, zMid], [x, yMid, zMid]));
+          }
+        }
+      }
+    }
+  }
+
   return {
     width: W,
     length: L,

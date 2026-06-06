@@ -574,15 +574,6 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         }
       }
 
-      // Add cross-bracing at front and back (only at the ends, not at every truss)
-      if (uniqueZ.length > 0) {
-        const zFront = uniqueZ[0];
-        const zBack = uniqueZ[uniqueZ.length - 1];
-        // Cross-members only at the ends
-        members.push(member('baseRail', [xInner!, 0, zFront], [xOuter!, 0, zFront])); // front
-        members.push(member('baseRail', [xInner!, 0, zBack], [xOuter!, 0, zBack])); // back
-      }
-
     }
     // ===== GABLE-ATTACHED (Front or Back) =====
     else if (side === 'Front Gable' || side === 'Back Gable') {
@@ -606,15 +597,6 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
           members.push(member('baseRail', [xPrev, 0, zInner!], [x, 0, zInner!])); // at inner wall
           members.push(member('baseRail', [xPrev, 0, zOuter!], [x, 0, zOuter!])); // at outer edge
         }
-      }
-
-      // Add cross-bracing at left and right ends (only at the ends, not at every truss)
-      if (uniqueX.length > 0) {
-        const xLeft = uniqueX[0];
-        const xRight = uniqueX[uniqueX.length - 1];
-        // Cross-members only at the ends
-        members.push(member('baseRail', [xLeft, 0, zInner!], [xLeft, 0, zOuter!])); // left
-        members.push(member('baseRail', [xRight, 0, zInner!], [xRight, 0, zOuter!])); // right
       }
     }
   }

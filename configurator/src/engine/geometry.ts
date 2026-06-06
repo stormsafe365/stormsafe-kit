@@ -561,25 +561,26 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       for (let i = 0; i < uniqueZ.length; i++) {
         const z = uniqueZ[i];
 
-        // Posts at this truss location
-        members.push(member('leg', [xInner!, 0, z], [xInner!, connH, z])); // inner post
-        members.push(member('leg', [xOuter!, 0, z], [xOuter!, lh, z])); // outer post
+        // ONLY vertical posts at this truss location
+        members.push(member('leg', [xInner!, 0, z], [xInner!, connH, z])); // inner post (high, at wall)
+        members.push(member('leg', [xOuter!, 0, z], [xOuter!, lh, z])); // outer post (low, away from building)
 
-        // Connect to adjacent trusses with horizontal beams (like girts/purlins on the roof)
+        // Connect to adjacent trusses with LONGITUDINAL base rails (along the length)
         if (i > 0) {
-          const zPrev = ltPositions[i - 1];
-          // Base rail between trusses
-          members.push(member('baseRail', [xInner!, 0, zPrev], [xInner!, 0, z]));
-          members.push(member('baseRail', [xOuter!, 0, zPrev], [xOuter!, 0, z]));
-
-          // Roof rafter between trusses (from inner to outer at this truss)
-          members.push(member('rafter', [xInner!, connH, z], [xOuter!, lh, z]));
-
-          // Roof purlin mid-slope connecting the trusses
-          const xMid = xInner! + (xOuter! - xInner!) * 0.5;
-          const yMid = connH + (lh - connH) * 0.5;
-          members.push(member('purlin', [xMid, yMid, zPrev], [xMid, yMid, z]));
+          const zPrev = uniqueZ[i - 1];
+          // Base rails running front-to-back at ground level
+          members.push(member('baseRail', [xInner!, 0, zPrev], [xInner!, 0, z])); // at inner wall
+          members.push(member('baseRail', [xOuter!, 0, zPrev], [xOuter!, 0, z])); // at outer edge
         }
+      }
+
+      // Add cross-bracing at front and back (only at the ends, not at every truss)
+      if (uniqueZ.length > 0) {
+        const zFront = uniqueZ[0];
+        const zBack = uniqueZ[uniqueZ.length - 1];
+        // Cross-members only at the ends
+        members.push(member('baseRail', [xInner!, 0, zFront], [xOuter!, 0, zFront])); // front
+        members.push(member('baseRail', [xInner!, 0, zBack], [xOuter!, 0, zBack])); // back
       }
 
       // If only one truss position, add front end members
@@ -602,23 +603,26 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       for (let i = 0; i < uniqueX.length; i++) {
         const x = uniqueX[i];
 
-        // Posts at this truss location
-        members.push(member('leg', [x, 0, zInner!], [x, connH, zInner!])); // inner post
-        members.push(member('leg', [x, 0, zOuter!], [x, lh, zOuter!])); // outer post
+        // ONLY vertical posts at this truss location
+        members.push(member('leg', [x, 0, zInner!], [x, connH, zInner!])); // inner post (high, at wall)
+        members.push(member('leg', [x, 0, zOuter!], [x, lh, zOuter!])); // outer post (low, away from building)
 
-        // Connect to adjacent trusses
+        // Connect to adjacent trusses with LONGITUDINAL base rails (left to right)
         if (i > 0) {
-          const xPrev = xPos[i - 1];
-          if (xPrev >= -halfW && xPrev <= halfW) {
-            members.push(member('baseRail', [xPrev, 0, zInner!], [x, 0, zInner!]));
-            members.push(member('baseRail', [xPrev, 0, zOuter!], [x, 0, zOuter!]));
-            members.push(member('rafter', [x, connH, zInner!], [x, lh, zOuter!]));
-
-            const zMid = zInner! + (zOuter! - zInner!) * 0.5;
-            const yMid = connH + (lh - connH) * 0.5;
-            members.push(member('purlin', [xPrev, yMid, zMid], [x, yMid, zMid]));
-          }
+          const xPrev = uniqueX[i - 1];
+          // Base rails running left-to-right at ground level
+          members.push(member('baseRail', [xPrev, 0, zInner!], [x, 0, zInner!])); // at inner wall
+          members.push(member('baseRail', [xPrev, 0, zOuter!], [x, 0, zOuter!])); // at outer edge
         }
+      }
+
+      // Add cross-bracing at left and right ends (only at the ends, not at every truss)
+      if (uniqueX.length > 0) {
+        const xLeft = uniqueX[0];
+        const xRight = uniqueX[uniqueX.length - 1];
+        // Cross-members only at the ends
+        members.push(member('baseRail', [xLeft, 0, zInner!], [xLeft, 0, zOuter!])); // left
+        members.push(member('baseRail', [xRight, 0, zInner!], [xRight, 0, zOuter!])); // right
       }
     }
   }

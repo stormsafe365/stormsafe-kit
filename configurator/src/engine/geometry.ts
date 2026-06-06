@@ -568,12 +568,32 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         // Add simple rafter (roof support) from inner post top to outer post top
         members.push(member('rafter', [xInner!, connH, z], [xOuter!, lh, z]));
 
+        // Add corner/knee braces (diagonal bracing at the rafter-post joint)
+        const rafterMidX = (xInner! + xOuter!) / 2;
+        const rafterMidY = (connH + lh) / 2;
+        members.push(member('brace', [xInner!, connH, z], [rafterMidX, rafterMidY, z])); // inner post to rafter mid
+        members.push(member('brace', [xOuter!, lh, z], [rafterMidX, rafterMidY, z])); // outer post to rafter mid
+
         // Connect to adjacent trusses with LONGITUDINAL base rails (along the length)
         if (i > 0) {
           const zPrev = uniqueZ[i - 1];
           // Base rails running front-to-back at ground level
           members.push(member('baseRail', [xInner!, 0, zPrev], [xInner!, 0, z])); // at inner wall
           members.push(member('baseRail', [xOuter!, 0, zPrev], [xOuter!, 0, z])); // at outer edge
+        }
+      }
+
+      // Add purlins (horizontal roof support members) along the roof slope
+      // Purlins run the full length front-to-back at intermediate heights
+      if (uniqueZ.length > 1) {
+        const zFront = uniqueZ[0];
+        const zBack = uniqueZ[uniqueZ.length - 1];
+        // Add 2 purlin lines at 1/3 and 2/3 heights up the slope
+        for (let p = 1; p <= 2; p++) {
+          const t = p / 3; // 1/3 or 2/3 along the slope
+          const purlinX = xInner! + (xOuter! - xInner!) * t;
+          const purlinY = connH + (lh - connH) * t;
+          members.push(member('purlin', [purlinX, purlinY, zFront], [purlinX, purlinY, zBack]));
         }
       }
 
@@ -596,12 +616,32 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         // Add simple rafter (roof support) from inner post top to outer post top
         members.push(member('rafter', [x, connH, zInner!], [x, lh, zOuter!]));
 
+        // Add corner/knee braces (diagonal bracing at the rafter-post joint)
+        const rafterMidY = (connH + lh) / 2;
+        const rafterMidZ = (zInner! + zOuter!) / 2;
+        members.push(member('brace', [x, connH, zInner!], [x, rafterMidY, rafterMidZ])); // inner post to rafter mid
+        members.push(member('brace', [x, lh, zOuter!], [x, rafterMidY, rafterMidZ])); // outer post to rafter mid
+
         // Connect to adjacent trusses with LONGITUDINAL base rails (left to right)
         if (i > 0) {
           const xPrev = uniqueX[i - 1];
           // Base rails running left-to-right at ground level
           members.push(member('baseRail', [xPrev, 0, zInner!], [x, 0, zInner!])); // at inner wall
           members.push(member('baseRail', [xPrev, 0, zOuter!], [x, 0, zOuter!])); // at outer edge
+        }
+      }
+
+      // Add purlins (horizontal roof support members) along the roof slope
+      // Purlins run the full width left-to-right at intermediate heights
+      if (uniqueX.length > 1) {
+        const xLeft = uniqueX[0];
+        const xRight = uniqueX[uniqueX.length - 1];
+        // Add 2 purlin lines at 1/3 and 2/3 heights up the slope
+        for (let p = 1; p <= 2; p++) {
+          const t = p / 3; // 1/3 or 2/3 along the slope
+          const purlinY = connH + (lh - connH) * t;
+          const purlinZ = zInner! + (zOuter! - zInner!) * t;
+          members.push(member('purlin', [xLeft, purlinY, purlinZ], [xRight, purlinY, purlinZ]));
         }
       }
     }

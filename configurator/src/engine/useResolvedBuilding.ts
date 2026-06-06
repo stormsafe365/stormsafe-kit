@@ -54,6 +54,7 @@ function selectConfig(s: ReturnType<typeof useBuildingStore.getState>): Building
     windSpeedMph: s.windSpeedMph,
     exposureCategory: s.exposureCategory,
     groundSnowPsf: s.groundSnowPsf,
+    leanTos: s.leanTos,
     openings: s.openings,
   };
 }

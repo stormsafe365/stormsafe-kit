@@ -4,6 +4,7 @@ import type {
   BuildingType,
   ExposureCategory,
   FramingGauge,
+  LeanTo,
   Opening,
   OpeningType,
   OpenEnd,
@@ -58,11 +59,18 @@ export interface BuildingStore extends BuildingConfig {
   /** Evenly space all openings on `wall` across `spanFt`. */
   distributeOpenings: (wall: WallSide, spanFt: number) => void;
 
+  addLeanTo: () => string;
+  updateLeanTo: (id: string, patch: Partial<LeanTo>) => void;
+  removeLeanTo: (id: string) => void;
+
   reset: () => void;
 }
 
 let openingSeq = 100;
 const nextId = (type: OpeningType) => `${type}-${++openingSeq}`;
+
+let leanToSeq = 0;
+const nextLeanToId = () => `lean-to-${++leanToSeq}`;
 
 export const useBuildingStore = create<BuildingStore>((set) => ({
   ...DEFAULT_CONFIG,
@@ -176,6 +184,26 @@ export const useBuildingStore = create<BuildingStore>((set) => ({
         ),
       };
     }),
+
+  addLeanTo: () => {
+    const id = nextLeanToId();
+    const newLeanTo: LeanTo = {
+      id,
+      type: 'attached',
+      attachedSide: 'Left Eave',
+      widthFt: 12,
+      lengthFt: 30,
+      lowLegHeightFt: 8,
+      tallLegHeightFt: 10,
+      roofPitch: '2:12',
+      enclosure: 'open',
+    };
+    set((s) => ({ leanTos: [...s.leanTos, newLeanTo] }));
+    return id;
+  },
+  updateLeanTo: (id, patch) =>
+    set((s) => ({ leanTos: s.leanTos.map((lt) => (lt.id === id ? { ...lt, ...patch } : lt)) })),
+  removeLeanTo: (id) => set((s) => ({ leanTos: s.leanTos.filter((lt) => lt.id !== id) })),
 
   reset: () => set(() => ({ ...DEFAULT_CONFIG })),
 }));

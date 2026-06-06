@@ -60,6 +60,7 @@ export const DEFAULT_CONFIG: BuildingConfig = {
   windSpeedMph: 150,
   exposureCategory: 'C',
   groundSnowPsf: 0,
+  leanTos: [],
   openings: [
     { id: 'gd-1', type: 'garageDoor', side: 'front', offset: 12, width: 9, height: 8, sillHeight: 0 },
     { id: 'wd-1', type: 'walkDoor', side: 'left', offset: 10, width: 3, height: 6.7, sillHeight: 0 },

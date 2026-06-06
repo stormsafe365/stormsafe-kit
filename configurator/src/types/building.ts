@@ -39,6 +39,30 @@ export type WallPreset = 'open' | 'enclosed' | 'custom';
 /** Enclosed "Storage" section of a utility carport, and where it sits. */
 export type StorageMode = 'none' | 'end' | 'endBack' | 'left' | 'right';
 
+/** Single-slope shed roof attached to or free-standing from the main building. */
+export type LeanToType = 'attached' | 'freestanding';
+export type LeanToSide = 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable';
+export type LeanToEnclosure = 'open' | 'enclosed' | 'custom';
+
+export interface LeanTo {
+  id: string;
+  type: LeanToType;
+  /** Which side of the main building (only when type === 'attached'). */
+  attachedSide?: LeanToSide;
+  /** Width of the lean-to (ft) — the depth when attached to eave, width when attached to gable. */
+  widthFt: number;
+  /** Length of the lean-to (ft) — runs along the attachment wall. */
+  lengthFt: number;
+  /** Height of the low post (ft) — the short side. */
+  lowLegHeightFt: number;
+  /** Height of the tall post (ft) — the high side (only for sloped roofs). */
+  tallLegHeightFt?: number;
+  /** Roof pitch rise:run, e.g. "2:12" or "3:12". */
+  roofPitch: string;
+  /** Enclosure preset: open (roof only) / enclosed (walls) / custom (per-wall). */
+  enclosure: LeanToEnclosure;
+}
+
 /** The full wall/enclosure model (mirrors Sensei's Walls panel). */
 export interface WallsConfig {
   preset: WallPreset;
@@ -132,6 +156,9 @@ export interface BuildingConfig {
    * `deriveEnclosure` reads this to build the geometry.
    */
   walls: WallsConfig;
+
+  // --- Lean-tos (single-slope sheds) ---
+  leanTos: LeanTo[];
 
   // --- Engineering loads (drive the rule engine) ---
   /** Design wind speed (mph). StormSafe standard envelope is 170+. */

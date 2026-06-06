@@ -583,14 +583,6 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         members.push(member('baseRail', [xInner!, 0, zBack], [xOuter!, 0, zBack])); // back
       }
 
-      // If only one truss position, add front end members
-      if (ltPositions.length === 1) {
-        const z = ltPositions[0];
-        const xMid = xInner! + (xOuter! - xInner!) * 0.5;
-        const yMid = connH + (lh - connH) * 0.5;
-        members.push(member('rafter', [xInner!, connH, z], [xOuter!, lh, z]));
-        members.push(member('purlin', [xMid, yMid, z], [xMid, yMid, z]));
-      }
     }
     // ===== GABLE-ATTACHED (Front or Back) =====
     else if (side === 'Front Gable' || side === 'Back Gable') {

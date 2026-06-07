@@ -5,6 +5,7 @@ import { swatchHex } from '@/config/colors';
 import { useEditorStore, type ViewMode } from '@/store/useEditorStore';
 import { Frame } from './Frame';
 import { Siding } from './Siding';
+import { LeanToSiding } from './LeanToSiding';
 import { Openings } from './Openings';
 import { Trim } from './Trim';
 
@@ -68,6 +69,13 @@ export function BuildingModel() {
         <Siding
           structure={structure}
           openings={config.openings}
+          wallOrientation={config.panelOrientation}
+          roofOrientation={config.roofOrientation}
+          colors={config.colors}
+          wainscot={config.wainscot}
+        />
+        <LeanToSiding
+          leanTos={structure.leanTos}
           wallOrientation={config.panelOrientation}
           roofOrientation={config.roofOrientation}
           colors={config.colors}

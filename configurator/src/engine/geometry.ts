@@ -61,6 +61,23 @@ export interface WallLayout {
   trussLines: TrussLine[];
 }
 
+/** Lean-to paneling information, derived for 3D rendering. */
+export interface LeanToStructure {
+  id: string;
+  enclosure: 'open' | 'enclosed';
+  attachedSide: string; // 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable'
+  widthFt: number;
+  lengthFt: number;
+  lowLegHeightFt: number;
+  peakHeightFt: number;
+  rise: number;
+  // World bounds (corner points)
+  inner: { x: number; z: number };
+  outer: { x: number; z: number };
+  spanStart: number;
+  spanEnd: number;
+}
+
 export interface StructureModel {
   width: number;
   length: number;
@@ -79,6 +96,8 @@ export interface StructureModel {
   eavePanelFt: { left: number; right: number };
   walls: Record<WallSide, WallLayout>;
   areas: { roof: number; walls: number };
+  /** Lean-to panel data for 3D rendering (derived from config.leanTos). */
+  leanTos: LeanToStructure[];
 }
 
 const dist = (a: Vec3, b: Vec3): number => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -517,6 +536,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   // --- Lean-tos: SHED ROOF with intermediate trusses at building-matched spacing ---
   // Key: lean-to truss spacing = main building truss spacing (4' or 5' OC)
   // Trusses at each position: 2 posts (inner@connH, outer@lh) + rafters + ridge purlins
+  const derivedLeanTos: LeanToStructure[] = [];
   for (const lt of config.leanTos ?? []) {
     if (!lt.widthFt || !lt.lengthFt || !lt.lowLegHeightFt) continue;
 
@@ -529,6 +549,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     const runNum = parseFloat(runStr) || 12;
     const rise = (lw * pitchNum) / runNum;
     const connH = Math.min(H, lh + rise);
+    const peakH = lh + rise;
 
     if (lt.type !== 'attached') continue;
     const side = lt.attachedSide || 'Left Eave';
@@ -655,6 +676,47 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         }
       }
     }
+
+    // ===== DERIVE LEAN-TO PANEL DATA (for 3D rendering) =====
+    const enclosure = (lt.enclosure ?? 'open') as 'open' | 'enclosed';
+
+    if (side === 'Left Eave' || side === 'Right Eave') {
+      // Eave-attached: use Z range
+      const zFront = -halfL;
+      const zBack = Math.min(-halfL + ll, halfL);
+      derivedLeanTos.push({
+        id: lt.id,
+        enclosure,
+        attachedSide: side,
+        widthFt: lw,
+        lengthFt: Math.abs(zBack - zFront),
+        lowLegHeightFt: lh,
+        peakHeightFt: peakH,
+        rise,
+        inner: { x: xInner!, z: zFront },
+        outer: { x: xOuter!, z: zFront },
+        spanStart: zFront,
+        spanEnd: zBack,
+      });
+    } else {
+      // Gable-attached: use X range
+      const xLeft = -halfW;
+      const xRight = halfW;
+      derivedLeanTos.push({
+        id: lt.id,
+        enclosure,
+        attachedSide: side,
+        widthFt: lw,
+        lengthFt: xRight - xLeft,
+        lowLegHeightFt: lh,
+        peakHeightFt: peakH,
+        rise,
+        inner: { x: xLeft, z: zInner! },
+        outer: { x: xLeft, z: zOuter! },
+        spanStart: xLeft,
+        spanEnd: xRight,
+      });
+    }
   }
 
   // ===== ADD LEAN-TO CORNER BRACES (safe, separate section) =====
@@ -731,6 +793,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     eavePanelFt: { left: eavePanelFt.left, right: eavePanelFt.right },
     walls,
     areas: { roof: 2 * rafterLength * L, walls: sideWallArea + endWallArea },
+    leanTos: derivedLeanTos,
   };
 }
 

@@ -291,6 +291,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
   roofPitch: string;
   enclosure: 'open' | 'enclosed' | 'custom';
   customWalls?: { front: string; back: string; side: string };
+  openings?: Array<{ type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number }>;
 }> {
   const out: Array<{
     type: 'attached' | 'freestanding';
@@ -302,6 +303,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     roofPitch: string;
     enclosure: 'open' | 'enclosed' | 'custom';
     customWalls?: { front: string; back: string; side: string };
+    openings?: Array<{ type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number }>;
   }> = [];
 
   const strVal = (el: Element, sel: string) => {
@@ -339,6 +341,41 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     const customSide = strVal(el, '.lt-wall-side') || 'open';
     const customWalls = enclosure === 'custom' ? { front: customFront, back: customBack, side: customSide } : undefined;
 
+    // ── Lean-to accessories (doors / windows / roll-ups) → openings ──
+    // Each `.lt-acc-e` entry: type + size + which wall + position + quantity.
+    const ltOpenings: Array<{ type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number }> = [];
+    el.querySelectorAll('.lt-acc-e').forEach((ae) => {
+      const t = strVal(ae, '.lt-acc-type');
+      const oType = t === 'wtd' ? 'walkDoor' : t === 'win' ? 'window' : 'rollUpDoor';
+      const locStr = strVal(ae, '.lt-acc-loc');
+      const wall = ['outer', 'front', 'back'].includes(locStr) ? locStr : 'outer';
+      const qty = Math.max(1, Math.min(3, parseInt(strVal(ae, '.lt-acc-qty'), 10) || 1));
+      const pos = strVal(ae, '.lt-acc-pos') || 'auto';
+      let w = 9, h = 8, sill = 0;
+      if (oType === 'rollUpDoor') {
+        const sz = (strVal(ae, '.lt-acc-size') || '9x8').toLowerCase().split('x');
+        w = parseFloat(sz[0]) || 9;
+        h = parseFloat(sz[1]) || 8;
+      } else if (oType === 'walkDoor') {
+        w = 3; h = 6.67; sill = 0;
+      } else {
+        w = 2.5; h = 2.5; sill = 4.5;
+      }
+      // Wall the opening sits on determines the run length it's positioned along.
+      const wallLen = wall === 'outer' ? lengthFt : widthFt;
+      const offEls = Array.from(ae.querySelectorAll('.lt-acc-off')) as HTMLInputElement[];
+      for (let i = 0; i < qty; i++) {
+        let center: number;
+        if (pos === 'offset' && offEls[i]) center = (parseFloat(offEls[i].value) || 0) + w / 2;
+        else if (pos === 'center' && qty === 1) center = wallLen / 2;
+        else if (pos === 'left') center = w / 2 + 1 + i * (w + 1.5);
+        else if (pos === 'right') center = wallLen - (w / 2 + 1) - i * (w + 1.5);
+        else center = (wallLen * (i + 1)) / (qty + 1); // auto / centered-multi: even spacing
+        center = Math.max(w / 2 + 0.2, Math.min(wallLen - w / 2 - 0.2, center)); // keep on the wall
+        ltOpenings.push({ type: oType, wall, widthFt: w, heightFt: h, sillFt: sill, offsetFt: center });
+      }
+    });
+
     out.push({
       type,
       attachedSide: type === 'attached' ? attachedSide : undefined,
@@ -349,6 +386,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
       roofPitch: roofPitchStr,
       enclosure,
       customWalls,
+      openings: ltOpenings,
     });
   });
 
@@ -500,6 +538,7 @@ function syncFromBuilder(win: BuilderWindow) {
         roofPitch: lt.roofPitch,
         enclosure: lt.enclosure,
         customWalls: lt.customWalls as any, // per-wall settings (front/back/side)
+        openings: lt.openings as any, // lean-to doors/windows/roll-ups
       });
     }
   }

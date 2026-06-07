@@ -44,6 +44,18 @@ export type LeanToType = 'attached' | 'freestanding';
 export type LeanToSide = 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable';
 export type LeanToEnclosure = 'open' | 'enclosed' | 'custom';
 
+/** A door/window/roll-up placed on one of a lean-to's walls. */
+export interface LeanToOpening {
+  type: 'rollUpDoor' | 'walkDoor' | 'window';
+  /** Which lean-to wall: outer long side, or front/back gable end. */
+  wall: 'outer' | 'front' | 'back';
+  widthFt: number;
+  heightFt: number;
+  sillFt: number;
+  /** Center position measured (ft) from the wall's left edge (start of the run). */
+  offsetFt: number;
+}
+
 export interface LeanTo {
   id: string;
   type: LeanToType;
@@ -67,6 +79,8 @@ export interface LeanTo {
     back: 'open' | 'gable' | 'closed';
     side: 'open' | '1panel' | '2panel' | '3panel' | 'q1' | 'q2' | 'q3' | 'closed'; // q1 = 1/4, q2 = 1/2, q3 = 3/4
   };
+  /** Doors / windows / roll-ups placed on the lean-to's walls. */
+  openings?: LeanToOpening[];
 }
 
 /** The full wall/enclosure model (mirrors Sensei's Walls panel). */

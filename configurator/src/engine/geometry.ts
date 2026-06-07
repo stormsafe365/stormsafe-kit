@@ -1,4 +1,4 @@
-import type { BuildingType, EndSheeting, OpenEnd, Opening, WallSide } from '@/types/building';
+import type { BuildingType, EndSheeting, LeanToOpening, OpenEnd, Opening, WallSide } from '@/types/building';
 import type { ResolvedBuilding } from './ruleEngine';
 
 /**
@@ -66,6 +66,7 @@ export interface LeanToStructure {
   id: string;
   enclosure: 'open' | 'enclosed' | 'custom';
   customWalls?: { front: string; back: string; side: string };
+  openings: LeanToOpening[];
   attachedSide: string; // 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable'
   widthFt: number;
   lengthFt: number;
@@ -693,6 +694,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         id: lt.id,
         enclosure,
         customWalls,
+        openings: lt.openings ?? [],
         attachedSide: side,
         widthFt: lw,
         lengthFt: Math.abs(zBack - zFront),
@@ -712,6 +714,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         id: lt.id,
         enclosure,
         customWalls,
+        openings: lt.openings ?? [],
         attachedSide: side,
         widthFt: lw,
         lengthFt: xRight - xLeft,

@@ -565,8 +565,11 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       }
     });
 
-    const xInner = side === 'Left Eave' ? -halfW : side === 'Right Eave' ? halfW : null;
-    const xOuter = side === 'Left Eave' ? -halfW - lw : side === 'Right Eave' ? halfW + lw : null;
+    // Left/Right are defined as viewed from the FRONT of the building. In the
+    // front camera (looking +Z), world +X renders on screen-LEFT, so Left Eave
+    // maps to +X and Right Eave to -X.
+    const xInner = side === 'Left Eave' ? halfW : side === 'Right Eave' ? -halfW : null;
+    const xOuter = side === 'Left Eave' ? halfW + lw : side === 'Right Eave' ? -halfW - lw : null;
 
     const zInner = side === 'Front Gable' ? -halfL : side === 'Back Gable' ? halfL : null;
     const zOuter = side === 'Front Gable' ? -halfL - lw : side === 'Back Gable' ? halfL + lw : null;
@@ -739,8 +742,11 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     const connH = Math.min(H, lh + rise);
     const side = lt.attachedSide || 'Left Eave';
 
-    const xInner = side === 'Left Eave' ? -halfW : side === 'Right Eave' ? halfW : null;
-    const xOuter = side === 'Left Eave' ? -halfW - lw : side === 'Right Eave' ? halfW + lw : null;
+    // Left/Right are defined as viewed from the FRONT of the building. In the
+    // front camera (looking +Z), world +X renders on screen-LEFT, so Left Eave
+    // maps to +X and Right Eave to -X.
+    const xInner = side === 'Left Eave' ? halfW : side === 'Right Eave' ? -halfW : null;
+    const xOuter = side === 'Left Eave' ? halfW + lw : side === 'Right Eave' ? -halfW - lw : null;
     const zInner = side === 'Front Gable' ? -halfL : side === 'Back Gable' ? halfL : null;
     const zOuter = side === 'Front Gable' ? -halfL - lw : side === 'Back Gable' ? halfL + lw : null;
 

@@ -272,7 +272,7 @@ function writeBackDrag(win: BuilderWindow, id: string | null) {
  *   - `.lth` = low leg height (ft, for attached)
  *   - `.lt-tall-h` = tall leg height (ft, for attached slope)
  *   - `.ltp` = roof pitch (e.g., "2:12", "3:12")
- *   - `.lt-enc` = enclosure (open/enclosed/custom)
+ *   - `.lt-wm` = wall mode / enclosure (open/enclosed/custom)
  */
 function readLeanTos(win: Window & { document: Document }): Array<{
   type: 'attached' | 'freestanding';
@@ -314,7 +314,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     const lowHeightFt = numVal(el, '.lth', 8);
     const tallHeightFt = numVal(el, '.lt-tall-h', 10);
     const roofPitchStr = strVal(el, '.ltp') || '2:12';
-    const enclosureStr = strVal(el, '.lt-enc') || 'open';
+    const enclosureStr = strVal(el, '.lt-wm') || 'open'; // .lt-wm = lean-to wall mode (open/enclosed/custom)
     const enclosure = (['open', 'enclosed', 'custom'].includes(enclosureStr) ? enclosureStr : 'open') as 'open' | 'enclosed' | 'custom';
 
     // Only add if it has dimensions

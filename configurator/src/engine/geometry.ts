@@ -657,6 +657,62 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     }
   }
 
+  // ===== ADD LEAN-TO CORNER BRACES (safe, separate section) =====
+  // After all other frame members are created, add corner braces to each lean-to
+  for (const lt of config.leanTos ?? []) {
+    if (!lt.widthFt || !lt.lengthFt || !lt.lowLegHeightFt) continue;
+    if (lt.type !== 'attached') continue;
+
+    const lw = lt.widthFt;
+    const ll = lt.lengthFt;
+    const lh = lt.lowLegHeightFt;
+    const pitchStr = lt.roofPitch || '2:12';
+    const [riseStr] = pitchStr.split(':');
+    const pitch = parseFloat(riseStr) || 2;
+    const rise = (lw * pitch) / 12;
+    const connH = Math.min(H, lh + rise);
+    const side = lt.attachedSide || 'Left Eave';
+
+    const xInner = side === 'Left Eave' ? -halfW : side === 'Right Eave' ? halfW : null;
+    const xOuter = side === 'Left Eave' ? -halfW - lw : side === 'Right Eave' ? halfW + lw : null;
+    const zInner = side === 'Front Gable' ? -halfL : side === 'Back Gable' ? halfL : null;
+    const zOuter = side === 'Front Gable' ? -halfL - lw : side === 'Back Gable' ? halfL + lw : null;
+
+    // Get the frame positions that fall within this lean-to span
+    const ltPositions = framePositionsZ.filter((z) => {
+      if (side === 'Left Eave' || side === 'Right Eave') {
+        return z >= -halfL && z <= Math.min(-halfL + ll, halfL);
+      }
+      return true;
+    });
+
+    // EAVE-ATTACHED: Add corner braces
+    if ((side === 'Left Eave' || side === 'Right Eave') && xInner !== null && xOuter !== null) {
+      const zFront = -halfL;
+      const zBack = Math.min(-halfL + ll, halfL);
+      const allZ = [zFront, ...ltPositions.filter((z) => z > zFront && z < zBack), zBack];
+      const uniqueZ = Array.from(new Set(allZ)).sort((a, b) => a - b);
+
+      for (const z of uniqueZ) {
+        // Simple diagonal braces from posts toward the roof center
+        members.push(member('brace', [xInner, connH, z], [xOuter, lh, z]));
+      }
+    }
+
+    // GABLE-ATTACHED: Add corner braces
+    if ((side === 'Front Gable' || side === 'Back Gable') && zInner !== null && zOuter !== null) {
+      const xLeft = -halfW;
+      const xRight = halfW;
+      const allX = [xLeft, ...framePositionsZ.filter((x) => x > xLeft && x < xRight), xRight];
+      const uniqueX = Array.from(new Set(allX)).sort((a, b) => a - b);
+
+      for (const x of uniqueX) {
+        // Simple diagonal braces from posts toward the roof center
+        members.push(member('brace', [x, connH, zInner], [x, lh, zOuter]));
+      }
+    }
+  }
+
   return {
     width: W,
     length: L,

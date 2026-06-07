@@ -11,15 +11,21 @@ interface LeanToSidingProps {
   roofOrientation: PanelOrientation;
   colors: BuildingColors;
   wainscot: Wainscot;
+  overhangFt: number;
+  trimColor: string;
 }
 
 const TILE = 3; // ft per texture module (matches main building)
 const ROOF_LIFT = 0.11; // lift roof off the rafters
 const ROOF_UNDER_GAP = 0.06; // galvalume underside sits just below the top skin
 const OUT = SHEET_OUTSET; // sheeting sits this far outside the framing centerline
+const FASCIA_H = 0.32; // ~3.8" eave fascia face
+const RAKE_H = 0.24; // rake board face
 
 type Pt = [number, number, number];
 type UV = [number, number];
+/** A trim board: position, size, optional Euler rotation, and whether it's the dark drip edge. */
+type BoxSpec = { pos: Pt; size: [number, number, number]; rot?: [number, number, number]; dark?: boolean };
 
 /**
  * Lean-to sheet-metal skin. A lean-to is HALF a building: a single-slope roof,
@@ -34,9 +40,19 @@ type UV = [number, number];
  * up (identical lighting on left and right lean-tos) and the gable ends are true
  * trapezoids, not averaged rectangles.
  */
-export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors, wainscot }: LeanToSidingProps) {
+export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors, wainscot, overhangFt, trimColor }: LeanToSidingProps) {
   const wallDir: RibDirection = wallOrientation === 'Vertical' ? 'vertical' : 'horizontal';
   const roofDir: RibDirection = roofOrientation === 'Vertical' ? 'vertical' : 'horizontal';
+
+  // Trim materials — painted dielectric (white) + dark cut-edge drip strip.
+  const trimMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: trimColor, metalness: 0.0, roughness: 0.52, envMapIntensity: 0.25 }),
+    [trimColor],
+  );
+  const darkMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: '#2c3036', metalness: 0.35, roughness: 0.55 }),
+    [],
+  );
 
   const tex = useMemo(
     () => ({
@@ -87,13 +103,20 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
       {leanTos.map((lt) => {
         const { side, front, back } = resolveWalls(lt);
         const eave = lt.attachedSide.includes('Eave');
-        const geo = eave ? eaveSurfaces(lt) : gableSurfaces(lt);
+        const geo = eave ? eaveSurfaces(lt, overhangFt) : gableSurfaces(lt, overhangFt);
 
         return (
           <group key={lt.id}>
             {/* Roof — ALWAYS. Top skin (colored) + galvalume underside. */}
             <PolyPanel corners={geo.roofTop} uvs={geo.roofUV} material={polyMat(tex.roof, roofMetal, true)} />
             <PolyPanel corners={geo.roofUnder} uvs={geo.roofUV} material={polyMat(tex.underRoof, true, true)} />
+
+            {/* Eave fascia + rake trim following the roof overhang */}
+            {geo.trim.map((b, i) => (
+              <mesh key={`trim-${i}`} position={b.pos} rotation={b.rot ?? [0, 0, 0]} material={b.dark ? darkMat : trimMat} castShadow receiveShadow>
+                <boxGeometry args={b.size} />
+              </mesh>
+            ))}
 
             {/* Outer long wall (the only sheeted long wall) */}
             {side !== 'open' &&
@@ -154,6 +177,7 @@ interface SurfaceSet {
   roofTop: Pt[];
   roofUnder: Pt[];
   roofUV: UV[];
+  trim: BoxSpec[];
   wainscot: (wH: number) => Pt[];
   wainscotUV: (wH: number) => UV[];
   frontGable: (v: GableVal) => Pt[];
@@ -164,8 +188,56 @@ interface SurfaceSet {
   wall: { axis: 'z' | 'x'; plane: number; a: number; b: number };
 }
 
+/** Build the eave fascia (drip board + dark lip) and two rake boards for a
+ *  single-slope roof, given the outer drip lip + inner high edge in a plane.
+ *  `coord(along, up)` maps the 2D rake plane back to a 3D point at the given
+ *  perpendicular position; `lenAxis` is the trim's long direction along the eave. */
+function slopeTrim(
+  // outer lip + inner top in 2D (across, height)
+  lipAcross: number,
+  lipUp: number,
+  innerAcross: number,
+  innerUp: number,
+  end0: number, // eave run start (with overhang)
+  end1: number, // eave run end
+  toPt: (across: number, up: number, run: number) => Pt,
+  eaveIsZ: boolean, // true: eave runs along Z (eave-attached); false: along X
+): BoxSpec[] {
+  const specs: BoxSpec[] = [];
+  const runMid = (end0 + end1) / 2;
+  const runLen = Math.abs(end1 - end0);
+
+  // Eave fascia: a thin vertical board hanging at the drip lip, full run length.
+  if (eaveIsZ) {
+    specs.push({ pos: toPt(lipAcross, lipUp - FASCIA_H / 2, runMid), size: [0.05, FASCIA_H, runLen] });
+    specs.push({ pos: toPt(lipAcross, lipUp - 0.02, runMid), size: [0.07, 0.07, runLen], dark: true });
+  } else {
+    specs.push({ pos: toPt(lipAcross, lipUp - FASCIA_H / 2, runMid), size: [runLen, FASCIA_H, 0.05] });
+    specs.push({ pos: toPt(lipAcross, lipUp - 0.02, runMid), size: [runLen, 0.07, 0.07], dark: true });
+  }
+
+  // Rake boards at each end, sloping from the lip up to the inner high edge.
+  const dAcross = innerAcross - lipAcross;
+  const dUp = innerUp - lipUp;
+  const len = Math.hypot(dAcross, dUp);
+  const ang = Math.atan2(dUp, dAcross); // angle in the (across, up) plane
+  for (const end of [end0, end1] as const) {
+    const midAcross = (lipAcross + innerAcross) / 2;
+    const midUp = (lipUp + innerUp) / 2;
+    if (eaveIsZ) {
+      // rake lies in the X-Y plane at constant Z → rotate about Z
+      specs.push({ pos: toPt(midAcross, midUp + 0.06, end), size: [len, RAKE_H, 0.05], rot: [0, 0, ang] });
+    } else {
+      // rake lies in the Z-Y plane at constant X → rotate about X.
+      // box length along Z; tilt z into y by the slope angle.
+      specs.push({ pos: toPt(midAcross, midUp + 0.06, end), size: [0.05, RAKE_H, len], rot: [-ang, 0, 0] });
+    }
+  }
+  return specs;
+}
+
 /** EAVE-attached (Left/Right): walls vary in X, length runs along Z. */
-function eaveSurfaces(lt: LeanToStructure): SurfaceSet {
+function eaveSurfaces(lt: LeanToStructure, oh: number): SurfaceSet {
   const innerX = lt.inner.x;
   const outerX = lt.outer.x;
   const lh = lt.lowLegHeightFt;
@@ -174,29 +246,44 @@ function eaveSurfaces(lt: LeanToStructure): SurfaceSet {
   const z1 = lt.spanEnd;
   const outwardX = Math.sign(outerX - innerX) || -1;
   const wallX = outerX + outwardX * OUT;
-  const rafterLen = Math.hypot(outerX - innerX, connH - lh);
+  const awidth = Math.abs(outerX - innerX) || 1;
+  const rise = connH - lh;
+  const rafterLen = Math.hypot(awidth, rise);
+  const roofLiftY = (awidth / rafterLen) * ROOF_LIFT;
 
-  // Roof corners (outer-low → inner-high), lifted along the up normal.
+  // Overhang: roof projects past the outer eave (drops as it goes) and past
+  // both gable ends by `oh`.
+  const eaveDrop = (oh * rise) / awidth;
+  const outerXoh = outerX + outwardX * oh;
+  const lhOh = lh - eaveDrop;
+  const zf = z0 - oh;
+  const zb = z1 + oh;
+
+  // Roof corners (outer-low lip → inner-high), lifted along the up normal.
   const baseRoof: Pt[] = [
-    [outerX, lh, z0],
-    [outerX, lh, z1],
-    [innerX, connH, z1],
-    [innerX, connH, z0],
+    [outerXoh, lhOh, zf],
+    [outerXoh, lhOh, zb],
+    [innerX, connH, zb],
+    [innerX, connH, zf],
   ];
   const n = upNormal(baseRoof[0], baseRoof[1], baseRoof[2]);
   const roofTop = offsetPts(baseRoof, n, ROOF_LIFT);
   const roofUnder = offsetPts(baseRoof, n, ROOF_LIFT - ROOF_UNDER_GAP);
+  const rl = Math.hypot(innerX - outerXoh, connH - lhOh);
   const roofUV: UV[] = [
-    [z0, 0],
-    [z1, 0],
-    [z1, rafterLen],
-    [z0, rafterLen],
+    [zf, 0],
+    [zb, 0],
+    [zb, rl],
+    [zf, rl],
   ];
+
+  const trim = slopeTrim(outerXoh, lhOh + roofLiftY, innerX, connH + roofLiftY, zf, zb, (a, u, r) => [a, u, r], true);
 
   return {
     roofTop,
     roofUnder,
     roofUV,
+    trim,
     wall: { axis: 'z', plane: wallX, a: z0, b: z1 },
     wainscot: (wH) => [
       [wallX + outwardX * 0.02, 0, z0],
@@ -218,7 +305,7 @@ function eaveSurfaces(lt: LeanToStructure): SurfaceSet {
 }
 
 /** GABLE-attached (Front/Back): walls vary in Z, length runs along X. */
-function gableSurfaces(lt: LeanToStructure): SurfaceSet {
+function gableSurfaces(lt: LeanToStructure, oh: number): SurfaceSet {
   const innerZ = lt.inner.z;
   const outerZ = lt.outer.z;
   const lh = lt.lowLegHeightFt;
@@ -227,28 +314,42 @@ function gableSurfaces(lt: LeanToStructure): SurfaceSet {
   const x1 = lt.spanEnd;
   const outwardZ = Math.sign(outerZ - innerZ) || -1;
   const wallZ = outerZ + outwardZ * OUT;
-  const rafterLen = Math.hypot(outerZ - innerZ, connH - lh);
+  const awidth = Math.abs(outerZ - innerZ) || 1;
+  const rise = connH - lh;
+  const rafterLen = Math.hypot(awidth, rise);
+  const roofLiftY = (awidth / rafterLen) * ROOF_LIFT;
+
+  const eaveDrop = (oh * rise) / awidth;
+  const outerZoh = outerZ + outwardZ * oh;
+  const lhOh = lh - eaveDrop;
+  const xf = x0 - oh;
+  const xb = x1 + oh;
 
   const baseRoof: Pt[] = [
-    [x0, lh, outerZ],
-    [x1, lh, outerZ],
-    [x1, connH, innerZ],
-    [x0, connH, innerZ],
+    [xf, lhOh, outerZoh],
+    [xb, lhOh, outerZoh],
+    [xb, connH, innerZ],
+    [xf, connH, innerZ],
   ];
   const n = upNormal(baseRoof[0], baseRoof[1], baseRoof[2]);
   const roofTop = offsetPts(baseRoof, n, ROOF_LIFT);
   const roofUnder = offsetPts(baseRoof, n, ROOF_LIFT - ROOF_UNDER_GAP);
+  const rl = Math.hypot(innerZ - outerZoh, connH - lhOh);
   const roofUV: UV[] = [
-    [x0, 0],
-    [x1, 0],
-    [x1, rafterLen],
-    [x0, rafterLen],
+    [xf, 0],
+    [xb, 0],
+    [xb, rl],
+    [xf, rl],
   ];
+
+  // across = Z, up = Y, run = X → toPt maps back as [run, up, across].
+  const trim = slopeTrim(outerZoh, lhOh + roofLiftY, innerZ, connH + roofLiftY, xf, xb, (a, u, r) => [r, u, a], false);
 
   return {
     roofTop,
     roofUnder,
     roofUV,
+    trim,
     wall: { axis: 'x', plane: wallZ, a: x0, b: x1 },
     wainscot: (wH) => [
       [x0, 0, wallZ + outwardZ * 0.02],

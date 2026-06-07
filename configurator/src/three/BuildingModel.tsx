@@ -80,6 +80,8 @@ export function BuildingModel() {
           roofOrientation={config.roofOrientation}
           colors={config.colors}
           wainscot={config.wainscot}
+          overhangFt={structure.roofOverhangFt}
+          trimColor={trimHex}
         />
         <Trim structure={structure} color={trimHex} wainscot={config.wainscot} />
         <Openings openings={config.openings} structure={structure} trimColor={trimHex} />

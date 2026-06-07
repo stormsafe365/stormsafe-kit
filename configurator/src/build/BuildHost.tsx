@@ -283,7 +283,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
   tallLegHeightFt?: number;
   roofPitch: string;
   enclosure: 'open' | 'enclosed' | 'custom';
-  customWalls?: { front: 'open' | 'gable' | 'closed'; back: 'open' | 'gable' | 'closed'; side: string };
+  customWalls?: { front: string; back: string; side: string };
 }> {
   const out: Array<{
     type: 'attached' | 'freestanding';
@@ -294,7 +294,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     tallLegHeightFt?: number;
     roofPitch: string;
     enclosure: 'open' | 'enclosed' | 'custom';
-    customWalls?: { front: 'open' | 'gable' | 'closed'; back: 'open' | 'gable' | 'closed'; side: string };
+    customWalls?: { front: string; back: string; side: string };
   }> = [];
 
   const strVal = (el: Element, sel: string) => {
@@ -492,6 +492,7 @@ function syncFromBuilder(win: BuilderWindow) {
         tallLegHeightFt: lt.tallLegHeightFt,
         roofPitch: lt.roofPitch,
         enclosure: lt.enclosure,
+        customWalls: lt.customWalls as any, // per-wall settings (front/back/side)
       });
     }
   }

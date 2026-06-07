@@ -568,11 +568,16 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         // Add simple rafter (roof support) from inner post top to outer post top
         members.push(member('rafter', [xInner!, connH, z], [xOuter!, lh, z]));
 
-        // Add corner/knee braces (diagonal bracing at the rafter-post joint)
-        const rafterMidX = (xInner! + xOuter!) / 2;
-        const rafterMidY = (connH + lh) / 2;
-        members.push(member('brace', [xInner!, connH, z], [rafterMidX, rafterMidY, z])); // inner post to rafter mid
-        members.push(member('brace', [xOuter!, lh, z], [rafterMidX, rafterMidY, z])); // outer post to rafter mid
+        // Add corner/knee braces (crossing X-pattern for structural bracing)
+        // One diagonal from inner post top to 2/3 point along the rafter
+        const rafter2_3_X = xInner! + (xOuter! - xInner!) * (2 / 3);
+        const rafter2_3_Y = connH + (lh - connH) * (2 / 3);
+        members.push(member('brace', [xInner!, connH, z], [rafter2_3_X, rafter2_3_Y, z]));
+
+        // Another diagonal from outer post top to 1/3 point along the rafter (crossing diagonal)
+        const rafter1_3_X = xInner! + (xOuter! - xInner!) * (1 / 3);
+        const rafter1_3_Y = connH + (lh - connH) * (1 / 3);
+        members.push(member('brace', [xOuter!, lh, z], [rafter1_3_X, rafter1_3_Y, z]));
 
         // Connect to adjacent trusses with LONGITUDINAL base rails (along the length)
         if (i > 0) {
@@ -616,11 +621,16 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         // Add simple rafter (roof support) from inner post top to outer post top
         members.push(member('rafter', [x, connH, zInner!], [x, lh, zOuter!]));
 
-        // Add corner/knee braces (diagonal bracing at the rafter-post joint)
-        const rafterMidY = (connH + lh) / 2;
-        const rafterMidZ = (zInner! + zOuter!) / 2;
-        members.push(member('brace', [x, connH, zInner!], [x, rafterMidY, rafterMidZ])); // inner post to rafter mid
-        members.push(member('brace', [x, lh, zOuter!], [x, rafterMidY, rafterMidZ])); // outer post to rafter mid
+        // Add corner/knee braces (crossing X-pattern for structural bracing)
+        // One diagonal from inner post top to 2/3 point along the rafter
+        const rafter2_3_Y = connH + (lh - connH) * (2 / 3);
+        const rafter2_3_Z = zInner! + (zOuter! - zInner!) * (2 / 3);
+        members.push(member('brace', [x, connH, zInner!], [x, rafter2_3_Y, rafter2_3_Z]));
+
+        // Another diagonal from outer post top to 1/3 point along the rafter (crossing diagonal)
+        const rafter1_3_Y = connH + (lh - connH) * (1 / 3);
+        const rafter1_3_Z = zInner! + (zOuter! - zInner!) * (1 / 3);
+        members.push(member('brace', [x, lh, zOuter!], [x, rafter1_3_Y, rafter1_3_Z]));
 
         // Connect to adjacent trusses with LONGITUDINAL base rails (left to right)
         if (i > 0) {

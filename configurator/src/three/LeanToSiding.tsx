@@ -354,10 +354,14 @@ function LeanToSideWallEave({
 
   if (!fullHeight) return null; // Only render for full height (for now, defer partial/panel logic)
 
+  // Offset panels outside the frame (away from structure)
+  const innerX = inner.x > 0 ? inner.x + wOut : inner.x - wOut; // offset outward from center
+  const outerX = outer.x > 0 ? outer.x + wOut : outer.x - wOut; // offset outward from frame
+
   return (
     <>
       <BasisPanel
-        center={[inner.x, peakHeightFt / 2, wallMidZ]}
+        center={[innerX, peakHeightFt / 2, wallMidZ]}
         uVec={[0, 0, 1]}
         vVec={[0, 1, 0]}
         w={wallLength}
@@ -365,7 +369,7 @@ function LeanToSideWallEave({
         material={planeMat(tex.walls, wallLength, peakHeightFt, wallDir, wallMetal, false, wallMidZ - wallLength / 2, 0)}
       />
       <BasisPanel
-        center={[outer.x, lowLegHeightFt / 2, wallMidZ]}
+        center={[outerX, lowLegHeightFt / 2, wallMidZ]}
         uVec={[0, 0, 1]}
         vVec={[0, 1, 0]}
         w={wallLength}
@@ -400,9 +404,12 @@ function LeanToGableEndEave({
   const midX = (inner.x + outer.x) / 2;
   const avgHeight = (lowLegHeightFt + peakHeightFt) / 2;
 
+  // Offset gable end outward along Z axis (away from structure)
+  const zOffset = z > 0 ? 0.18 : -0.18; // outward based on which end
+
   return (
     <BasisPanel
-      center={[midX, avgHeight / 2, z]}
+      center={[midX, avgHeight / 2, z + zOffset]}
       uVec={[1, 0, 0]}
       vVec={[0, 1, 0]}
       w={widthFt}
@@ -433,10 +440,14 @@ function LeanToWainscotEave({
   const wallLength = spanEnd - spanStart;
   const wallMidZ = (spanStart + spanEnd) / 2;
 
+  // Offset wainscot outside the frame (same as side walls)
+  const innerX = inner.x > 0 ? inner.x + wOut : inner.x - wOut;
+  const outerX = outer.x > 0 ? outer.x + wOut : outer.x - wOut;
+
   return (
     <>
       <BasisPanel
-        center={[inner.x, wH / 2, wallMidZ]}
+        center={[innerX, wH / 2, wallMidZ]}
         uVec={[0, 0, 1]}
         vVec={[0, 1, 0]}
         w={wallLength}
@@ -444,7 +455,7 @@ function LeanToWainscotEave({
         material={planeMat(tex.wainscot, wallLength, wH, wallDir, wainMetal, false, wallMidZ - wallLength / 2, 0)}
       />
       <BasisPanel
-        center={[outer.x, wH / 2, wallMidZ]}
+        center={[outerX, wH / 2, wallMidZ]}
         uVec={[0, 0, 1]}
         vVec={[0, 1, 0]}
         w={wallLength}
@@ -478,10 +489,14 @@ function LeanToSideWallGable({
 
   if (!fullHeight) return null;
 
+  // Offset panels outside the frame (away from structure)
+  const innerZ = inner.z > 0 ? inner.z + wOut : inner.z - wOut; // offset outward from center
+  const outerZ = outer.z > 0 ? outer.z + wOut : outer.z - wOut; // offset outward from frame
+
   return (
     <>
       <BasisPanel
-        center={[wallMidX, peakHeightFt / 2, inner.z]}
+        center={[wallMidX, peakHeightFt / 2, innerZ]}
         uVec={[1, 0, 0]}
         vVec={[0, 1, 0]}
         w={wallLength}
@@ -489,7 +504,7 @@ function LeanToSideWallGable({
         material={planeMat(tex.walls, wallLength, peakHeightFt, wallDir, wallMetal, false, wallMidX - wallLength / 2, 0)}
       />
       <BasisPanel
-        center={[wallMidX, lowLegHeightFt / 2, outer.z]}
+        center={[wallMidX, lowLegHeightFt / 2, outerZ]}
         uVec={[1, 0, 0]}
         vVec={[0, 1, 0]}
         w={wallLength}
@@ -524,9 +539,12 @@ function LeanToGableEndGable({
   const midZ = (inner.z + outer.z) / 2;
   const avgHeight = (lowLegHeightFt + peakHeightFt) / 2;
 
+  // Offset gable end outward along X axis (away from structure)
+  const xOffset = x > 0 ? 0.18 : -0.18; // outward based on which end
+
   return (
     <BasisPanel
-      center={[x, avgHeight / 2, midZ]}
+      center={[x + xOffset, avgHeight / 2, midZ]}
       uVec={[0, 0, 1]}
       vVec={[0, 1, 0]}
       w={widthFt}
@@ -557,10 +575,14 @@ function LeanToWainscotGable({
   const wallLength = spanEnd - spanStart;
   const wallMidX = (spanStart + spanEnd) / 2;
 
+  // Offset wainscot outside the frame (same as side walls)
+  const innerZ = inner.z > 0 ? inner.z + wOut : inner.z - wOut;
+  const outerZ = outer.z > 0 ? outer.z + wOut : outer.z - wOut;
+
   return (
     <>
       <BasisPanel
-        center={[wallMidX, wH / 2, inner.z]}
+        center={[wallMidX, wH / 2, innerZ]}
         uVec={[1, 0, 0]}
         vVec={[0, 1, 0]}
         w={wallLength}
@@ -568,7 +590,7 @@ function LeanToWainscotGable({
         material={planeMat(tex.wainscot, wallLength, wH, wallDir, wainMetal, false, wallMidX - wallLength / 2, 0)}
       />
       <BasisPanel
-        center={[wallMidX, wH / 2, outer.z]}
+        center={[wallMidX, wH / 2, outerZ]}
         uVec={[1, 0, 0]}
         vVec={[0, 1, 0]}
         w={wallLength}

@@ -28,12 +28,19 @@ const TYPE_MAP: Record<string, BuildingType> = {
   widespan: 'garage',
 };
 
-/** Program's location dropdown → 3D wall side. */
+/**
+ * Program's location dropdown → 3D wall side.
+ * Left/Right are defined as viewed from the FRONT of the building. The 3D
+ * convention renders the internal 'left' wall on screen-RIGHT (-X) and 'right'
+ * on screen-LEFT (+X) in the front view, so a program "Left Eave Side" must map
+ * to the internal 'right' wall to actually appear on the viewer's left — and
+ * vice versa. (This matches the Left/Right-eave lean-to convention.)
+ */
 const SIDE_MAP: Record<string, WallSide> = {
   'Front Gable End': 'front',
   'Back Gable End': 'back',
-  'Left Eave Side': 'left',
-  'Right Eave Side': 'right',
+  'Left Eave Side': 'right',
+  'Right Eave Side': 'left',
   'Partition Wall': 'partition',
 };
 
@@ -124,11 +131,11 @@ function readOpenings(
     items.forEach((it, i) => {
       const center = it.x + it.w / 2; // centerline from the program's frame edge
       // The LEFT eave and BACK gable are the "far" walls — viewed from the
-      // opposite side, so their left/right is mirrored vs the program's frame.
-      // (getPosItems also special-flips left-eave for its 2D drawing.) Undo both
-      // by measuring from the far edge. Front gable + right eave map directly
-      // (confirmed correct).
-      const mirror = side === 'left' || side === 'back';
+      // opposite side, so their position-along-the-wall is mirrored vs the
+      // program's frame. This is about the OFFSET (length axis), independent of
+      // which X-side wall, so key it off the program LOCATION — not `side`,
+      // which is now swapped above for the screen left/right convention.
+      const mirror = loc === 'Left Eave Side' || loc === 'Back Gable End';
       const offset = mirror ? face - center : center;
       out.push({
         type: OTYPE_MAP[type] ?? 'frameOut',

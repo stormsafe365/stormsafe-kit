@@ -232,11 +232,15 @@ function leanToTrim(
     dark,
   });
 
-  // ── Eave fascia: clean white board hanging at the drip lip + thin dark drip ──
-  specs.push(box(outerAcrossOh, lipUp - FASCIA_H / 2 + 0.01, runMid, TRIM_T, FASCIA_H, runLen));
-  specs.push(box(outerAcrossOh + outwardA * 0.005, lipUp - 0.015, runMid, 0.05, 0.035, runLen, true));
+  const TUCK = 0.12; // recess trim inboard so the roof panel OVERHANGS it
 
-  // ── Rake boards: follow each gable-end roof slope, clean white ──
+  // ── Eave fascia: a clean board TUCKED under the eave so the roof hangs over
+  // it (recessed inboard + dropped below the drip lip), plus a thin dark drip. ──
+  specs.push(box(outerAcrossOh - outwardA * TUCK, lipUp - FASCIA_H / 2 - 0.03, runMid, TRIM_T, FASCIA_H, runLen));
+  specs.push(box(outerAcrossOh - outwardA * (TUCK * 0.4), lipUp - 0.07, runMid, 0.05, 0.04, runLen, true));
+
+  // ── Rake boards: follow each gable-end roof slope, tucked UNDER the roof so
+  // the gable edge overhangs them (recessed inboard along the run + dropped). ──
   const dA = innerAcross - outerAcrossOh;
   const dU = innerUp - lipUp;
   const rakeLen = Math.hypot(dA, dU);
@@ -244,8 +248,9 @@ function leanToTrim(
   const midA = (outerAcrossOh + innerAcross) / 2;
   const midU = (lipUp + innerUp) / 2;
   for (const end of [rf, rb] as const) {
+    const tuckedRun = end + Math.sign(runMid - end) * TUCK;
     specs.push({
-      pos: toPt(midA, midU + 0.07, end),
+      pos: toPt(midA, midU - RAKE_H / 2 + 0.02, tuckedRun),
       size: eaveIsZ ? [rakeLen, RAKE_H, TRIM_T] : [TRIM_T, RAKE_H, rakeLen],
       rot: eaveIsZ ? [0, 0, ang] : [-ang, 0, 0],
     });

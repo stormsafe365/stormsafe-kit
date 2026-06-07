@@ -14,3 +14,7 @@ desktop.ini
 
 # Logs
 *.log
+
+# Stray local folders (not part of this repo)
+3D Builder/
+CRM/

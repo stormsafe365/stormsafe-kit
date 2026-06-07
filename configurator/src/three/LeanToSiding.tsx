@@ -1,10 +1,13 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { SHEET_OUTSET, COMPONENT_OUTSET, type LeanToStructure } from '@/engine/geometry';
-import type { BuildingColors, LeanToOpening, PanelOrientation, Wainscot } from '@/types/building';
+import type { BuildingColors, LeanToOpening, OpeningType, PanelOrientation, Wainscot } from '@/types/building';
 import { swatchHex, isMetallic } from '@/config/colors';
 import { createCorrugatedTexture, type RibDirection } from './textures';
 import { stripsAround, type LocalRect } from './Siding';
+import { OpeningFixture } from './OpeningFixture';
+
+const COMP_PROUD = COMPONENT_OUTSET - SHEET_OUTSET; // component standoff past the wall sheeting
 
 interface LeanToSidingProps {
   leanTos: LeanToStructure[];
@@ -54,9 +57,6 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
     () => new THREE.MeshStandardMaterial({ color: '#2c3036', metalness: 0.35, roughness: 0.55 }),
     [],
   );
-  // Door / window face materials for lean-to openings.
-  const doorMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#fbfcfd', metalness: 0.1, roughness: 0.55, side: THREE.DoubleSide }), []);
-  const glassMat = useMemo(() => new THREE.MeshStandardMaterial({ color: '#bfe9ff', metalness: 0.25, roughness: 0.2, side: THREE.DoubleSide }), []);
 
   const tex = useMemo(
     () => ({
@@ -123,8 +123,8 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
               </mesh>
             ))}
 
-            {/* Outer long wall — when fully closed, cut around any openings on
-                it; otherwise render the partial/panel wall as before. */}
+            {/* Outer long wall — when fully closed, cut around any outer-wall
+                openings; otherwise render the partial/panel wall as before. */}
             {side === 'closed'
               ? cutOuterWall(geo, lt.lowLegHeightFt, lt.openings.filter((o) => o.wall === 'outer')).map((p, i) => (
                   <PolyPanel key={`side-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.walls, wallMetal, false)} />
@@ -134,36 +134,39 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
                   <PolyPanel key={`side-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.walls, wallMetal, false)} />
                 ))}
 
-            {/* Doors / windows on the outer wall */}
-            {side === 'closed' &&
-              lt.openings
-                .filter((o) => o.wall === 'outer')
-                .map((o, i) => (
-                  <LeanToOpeningMesh key={`oo-${i}`} geo={geo} opening={o} doorMat={doorMat} glassMat={glassMat} trimMat={trimMat} />
-                ))}
-
             {/* Wainscot band on the outer wall (only when the wall is fully closed) */}
             {side === 'closed' && wH > 0 && (
               <PolyPanel corners={geo.wainscot(wH)} uvs={geo.wainscotUV(wH)} material={polyMat(tex.wainscot, wainMetal, false)} />
             )}
 
-            {/* Front gable end (trapezoid / gable-only triangle) */}
-            {front !== 'open' && (
-              <PolyPanel
-                corners={geo.frontGable(front)}
-                uvs={geo.frontGableUV(front)}
-                material={polyMat(tex.walls, wallMetal, false)}
-              />
-            )}
+            {/* Gable ends — cut around their openings when closed */}
+            <GableEnd geo={geo} which="front" val={front} openings={lt.openings.filter((o) => o.wall === 'front')} material={polyMat(tex.walls, wallMetal, false)} />
+            <GableEnd geo={geo} which="back" val={back} openings={lt.openings.filter((o) => o.wall === 'back')} material={polyMat(tex.walls, wallMetal, false)} />
 
-            {/* Back gable end */}
-            {back !== 'open' && (
-              <PolyPanel
-                corners={geo.backGable(back)}
-                uvs={geo.backGableUV(back)}
-                material={polyMat(tex.walls, wallMetal, false)}
-              />
-            )}
+            {/* Door / window / roll-up fixtures on every sheeted wall (matches
+                the main-building fixture exactly via the shared component). */}
+            {lt.openings
+              .filter(
+                (o) =>
+                  (o.wall === 'outer' && side === 'closed') ||
+                  (o.wall === 'front' && front === 'closed') ||
+                  (o.wall === 'back' && back === 'closed'),
+              )
+              .map((o, i) => {
+                const { pos, rotY } = openingPlacement(geo, o);
+                return (
+                  <OpeningFixture
+                    key={`of-${i}`}
+                    pos={pos}
+                    rotY={rotY}
+                    type={o.type as OpeningType}
+                    w={o.widthFt}
+                    h={o.heightFt}
+                    sillHeight={o.sillFt}
+                    trimColor={trimColor}
+                  />
+                );
+              })}
           </group>
         );
       })}
@@ -204,6 +207,8 @@ interface SurfaceSet {
   backGableUV: (v: GableVal) => UV[];
   // outer wall plane info for sideWallPolys
   wall: { axis: 'z' | 'x'; plane: number; a: number; b: number };
+  // gable-end geometry for cutting openings + placing fixtures
+  gable: { kind: 'eave' | 'gable'; innerAcross: number; outerAcross: number; lh: number; connH: number; frontPlane: number; backPlane: number };
 }
 
 const TRIM_T = 0.045; // ~0.5" trim metal thickness
@@ -364,6 +369,7 @@ function eaveSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; f
     roofUV,
     trim,
     wall: { axis: 'z', plane: wallX, a: z0, b: z1 },
+    gable: { kind: 'eave', innerAcross: innerX, outerAcross: outerX, lh, connH, frontPlane: z0 - OUT, backPlane: z1 + OUT },
     wainscot: (wH) => [
       [wallX + outwardX * 0.02, 0, z0],
       [wallX + outwardX * 0.02, 0, z1],
@@ -434,6 +440,7 @@ function gableSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; 
     roofUV,
     trim,
     wall: { axis: 'x', plane: wallZ, a: x0, b: x1 },
+    gable: { kind: 'gable', innerAcross: innerZ, outerAcross: outerZ, lh, connH, frontPlane: x0 - OUT, backPlane: x1 + OUT },
     wainscot: (wH) => [
       [x0, 0, wallZ + outwardZ * 0.02],
       [x1, 0, wallZ + outwardZ * 0.02],
@@ -518,54 +525,99 @@ function cutOuterWall(geo: SurfaceSet, lh: number, openings: LeanToOpening[]): A
   });
 }
 
-// A door/window face + thin framing on the outer lean-to wall.
-function LeanToOpeningMesh({
+// Gable end (front/back). When fully closed AND it has openings, cut the lower
+// rectangle around them and keep the gable triangle above; otherwise render the
+// whole trapezoid/triangle as one panel.
+function cutGable(
+  geo: SurfaceSet,
+  which: 'front' | 'back',
+  openings: LeanToOpening[],
+): { strips: Array<{ corners: Pt[]; uvs: UV[] }>; triangle: { corners: Pt[]; uvs: UV[] } } {
+  const g = geo.gable;
+  const plane = which === 'front' ? g.frontPlane : g.backPlane;
+  const minA = Math.min(g.innerAcross, g.outerAcross);
+  const maxA = Math.max(g.innerAcross, g.outerAcross);
+  const width = maxA - minA;
+  const midA = (minA + maxA) / 2;
+  const holes: LocalRect[] = openings.map((o) => ({
+    u: minA + o.offsetFt - midA,
+    v: o.sillFt + o.heightFt / 2 - g.lh / 2,
+    w: o.widthFt,
+    h: o.heightFt,
+  }));
+  const toCorners = (a0: number, a1: number, y0: number, y1: number): Pt[] =>
+    g.kind === 'eave'
+      ? [[a0, y0, plane], [a1, y0, plane], [a1, y1, plane], [a0, y1, plane]]
+      : [[plane, y0, a0], [plane, y0, a1], [plane, y1, a1], [plane, y1, a0]];
+  const strips = stripsAround(width, g.lh, holes).map((st) => {
+    const aC = midA + st.u;
+    const yC = g.lh / 2 + st.v;
+    const a0 = aC - st.w / 2;
+    const a1 = aC + st.w / 2;
+    const y0 = yC - st.h / 2;
+    const y1 = yC + st.h / 2;
+    return { corners: toCorners(a0, a1, y0, y1), uvs: [[a0, y0], [a1, y0], [a1, y1], [a0, y1]] as UV[] };
+  });
+  // Triangle above the eave line, on the tall (inner) side.
+  const tri: Pt[] =
+    g.kind === 'eave'
+      ? [[g.outerAcross, g.lh, plane], [g.innerAcross, g.connH, plane], [g.innerAcross, g.lh, plane]]
+      : [[plane, g.lh, g.outerAcross], [plane, g.connH, g.innerAcross], [plane, g.lh, g.innerAcross]];
+  const triUv: UV[] = [[g.outerAcross, g.lh], [g.innerAcross, g.connH], [g.innerAcross, g.lh]];
+  return { strips, triangle: { corners: tri, uvs: triUv } };
+}
+
+function GableEnd({
   geo,
-  opening,
-  doorMat,
-  glassMat,
-  trimMat,
+  which,
+  val,
+  openings,
+  material,
 }: {
   geo: SurfaceSet;
-  opening: LeanToOpening;
-  doorMat: THREE.Material;
-  glassMat: THREE.Material;
-  trimMat: THREE.Material;
+  which: 'front' | 'back';
+  val: GableVal;
+  openings: LeanToOpening[];
+  material: THREE.Material;
 }) {
-  const { axis, plane, a } = geo.wall;
-  const w = opening.widthFt;
-  const h = opening.heightFt;
-  const runC = a + opening.offsetFt;
-  const y0 = opening.sillFt;
-  const y1 = opening.sillFt + h;
-  const outward = Math.sign(plane) || 1;
-  const ax = plane + outward * 0.06; // door face just outside the sheeting
-  const fx = plane + outward * 0.035; // frame a hair inboard of the face
-  const r0 = runC - w / 2;
-  const r1 = runC + w / 2;
-  const faceCorners: Pt[] =
-    axis === 'z'
-      ? [[ax, y0, r0], [ax, y0, r1], [ax, y1, r1], [ax, y1, r0]]
-      : [[r0, y0, ax], [r1, y0, ax], [r1, y1, ax], [r0, y1, ax]];
-  const mat = opening.type === 'window' ? glassMat : doorMat;
-  const t = 0.09; // frame face
-  const frame: BoxSpec[] = [];
-  const pushF = (rc: number, yc: number, rl: number, yl: number) =>
-    frame.push({ pos: axis === 'z' ? [fx, yc, rc] : [rc, yc, fx], size: axis === 'z' ? [t, yl, rl] : [rl, yl, t] });
-  pushF(runC, y1, w + t, t); // header
-  pushF(runC, y0, w + t, t); // sill
-  pushF(r0, (y0 + y1) / 2, t, h); // left jamb
-  pushF(r1, (y0 + y1) / 2, t, h); // right jamb
+  if (val === 'open') return null;
+  if (!(val === 'closed' && openings.length > 0)) {
+    const corners = which === 'front' ? geo.frontGable(val) : geo.backGable(val);
+    const uvs = which === 'front' ? geo.frontGableUV(val) : geo.backGableUV(val);
+    return <PolyPanel corners={corners} uvs={uvs} material={material} />;
+  }
+  const { strips, triangle } = cutGable(geo, which, openings);
   return (
-    <group>
-      <PolyPanel corners={faceCorners} uvs={[[0, 0], [w, 0], [w, h], [0, h]]} material={mat} />
-      {frame.map((f, i) => (
-        <mesh key={i} position={f.pos} material={trimMat} castShadow receiveShadow>
-          <boxGeometry args={f.size} />
-        </mesh>
+    <>
+      {strips.map((p, i) => (
+        <PolyPanel key={`gs-${i}`} corners={p.corners} uvs={p.uvs} material={material} />
       ))}
-    </group>
+      <PolyPanel corners={triangle.corners} uvs={triangle.uvs} material={material} />
+    </>
   );
+}
+
+// World position + Y-rotation to mount an OpeningFixture on a lean-to wall so
+// its outward face points away from the building, matching the wall plane.
+function openingPlacement(geo: SurfaceSet, opening: LeanToOpening): { pos: [number, number, number]; rotY: number } {
+  const yC = opening.sillFt + opening.heightFt / 2;
+  if (opening.wall === 'outer') {
+    const { axis, plane, a } = geo.wall;
+    const runC = a + opening.offsetFt;
+    const outward = Math.sign(plane) || 1;
+    return axis === 'z'
+      ? { pos: [plane + outward * COMP_PROUD, yC, runC], rotY: (outward * Math.PI) / 2 }
+      : { pos: [runC, yC, plane + outward * COMP_PROUD], rotY: outward > 0 ? 0 : Math.PI };
+  }
+  // gable end
+  const g = geo.gable;
+  const plane = opening.wall === 'front' ? g.frontPlane : g.backPlane;
+  const minA = Math.min(g.innerAcross, g.outerAcross);
+  const aC = minA + opening.offsetFt;
+  const outward = opening.wall === 'front' ? -1 : 1; // front faces the lean-to's low/run-start end
+  return g.kind === 'eave'
+    ? { pos: [aC, yC, plane + outward * COMP_PROUD], rotY: outward > 0 ? 0 : Math.PI }
+    : { pos: [plane + outward * COMP_PROUD, yC, aC], rotY: (outward * Math.PI) / 2 };
 }
 
 // Gable end in the X-Y plane at constant Z (eave-attached).

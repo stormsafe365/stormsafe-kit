@@ -64,7 +64,8 @@ export interface WallLayout {
 /** Lean-to paneling information, derived for 3D rendering. */
 export interface LeanToStructure {
   id: string;
-  enclosure: 'open' | 'enclosed';
+  enclosure: 'open' | 'enclosed' | 'custom';
+  customWalls?: { front: string; back: string; side: string };
   attachedSide: string; // 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable'
   widthFt: number;
   lengthFt: number;
@@ -678,7 +679,8 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     }
 
     // ===== DERIVE LEAN-TO PANEL DATA (for 3D rendering) =====
-    const enclosure = (lt.enclosure ?? 'open') as 'open' | 'enclosed';
+    const enclosure = (lt.enclosure ?? 'open') as 'open' | 'enclosed' | 'custom';
+    const customWalls = lt.customWalls; // Pass through custom wall settings if present
 
     if (side === 'Left Eave' || side === 'Right Eave') {
       // Eave-attached: use Z range
@@ -687,6 +689,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       derivedLeanTos.push({
         id: lt.id,
         enclosure,
+        customWalls,
         attachedSide: side,
         widthFt: lw,
         lengthFt: Math.abs(zBack - zFront),
@@ -705,6 +708,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       derivedLeanTos.push({
         id: lt.id,
         enclosure,
+        customWalls,
         attachedSide: side,
         widthFt: lw,
         lengthFt: xRight - xLeft,

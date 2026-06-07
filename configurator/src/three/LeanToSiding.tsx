@@ -19,114 +19,10 @@ const ROOF_UNDER_GAP = 0.06;
 const SHEET_OUTSET_ROOF = 0.11; // Same as ROOF_LIFT in geometry.ts
 
 /**
- * Render roof panels for a lean-to.
- * The roof slopes from the inner post (connection to building) down to the outer post.
- * Always rendered, regardless of enclosure mode — roof is essential structural covering.
- */
-function LeanToRoofPanels({
-  lt,
-  roofDir,
-  planeMat,
-  tex,
-  roofMetal,
-  isEaveAttached,
-}: {
-  lt: LeanToStructure;
-  roofDir: RibDirection;
-  planeMat: (base: any, w: number, h: number, dir: RibDirection, metallic: boolean, bumped?: boolean, anchorU?: number, anchorV?: number) => THREE.Material;
-  tex: any;
-  roofMetal: boolean;
-  isEaveAttached: boolean;
-}) {
-  const { inner, outer, spanStart, spanEnd, widthFt, lowLegHeightFt, peakHeightFt, rise, lengthFt } = lt;
-
-  if (isEaveAttached) {
-    // EAVE-ATTACHED: Roof slopes from inner.x (inner post) to outer.x (outer post)
-    // Roof runs along the Z axis (front-to-back), spans from spanStart to spanEnd
-    const roofMidZ = (spanStart + spanEnd) / 2;
-    const roofMidX = (inner.x + outer.x) / 2;
-    const roofSpanZ = spanEnd - spanStart; // roof length along Z
-
-    // Calculate slope vector and roof normal
-    const slopeX = outer.x - inner.x; // how far out the roof extends
-    const slopeY = lowLegHeightFt - peakHeightFt; // height difference (negative because outer is lower)
-    const roofLen = Math.sqrt(slopeX * slopeX + slopeY * slopeY); // actual diagonal roof length
-
-    // Normalize slope vectors for panel orientation
-    const slopeNorm = Math.sqrt(slopeX * slopeX + slopeY * slopeY);
-    const uVecSlope = [slopeX / slopeNorm, slopeY / slopeNorm, 0] as [number, number, number];
-    const vVecZ = [0, 0, 1] as [number, number, number]; // along the length
-
-    return (
-      <>
-        {/* Top roof panel (colored) */}
-        <BasisPanel
-          center={[roofMidX + SHEET_OUTSET_ROOF * slopeY / slopeNorm, (peakHeightFt + lowLegHeightFt) / 2 + SHEET_OUTSET_ROOF * slopeX / slopeNorm, roofMidZ]}
-          uVec={uVecSlope}
-          vVec={vVecZ}
-          w={roofLen}
-          h={roofSpanZ}
-          material={planeMat(tex.roof, roofLen, roofSpanZ, roofDir, roofMetal, true, roofMidX, (peakHeightFt + lowLegHeightFt) / 2)}
-        />
-        {/* Underside roof panel (always galvalume) */}
-        <BasisPanel
-          center={[roofMidX + (SHEET_OUTSET_ROOF - ROOF_UNDER_GAP) * slopeY / slopeNorm, (peakHeightFt + lowLegHeightFt) / 2 + (SHEET_OUTSET_ROOF - ROOF_UNDER_GAP) * slopeX / slopeNorm, roofMidZ]}
-          uVec={uVecSlope}
-          vVec={vVecZ}
-          w={roofLen}
-          h={roofSpanZ}
-          material={planeMat(tex.underRoof, roofLen, roofSpanZ, roofDir, true, true, roofMidX, (peakHeightFt + lowLegHeightFt) / 2)}
-        />
-      </>
-    );
-  } else {
-    // GABLE-ATTACHED: Roof slopes from inner.z (inner post) to outer.z (outer post)
-    // Roof runs along the X axis (left-to-right), spans from spanStart to spanEnd
-    const roofMidX = (spanStart + spanEnd) / 2;
-    const roofMidZ = (inner.z + outer.z) / 2;
-    const roofSpanX = spanEnd - spanStart; // roof length along X
-
-    const slopeZ = outer.z - inner.z;
-    const slopeY = lowLegHeightFt - peakHeightFt;
-    const roofLen = Math.sqrt(slopeZ * slopeZ + slopeY * slopeY);
-
-    const slopeNorm = Math.sqrt(slopeZ * slopeZ + slopeY * slopeY);
-    const uVecSlope = [slopeZ / slopeNorm, slopeY / slopeNorm, 0] as [number, number, number];
-    const vVecX = [1, 0, 0] as [number, number, number]; // along X width
-
-    return (
-      <>
-        {/* Top roof panel (colored) */}
-        <BasisPanel
-          center={[roofMidX, (peakHeightFt + lowLegHeightFt) / 2 + SHEET_OUTSET_ROOF * slopeZ / slopeNorm, roofMidZ + SHEET_OUTSET_ROOF * slopeY / slopeNorm]}
-          uVec={uVecSlope}
-          vVec={vVecX}
-          w={roofLen}
-          h={roofSpanX}
-          material={planeMat(tex.roof, roofLen, roofSpanX, roofDir, roofMetal, true, roofMidX, (peakHeightFt + lowLegHeightFt) / 2)}
-        />
-        {/* Underside roof panel (always galvalume) */}
-        <BasisPanel
-          center={[roofMidX, (peakHeightFt + lowLegHeightFt) / 2 + (SHEET_OUTSET_ROOF - ROOF_UNDER_GAP) * slopeZ / slopeNorm, roofMidZ + (SHEET_OUTSET_ROOF - ROOF_UNDER_GAP) * slopeY / slopeNorm]}
-          uVec={uVecSlope}
-          vVec={vVecX}
-          w={roofLen}
-          h={roofSpanX}
-          material={planeMat(tex.underRoof, roofLen, roofSpanX, roofDir, true, true, roofMidX, (peakHeightFt + lowLegHeightFt) / 2)}
-        />
-      </>
-    );
-  }
-}
-
-/**
- * Render sheet-metal panels for lean-to side walls and gable ends.
- * Each lean-to can be 'open' (roof only, no walls) or 'enclosed' (full walls).
- *
- * A lean-to is essentially half a building: it has side walls running the length
- * (or width for gable-attached) and gable end walls at the front/back (or left/right).
- * Paneling uses the same corrugated texture, rib direction, and world-anchored
- * phase offset as the main building.
+ * Render sheet-metal panels for lean-tos with support for multiple enclosure modes:
+ * - 'open': roof only
+ * - 'enclosed': roof + side walls + gable ends (all closed)
+ * - 'custom': roof + per-wall settings
  */
 export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors, wainscot }: LeanToSidingProps) {
   const wallDir: RibDirection = wallOrientation === 'Vertical' ? 'vertical' : 'horizontal';
@@ -204,9 +100,36 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
       {leanTos.map((lt) => {
         const isEaveAttached = lt.attachedSide.includes('Eave');
 
+        // Determine which walls to render based on enclosure mode
+        let renderFront = false, renderBack = false, renderSide = false;
+        let frontType: 'open' | 'gable' | 'closed' = 'open';
+        let backType: 'open' | 'gable' | 'closed' = 'open';
+        let sideHeight: 'open' | 'full' | 'partial' = 'open';
+
+        if (lt.enclosure === 'enclosed') {
+          // Fully enclosed: all walls closed
+          renderFront = true;
+          renderBack = true;
+          renderSide = true;
+          frontType = 'closed';
+          backType = 'closed';
+          sideHeight = 'full';
+        } else if (lt.enclosure === 'custom' && lt.customWalls) {
+          // Custom: per-wall settings
+          const cw = lt.customWalls;
+          renderFront = cw.front !== 'open';
+          renderBack = cw.back !== 'open';
+          renderSide = cw.side !== 'open';
+          frontType = (cw.front as 'open' | 'gable' | 'closed') || 'open';
+          backType = (cw.back as 'open' | 'gable' | 'closed') || 'open';
+          // For side, determine if full or partial
+          sideHeight = cw.side === 'closed' ? 'full' : cw.side === 'open' ? 'open' : 'partial';
+        }
+        // else: 'open' mode, render nothing (only roof)
+
         return (
           <group key={lt.id}>
-            {/* ROOF PANELS — Always rendered, regardless of enclosure mode */}
+            {/* ROOF PANELS — Always rendered */}
             <LeanToRoofPanels
               lt={lt}
               roofDir={roofDir}
@@ -216,12 +139,12 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
               isEaveAttached={isEaveAttached}
             />
 
-            {/* SIDE & GABLE WALLS — Only for 'enclosed' mode */}
-            {lt.enclosure === 'enclosed' && (
-              <>
-                {isEaveAttached ? (
-                  <>
-                    {/* EAVE-ATTACHED (Left or Right) */}
+            {/* SIDE WALLS & GABLE ENDS — Only if enclosure !== 'open' */}
+            {renderSide || renderFront || renderBack ? (
+              isEaveAttached ? (
+                <>
+                  {/* EAVE-ATTACHED: Left/Right side walls + Front/Back gables */}
+                  {renderSide && (
                     <LeanToSideWallEave
                       lt={lt}
                       wallDir={wallDir}
@@ -229,23 +152,47 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
                       tex={tex}
                       wallMetal={wallMetal}
                       wOut={wOut}
+                      fullHeight={sideHeight === 'full'}
                     />
-                    <LeanToGableEndEave lt={lt} wallDir={wallDir} planeMat={planeMat} tex={tex} wallMetal={wallMetal} />
-                    {wH > 0 && (
-                      <LeanToWainscotEave
-                        lt={lt}
-                        wH={wH}
-                        wallDir={wallDir}
-                        planeMat={planeMat}
-                        tex={tex}
-                        wainMetal={wainMetal}
-                        wOut={wOut}
-                      />
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {/* GABLE-ATTACHED (Front or Back) */}
+                  )}
+                  {renderFront && (
+                    <LeanToGableEndEave
+                      lt={lt}
+                      gableType={frontType}
+                      which="front"
+                      wallDir={wallDir}
+                      planeMat={planeMat}
+                      tex={tex}
+                      wallMetal={wallMetal}
+                    />
+                  )}
+                  {renderBack && (
+                    <LeanToGableEndEave
+                      lt={lt}
+                      gableType={backType}
+                      which="back"
+                      wallDir={wallDir}
+                      planeMat={planeMat}
+                      tex={tex}
+                      wallMetal={wallMetal}
+                    />
+                  )}
+                  {wH > 0 && renderSide && sideHeight === 'full' && (
+                    <LeanToWainscotEave
+                      lt={lt}
+                      wH={wH}
+                      wallDir={wallDir}
+                      planeMat={planeMat}
+                      tex={tex}
+                      wainMetal={wainMetal}
+                      wOut={wOut}
+                    />
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* GABLE-ATTACHED: Front/Back side walls + Left/Right gables */}
+                  {renderSide && (
                     <LeanToSideWallGable
                       lt={lt}
                       wallDir={wallDir}
@@ -253,23 +200,45 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
                       tex={tex}
                       wallMetal={wallMetal}
                       wOut={wOut}
+                      fullHeight={sideHeight === 'full'}
                     />
-                    <LeanToGableEndGable lt={lt} wallDir={wallDir} planeMat={planeMat} tex={tex} wallMetal={wallMetal} />
-                    {wH > 0 && (
-                      <LeanToWainscotGable
-                        lt={lt}
-                        wH={wH}
-                        wallDir={wallDir}
-                        planeMat={planeMat}
-                        tex={tex}
-                        wainMetal={wainMetal}
-                        wOut={wOut}
-                      />
-                    )}
-                  </>
-                )}
-              </>
-            )}
+                  )}
+                  {renderFront && (
+                    <LeanToGableEndGable
+                      lt={lt}
+                      gableType={frontType}
+                      which="left"
+                      wallDir={wallDir}
+                      planeMat={planeMat}
+                      tex={tex}
+                      wallMetal={wallMetal}
+                    />
+                  )}
+                  {renderBack && (
+                    <LeanToGableEndGable
+                      lt={lt}
+                      gableType={backType}
+                      which="right"
+                      wallDir={wallDir}
+                      planeMat={planeMat}
+                      tex={tex}
+                      wallMetal={wallMetal}
+                    />
+                  )}
+                  {wH > 0 && renderSide && sideHeight === 'full' && (
+                    <LeanToWainscotGable
+                      lt={lt}
+                      wH={wH}
+                      wallDir={wallDir}
+                      planeMat={planeMat}
+                      tex={tex}
+                      wainMetal={wainMetal}
+                      wOut={wOut}
+                    />
+                  )}
+                </>
+              )
+            ) : null}
           </group>
         );
       })}
@@ -278,9 +247,90 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
 }
 
 /**
- * Render side wall panels for eave-attached lean-tos.
- * The side walls are vertical rectangles running along Z (front-to-back).
+ * Render roof panels for a lean-to (ALWAYS rendered).
  */
+function LeanToRoofPanels({
+  lt,
+  roofDir,
+  planeMat,
+  tex,
+  roofMetal,
+  isEaveAttached,
+}: {
+  lt: LeanToStructure;
+  roofDir: RibDirection;
+  planeMat: (base: any, w: number, h: number, dir: RibDirection, metallic: boolean, bumped?: boolean, anchorU?: number, anchorV?: number) => THREE.Material;
+  tex: any;
+  roofMetal: boolean;
+  isEaveAttached: boolean;
+}) {
+  const { inner, outer, spanStart, spanEnd, widthFt, lowLegHeightFt, peakHeightFt, rise } = lt;
+
+  if (isEaveAttached) {
+    const roofMidZ = (spanStart + spanEnd) / 2;
+    const roofMidX = (inner.x + outer.x) / 2;
+    const roofSpanZ = spanEnd - spanStart;
+    const slopeX = outer.x - inner.x;
+    const slopeY = lowLegHeightFt - peakHeightFt;
+    const roofLen = Math.sqrt(slopeX * slopeX + slopeY * slopeY);
+    const slopeNorm = roofLen;
+    const uVecSlope = [slopeX / slopeNorm, slopeY / slopeNorm, 0] as [number, number, number];
+    const vVecZ = [0, 0, 1] as [number, number, number];
+
+    return (
+      <>
+        <BasisPanel
+          center={[roofMidX + SHEET_OUTSET_ROOF * slopeY / slopeNorm, (peakHeightFt + lowLegHeightFt) / 2 + SHEET_OUTSET_ROOF * slopeX / slopeNorm, roofMidZ]}
+          uVec={uVecSlope}
+          vVec={vVecZ}
+          w={roofLen}
+          h={roofSpanZ}
+          material={planeMat(tex.roof, roofLen, roofSpanZ, roofDir, roofMetal, true, roofMidX, (peakHeightFt + lowLegHeightFt) / 2)}
+        />
+        <BasisPanel
+          center={[roofMidX + (SHEET_OUTSET_ROOF - ROOF_UNDER_GAP) * slopeY / slopeNorm, (peakHeightFt + lowLegHeightFt) / 2 + (SHEET_OUTSET_ROOF - ROOF_UNDER_GAP) * slopeX / slopeNorm, roofMidZ]}
+          uVec={uVecSlope}
+          vVec={vVecZ}
+          w={roofLen}
+          h={roofSpanZ}
+          material={planeMat(tex.underRoof, roofLen, roofSpanZ, roofDir, true, true, roofMidX, (peakHeightFt + lowLegHeightFt) / 2)}
+        />
+      </>
+    );
+  } else {
+    const roofMidX = (spanStart + spanEnd) / 2;
+    const roofMidZ = (inner.z + outer.z) / 2;
+    const roofSpanX = spanEnd - spanStart;
+    const slopeZ = outer.z - inner.z;
+    const slopeY = lowLegHeightFt - peakHeightFt;
+    const roofLen = Math.sqrt(slopeZ * slopeZ + slopeY * slopeY);
+    const slopeNorm = roofLen;
+    const uVecSlope = [slopeZ / slopeNorm, slopeY / slopeNorm, 0] as [number, number, number];
+    const vVecX = [1, 0, 0] as [number, number, number];
+
+    return (
+      <>
+        <BasisPanel
+          center={[roofMidX, (peakHeightFt + lowLegHeightFt) / 2 + SHEET_OUTSET_ROOF * slopeZ / slopeNorm, roofMidZ + SHEET_OUTSET_ROOF * slopeY / slopeNorm]}
+          uVec={uVecSlope}
+          vVec={vVecX}
+          w={roofLen}
+          h={roofSpanX}
+          material={planeMat(tex.roof, roofLen, roofSpanX, roofDir, roofMetal, true, roofMidX, (peakHeightFt + lowLegHeightFt) / 2)}
+        />
+        <BasisPanel
+          center={[roofMidX, (peakHeightFt + lowLegHeightFt) / 2 + (SHEET_OUTSET_ROOF - ROOF_UNDER_GAP) * slopeZ / slopeNorm, roofMidZ + (SHEET_OUTSET_ROOF - ROOF_UNDER_GAP) * slopeY / slopeNorm]}
+          uVec={uVecSlope}
+          vVec={vVecX}
+          w={roofLen}
+          h={roofSpanX}
+          material={planeMat(tex.underRoof, roofLen, roofSpanX, roofDir, true, true, roofMidX, (peakHeightFt + lowLegHeightFt) / 2)}
+        />
+      </>
+    );
+  }
+}
+
 function LeanToSideWallEave({
   lt,
   wallDir,
@@ -288,6 +338,7 @@ function LeanToSideWallEave({
   tex,
   wallMetal,
   wOut,
+  fullHeight,
 }: {
   lt: LeanToStructure;
   wallDir: RibDirection;
@@ -295,25 +346,24 @@ function LeanToSideWallEave({
   tex: any;
   wallMetal: boolean;
   wOut: number;
+  fullHeight: boolean;
 }) {
   const { inner, outer, spanStart, spanEnd, lowLegHeightFt, peakHeightFt } = lt;
   const wallLength = spanEnd - spanStart;
-  const wallHeight = peakHeightFt;
   const wallMidZ = (spanStart + spanEnd) / 2;
+
+  if (!fullHeight) return null; // Only render for full height (for now, defer partial/panel logic)
 
   return (
     <>
-      {/* Inner side (at the attachment to the building) */}
       <BasisPanel
-        center={[inner.x, wallHeight / 2, wallMidZ]}
+        center={[inner.x, peakHeightFt / 2, wallMidZ]}
         uVec={[0, 0, 1]}
         vVec={[0, 1, 0]}
         w={wallLength}
-        h={wallHeight}
-        material={planeMat(tex.walls, wallLength, wallHeight, wallDir, wallMetal, false, wallMidZ - wallLength / 2, 0)}
+        h={peakHeightFt}
+        material={planeMat(tex.walls, wallLength, peakHeightFt, wallDir, wallMetal, false, wallMidZ - wallLength / 2, 0)}
       />
-
-      {/* Outer side (at the free end of the lean-to) */}
       <BasisPanel
         center={[outer.x, lowLegHeightFt / 2, wallMidZ]}
         uVec={[0, 0, 1]}
@@ -326,49 +376,42 @@ function LeanToSideWallEave({
   );
 }
 
-/**
- * Render gable end walls for eave-attached lean-tos (trapezoid at front and back).
- * The gable ends are trapezoids: wide at the inner post (peakHeight), narrow at the outer post (lowLegHeight).
- */
 function LeanToGableEndEave({
   lt,
+  gableType,
+  which,
   wallDir,
   planeMat,
   tex,
   wallMetal,
 }: {
   lt: LeanToStructure;
+  gableType: 'open' | 'gable' | 'closed';
+  which: 'front' | 'back';
   wallDir: RibDirection;
   planeMat: (base: any, w: number, h: number, dir: RibDirection, metallic: boolean, bumped?: boolean, anchorU?: number, anchorV?: number) => THREE.Material;
   tex: any;
   wallMetal: boolean;
 }) {
-  const { inner, outer, spanStart, spanEnd, widthFt, lowLegHeightFt, peakHeightFt } = lt;
+  if (gableType === 'open') return null;
 
-  // Render a trapezoid for each end (front and back)
-  const avgHeight = (lowLegHeightFt + peakHeightFt) / 2;
+  const { inner, outer, spanStart, spanEnd, widthFt, lowLegHeightFt, peakHeightFt } = lt;
+  const z = which === 'front' ? spanStart : spanEnd;
   const midX = (inner.x + outer.x) / 2;
+  const avgHeight = (lowLegHeightFt + peakHeightFt) / 2;
 
   return (
-    <>
-      {[spanStart, spanEnd].map((z) => (
-        <BasisPanel
-          key={`gable-eave-${z}`}
-          center={[midX, avgHeight / 2, z]}
-          uVec={[1, 0, 0]}
-          vVec={[0, 1, 0]}
-          w={widthFt}
-          h={avgHeight}
-          material={planeMat(tex.walls, widthFt, avgHeight, wallDir, wallMetal, false, midX - widthFt / 2, 0)}
-        />
-      ))}
-    </>
+    <BasisPanel
+      center={[midX, avgHeight / 2, z]}
+      uVec={[1, 0, 0]}
+      vVec={[0, 1, 0]}
+      w={widthFt}
+      h={avgHeight}
+      material={planeMat(tex.walls, widthFt, avgHeight, wallDir, wallMetal, false, midX - widthFt / 2, 0)}
+    />
   );
 }
 
-/**
- * Render wainscot band on eave-attached lean-to side walls.
- */
 function LeanToWainscotEave({
   lt,
   wH,
@@ -392,7 +435,6 @@ function LeanToWainscotEave({
 
   return (
     <>
-      {/* Inner side wainscot */}
       <BasisPanel
         center={[inner.x, wH / 2, wallMidZ]}
         uVec={[0, 0, 1]}
@@ -401,8 +443,6 @@ function LeanToWainscotEave({
         h={wH}
         material={planeMat(tex.wainscot, wallLength, wH, wallDir, wainMetal, false, wallMidZ - wallLength / 2, 0)}
       />
-
-      {/* Outer side wainscot */}
       <BasisPanel
         center={[outer.x, wH / 2, wallMidZ]}
         uVec={[0, 0, 1]}
@@ -415,10 +455,6 @@ function LeanToWainscotEave({
   );
 }
 
-/**
- * Render side wall panels for gable-attached lean-tos.
- * The side walls are vertical rectangles running along X (left-to-right).
- */
 function LeanToSideWallGable({
   lt,
   wallDir,
@@ -426,6 +462,7 @@ function LeanToSideWallGable({
   tex,
   wallMetal,
   wOut,
+  fullHeight,
 }: {
   lt: LeanToStructure;
   wallDir: RibDirection;
@@ -433,25 +470,24 @@ function LeanToSideWallGable({
   tex: any;
   wallMetal: boolean;
   wOut: number;
+  fullHeight: boolean;
 }) {
   const { inner, outer, spanStart, spanEnd, lowLegHeightFt, peakHeightFt } = lt;
   const wallLength = spanEnd - spanStart;
-  const wallHeight = peakHeightFt;
   const wallMidX = (spanStart + spanEnd) / 2;
+
+  if (!fullHeight) return null;
 
   return (
     <>
-      {/* Inner side (at the attachment to the building) */}
       <BasisPanel
-        center={[wallMidX, wallHeight / 2, inner.z]}
+        center={[wallMidX, peakHeightFt / 2, inner.z]}
         uVec={[1, 0, 0]}
         vVec={[0, 1, 0]}
         w={wallLength}
-        h={wallHeight}
-        material={planeMat(tex.walls, wallLength, wallHeight, wallDir, wallMetal, false, wallMidX - wallLength / 2, 0)}
+        h={peakHeightFt}
+        material={planeMat(tex.walls, wallLength, peakHeightFt, wallDir, wallMetal, false, wallMidX - wallLength / 2, 0)}
       />
-
-      {/* Outer side (at the free end of the lean-to) */}
       <BasisPanel
         center={[wallMidX, lowLegHeightFt / 2, outer.z]}
         uVec={[1, 0, 0]}
@@ -464,48 +500,42 @@ function LeanToSideWallGable({
   );
 }
 
-/**
- * Render gable end walls for gable-attached lean-tos (trapezoid at left and right).
- */
 function LeanToGableEndGable({
   lt,
+  gableType,
+  which,
   wallDir,
   planeMat,
   tex,
   wallMetal,
 }: {
   lt: LeanToStructure;
+  gableType: 'open' | 'gable' | 'closed';
+  which: 'left' | 'right';
   wallDir: RibDirection;
   planeMat: (base: any, w: number, h: number, dir: RibDirection, metallic: boolean, bumped?: boolean, anchorU?: number, anchorV?: number) => THREE.Material;
   tex: any;
   wallMetal: boolean;
 }) {
-  const { inner, outer, spanStart, spanEnd, widthFt, lowLegHeightFt, peakHeightFt } = lt;
+  if (gableType === 'open') return null;
 
-  // Render a trapezoid for each end (left and right)
-  const avgHeight = (lowLegHeightFt + peakHeightFt) / 2;
+  const { inner, outer, spanStart, spanEnd, widthFt, lowLegHeightFt, peakHeightFt } = lt;
+  const x = which === 'left' ? spanStart : spanEnd;
   const midZ = (inner.z + outer.z) / 2;
+  const avgHeight = (lowLegHeightFt + peakHeightFt) / 2;
 
   return (
-    <>
-      {[spanStart, spanEnd].map((x) => (
-        <BasisPanel
-          key={`gable-gable-${x}`}
-          center={[x, avgHeight / 2, midZ]}
-          uVec={[0, 0, 1]}
-          vVec={[0, 1, 0]}
-          w={widthFt}
-          h={avgHeight}
-          material={planeMat(tex.walls, widthFt, avgHeight, wallDir, wallMetal, false, midZ - widthFt / 2, 0)}
-        />
-      ))}
-    </>
+    <BasisPanel
+      center={[x, avgHeight / 2, midZ]}
+      uVec={[0, 0, 1]}
+      vVec={[0, 1, 0]}
+      w={widthFt}
+      h={avgHeight}
+      material={planeMat(tex.walls, widthFt, avgHeight, wallDir, wallMetal, false, midZ - widthFt / 2, 0)}
+    />
   );
 }
 
-/**
- * Render wainscot band on gable-attached lean-to side walls.
- */
 function LeanToWainscotGable({
   lt,
   wH,
@@ -529,7 +559,6 @@ function LeanToWainscotGable({
 
   return (
     <>
-      {/* Inner side wainscot */}
       <BasisPanel
         center={[wallMidX, wH / 2, inner.z]}
         uVec={[1, 0, 0]}
@@ -538,8 +567,6 @@ function LeanToWainscotGable({
         h={wH}
         material={planeMat(tex.wainscot, wallLength, wH, wallDir, wainMetal, false, wallMidX - wallLength / 2, 0)}
       />
-
-      {/* Outer side wainscot */}
       <BasisPanel
         center={[wallMidX, wH / 2, outer.z]}
         uVec={[1, 0, 0]}
@@ -552,9 +579,6 @@ function LeanToWainscotGable({
   );
 }
 
-/**
- * A simple basis-vector panel. Similar to the one in Siding.tsx but extracted here for reuse.
- */
 function BasisPanel({
   center,
   uVec,

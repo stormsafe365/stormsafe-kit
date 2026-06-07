@@ -61,6 +61,12 @@ export interface LeanTo {
   roofPitch: string;
   /** Enclosure preset: open (roof only) / enclosed (walls) / custom (per-wall). */
   enclosure: LeanToEnclosure;
+  /** Custom wall settings — only used when enclosure === 'custom'. */
+  customWalls?: {
+    front: 'open' | 'gable' | 'closed'; // gable = triangle only
+    back: 'open' | 'gable' | 'closed';
+    side: 'open' | '1panel' | '2panel' | '3panel' | 'q1' | 'q2' | 'q3' | 'closed'; // q1 = 1/4, q2 = 1/2, q3 = 3/4
+  };
 }
 
 /** The full wall/enclosure model (mirrors Sensei's Walls panel). */

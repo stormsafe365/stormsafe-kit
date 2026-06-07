@@ -283,6 +283,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
   tallLegHeightFt?: number;
   roofPitch: string;
   enclosure: 'open' | 'enclosed' | 'custom';
+  customWalls?: { front: 'open' | 'gable' | 'closed'; back: 'open' | 'gable' | 'closed'; side: string };
 }> {
   const out: Array<{
     type: 'attached' | 'freestanding';
@@ -293,6 +294,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     tallLegHeightFt?: number;
     roofPitch: string;
     enclosure: 'open' | 'enclosed' | 'custom';
+    customWalls?: { front: 'open' | 'gable' | 'closed'; back: 'open' | 'gable' | 'closed'; side: string };
   }> = [];
 
   const strVal = (el: Element, sel: string) => {
@@ -324,6 +326,12 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     const validSides = ['Left Eave', 'Right Eave', 'Front Gable', 'Back Gable'];
     const attachedSide = (validSides.includes(sideStr) ? sideStr : 'Left Eave') as 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable';
 
+    // Read custom wall settings (only when enclosure === 'custom')
+    const customFront = strVal(el, '.lt-wall-front') || 'open';
+    const customBack = strVal(el, '.lt-wall-back') || 'open';
+    const customSide = strVal(el, '.lt-wall-side') || 'open';
+    const customWalls = enclosure === 'custom' ? { front: customFront, back: customBack, side: customSide } : undefined;
+
     out.push({
       type,
       attachedSide: type === 'attached' ? attachedSide : undefined,
@@ -333,6 +341,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
       tallLegHeightFt: type === 'attached' ? tallHeightFt : undefined,
       roofPitch: roofPitchStr,
       enclosure,
+      customWalls,
     });
   });
 

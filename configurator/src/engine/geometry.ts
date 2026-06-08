@@ -410,8 +410,12 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   // The roof member is the simple single rafter ("bow"). Leg style varies:
   //   • DOUBLE post + double base rail  when W > 31 (or H 14/15)
   //   • LADDER leg (two posts + rungs)  when H >= 16
-  const doublePost = W > 31 || H === 14 || H === 15;
-  const ladderLeg = H >= 16;
+  // TEMP: render every bent as a SINGLE post for now (per request — the
+  // double/ladder styling is visually wrong). Flip SINGLE_TRUSS_ONLY to false to
+  // restore the real double/ladder styles.
+  const SINGLE_TRUSS_ONLY = true;
+  const doublePost = !SINGLE_TRUSS_ONLY && (W > 31 || H === 14 || H === 15);
+  const ladderLeg = !SINGLE_TRUSS_ONLY && H >= 16;
   const LADDER_W = Math.min(0.9, Math.max(0.5, H * 0.05)); // ladder/double post spacing along the wall
 
   const braceLen = Math.min(3, H * 0.45);
@@ -428,8 +432,13 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       members.push(member('leg', [sx, 0, z1], [sx, H, z1]));
       members.push(member('leg', [sx, 0, z2], [sx, H, z2]));
       const rungs = Math.max(2, Math.round(H / 4)); // ~every 4'
+      // Ladder rungs are short horizontal bars at the wall plane; drop any that
+      // land inside an eave opening so they don't show as dashes across a framed
+      // opening (the column clip only handles vertical/diagonal members).
+      const rungHoles = sx < 0 ? leftHoles : rightHoles;
       for (let i = 0; i <= rungs; i++) {
         const y = (H * i) / rungs;
+        if (rungHoles.some((hh) => z >= hh.lo - 0.01 && z <= hh.hi + 0.01 && y >= hh.sill - 0.01 && y <= hh.top + 0.01)) continue;
         members.push(member('brace', [sx, y, z1], [sx, y, z2])); // ladder rung
       }
     } else if (doublePost) {

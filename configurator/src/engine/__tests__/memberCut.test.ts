@@ -182,3 +182,4 @@ describe('columns + knee braces are cut out of an eave opening (walk-through)', 
     expect(eaveFrameSpansHeight(s.members, halfW, 'left', farBent!, 7)).toBe(true);
   });
 });
+

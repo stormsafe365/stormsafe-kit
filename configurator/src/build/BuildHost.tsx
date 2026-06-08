@@ -392,7 +392,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     const ltOpenings: Array<{ id: string; type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number }> = [];
     el.querySelectorAll('.lt-acc-e').forEach((ae, accIndex) => {
       const t = strVal(ae, '.lt-acc-type');
-      const oType = t === 'wtd' ? 'walkDoor' : t === 'win' ? 'window' : 'rollUpDoor';
+      const oType = t === 'wtd' ? 'walkDoor' : t === 'win' ? 'window' : t === 'frameout' ? 'frameOut' : 'rollUpDoor';
       const locStr = strVal(ae, '.lt-acc-loc');
       const wall = ['outer', 'front', 'back'].includes(locStr) ? locStr : 'outer';
       const qty = Math.max(1, Math.min(3, parseInt(strVal(ae, '.lt-acc-qty'), 10) || 1));
@@ -404,8 +404,13 @@ function readLeanTos(win: Window & { document: Document }): Array<{
         h = parseFloat(sz[1]) || 8;
       } else if (oType === 'walkDoor') {
         w = 3; h = 6.67; sill = 0;
-      } else {
+      } else if (oType === 'window') {
         w = 2.5; h = 2.5; sill = 4.5;
+      } else {
+        // frameOut — custom W×H from the entry; a real cut you can see through.
+        w = parseFloat(strVal(ae, '.lt-acc-fo-w')) || 10;
+        h = parseFloat(strVal(ae, '.lt-acc-fo-h')) || 10;
+        sill = 0;
       }
       // Wall the opening sits on determines the run length it's positioned along.
       const wallLen = wall === 'outer' ? lengthFt : widthFt;
@@ -520,6 +525,10 @@ function syncFromBuilder(win: BuilderWindow) {
   if (leftFt !== st.eavePanelFt.left || rightFt !== st.eavePanelFt.right) {
     st.setEavePanels({ left: leftFt, right: rightFt });
   }
+
+  // Wainscot (base accent band) on/off from the program's #wain select.
+  const wainOn = val('wain') === 'yes';
+  if (wainOn !== st.wainscot.enabled) st.setWainscotEnabled(wainOn);
 
   // ── Colors (roof / wall / trim / wainscot) → 3D ──
   // Program selects: cr=roof, cw=wall, ct=trim, cwn=wainscot. Each option's

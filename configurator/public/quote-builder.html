@@ -4603,9 +4603,15 @@ function addLTAcc(entry){
     '<option value="rollup">Roll-Up Door</option>'+
     '<option value="wtd">Walk-Through Door</option>'+
     '<option value="win">Window</option>'+
+    '<option value="frameout">Framed Opening</option>'+
     '</select></div>'+
     '<div class="row lt-acc-rud-row"><label>Door Size</label>'+
     '<select class="lt-acc-size" onchange="updLTAccRudSize(this);rc()"></select></div>'+
+    '<div class="row lt-acc-fo-row" style="display:none"><label>Frame-Out Size (W &times; H ft)</label>'+
+    '<div style="display:flex;gap:6px;width:100%">'+
+    '<input type="number" class="lt-acc-fo-w" min="1" max="20" step="0.5" value="10" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%" placeholder="W">'+
+    '<input type="number" class="lt-acc-fo-h" min="1" max="16" step="0.5" value="10" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%" placeholder="H">'+
+    '</div></div>'+
     '<div class="row lt-acc-rud-ch-row" style="display:none"><label>Chain Hoist</label>'+
     '<select class="lt-acc-ch" onchange="rc()">'+
     '<option value="0">None</option><option value="1">1 (+$325)</option>'+
@@ -4656,6 +4662,7 @@ function updLTAccType(sel){
   if(slRow) slRow.style.display=isRollup?'':'none';
   e.querySelector('.lt-acc-wtd-row').style.display=sel.value==='wtd'?'':'none';
   e.querySelector('.lt-acc-win-row').style.display=sel.value==='win'?'':'none';
+  var foRow=e.querySelector('.lt-acc-fo-row'); if(foRow) foRow.style.display=sel.value==='frameout'?'':'none';
   updateLTAccSize(e);
   if(isRollup) refreshLTAccChSl(e);
   rc();

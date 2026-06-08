@@ -227,6 +227,73 @@ function clipFrameAtEaveOpenings(members: Member[], openings: Opening[], halfW: 
   return out;
 }
 
+/**
+ * Cut a lean-to's own columns + knee braces where one of its framed openings
+ * crosses them — the shed-roof analogue of clipFrameAtEaveOpenings. Without this
+ * a lean-to frame-out shows the outer posts standing behind the hole; with it
+ * you see straight through, same as a frame-out on the main building.
+ *
+ * Each outer post/brace sits in a constant plane (constant-Z for an eave-attached
+ * lean-to, constant-X for a gable-attached one) with a foot on the outer wall; if
+ * an opening on that wall spans the post's run position, the part of the member
+ * inside the opening's height band is removed. Mirrors openingPlacement's math:
+ * the opening centre along the run is `spanStart + offsetFt`.
+ */
+function clipFrameAtLeanToOpenings(members: Member[], leanTos: LeanToStructure[]): Member[] {
+  type Band = { eave: boolean; plane: number; lo: number; hi: number; ylo: number; yhi: number };
+  const bands: Band[] = [];
+  for (const lt of leanTos) {
+    const eave = lt.attachedSide === 'Left Eave' || lt.attachedSide === 'Right Eave';
+    for (const op of lt.openings ?? []) {
+      if (op.wall !== 'outer') continue; // posts only cross the outer long wall
+      const c = lt.spanStart + op.offsetFt; // centre along the run axis
+      const sill = op.sillFt ?? 0;
+      bands.push({
+        eave,
+        plane: eave ? lt.outer.x : lt.outer.z,
+        lo: c - op.widthFt / 2,
+        hi: c + op.widthFt / 2,
+        ylo: sill,
+        yhi: sill + op.heightFt,
+      });
+    }
+  }
+  if (!bands.length) return members;
+
+  const out: Member[] = [];
+  for (const m of members) {
+    if (m.kind !== 'leg' && m.kind !== 'brace') {
+      out.push(m);
+      continue;
+    }
+    let segs: Array<[Vec3, Vec3]> = [[m.start, m.end]];
+    let cut = false;
+    for (const b of bands) {
+      let onPlane: boolean;
+      let run: number;
+      if (b.eave) {
+        const constZ = Math.abs(m.start[2] - m.end[2]) < 0.01;
+        const atPlane = Math.abs(m.start[0] - b.plane) < 0.1 || Math.abs(m.end[0] - b.plane) < 0.1;
+        onPlane = constZ && atPlane;
+        run = m.start[2];
+      } else {
+        const constX = Math.abs(m.start[0] - m.end[0]) < 0.01;
+        const atPlane = Math.abs(m.start[2] - b.plane) < 0.1 || Math.abs(m.end[2] - b.plane) < 0.1;
+        onPlane = constX && atPlane;
+        run = m.start[0];
+      }
+      if (!onPlane || run < b.lo - 0.01 || run > b.hi + 0.01) continue;
+      const next: Array<[Vec3, Vec3]> = [];
+      for (const [s, e] of segs) next.push(...clipSegmentByY(s, e, b.ylo, b.yhi));
+      segs = next;
+      cut = true;
+    }
+    if (cut) for (const [s, e] of segs) out.push(member(m.kind, s, e));
+    else out.push(m);
+  }
+  return out;
+}
+
 function deriveEnclosure(
   type: BuildingType,
   halfL: number,
@@ -800,7 +867,10 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     framePositionsZ,
     // Cut columns + knee braces out of any eave doorway/opening last, so you can
     // step right through a framed opening (horizontals were cut during build).
-    members: clipFrameAtEaveOpenings(members, config.openings ?? [], halfW, halfL),
+    members: clipFrameAtLeanToOpenings(
+      clipFrameAtEaveOpenings(members, config.openings ?? [], halfW, halfL),
+      derivedLeanTos,
+    ),
     enclosure,
     openBayZ,
     eavePanelFt: { left: eavePanelFt.left, right: eavePanelFt.right },

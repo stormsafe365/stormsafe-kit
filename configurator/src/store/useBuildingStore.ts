@@ -5,6 +5,7 @@ import type {
   ExposureCategory,
   FramingGauge,
   LeanTo,
+  LeanToOpening,
   Opening,
   OpeningType,
   OpenEnd,
@@ -62,6 +63,8 @@ export interface BuildingStore extends BuildingConfig {
   addLeanTo: () => string;
   updateLeanTo: (id: string, patch: Partial<LeanTo>) => void;
   removeLeanTo: (id: string) => void;
+  /** In-place update of a single lean-to opening (by its stable id) — for smooth drag. */
+  updateLeanToOpening: (openingId: string, patch: Partial<LeanToOpening>) => void;
 
   reset: () => void;
 }
@@ -204,6 +207,14 @@ export const useBuildingStore = create<BuildingStore>((set) => ({
   updateLeanTo: (id, patch) =>
     set((s) => ({ leanTos: s.leanTos.map((lt) => (lt.id === id ? { ...lt, ...patch } : lt)) })),
   removeLeanTo: (id) => set((s) => ({ leanTos: s.leanTos.filter((lt) => lt.id !== id) })),
+  updateLeanToOpening: (openingId, patch) =>
+    set((s) => ({
+      leanTos: s.leanTos.map((lt) =>
+        (lt.openings ?? []).some((o) => o.id === openingId)
+          ? { ...lt, openings: (lt.openings ?? []).map((o) => (o.id === openingId ? { ...o, ...patch } : o)) }
+          : lt,
+      ),
+    })),
 
   reset: () => set(() => ({ ...DEFAULT_CONFIG })),
 }));

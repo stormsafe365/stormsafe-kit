@@ -219,6 +219,8 @@ type BuilderWindow = Window & {
   __ssOpenSig?: string;
   __ssOpenMap?: Record<string, { entry: Element; itemIndex: number; side: WallSide; width: number }>;
   __ssLeanToSig?: string;
+  /** Lean-to opening id → its source accessory entry + item index, for drag writeback. */
+  __ssLeanToOpenMap?: Record<string, { entry: Element; itemIndex: number; width: number }>;
 };
 
 /**
@@ -270,6 +272,48 @@ function writeBackDrag(win: BuilderWindow, id: string | null) {
 }
 
 /**
+ * Write a lean-to opening 3D drag back into the program. Switches the source
+ * accessory row to explicit "Custom offset" mode and freezes ALL its items to
+ * their current 3D positions (so a multi-qty row doesn't re-auto-space), then
+ * reprices. Program offset = centerline − width/2 (round-trips readLeanTos).
+ */
+function writeBackLeanToOpening(win: BuilderWindow, id: string | null) {
+  const map = win.__ssLeanToOpenMap;
+  if (!id || !map || !map[id]) return;
+  const { entry } = map[id];
+
+  const siblings = Object.keys(map)
+    .map((oid) => ({ oid, ...map[oid] }))
+    .filter((m) => m.entry === entry)
+    .sort((a, b) => a.itemIndex - b.itemIndex);
+  if (!siblings.length) return;
+
+  const allOpenings = useBuildingStore.getState().leanTos.flatMap((lt) => lt.openings ?? []);
+  const fns = win as unknown as { updLTAccPos?: (el: Element) => void; rebuildLTAccOffsets?: (el: Element) => void };
+
+  // Switch the row to explicit custom offsets and (re)build the per-item inputs.
+  const posEl = entry.querySelector('.lt-acc-pos') as HTMLSelectElement | null;
+  if (posEl && posEl.value !== 'offset') {
+    posEl.value = 'offset';
+    if (typeof fns.updLTAccPos === 'function') fns.updLTAccPos(posEl);
+  }
+  if (typeof fns.rebuildLTAccOffsets === 'function') fns.rebuildLTAccOffsets(entry);
+  const offEls = Array.from(entry.querySelectorAll('.lt-acc-off')) as HTMLInputElement[];
+
+  let wrote = false;
+  for (const sib of siblings) {
+    const op = allOpenings.find((o) => o.id === sib.oid);
+    const input = offEls[sib.itemIndex];
+    if (!op || !input) continue;
+    const pos = Math.max(0, Math.round((op.offsetFt - op.widthFt / 2) * 12) / 12); // nearest inch
+    input.value = String(Number(pos.toFixed(3)));
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    wrote = true;
+  }
+  if (wrote && typeof win.rc === 'function') win.rc();
+}
+
+/**
  * Read the program's lean-to entries and sync them to the 3D store.
  * Lean-to entries have class `.lte` and contain:
  *   - `.lt-type` = type (attached/freestanding)
@@ -291,7 +335,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
   roofPitch: string;
   enclosure: 'open' | 'enclosed' | 'custom';
   customWalls?: { front: string; back: string; side: string };
-  openings?: Array<{ type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number }>;
+  openings?: Array<{ id: string; type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number }>;
 }> {
   const out: Array<{
     type: 'attached' | 'freestanding';
@@ -303,7 +347,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     roofPitch: string;
     enclosure: 'open' | 'enclosed' | 'custom';
     customWalls?: { front: string; back: string; side: string };
-    openings?: Array<{ type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number }>;
+    openings?: Array<{ id: string; type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number }>;
   }> = [];
 
   const strVal = (el: Element, sel: string) => {
@@ -316,7 +360,9 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     return Number.isFinite(n) ? n : d;
   };
 
-  win.document.querySelectorAll('.lte').forEach((el) => {
+  const ltOpenMap: NonNullable<BuilderWindow['__ssLeanToOpenMap']> = {};
+
+  win.document.querySelectorAll('.lte').forEach((el, ltIndex) => {
     const typeStr = strVal(el, '.lt-type');
     const type = (typeStr === 'freestanding' ? 'freestanding' : 'attached') as 'attached' | 'freestanding';
 
@@ -343,8 +389,8 @@ function readLeanTos(win: Window & { document: Document }): Array<{
 
     // ── Lean-to accessories (doors / windows / roll-ups) → openings ──
     // Each `.lt-acc-e` entry: type + size + which wall + position + quantity.
-    const ltOpenings: Array<{ type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number }> = [];
-    el.querySelectorAll('.lt-acc-e').forEach((ae) => {
+    const ltOpenings: Array<{ id: string; type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number }> = [];
+    el.querySelectorAll('.lt-acc-e').forEach((ae, accIndex) => {
       const t = strVal(ae, '.lt-acc-type');
       const oType = t === 'wtd' ? 'walkDoor' : t === 'win' ? 'window' : 'rollUpDoor';
       const locStr = strVal(ae, '.lt-acc-loc');
@@ -372,7 +418,9 @@ function readLeanTos(win: Window & { document: Document }): Array<{
         else if (pos === 'right') center = wallLen - (w / 2 + 1) - i * (w + 1.5);
         else center = (wallLen * (i + 1)) / (qty + 1); // auto / centered-multi: even spacing
         center = Math.max(w / 2 + 0.2, Math.min(wallLen - w / 2 - 0.2, center)); // keep on the wall
-        ltOpenings.push({ type: oType, wall, widthFt: w, heightFt: h, sillFt: sill, offsetFt: center });
+        const id = `lt${ltIndex}:acc${accIndex}:item${i}`; // deterministic + stable across polls
+        ltOpenMap[id] = { entry: ae, itemIndex: i, width: w };
+        ltOpenings.push({ id, type: oType, wall, widthFt: w, heightFt: h, sillFt: sill, offsetFt: center });
       }
     });
 
@@ -390,6 +438,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     });
   });
 
+  (win as BuilderWindow).__ssLeanToOpenMap = ltOpenMap;
   return out;
 }
 
@@ -610,7 +659,9 @@ export default function BuildHost() {
       if (!unsubDrag) {
         unsubDrag = useEditorStore.subscribe((s, prev) => {
           if (prev.dragging && !s.dragging) {
+            // Whichever id matches its map writes back; the other no-ops.
             writeBackDrag(win, prev.selectedOpeningId ?? s.selectedOpeningId);
+            writeBackLeanToOpening(win, prev.selectedLeanToOpeningId ?? s.selectedLeanToOpeningId);
           }
         });
       }

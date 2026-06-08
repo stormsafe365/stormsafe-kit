@@ -23,6 +23,8 @@ interface EditorStore {
   editorOpen: boolean;
   activeWall: WallSide;
   selectedOpeningId: string | null;
+  /** Selected lean-to opening (separate id space from main-building openings). */
+  selectedLeanToOpeningId: string | null;
   /** True while an opening is being dragged (2D or 3D) — pauses orbit controls. */
   dragging: boolean;
 
@@ -40,6 +42,7 @@ interface EditorStore {
   closeEditor: () => void;
   setActiveWall: (wall: WallSide) => void;
   selectOpening: (id: string | null) => void;
+  selectLeanToOpening: (id: string | null) => void;
   setDragging: (on: boolean) => void;
   setViewMode: (mode: ViewMode) => void;
   setCutawayWall: (wall: WallSide | null) => void;
@@ -51,6 +54,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   editorOpen: false,
   activeWall: 'front',
   selectedOpeningId: null,
+  selectedLeanToOpeningId: null,
   dragging: false,
   viewMode: 'exterior',
   cutawayWall: null,
@@ -63,6 +67,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   // reason on-model dimensions never showed while dragging).
   setActiveWall: (wall) => set({ activeWall: wall }),
   selectOpening: (id) => set({ selectedOpeningId: id }),
+  selectLeanToOpening: (id) => set({ selectedLeanToOpeningId: id }),
   setDragging: (on) => set({ dragging: on }),
   setViewMode: (mode) =>
     set((s) => ({

@@ -46,6 +46,8 @@ export type LeanToEnclosure = 'open' | 'enclosed' | 'custom';
 
 /** A door/window/roll-up placed on one of a lean-to's walls. */
 export interface LeanToOpening {
+  /** Stable id (deterministic from its source accessory entry) for drag + writeback. */
+  id: string;
   type: 'rollUpDoor' | 'walkDoor' | 'window';
   /** Which lean-to wall: outer long side, or front/back gable end. */
   wall: 'outer' | 'front' | 'back';

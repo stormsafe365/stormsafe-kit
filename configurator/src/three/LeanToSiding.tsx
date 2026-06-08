@@ -1,8 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
+import { useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SHEET_OUTSET, COMPONENT_OUTSET, type LeanToStructure } from '@/engine/geometry';
 import type { BuildingColors, LeanToOpening, OpeningType, PanelOrientation, Wainscot } from '@/types/building';
 import { swatchHex, isMetallic } from '@/config/colors';
+import { useBuildingStore } from '@/store/useBuildingStore';
+import { useEditorStore } from '@/store/useEditorStore';
 import { createCorrugatedTexture, type RibDirection } from './textures';
 import { stripsAround, type LocalRect } from './Siding';
 import { OpeningFixture } from './OpeningFixture';
@@ -152,21 +155,9 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
                   (o.wall === 'front' && front === 'closed') ||
                   (o.wall === 'back' && back === 'closed'),
               )
-              .map((o, i) => {
-                const { pos, rotY } = openingPlacement(geo, o);
-                return (
-                  <OpeningFixture
-                    key={`of-${i}`}
-                    pos={pos}
-                    rotY={rotY}
-                    type={o.type as OpeningType}
-                    w={o.widthFt}
-                    h={o.heightFt}
-                    sillHeight={o.sillFt}
-                    trimColor={trimColor}
-                  />
-                );
-              })}
+              .map((o) => (
+                <DraggableLeanToOpening key={`of-${o.id}`} geo={geo} opening={o} trimColor={trimColor} />
+              ))}
           </group>
         );
       })}
@@ -618,6 +609,96 @@ function openingPlacement(geo: SurfaceSet, opening: LeanToOpening): { pos: [numb
   return g.kind === 'eave'
     ? { pos: [aC, yC, plane + outward * COMP_PROUD], rotY: outward > 0 ? 0 : Math.PI }
     : { pos: [plane + outward * COMP_PROUD, yC, aC], rotY: (outward * Math.PI) / 2 };
+}
+
+// The wall plane to raycast against while dragging + how to read the along-wall
+// offset from a hit point. Mirrors openingPlacement's wall math.
+interface DragInfo {
+  plane: THREE.Plane;
+  coord: (h: THREE.Vector3) => number; // along-wall world coordinate from a hit
+  start: number; // wall's left/start coordinate (offset measured from here)
+  wallLen: number;
+  w: number;
+}
+function dragInfo(geo: SurfaceSet, opening: LeanToOpening): DragInfo {
+  const w = opening.widthFt;
+  if (opening.wall === 'outer') {
+    const { axis, plane, a, b } = geo.wall;
+    return axis === 'z'
+      ? { plane: new THREE.Plane(new THREE.Vector3(1, 0, 0), -plane), coord: (h) => h.z, start: a, wallLen: b - a, w }
+      : { plane: new THREE.Plane(new THREE.Vector3(0, 0, 1), -plane), coord: (h) => h.x, start: a, wallLen: b - a, w };
+  }
+  const g = geo.gable;
+  const plane = opening.wall === 'front' ? g.frontPlane : g.backPlane;
+  const minA = Math.min(g.innerAcross, g.outerAcross);
+  const wallLen = Math.abs(g.innerAcross - g.outerAcross);
+  return g.kind === 'eave'
+    ? { plane: new THREE.Plane(new THREE.Vector3(0, 0, 1), -plane), coord: (h) => h.x, start: minA, wallLen, w }
+    : { plane: new THREE.Plane(new THREE.Vector3(1, 0, 0), -plane), coord: (h) => h.z, start: minA, wallLen, w };
+}
+
+// A lean-to OpeningFixture you can grab and slide along its wall. Updates the
+// store live for smooth feedback; BuildHost writes the final spot back into the
+// pricing program on release (drag-end), so price + 3D stay in sync.
+function DraggableLeanToOpening({ geo, opening, trimColor }: { geo: SurfaceSet; opening: LeanToOpening; trimColor: string }) {
+  const updateLeanToOpening = useBuildingStore((s) => s.updateLeanToOpening);
+  const selectLeanToOpening = useEditorStore((s) => s.selectLeanToOpening);
+  const setDragging = useEditorStore((s) => s.setDragging);
+  const selected = useEditorStore((s) => s.selectedLeanToOpeningId === opening.id);
+  const gl = useThree((s) => s.gl);
+  const camera = useThree((s) => s.camera);
+  const raycaster = useThree((s) => s.raycaster);
+  const controls = useThree((s) => s.controls) as { enabled: boolean } | null;
+  const dragRef = useRef(false);
+
+  const info = useMemo(() => dragInfo(geo, opening), [geo, opening.wall, opening.widthFt]);
+  const { pos, rotY } = openingPlacement(geo, opening);
+
+  const onDown = (e: ThreeEvent<PointerEvent>) => {
+    e.stopPropagation();
+    selectLeanToOpening(opening.id);
+    setDragging(true);
+    dragRef.current = true;
+    if (controls) controls.enabled = false; // pause orbit during the drag
+
+    const oid = opening.id;
+    const move = (ev: PointerEvent) => {
+      if (!dragRef.current) return;
+      const rect = gl.domElement.getBoundingClientRect();
+      const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+      const ny = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(new THREE.Vector2(nx, ny), camera);
+      const hit = new THREE.Vector3();
+      if (raycaster.ray.intersectPlane(info.plane, hit)) {
+        const raw = info.coord(hit) - info.start; // offset from the wall's start edge
+        const off = Math.max(info.w / 2, Math.min(info.wallLen - info.w / 2, raw));
+        updateLeanToOpening(oid, { offsetFt: off });
+      }
+    };
+    const up = () => {
+      dragRef.current = false;
+      if (controls) controls.enabled = true;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      setTimeout(() => setDragging(false), 0); // fires the writeback in BuildHost
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <OpeningFixture
+      pos={pos}
+      rotY={rotY}
+      type={opening.type as OpeningType}
+      w={opening.widthFt}
+      h={opening.heightFt}
+      sillHeight={opening.sillFt}
+      trimColor={trimColor}
+      selected={selected}
+      onPanelPointerDown={onDown}
+    />
+  );
 }
 
 // Gable end in the X-Y plane at constant Z (eave-attached).

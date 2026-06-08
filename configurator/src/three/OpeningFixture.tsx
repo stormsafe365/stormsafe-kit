@@ -112,10 +112,22 @@ export function OpeningFixture({
       <TrimBar pos={[w / 2 + t / 2, onFloor ? t / 2 : 0, 0]} size={[t, onFloor ? h + t : h + 2 * t, trimDepth]} color={tc} />
       {!onFloor && <TrimBar pos={[0, -h / 2 - t / 2, 0]} size={[w + 2 * t, t, trimDepth]} color={tc} />}
 
-      {/* Panel */}
-      <mesh position={[0, 0, panelZ]} material={panelMat} castShadow={!isFrameOut} onPointerDown={onPanelPointerDown}>
-        <boxGeometry args={[w, h, panelDepth]} />
-      </mesh>
+      {/* Panel. For a framed opening (a real see-through cut) the issue is you
+          look straight through it to the OPPOSITE wall's frame. A depth-only
+          occluder sits in the opening: it writes depth but no color and renders
+          first (renderOrder -1), so the far wall + its frame fail the depth test
+          and aren't painted — the cut reads clean/empty (the trim border is the
+          only thing left). DoubleSide so it occludes from inside too. */}
+      {isFrameOut ? (
+        <mesh renderOrder={-1} onPointerDown={onPanelPointerDown}>
+          <planeGeometry args={[w, h]} />
+          <meshBasicMaterial colorWrite={false} side={THREE.DoubleSide} />
+        </mesh>
+      ) : (
+        <mesh position={[0, 0, panelZ]} material={panelMat} castShadow onPointerDown={onPanelPointerDown}>
+          <boxGeometry args={[w, h, panelDepth]} />
+        </mesh>
+      )}
       {selected && (
         <mesh position={[0, 0, trimDepth / 2 + 0.02]}>
           <planeGeometry args={[w + t, h + t]} />

@@ -158,7 +158,7 @@ function readOpenings(
     push(el, lv(el, '.wloc'), qv(el, '.wqt', 1), 3, 6.67, 'wtd');
   });
   win.document.querySelectorAll('.ne').forEach((el) => {
-    push(el, lv(el, '.nloc'), qv(el, '.nqt', 1), 2.5, 2.5, 'win', 4.5);
+    push(el, lv(el, '.nloc'), qv(el, '.nqt', 1), 2.5, 2.5, 'win', 4.16667); // window sill 4'-2"
   });
 
   // Framed openings (in "Additional Components" / .ace): only entries whose
@@ -178,11 +178,11 @@ function readOpenings(
     const qty = qv(el, '.acq', 1);
     let foW = 2.5;
     let foH = 2.5;
-    let foYo = 4.5;
+    let foYo = 4.16667; // window sill 4'-2"
     if (comp.indexOf('(Custom Size)') >= 0) {
       foW = fnum(el, '.fo-cw') || 10;
       foH = fnum(el, '.fo-ch') || 8;
-      foYo = comp.indexOf('Window') >= 0 ? 4.5 : 0;
+      foYo = comp.indexOf('Window') >= 0 ? 4.16667 : 0;
     } else if (comp.indexOf('Garage Door') >= 0 || comp.indexOf('Side Opening') >= 0) {
       const m = comp.match(/(\d+)' Wide/);
       foW = m ? parseInt(m[1], 10) : 10;
@@ -405,7 +405,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
       } else if (oType === 'walkDoor') {
         w = 3; h = 6.67; sill = 0;
       } else if (oType === 'window') {
-        w = 2.5; h = 2.5; sill = 4.5;
+        w = 2.5; h = 2.5; sill = 4.16667; // window sill 4'-2"
       } else {
         // frameOut — custom W×H from the entry; a real cut you can see through.
         w = parseFloat(strVal(ae, '.lt-acc-fo-w')) || 10;

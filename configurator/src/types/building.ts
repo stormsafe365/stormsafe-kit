@@ -200,7 +200,7 @@ export const OPENING_DEFAULTS: Record<
   rollUpDoor: { width: 10, height: 10, sillHeight: 0, label: 'Roll-Up Door', customerSupplied: false },
   garageDoor: { width: 9, height: 8, sillHeight: 0, label: 'Garage Door', customerSupplied: false },
   walkDoor: { width: 3, height: 6.7, sillHeight: 0, label: 'Walk-In Door (Hi-Impact)', customerSupplied: false },
-  window: { width: 2.5, height: 2.5, sillHeight: 4, label: 'Window (Hi-Impact)', customerSupplied: false },
+  window: { width: 2.5, height: 2.5, sillHeight: 4.16667, label: 'Window (Hi-Impact)', customerSupplied: false }, // sill 4'-2"
   // Framed opening only — buyer supplies their own door/window (or we frame a wall section).
   frameOut: { width: 4, height: 7, sillHeight: 0, label: 'Framed Opening', customerSupplied: true },
 };

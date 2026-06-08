@@ -17,7 +17,7 @@ interface OpeningsProps {
 }
 
 /** Feet (decimal) → feet-inches string, e.g. 4.75 → 4'9". */
-function ftIn(ft: number): string {
+export function ftIn(ft: number): string {
   const totalIn = Math.round(ft * 12);
   const f = Math.floor(totalIn / 12);
   const i = totalIn % 12;
@@ -309,8 +309,8 @@ function TrimBar({
   );
 }
 
-const RED = '#ef4444';
-const RED_DIM = '#fb7185';
+export const RED = '#ef4444';
+export const RED_DIM = '#fb7185';
 
 /**
  * IdeaRoom-style live placement guides for the selected/dragging component:
@@ -391,7 +391,7 @@ function OpeningDimensions({
 }
 
 /** A red dimension line with end ticks and a centered ft-in chip. */
-function Measure({
+export function Measure({
   a,
   b,
   mid,
@@ -425,7 +425,7 @@ function Measure({
 const UP_Y = new THREE.Vector3(0, 1, 0);
 
 /** A thin always-on-top guide line (a stretched box), guaranteed to render. */
-function GuideLine({ a, b, color, thick = 0.06 }: { a: Vec3; b: Vec3; color: string; thick?: number }) {
+export function GuideLine({ a, b, color, thick = 0.06 }: { a: Vec3; b: Vec3; color: string; thick?: number }) {
   const data = useMemo(() => {
     const A = new THREE.Vector3(...a);
     const B = new THREE.Vector3(...b);
@@ -445,7 +445,7 @@ function GuideLine({ a, b, color, thick = 0.06 }: { a: Vec3; b: Vec3; color: str
   );
 }
 
-function Chip3D({ at, label, danger }: { at: Vec3; label: string; danger?: boolean }) {
+export function Chip3D({ at, label, danger }: { at: Vec3; label: string; danger?: boolean }) {
   return (
     <Html position={at} center zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
       <div

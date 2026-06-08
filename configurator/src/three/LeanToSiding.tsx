@@ -1,14 +1,16 @@
 import { useMemo, useRef } from 'react';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { SHEET_OUTSET, COMPONENT_OUTSET, type LeanToStructure } from '@/engine/geometry';
+import { SHEET_OUTSET, COMPONENT_OUTSET, type LeanToStructure, type Vec3 } from '@/engine/geometry';
 import type { BuildingColors, LeanToOpening, OpeningType, PanelOrientation, Wainscot } from '@/types/building';
 import { swatchHex, isMetallic } from '@/config/colors';
+import { TRUSS_CLEARANCE_FT } from '@/config/constants';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import { createCorrugatedTexture, type RibDirection } from './textures';
 import { stripsAround, type LocalRect } from './Siding';
 import { OpeningFixture } from './OpeningFixture';
+import { GuideLine, Measure, Chip3D, ftIn, RED, RED_DIM } from './Openings';
 
 const COMP_PROUD = COMPONENT_OUTSET - SHEET_OUTSET; // component standoff past the wall sheeting
 
@@ -156,7 +158,7 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
                   (o.wall === 'back' && back === 'closed'),
               )
               .map((o) => (
-                <DraggableLeanToOpening key={`of-${o.id}`} geo={geo} opening={o} trimColor={trimColor} />
+                <DraggableLeanToOpening key={`of-${o.id}`} geo={geo} lt={lt} opening={o} trimColor={trimColor} />
               ))}
           </group>
         );
@@ -640,7 +642,17 @@ function dragInfo(geo: SurfaceSet, opening: LeanToOpening): DragInfo {
 // A lean-to OpeningFixture you can grab and slide along its wall. Updates the
 // store live for smooth feedback; BuildHost writes the final spot back into the
 // pricing program on release (drag-end), so price + 3D stay in sync.
-function DraggableLeanToOpening({ geo, opening, trimColor }: { geo: SurfaceSet; opening: LeanToOpening; trimColor: string }) {
+function DraggableLeanToOpening({
+  geo,
+  lt,
+  opening,
+  trimColor,
+}: {
+  geo: SurfaceSet;
+  lt: LeanToStructure;
+  opening: LeanToOpening;
+  trimColor: string;
+}) {
   const updateLeanToOpening = useBuildingStore((s) => s.updateLeanToOpening);
   const selectLeanToOpening = useEditorStore((s) => s.selectLeanToOpening);
   const setDragging = useEditorStore((s) => s.setDragging);
@@ -680,24 +692,103 @@ function DraggableLeanToOpening({ geo, opening, trimColor }: { geo: SurfaceSet; 
       if (controls) controls.enabled = true;
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
-      setTimeout(() => setDragging(false), 0); // fires the writeback in BuildHost
+      setTimeout(() => {
+        setDragging(false); // fires the writeback in BuildHost (still reads the selected id)
+        selectLeanToOpening(null); // clear the highlight now the drag is done
+      }, 0);
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
   };
 
   return (
-    <OpeningFixture
-      pos={pos}
-      rotY={rotY}
-      type={opening.type as OpeningType}
-      w={opening.widthFt}
-      h={opening.heightFt}
-      sillHeight={opening.sillFt}
-      trimColor={trimColor}
-      selected={selected}
-      onPanelPointerDown={onDown}
-    />
+    <>
+      <OpeningFixture
+        pos={pos}
+        rotY={rotY}
+        type={opening.type as OpeningType}
+        w={opening.widthFt}
+        h={opening.heightFt}
+        sillHeight={opening.sillFt}
+        trimColor={trimColor}
+        selected={selected}
+        onPanelPointerDown={onDown}
+      />
+      {selected && <LeanToOpeningGuides geo={geo} lt={lt} opening={opening} />}
+    </>
+  );
+}
+
+/**
+ * Drag-time placement guides for a lean-to OUTER-wall opening — the lean-to
+ * analogue of OpeningDimensions: red spacing lines + ft-in chips to the nearest
+ * neighbor and each corner, a height dimension, and vertical post/truss guides
+ * that flag a collision (matching the main building's look exactly). Posts on the
+ * gable ends are just the corner columns, so guides are scoped to the outer wall.
+ */
+function LeanToOpeningGuides({ geo, lt, opening }: { geo: SurfaceSet; lt: LeanToStructure; opening: LeanToOpening }) {
+  if (opening.wall !== 'outer') return null;
+  const { axis, plane, a, b } = geo.wall;
+  const wallLen = b - a;
+  const lh = lt.lowLegHeightFt;
+  const { widthFt: w, heightFt: h, sillFt: sill, offsetFt: offset } = opening;
+  const L = offset - w / 2;
+  const R = offset + w / 2;
+  const top = Math.min(lh - 0.2, sill + h);
+  const baseY = 0.4;
+  const clear = TRUSS_CLEARANCE_FT;
+  const outward = Math.sign(plane) || 1;
+  const PROUD = 0.25; // sit the guides just in front of the wall sheeting
+
+  // Map an along-wall offset + height to a world point just proud of the wall.
+  const pt = (off: number, y: number): Vec3 =>
+    axis === 'z' ? [plane + outward * PROUD, y, a + off] : [a + off, y, plane + outward * PROUD];
+
+  // Post positions (offsets from the wall start) near the opening + collision test.
+  const trusses = lt.trussOffsets ?? [];
+  const guideTrusses = trusses.filter((p) => p >= L - 1.5 && p <= R + 1.5);
+  const hit = trusses.some((p) => p >= L - clear && p <= R + clear);
+
+  // Nearest neighbor opening edge on each side of this one (same wall only).
+  let leftN: number | null = null;
+  let rightN: number | null = null;
+  for (const o of lt.openings) {
+    if (o.id === opening.id || o.wall !== 'outer') continue;
+    const oL = o.offsetFt - o.widthFt / 2;
+    const oR = o.offsetFt + o.widthFt / 2;
+    if (oR <= L + 1e-6) leftN = Math.max(leftN ?? -Infinity, oR);
+    if (oL >= R - 1e-6) rightN = Math.min(rightN ?? Infinity, oL);
+  }
+
+  return (
+    <group>
+      {/* Vertical post/truss guides — bright on a collision. */}
+      {guideTrusses.map((p, i) => {
+        const conflict = p >= L - clear && p <= R + clear;
+        return (
+          <GuideLine
+            key={`tr-${i}`}
+            a={pt(p, 0)}
+            b={pt(p, lh)}
+            color={conflict ? RED : RED_DIM}
+            thick={conflict ? 0.07 : 0.04}
+          />
+        );
+      })}
+
+      {/* Distance to nearest neighbor (top). */}
+      {leftN !== null && <Measure a={pt(leftN, top)} b={pt(L, top)} mid={pt((leftN + L) / 2, top)} label={ftIn(L - leftN)} />}
+      {rightN !== null && <Measure a={pt(R, top)} b={pt(rightN, top)} mid={pt((R + rightN) / 2, top)} label={ftIn(rightN - R)} />}
+
+      {/* Distance to each corner (bottom). */}
+      <Measure a={pt(0, baseY)} b={pt(L, baseY)} mid={pt(L / 2, baseY)} label={ftIn(L)} />
+      <Measure a={pt(R, baseY)} b={pt(wallLen, baseY)} mid={pt((R + wallLen) / 2, baseY)} label={ftIn(wallLen - R)} />
+
+      {/* Height (red on a truss conflict). */}
+      <Measure a={pt(L - 0.05, sill)} b={pt(L - 0.05, top)} mid={pt(L - 0.05, (sill + top) / 2)} label={ftIn(h)} vertical danger={hit} />
+
+      {hit && <Chip3D at={pt(offset, Math.min(lh - 0.1, top + 0.9))} label="⚠ on truss" danger />}
+    </group>
   );
 }
 

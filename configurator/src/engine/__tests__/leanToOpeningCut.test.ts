@@ -73,6 +73,17 @@ describe('lean-to frame-out cuts the posts behind it (see-through)', () => {
     expect(outerFrameSpansHeight(s.members, outerX, 0, 9)).toBe(true);
   });
 
+  it('exposes post offsets (from spanStart) for the drag guides, incl. a post at the opening center', () => {
+    const s = deriveStructure(resolveBuilding({ ...base, leanTos: [leanTo([frameOut])] }));
+    const lt = s.leanTos[0];
+    expect(lt.trussOffsets.length).toBeGreaterThan(2);
+    // Corner posts at both ends of the 40' run.
+    expect(lt.trussOffsets[0]).toBeCloseTo(0, 3);
+    expect(lt.trussOffsets[lt.trussOffsets.length - 1]).toBeCloseTo(40, 3);
+    // The frame-out centered at offset 20 lands on a post → collision guide fires.
+    expect(lt.trussOffsets.some((p) => Math.abs(p - 20) < 0.01)).toBe(true);
+  });
+
   it('a raised-sill opening keeps the post stub below the sill', () => {
     const high: LeanToOpening = { ...frameOut, sillFt: 3, heightFt: 4 }; // band [3,7]
     const s = deriveStructure(resolveBuilding({ ...base, leanTos: [leanTo([high])] }));

@@ -78,6 +78,9 @@ export interface LeanToStructure {
   outer: { x: number; z: number };
   spanStart: number;
   spanEnd: number;
+  /** Post/truss positions along the run, measured (ft) from spanStart — drives
+   *  the drag-time spacing + truss-collision guides on the outer wall. */
+  trussOffsets: number[];
 }
 
 export interface StructureModel {
@@ -757,6 +760,11 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       // Eave-attached: use Z range
       const zFront = -halfL;
       const zBack = Math.min(-halfL + ll, halfL);
+      // Post positions along the run (same set the frame loop builds), as offsets
+      // from spanStart so they line up with an opening's offsetFt.
+      const postZ = Array.from(
+        new Set([zFront, ...ltPositions.filter((z) => z > zFront && z < zBack), zBack]),
+      ).sort((a, b) => a - b);
       derivedLeanTos.push({
         id: lt.id,
         enclosure,
@@ -772,11 +780,15 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         outer: { x: xOuter!, z: zFront },
         spanStart: zFront,
         spanEnd: zBack,
+        trussOffsets: postZ.map((z) => z - zFront),
       });
     } else {
       // Gable-attached: use X range
       const xLeft = -halfW;
       const xRight = halfW;
+      const postX = Array.from(
+        new Set([xLeft, ...framePositionsZ.filter((x) => x > xLeft && x < xRight), xRight]),
+      ).sort((a, b) => a - b);
       derivedLeanTos.push({
         id: lt.id,
         enclosure,
@@ -792,6 +804,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         outer: { x: xLeft, z: zOuter! },
         spanStart: xLeft,
         spanEnd: xRight,
+        trussOffsets: postX.map((x) => x - xLeft),
       });
     }
   }

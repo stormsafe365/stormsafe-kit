@@ -1,7 +1,11 @@
 # StormSafe 3D Builder — Handoff & Gotchas
 
-> Living doc. Read this first before touching the 3D builder. Updated 2026‑06‑07.
+> Living doc. Read this first before touching the 3D builder. Updated 2026‑06‑08.
 > Its job: remember where we are + stop the same bugs from happening again.
+>
+> **⚠️ Before debugging ANY visual issue, read §9 (Verifying 3D changes). Most of
+> the pain in this project has been chasing visuals with broken tooling. Verify
+> geometry with vitest + `__ssScene`, not screenshots.**
 
 ---
 
@@ -21,16 +25,19 @@
 - Lean‑to openings: **outer wall + front/back gable ends** — cut real holes + render
   the SAME detailed fixtures as the main building (slat roll‑ups, knob walk doors,
   glazed windows).
+- Lean‑to openings: **drag‑to‑move** along the wall + live spacing / truss‑collision
+  guides (the "parked" item below is now built).
+- **Frame‑out openings read clean** — depth occluder hides what's behind the cut
+  (see §5 bug 12). **Window sill = 4'‑2"** across 2D + 3D (was 4'‑6").
+- **All bents render as SINGLE posts** (`SINGLE_TRUSS_ONLY` in geometry.ts) — double/
+  ladder styling disabled for now (see §5 bug 13).
 
 ### Next (parked)
-- **Drag‑to‑move lean‑to openings with live spacing + truss‑collision guides** (like the
-  main building). Deferred = "option 2": for now you position lean‑to openings via the
-  pricing program's **Position** dropdown (Auto / Center / Left / Right / Custom offset ft).
-  To build it: needs (a) a draggable wrapper on the lean‑to `OpeningFixture`, (b) raycast
-  against the lean‑to wall plane → offset, (c) **write the new offset back into the program's
-  `.lt-acc-off` field** (set `.lt-acc-pos='offset'`, set value, call `rc()`), tracking which
-  `.lt-acc-e` entry + item index each rendered opening came from (like the main building's
-  `__ssOpenMap`), and (d) dimension/truss guides like `OpeningDimensions`.
+- **Fix the real truss styling**, then flip `SINGLE_TRUSS_ONLY` back to `false`. Current
+  double/ladder geometry was visually wrong; it's disabled (see §5 bug 13). When re‑enabling,
+  restore the size‑based `trussStyles.test.ts` expectations.
+- **Frame‑out pricing** — currently $0 in the 3D path (no invented price); wire in the real
+  per‑opening charge when given a number.
 - Maybe merge `rename-buildings-to-index` → `main`.
 
 ---
@@ -95,7 +102,8 @@ build.html (ROOT of repo)  →  /src/build/main.tsx  →  <BuildHost/>
 
 **Default opening sizes** (when reading lean‑to accessories):
 - walk door `3 × 6.67`, sill `0`
-- window `2.5 × 2.5`, sill `4.5`
+- window `2.5 × 2.5`, sill **`4.16667` (4'‑2")** — changed from 4'‑6"; updated in BOTH
+  BuildHost (3D) AND `quote-builder.html` (2D elevation + pricing warning). Keep them in sync.
 - roll‑up: parse `.lt-acc-size` `"WxH"` (e.g. `9x8`), sill `0`
 
 ---
@@ -170,6 +178,33 @@ step is what made "Custom walls" silently do nothing.)
 11. **Canvas goes dark after a config change.** The camera doesn't always auto‑reframe.
     Just click a **camera preset** (ISO/Front/Left/Right) to reframe.
 
+12. **Framed opening shows gray "truss lines / little dashes" inside the cut.**
+    This burned an ENTIRE session. There were **TWO independent causes** — don't stop
+    at the first:
+    - **(a) The opposite wall's frame, seen straight through the transparent pane.**
+      A frame‑out is a real see‑through hole; the wall sheeting/girts/posts on the
+      NEAR wall ARE cut correctly. What you see is the **far wall's frame at +X / −X**
+      showing through the hole (proven: `__ssScene.traverse` found the bars all at
+      `x ≈ +halfW`, the opposite wall). **DO NOT "fix" the near‑wall cut — it's fine.**
+      Fix = a **depth occluder** in `OpeningFixture.tsx` for `frameOut`: a plane with
+      `<meshBasicMaterial colorWrite={false} side={DoubleSide} />` at `renderOrder={-1}`.
+      It writes depth but no color and draws first, so everything behind the hole fails
+      the depth test → the cut reads clean. (Raycast/drag still works on it.)
+    - **(b) Ladder‑leg RUNGS at H ≥ 16.** At tall heights the legs WERE "ladder" legs
+      (two posts + short horizontal rungs every ~4 ft). The rungs sit at the wall plane
+      INSIDE the opening and the column clip (`clipFrameAtEaveOpenings`) only handles
+      vertical/diagonal members, not horizontal rungs → they showed as a grid of dashes
+      IN FRONT of the occluder. Symptom tell: **clean at 10 ft, dashes at 16 ft+.**
+      Fix (current): `SINGLE_TRUSS_ONLY` renders all single posts (no rungs). Also
+      added defensive rung‑clipping in `pushLeg` for when ladder legs return.
+
+13. **Double‑post / ladder‑leg truss styling looked wrong.** Gated behind
+    `SINGLE_TRUSS_ONLY = true` in `geometry.ts` so every bent = one post per side +
+    single base rails, at any size. **3D‑visual ONLY** — pricing/BOM (in the program /
+    qtepro) is separate and still charges for double trusses. Flip the flag to `false`
+    to restore real styling; then restore the size‑based `trussStyles.test.ts`
+    expectations (they're rewritten for single‑only right now).
+
 ---
 
 ## 6. Windows / PowerShell gotchas (this machine)
@@ -202,3 +237,75 @@ In the iframe (`document.querySelector('iframe').contentWindow`):
 - [ ] New iframe field? Thread it: BuildHost read → `updateLeanTo` → type → geometry → render.
 - [ ] Touch a wall/roof normal or trim? Re‑check both eave‑ and gable‑attached lean‑tos AND
       left vs right (they're separate code paths).
+- [ ] **User says "you fixed this before"?** → `git log -p -- <file>` and grep past work
+      FIRST (see §9). Don't re‑derive from scratch.
+- [ ] **Geometry/cut change?** → prove it with a **vitest test** against `deriveStructure`,
+      not a screenshot (see §9).
+
+---
+
+## 9. Verifying 3D changes — READ THIS before debugging visuals
+
+This is where most of the time gets wasted. The visual tooling in the automation
+environment is **unreliable**. Do not trust screenshots to confirm a fix; use the two
+reliable methods below.
+
+### ✅ Reliable: vitest against `deriveStructure()`
+The geometry is a pure function — test it directly. To prove a member is/ isn't inside an
+opening, assert over `s.members`. Examples already in the suite:
+`memberCut.test.ts`, `leanToOpeningCut.test.ts`, `trussStyles.test.ts`.
+Pattern: filter `members` by `kind` + world position box (opening's `x/y/z` range) and
+assert the count. Run: `npx vitest run src/engine`.
+
+### ✅ Reliable: inspect the live scene from the console
+When you DO need the running scene (e.g. "what is that gray bar?"), traverse it:
+```js
+// __ssScene must be exposed (see caveat below). Frame steel = #c4cace / #d6dde4.
+const V = window.__ssScene.position.constructor; // THREE.Vector3
+window.__ssScene.traverse(o => {
+  if (!o.isMesh || !o.material?.color) return;
+  const p = new V(); o.getWorldPosition(p);
+  // log hex + world pos; bucket by Math.round(p.x) to tell NEAR wall (−halfW) from FAR (+halfW)
+});
+```
+This is how the "dashes" were proven to be the FAR wall (all at `x=+12`), not a near‑wall
+cut bug. **Identify WHERE the geometry is before assuming what's broken.**
+
+### ⚠️ Environment traps (all real, all cost hours)
+1. **Stale module serving.** Editing a `/src/three/*` component does **not** reliably
+   hot‑swap into the running R3F scene. A normal reload / the browser‑automation
+   `navigate` often serves **cached** modules. Only a real **hard‑refresh
+   (Ctrl+Shift+R)** — which the *user* can do — guarantees fresh code. If you clear it,
+   restart the dev server: kill node, `Remove-Item -Recurse -Force node_modules/.vite`,
+   `npm run dev`. Even then, see #2.
+2. **Dev hooks are NOT exposed on a fresh load.** `window.__ssCam`, `__ssControls`,
+   `__ssScene` only appear **after a live HMR edit re‑runs the effects** (CameraRig /
+   CaptureHook). On a freshly loaded page only `__ssStore` / `__ssEditor` / `__ssSync`
+   exist → you **cannot** drive the camera or inspect the scene from the console until an
+   edit triggers HMR. (Net effect: from automation you frequently can't verify visuals at
+   all. Lean on vitest.)
+3. **CameraRig lerps over your manual camera moves.** Setting `__ssCam.position` /
+   `__ssControls.target` gets overridden every frame by the in‑flight goal. **Cancel it
+   first:** `__ssControls.dispatchEvent({type:'start'})`, then set position/target, then
+   `__ssControls.update()`.
+4. **Camera presets clip/blank on small buildings.** `left`/`right` can render an empty
+   frame on short builds. Not a render bug — reframe (ISO) or set the camera manually.
+5. **Store injection gets overwritten in ~800 ms.** `__ssStore.setState({openings})` is
+   clobbered by the BuildHost poll re‑reading the iframe form. To make it stick, either
+   **configure via the program form** (persists) or freeze the poll
+   (`for (let i=1;i<=hi;i++) clearInterval(i)` after grabbing a high id).
+6. **`side` is screen‑swapped.** Store `side:'left'` renders at **−X** (and program
+   "Right Eave Side" → store `'left'`). See §2. When you query the scene, the opening is
+   on the wall opposite to what the name suggests.
+
+### 🧭 Process lesson (the big one)
+- When the user says **"you fixed this 2 days ago / it worked before,"** the fix is almost
+  certainly still in the code or in git history. **Check first** (`git log -p`, search past
+  transcripts). The frame‑out purlin/ridge clipping was already present (geometry.ts
+  ~L477‑510); the new symptom was a *different* member type. Re‑investigating from zero
+  wasted enormous time and frustrated the user.
+- A "framed opening shows framing" report has multiple possible sources (far wall, ladder
+  rungs, purlins, girts, near stubs). **Enumerate + locate the exact meshes** (vitest /
+  `__ssScene`) before changing anything. Don't ship an unverified visual fix to a tired
+  user — and never z‑fight (the first occluder attempt put a depth plane coplanar with
+  members and shattered them into "fragments," making it worse).

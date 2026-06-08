@@ -737,6 +737,13 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
     <div class="rr"><span class="k">Prepared By</span><span class="v" id="srep">—</span></div>
   </div>
 
+  <div style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:11px;color:#8aa3b5">
+    <label style="font-weight:600;white-space:nowrap">PDF Building Views:</label>
+    <select id="pdf-render" style="flex:1;border:1px solid var(--bv);border-radius:5px;padding:5px 8px;font-size:11px;color:var(--tx);font-weight:600;background:var(--d4)">
+      <option value="2d">2D Elevations (default)</option>
+      <option value="3d">3D Renderings (from live modeler)</option>
+    </select>
+  </div>
   <div style="margin-top:10px" class="desktop-btns">
     <button class="sbtn" type="button" onclick="printQuote()" style="background:#9fc839;color:#080f14">SAVE / PRINT PDF</button>
     <button class="sbtn" type="button" onclick="printContract()" style="background:#00d9d9;color:#080f14">GENERATE CONTRACT</button>
@@ -6508,8 +6515,23 @@ function restoreQuoteData(data){
 }
 
 
-function printQuote(){
+async function printQuote(){
   if(!G('bw').value||!G('bl').value){ toast('Please select building dimensions first','err'); return; }
+
+  // 3D-rendering option: capture the live modeler for the PDF. Open the print
+  // window NOW (synchronous, inside the click gesture) so the popup isn't
+  // blocked, then do the async capture before writing the document.
+  var pdfMode = (G('pdf-render') && G('pdf-render').value === '3d') ? '3d' : '2d';
+  var pwin = window.open('', '_blank');
+  if(!pwin){ toast('Popup blocked — please allow popups for this page, then try again', 'err'); return; }
+  try { pwin.document.write('<!doctype html><html><body style="margin:0;background:#080f14;color:#8aa3b5;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;font-size:15px">Generating quote…</body></html>'); } catch(e){}
+  var imgs3D = null;
+  if(pdfMode === '3d'){
+    try {
+      var cap = (window.parent && window.parent.__ssCapture3D) || window.__ssCapture3D;
+      if(typeof cap === 'function'){ imgs3D = await cap(); }
+    } catch(e){ console.warn('3D capture failed, falling back to 2D elevations', e); }
+  }
 
   var cn=G('cn').value||'—', cp=G('cp').value||'—', ce=G('ce').value||'—';
   var city=G('city').textContent, county=G('county').textContent;
@@ -7166,23 +7188,43 @@ function printQuote(){
     '.qfooter-r{font-size:7.5pt;color:#4e6070;text-align:right}'+
     '.print-only{display:none}'+
     '@media print{@page{margin:0;size:letter portrait}body{background:#080f14;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-only{display:block}.qpg{display:block!important;background:#080f14!important}.qbody{display:flex!important;align-items:stretch!important}.qsidebar{align-self:stretch!important}.qmain{display:flex!important;flex-direction:column!important;align-self:stretch!important;background:#111d28!important}.qfooter{margin-top:12px!important;position:static!important}.qsec{margin-bottom:8px!important;padding-bottom:6px!important}.qfield{margin-bottom:4px!important}.qsec-title{margin-bottom:5px!important;font-size:6pt!important}.qfield .fl{font-size:5.5pt!important}.qfield .fv{font-size:8pt!important}.qspec-box{padding:4px 5px!important}.qspec-box .fl{font-size:5pt!important}.qspec-box .fv{font-size:8pt!important}.qcolor-row{padding:2px 0!important}}'+
-    '</style></head><body>'+html.split("\'+LOGO+\'").join(LOGO)+'<div class="print-only">'+buildingPageHTML()+'</div>'+'</body></html>';
+    '</style></head><body>'+html.split("\'+LOGO+\'").join(LOGO)+'<div class="print-only">'+((imgs3D && imgs3D.iso) ? threeDPageHTML(imgs3D) : buildingPageHTML())+'</div>'+'</body></html>';
 
-  // Open blank window (works under file:// AND https://) then inject content + print
-  var w = window.open('', '_blank');
-  if(w){
-    w.document.open();
-    w.document.write(fullDoc);
-    w.document.close();
-    // Wait for content to render, then trigger print dialog
-    setTimeout(function(){
-      try{ w.focus(); w.print(); } catch(e){}
-    }, 900);
-  } else {
-    // Popup was blocked — tell the user clearly instead of silent print
-    toast('Popup blocked — please allow popups for this page, then try again', 'err');
-    console.warn('printQuote: window.open returned null — popup blocker enabled');
+  // Inject into the window we opened up front (so the popup wasn't blocked).
+  pwin.document.open();
+  pwin.document.write(fullDoc);
+  pwin.document.close();
+  // Wait for content (images included) to render, then trigger print.
+  setTimeout(function(){
+    try{ pwin.focus(); pwin.print(); } catch(e){}
+  }, 900);
+}
+
+// 3D-rendering PDF page — mirrors buildingPageHTML's page wrapper, but uses the
+// captured live-modeler images: an ISO hero on top + a 2×2 elevation grid.
+function threeDPageHTML(imgs){
+  if(!imgs || !imgs.iso) return buildingPageHTML();
+  var W=parseInt(G('bw').value)||30, L=parseInt(G('bl').value)||40, H=parseInt(G('bh').value)||10;
+  var pitch=parseInt(G('pitch')?G('pitch').textContent:'3')||3;
+  var wallStyle=G('ws')?G('ws').value:'Vertical';
+  function cell(src,label){
+    return '<div style="background:#111d28;border-radius:6px;overflow:hidden;border:1px solid #243c50;page-break-inside:avoid;break-inside:avoid">'+
+      '<div style="background:#1C2E3F;color:#fff;font-size:9pt;font-weight:800;letter-spacing:2px;text-align:center;padding:5px">'+label+'</div>'+
+      (src?'<img src="'+src+'" style="width:100%;height:auto;display:block;background:#08121d">':'')+
+    '</div>';
   }
+  return '<div style="page-break-before:always;background:#080f14;min-height:100vh;padding:24px;box-sizing:border-box">'+
+    '<div style="font-family:Arial,sans-serif">'+
+    '<div style="font-size:11pt;font-weight:800;letter-spacing:2px;color:#1fcec4;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #1fcec4;text-transform:uppercase">3D Building Rendering</div>'+
+    '<div style="background:#111d28;border-radius:6px;overflow:hidden;border:1px solid #243c50;margin-bottom:14px;page-break-inside:avoid;break-inside:avoid">'+
+      '<img src="'+imgs.iso+'" style="width:100%;height:auto;display:block;background:#08121d">'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
+      cell(imgs.front,'FRONT')+cell(imgs.back,'BACK')+cell(imgs.right,'RIGHT EAVE')+cell(imgs.left,'LEFT EAVE')+
+    '</div>'+
+    '<div style="margin-top:12px;font-size:8pt;color:#8aa3b5;text-align:center">'+W+'\' Wide × '+L+'\' Long × '+H+'\' Tall &nbsp;|&nbsp; '+pitch+':12 Roof Pitch &nbsp;|&nbsp; '+wallStyle+' Walls</div>'+
+    '</div>'+
+  '</div>';
 }
 
 // ── Populate configurator header logo from the same base64 embedded in printQuote ──

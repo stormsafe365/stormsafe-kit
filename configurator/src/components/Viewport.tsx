@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { Grid, OrbitControls, ContactShadows } from '@react-three/drei';
 import { BuildingModel } from '@/three/BuildingModel';
 import { CameraRig } from '@/three/CameraRig';
+import { CaptureHook } from '@/three/CaptureHook';
 import { ViewControls } from '@/components/ViewControls';
 import { useEditorStore } from '@/store/useEditorStore';
 
@@ -56,6 +57,7 @@ export function Viewport() {
         </Suspense>
 
         <CameraRig />
+        <CaptureHook />
 
         <ContactShadows position={[0, 0.01, 0]} opacity={0.45} scale={120} blur={2.4} far={40} />
         <Grid

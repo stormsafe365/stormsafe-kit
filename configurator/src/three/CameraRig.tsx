@@ -133,6 +133,27 @@ export function CameraRig() {
     (window as unknown as Record<string, unknown>).__ssControls = controls;
   }, [camera, controls]);
 
+  // Instant (no-lerp) view setter — used by the PDF capture to jump the camera
+  // to each preset and snapshot it deterministically. Recomputed when the
+  // building size changes so the framing is always correct.
+  useEffect(() => {
+    const w = window as unknown as { __ssSetViewInstant?: (p: CameraPreset) => void };
+    w.__ssSetViewInstant = (preset) => {
+      if (!controls) return;
+      const { pos, look } = computePreset(preset);
+      goalPos.current = null; // cancel any in-flight animation
+      goalLook.current = null;
+      camera.position.copy(pos);
+      controls.target.copy(look);
+      controls.update();
+      camera.updateMatrixWorld();
+    };
+    return () => {
+      delete w.__ssSetViewInstant;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camera, controls, W, L, top]);
+
   // Grabbing the mouse to orbit cancels any in-flight animation.
   useEffect(() => {
     if (!controls) return;

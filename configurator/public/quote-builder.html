@@ -6171,23 +6171,30 @@ function buildingPageHTML(prefixHTML){
     '</div>'+
     '<div style="margin-top:12px;font-size:8pt;color:#8aa3b5;text-align:center">'+W+'\' Wide × '+L+'\' Long × '+H+'\' Tall &nbsp;|&nbsp; Roof Length: '+(function(){var oh=G('overhang-sel')?G('overhang-sel').value:'none';var ex=(ACTIVE_MFR==='CCI'&&(oh==='gables'||oh==='both'))?2:1;return (L+ex)+"' ("+(ex===2?"1' overhang":"6\" overhang")+")";})()+' &nbsp;|&nbsp; '+pitch+':12 Roof Pitch &nbsp;|&nbsp; '+wallStyle+' Walls</div>'+
     (colorsTBD?'<div style="margin-top:8px;background:#182535;border:1px solid #f59e0b;border-radius:5px;padding:7px 12px;font-size:8pt;color:#f59e0b;text-align:center">&#9888; Colors have not yet been selected for this building. Please reference our color chart and select color choices for Roof, Walls, Trim &amp; Wainscot (if applicable).</div>':'')+
-    ((G('zoning-show')&&G('zoning-show').value==='show')?
-      '<div style="margin-top:18px;background:#111d28;border:1px solid #243c50;border-radius:6px;padding:14px 16px">'+
-        '<div style="background:#1C2E3F;color:#fff;font-size:9pt;font-weight:800;letter-spacing:2px;text-align:center;padding:6px 10px;margin:-14px -16px 12px;border-radius:6px 6px 0 0">PRE-ORDER ZONING CHECKLIST</div>'+
-        '<div style="border-left:3px solid #1fcec4;padding:4px 0 4px 10px;margin-bottom:10px;color:#dde7ef;font-size:9pt;line-height:1.4">Before ordering, please verify your local zoning and building requirements. Bring these questions to your local building department to avoid delays.</div>'+
-        '<div style="font-size:7.5pt;font-weight:800;letter-spacing:1.2px;color:#8aa3b5;text-transform:uppercase;margin-bottom:6px">Questions to ask your building department</div>'+
-        ['Can I build a steel structure on my property?',
-         'Do I need a site plan or survey?',
-         'What are the setback requirements?',
-         'Are there drainage, elevation, or fill requirements?',
-         'Are there any size or height restrictions?',
-         'Are there any protected land or wildlife concerns?'].map(function(q){
-          return '<div style="display:flex;align-items:center;gap:10px;background:#0d1820;border:1px solid #1b2e3e;border-radius:5px;padding:8px 12px;margin-bottom:5px">'+
-                   '<span style="display:inline-block;width:14px;height:14px;border:1.5px solid #4a6480;border-radius:3px;background:#080f14;flex-shrink:0"></span>'+
-                   '<span style="font-size:9pt;color:#dde7ef">'+q+'</span>'+
-                 '</div>';
-        }).join('')+
-      '</div>':'')+
+    '</div></div>';
+}
+
+// Pre-Order Zoning Checklist as its OWN standalone PDF page. Pulled out of
+// buildingPageHTML so it shows regardless of whether the PDF embeds the 2D
+// elevations or the 3D rendering (the 3D page used to drop it). Returns '' when
+// the user hasn't enabled it (#zoning-show !== 'show').
+function zoningChecklistHTML(){
+  if(!(G('zoning-show')&&G('zoning-show').value==='show')) return '';
+  return '<div style="page-break-before:always;background:#080f14;min-height:100vh;padding:24px;box-sizing:border-box"><div style="font-family:Arial,sans-serif">'+
+    '<div style="font-size:11pt;font-weight:800;letter-spacing:2px;color:#1fcec4;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #1fcec4;text-transform:uppercase">Pre-Order Zoning Checklist</div>'+
+    '<div style="border-left:3px solid #1fcec4;padding:4px 0 4px 10px;margin-bottom:14px;color:#dde7ef;font-size:9pt;line-height:1.4">Before ordering, please verify your local zoning and building requirements. Bring these questions to your local building department to avoid delays.</div>'+
+    '<div style="font-size:7.5pt;font-weight:800;letter-spacing:1.2px;color:#8aa3b5;text-transform:uppercase;margin-bottom:8px">Questions to ask your building department</div>'+
+    ['Can I build a steel structure on my property?',
+     'Do I need a site plan or survey?',
+     'What are the setback requirements?',
+     'Are there drainage, elevation, or fill requirements?',
+     'Are there any size or height restrictions?',
+     'Are there any protected land or wildlife concerns?'].map(function(q){
+      return '<div style="display:flex;align-items:center;gap:10px;background:#0d1820;border:1px solid #1b2e3e;border-radius:5px;padding:10px 14px;margin-bottom:6px">'+
+               '<span style="display:inline-block;width:14px;height:14px;border:1.5px solid #4a6480;border-radius:3px;background:#080f14;flex-shrink:0"></span>'+
+               '<span style="font-size:9pt;color:#dde7ef">'+q+'</span>'+
+             '</div>';
+    }).join('')+
     '</div></div>';
 }
 
@@ -7200,7 +7207,7 @@ async function printQuote(){
     '.qfooter-r{font-size:7.5pt;color:#4e6070;text-align:right}'+
     '.print-only{display:none}'+
     '@media print{@page{margin:0;size:letter portrait}body{background:#080f14;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-only{display:block}.qpg{display:block!important;background:#080f14!important}.qbody{display:flex!important;align-items:stretch!important}.qsidebar{align-self:stretch!important}.qmain{display:flex!important;flex-direction:column!important;align-self:stretch!important;background:#111d28!important}.qfooter{margin-top:12px!important;position:static!important}.qsec{margin-bottom:8px!important;padding-bottom:6px!important}.qfield{margin-bottom:4px!important}.qsec-title{margin-bottom:5px!important;font-size:6pt!important}.qfield .fl{font-size:5.5pt!important}.qfield .fv{font-size:8pt!important}.qspec-box{padding:4px 5px!important}.qspec-box .fl{font-size:5pt!important}.qspec-box .fv{font-size:8pt!important}.qcolor-row{padding:2px 0!important}}'+
-    '</style></head><body>'+html.split("\'+LOGO+\'").join(LOGO)+'<div class="print-only">'+((imgs3D && imgs3D.iso) ? threeDPageHTML(imgs3D) : buildingPageHTML())+((G('pdf-dims')&&G('pdf-dims').checked) ? dimSpacingPageHTML() : '')+'</div>'+'</body></html>';
+    '</style></head><body>'+html.split("\'+LOGO+\'").join(LOGO)+'<div class="print-only">'+((imgs3D && imgs3D.iso) ? threeDPageHTML(imgs3D) : buildingPageHTML())+zoningChecklistHTML()+((G('pdf-dims')&&G('pdf-dims').checked) ? dimSpacingPageHTML() : '')+'</div>'+'</body></html>';
 
   // Inject into the window we opened up front (so the popup wasn't blocked).
   pwin.document.open();

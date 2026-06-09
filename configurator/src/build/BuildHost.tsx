@@ -732,7 +732,11 @@ export default function BuildHost() {
       <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 0 }}>
         {/* Left: the program (untouched) */}
         <div style={{ position: 'relative', minWidth: 0, background: '#fff' }}>
-          <iframe ref={iframeRef} src="/quote-builder.html" title="StormSafe Pricing" style={{ border: 'none', width: '100%', height: '100%', display: 'block' }} />
+          {/* RELATIVE path (no leading slash) so it resolves next to build.html
+              in BOTH the dev server (/quote-builder.html) and the packaged
+              desktop app (file://…/dist/quote-builder.html). A leading-slash
+              path would resolve to the filesystem root under file:// and 404. */}
+          <iframe ref={iframeRef} src="quote-builder.html" title="StormSafe Pricing" style={{ border: 'none', width: '100%', height: '100%', display: 'block' }} />
         </div>
 
         {/* Right: the 3D preview */}

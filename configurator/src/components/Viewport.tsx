@@ -23,14 +23,14 @@ export function Viewport() {
       <Canvas
         shadows
         dpr={[1, 2]}
-        camera={{ position: [34, 22, -38], fov: 38, near: 0.5, far: 400 }}
+        camera={{ position: [34, 22, -38], fov: 38, near: 0.5, far: 800 }}
         gl={{ antialias: true, preserveDrawingBuffer: true }}
         onPointerMissed={() => {
           if (!useEditorStore.getState().dragging) selectOpening(null);
         }}
       >
         <color attach="background" args={['#08121d']} />
-        <fog attach="fog" args={['#08121d', 80, 200]} />
+        <fog attach="fog" args={['#08121d', 80, 360]} />
 
         {/* All four vertical walls MUST read the identical shade (critical for
             client PDFs). The key light is placed PERFECTLY straight overhead
@@ -79,7 +79,7 @@ export function Viewport() {
           // Allow the camera to push right inside the shell so the interior is
           // easy to inspect (Sensei/IdeaRoom-style), not just orbit the outside.
           minDistance={0.6}
-          maxDistance={120}
+          maxDistance={400}
           // Near-full polar range so you can tilt up to the ceiling/trusses and
           // down under the building — true 360 like Sensei (was capped just past
           // horizontal, which made interior views feel stuck).

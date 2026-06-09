@@ -7260,7 +7260,9 @@ function _dimFtIn(ft){ var ti=Math.round(ft*12), f=Math.floor(ti/12), i=ti%12; r
 function collectElevItems(){
   var W=parseInt(G('bw').value)||30, L=parseInt(G('bl').value)||40;
   var front=[],back=[],right=[],left=[];
-  function dispatch(loc,a,W2,L2,fw){ if(loc==='Front Gable End')fw(front,W2); else if(loc==='Back Gable End')fw(back,W2); else if(loc==='Left Eave Side')fw(left,L2); else if(loc==='Right Eave Side')fw(right,L2); }
+  // GCH "Partition Wall" openings (e.g. the roll-up) live on the partition, which
+  // is what the Front dimensioned view shows — so route them to `front`.
+  function dispatch(loc,a,W2,L2,fw){ if(loc==='Front Gable End'||loc==='Partition Wall')fw(front,W2); else if(loc==='Back Gable End')fw(back,W2); else if(loc==='Left Eave Side')fw(left,L2); else if(loc==='Right Eave Side')fw(right,L2); }
   document.querySelectorAll('.re').forEach(function(el){
     var loc=el.querySelector('.rloc').value, sz=(el.querySelector('.rsz').value||'10x8').split('x');
     var dW=parseFloat(sz[0])||10,dH=parseFloat(sz[1])||8,qty=parseInt(el.querySelector('.rqt').value)||1;

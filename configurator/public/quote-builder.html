@@ -7208,33 +7208,40 @@ async function printQuote(){
   }, 900);
 }
 
-// 3D-rendering PDF page — mirrors buildingPageHTML's page wrapper, but uses the
-// captured live-modeler images: an ISO hero on top + a 2×2 elevation grid.
+// 3D-rendering PDF pages from the captured live-modeler images:
+//   PAGE 1 = big ISO hero.   PAGE 2 = large elevations (gables side-by-side,
+//   each eave full-width since they're the long views) — easy for a client to read.
 function threeDPageHTML(imgs){
   if(!imgs || !imgs.iso) return buildingPageHTML();
   var W=parseInt(G('bw').value)||30, L=parseInt(G('bl').value)||40, H=parseInt(G('bh').value)||10;
   var pitch=parseInt(G('pitch')?G('pitch').textContent:'3')||3;
   var wallStyle=G('ws')?G('ws').value:'Vertical';
-  function cell(src,label){
+  var caption='<div style="margin-top:14px;font-size:8pt;color:#8aa3b5;text-align:center">'+W+'\' Wide × '+L+'\' Long × '+H+'\' Tall &nbsp;|&nbsp; '+pitch+':12 Roof Pitch &nbsp;|&nbsp; '+wallStyle+' Walls</div>';
+  function hdr(t){ return '<div style="font-size:11pt;font-weight:800;letter-spacing:2px;color:#1fcec4;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #1fcec4;text-transform:uppercase">'+t+'</div>'; }
+  function page(inner){ return '<div style="page-break-before:always;background:#080f14;padding:24px;box-sizing:border-box"><div style="font-family:Arial,sans-serif">'+inner+'</div></div>'; }
+  // maxH bounds the height so a tall capture can\'t blow the page up.
+  function cell(src,label,maxH){
     return '<div style="background:#111d28;border-radius:6px;overflow:hidden;border:1px solid #243c50;page-break-inside:avoid;break-inside:avoid">'+
-      '<div style="background:#1C2E3F;color:#fff;font-size:9pt;font-weight:800;letter-spacing:2px;text-align:center;padding:5px">'+label+'</div>'+
-      (src?'<img src="'+src+'" style="display:block;margin:0 auto;max-width:100%;max-height:172px;width:auto;height:auto;background:#08121d">':'')+
+      '<div style="background:#1C2E3F;color:#fff;font-size:10pt;font-weight:800;letter-spacing:2px;text-align:center;padding:6px">'+label+'</div>'+
+      (src?'<img src="'+src+'" style="display:block;margin:0 auto;max-width:100%;max-height:'+maxH+'px;width:auto;height:auto;background:#08121d">':'')+
     '</div>';
   }
-  // Bound every image by height so a tall/portrait capture can\'t blow the page
-  // up — the whole rendering (ISO hero + 2x2 elevations) then fits ONE page.
-  return '<div style="page-break-before:always;background:#080f14;padding:20px;box-sizing:border-box">'+
-    '<div style="font-family:Arial,sans-serif">'+
-    '<div style="font-size:11pt;font-weight:800;letter-spacing:2px;color:#1fcec4;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #1fcec4;text-transform:uppercase">3D Building Rendering</div>'+
-    '<div style="background:#111d28;border-radius:6px;overflow:hidden;border:1px solid #243c50;margin-bottom:14px;page-break-inside:avoid;break-inside:avoid">'+
-      '<img src="'+imgs.iso+'" style="display:block;margin:0 auto;max-width:100%;max-height:415px;width:auto;height:auto;background:#08121d">'+
-    '</div>'+
+  var pg1 = page(
+    hdr('3D Building Rendering')+
+    '<div style="background:#111d28;border-radius:6px;overflow:hidden;border:1px solid #243c50;page-break-inside:avoid;break-inside:avoid">'+
+      '<img src="'+imgs.iso+'" style="display:block;margin:0 auto;max-width:100%;max-height:760px;width:auto;height:auto;background:#08121d">'+
+    '</div>'+caption
+  );
+  var pg2 = page(
+    hdr('Elevation Views')+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
-      cell(imgs.front,'FRONT')+cell(imgs.back,'BACK')+cell(imgs.right,'RIGHT EAVE')+cell(imgs.left,'LEFT EAVE')+
+      cell(imgs.front,'FRONT',270)+cell(imgs.back,'BACK',270)+
     '</div>'+
-    '<div style="margin-top:12px;font-size:8pt;color:#8aa3b5;text-align:center">'+W+'\' Wide × '+L+'\' Long × '+H+'\' Tall &nbsp;|&nbsp; '+pitch+':12 Roof Pitch &nbsp;|&nbsp; '+wallStyle+' Walls</div>'+
-    '</div>'+
-  '</div>';
+    '<div style="margin-top:14px">'+cell(imgs.right,'RIGHT EAVE',300)+'</div>'+
+    '<div style="margin-top:14px">'+cell(imgs.left,'LEFT EAVE',300)+'</div>'+
+    caption
+  );
+  return pg1 + pg2;
 }
 
 // ── Populate configurator header logo from the same base64 embedded in printQuote ──

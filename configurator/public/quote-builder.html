@@ -7220,14 +7220,18 @@ function threeDPageHTML(imgs){
   var W=parseInt(G('bw').value)||30, L=parseInt(G('bl').value)||40, H=parseInt(G('bh').value)||10;
   var pitch=parseInt(G('pitch')?G('pitch').textContent:'3')||3;
   var wallStyle=G('ws')?G('ws').value:'Vertical';
+  var peakH=H+(W/2)*(pitch/12);
+  var gAsp=(W/Math.max(peakH,1)).toFixed(2); // gable (front/back) elevation aspect
+  var eAsp=(L/Math.max(peakH,1)).toFixed(2); // eave (left/right) elevation aspect
   var caption='<div style="margin-top:14px;font-size:8pt;color:#8aa3b5;text-align:center">'+W+'\' Wide × '+L+'\' Long × '+H+'\' Tall &nbsp;|&nbsp; '+pitch+':12 Roof Pitch &nbsp;|&nbsp; '+wallStyle+' Walls</div>';
   function hdr(t){ return '<div style="font-size:11pt;font-weight:800;letter-spacing:2px;color:#1fcec4;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #1fcec4;text-transform:uppercase">'+t+'</div>'; }
   function page(inner){ return '<div style="page-break-before:always;background:#080f14;padding:24px;box-sizing:border-box"><div style="font-family:Arial,sans-serif">'+inner+'</div></div>'; }
-  // maxH bounds the height so a tall capture can\'t blow the page up.
-  function cell(src,label,maxH){
+  // Crop each capture to the building's own elevation aspect (object-fit:cover)
+  // so the building FILLS the box instead of sitting small in a square frame.
+  function cell(src,label,aspect){
     return '<div style="background:#111d28;border-radius:6px;overflow:hidden;border:1px solid #243c50;page-break-inside:avoid;break-inside:avoid">'+
       '<div style="background:#1C2E3F;color:#fff;font-size:10pt;font-weight:800;letter-spacing:2px;text-align:center;padding:6px">'+label+'</div>'+
-      (src?'<img src="'+src+'" style="display:block;margin:0 auto;max-width:100%;max-height:'+maxH+'px;width:auto;height:auto;background:#08121d">':'')+
+      (src?'<div style="width:100%;aspect-ratio:'+aspect+';overflow:hidden;background:#08121d"><img src="'+src+'" style="width:100%;height:100%;object-fit:cover;display:block"></div>':'')+
     '</div>';
   }
   var pg1 = page(
@@ -7239,10 +7243,10 @@ function threeDPageHTML(imgs){
   var pg2 = page(
     hdr('Elevation Views')+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
-      cell(imgs.front,'FRONT',270)+cell(imgs.back,'BACK',270)+
+      cell(imgs.front,'FRONT',gAsp)+cell(imgs.back,'BACK',gAsp)+
     '</div>'+
-    '<div style="margin-top:14px">'+cell(imgs.right,'RIGHT EAVE',300)+'</div>'+
-    '<div style="margin-top:14px">'+cell(imgs.left,'LEFT EAVE',300)+'</div>'+
+    '<div style="margin-top:14px">'+cell(imgs.right,'RIGHT EAVE',eAsp)+'</div>'+
+    '<div style="margin-top:14px">'+cell(imgs.left,'LEFT EAVE',eAsp)+'</div>'+
     caption
   );
   return pg1 + pg2;

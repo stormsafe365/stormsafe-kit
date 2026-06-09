@@ -7290,7 +7290,7 @@ function collectElevItems(){
 // One clean dimensioned elevation (SVG): wall outline (+gable), openings with
 // W×H + sill labels, a horizontal dimension chain (corner->opening->corner),
 // overall width, and wall height on the left.
-function dimElevSVG(faceW, wallH, peakH, isGable, items){
+function dimElevSVG(faceW, wallH, peakH, isGable, items, gchFront){
   var PADL=46, PADR=20, PADT=18, PADB=60, DRAWW=660;
   var sc=DRAWW/Math.max(faceW,1);
   var wallHpx=wallH*sc, peakHpx=(isGable?Math.max(peakH-wallH,0):0)*sc, totH=wallHpx+peakHpx;
@@ -7299,8 +7299,16 @@ function dimElevSVG(faceW, wallH, peakH, isGable, items){
   function Y(yf){return +(PADT+totH-yf*sc).toFixed(1);}
   var sorted=items.slice().sort(function(a,b){return a.x-b.x;});
   var s='<svg viewBox="0 0 '+SVGW+' '+SVGH+'" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">';
-  s+='<rect x="'+X(0)+'" y="'+Y(wallH)+'" width="'+(faceW*sc).toFixed(1)+'" height="'+wallHpx.toFixed(1)+'" fill="#ffffff" stroke="#1f2937" stroke-width="1.6"/>';
-  if(isGable&&peakHpx>0.5){ s+='<polygon points="'+X(0)+','+Y(wallH)+' '+X(faceW/2)+','+Y(peakH)+' '+X(faceW)+','+Y(wallH)+'" fill="#ffffff" stroke="#1f2937" stroke-width="1.6"/>'; }
+  // GCH front: the gable triangle is sheeted, the wall below is the OPEN carport
+  // (dashed) and what you see/dimension is the set-back PARTITION wall (solid).
+  s+='<rect x="'+X(0)+'" y="'+Y(wallH)+'" width="'+(faceW*sc).toFixed(1)+'" height="'+wallHpx.toFixed(1)+'" fill="#ffffff" stroke="#1f2937" stroke-width="1.6"'+(gchFront?' stroke-dasharray="6 4"':'')+'/>';
+  if(gchFront){
+    // partition wall (solid, inset to read as set-back) — carries the openings.
+    var pin=7;
+    s+='<rect x="'+(X(0)+pin)+'" y="'+(Y(wallH)+pin)+'" width="'+(faceW*sc-2*pin).toFixed(1)+'" height="'+(wallHpx-2*pin).toFixed(1)+'" fill="#f8fafc" stroke="#1f2937" stroke-width="1.2"/>';
+    s+='<text x="'+X(faceW/2)+'" y="'+(Y(wallH)+pin+12)+'" font-size="8" fill="#0d6e6e" text-anchor="middle" font-family="Arial" font-weight="700">PARTITION WALL &#183; gable-only sheeting &#183; open carport front</text>';
+  }
+  if(isGable&&peakHpx>0.5){ s+='<polygon points="'+X(0)+','+Y(wallH)+' '+X(faceW/2)+','+Y(peakH)+' '+X(faceW)+','+Y(wallH)+'" fill="'+(gchFront?'#e8edf2':'#ffffff')+'" stroke="#1f2937" stroke-width="1.6"/>'; }
   sorted.forEach(function(it){
     var yo=it.yo||0, ox=X(it.x), oy=Y(yo+it.h), ow=it.w*sc, oh=it.h*sc;
     s+='<rect x="'+ox+'" y="'+oy+'" width="'+ow.toFixed(1)+'" height="'+oh.toFixed(1)+'" fill="#eef2f7" stroke="#1d4ed8" stroke-width="1.2"/>';
@@ -7334,15 +7342,16 @@ function dimSpacingPageHTML(){
   if(!G('bw').value||!G('bl').value) return '';
   var H=parseInt(G('bh').value)||10, pitch=parseInt(G('pitch')?G('pitch').textContent:'3')||3;
   var it=collectElevItems(); var W=it.W, L=it.L, peakH=H+(W/2)*(pitch/12);
-  function box(label, faceW, isGable, items){
+  var isGCH=G('btype')&&G('btype').value==='gch'&&parseInt(G('gch-enc').value)>0&&parseInt(G('gch-open').value)>0;
+  function box(label, faceW, isGable, items, gchFront){
     return '<div style="break-inside:avoid;page-break-inside:avoid;margin-bottom:16px;border:1px solid #cbd5e1;border-radius:5px;overflow:hidden;background:#fff">'+
       '<div style="background:#1C2E3F;color:#fff;font-size:9pt;font-weight:800;letter-spacing:1.8px;text-align:center;padding:6px;text-transform:uppercase">'+label+'</div>'+
-      '<div style="padding:10px 12px;background:#fff">'+dimElevSVG(faceW,H,peakH,isGable,items)+'</div>'+
+      '<div style="padding:10px 12px;background:#fff">'+dimElevSVG(faceW,H,peakH,isGable,items,gchFront)+'</div>'+
     '</div>';
   }
   return '<div style="page-break-before:always;background:#ffffff;min-height:100vh;padding:24px;box-sizing:border-box;font-family:Arial,sans-serif">'+
     '<div style="font-size:11pt;font-weight:800;letter-spacing:2px;color:#0D1B2A;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #1B8A8A;text-transform:uppercase">Dimensioned Layout &amp; Spacing</div>'+
-    box('Front',W,true,it.front)+box('Back',W,true,it.back)+box('Right Eave',L,false,it.right)+box('Left Eave',L,false,it.left)+
+    box('Front',W,true,it.front,isGCH)+box('Back',W,true,it.back,false)+box('Right Eave',L,false,it.right,false)+box('Left Eave',L,false,it.left,false)+
     '<div style="margin-top:4px;font-size:8pt;color:#64748b;text-align:center">All dimensions measured along grade from the wall corners. &nbsp;Building '+W+"' W × "+L+"' L × "+H+"' H.</div>"+
   '</div>';
 }

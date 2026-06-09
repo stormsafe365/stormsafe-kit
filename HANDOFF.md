@@ -222,6 +222,18 @@ step is what made "Custom walls" silently do nothing.)
     `.print-only` → shows in the saved PDF, NOT the popup's on‑screen view. If 3D capture
     fails it falls back to the 2D SVG elevations.
 
+16. **3D truss spacing disagreed with the quote (4' OC in 3D vs 5' OC on the panel).**
+    The 3D had its OWN spacing heuristic in `loads.ts` (`highWind ≥150mph → 4'`) which
+    differs from the program's rule (`getTrussInfo`: `w≤24 && !widespan && !4oc-upgrade
+    → 5' else 4'`). On a 24×30 @150mph the program said 5' OC / 7 trusses but the 3D drew
+    4' OC, so a walk‑door placed clear of the 3D trusses still tripped the program's
+    collision warning. **Rule: the pricing program is the source of truth for spacing.**
+    Fix: BuildHost reads `win.getTrussInfo().spacing` and sets `store.trussSpacingFt`;
+    `resolveBuilding` uses it (over the load engine) with the program's `floor(L/oc)+1`
+    count. The load engine only decides for **standalone** 3D (no program / `trussSpacingFt`
+    unset). Guard: `trussSpacing.test.ts`. If trusses ever look misaligned vs the quote
+    again, check `getTrussInfo` exists on the iframe and `trussSpacingFt` is reaching the store.
+
 ---
 
 ## 6. Windows / PowerShell gotchas (this machine)

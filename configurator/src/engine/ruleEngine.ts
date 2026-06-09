@@ -44,10 +44,18 @@ export function resolveBuilding(input: BuildingConfig): ResolvedBuilding {
   const requiresHatChannels = config.panelOrientation === 'Vertical';
   if (requiresHatChannels) notes.push('Vertical sheeting — horizontal hat channels added to walls.');
 
-  // RULE 2 — Truss spacing from the load engine.
-  const legSpacing = loads.maxFrameSpacingFt;
-  const frameCount = Math.ceil(config.length / legSpacing) + 1;
-  if (loads.highWind || loads.heavySnow) {
+  // RULE 2 — Truss spacing.
+  // The pricing program is the source of truth: when it forwards a spacing
+  // (config.trussSpacingFt > 0) the 3D MUST mirror it exactly, or the trusses
+  // won't line up with the program's quote and its collision warnings. Only
+  // when no program value is present (standalone 3D) do we fall back to the
+  // load engine. Frame count mirrors the program's rule: floor(L/spacing)+1.
+  const programSpacing = config.trussSpacingFt && config.trussSpacingFt > 0 ? config.trussSpacingFt : 0;
+  const legSpacing = programSpacing || loads.maxFrameSpacingFt;
+  const frameCount = programSpacing
+    ? Math.floor(config.length / legSpacing) + 1
+    : Math.ceil(config.length / legSpacing) + 1;
+  if (!programSpacing && (loads.highWind || loads.heavySnow)) {
     notes.push(`Load case — truss spacing tightened to ${legSpacing}ft (${frameCount} trusses).`);
   }
 

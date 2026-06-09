@@ -52,6 +52,8 @@ export interface BuildingStore extends BuildingConfig {
   setWindSpeed: (mph: number) => void;
   setExposure: (e: ExposureCategory) => void;
   setGroundSnow: (psf: number) => void;
+  /** Force truss/frame spacing (ft OC) from the pricing program; 0 → load engine decides. */
+  setTrussSpacing: (ft: number) => void;
 
   addOpening: (type: OpeningType, side: WallSide) => string;
   updateOpening: (id: string, patch: Partial<Opening>) => void;
@@ -143,6 +145,7 @@ export const useBuildingStore = create<BuildingStore>((set) => ({
   setExposure: (e) => set(() => ({ exposureCategory: e })),
   setGroundSnow: (psf) =>
     set(() => ({ groundSnowPsf: snap(psf, SNOW_RANGE.min, SNOW_RANGE.max, SNOW_RANGE.step) })),
+  setTrussSpacing: (ft) => set(() => ({ trussSpacingFt: ft > 0 ? ft : undefined })),
 
   addOpening: (type, side) => {
     const { width, height, sillHeight, customerSupplied } = OPENING_DEFAULTS[type];

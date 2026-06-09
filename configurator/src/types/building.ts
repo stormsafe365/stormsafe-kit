@@ -189,6 +189,15 @@ export interface BuildingConfig {
   /** Ground snow load (psf). Florida ≈ 0; matters for out-of-state quotes. */
   groundSnowPsf: number;
 
+  /**
+   * Truss/frame spacing (ft on center) forced by the pricing program. When set
+   * (> 0) it OVERRIDES the load engine's computed spacing so the 3D trusses
+   * exactly match the quote (e.g. the program's 5' OC standard vs. 4' OC
+   * upgrade, and the collision warnings keyed off it). Undefined/0 → the load
+   * engine decides (standalone 3D use without the pricing program).
+   */
+  trussSpacingFt?: number;
+
   openings: Opening[];
 }
 

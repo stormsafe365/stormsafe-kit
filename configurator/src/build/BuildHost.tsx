@@ -212,6 +212,8 @@ const TYPE_LABEL: Record<BuildingType, string> = {
 type BuilderWindow = Window & {
   G?: (id: string) => HTMLInputElement | null;
   getPosItems?: (el: Element, qty: number, itemW: number, faceW: number, itemH: number, type: string, extraH?: number) => Array<{ x: number; w: number; h: number; yo?: number }>;
+  /** Program's authoritative truss spacing/count (so the 3D mirrors the quote exactly). */
+  getTrussInfo?: () => { spacing: number; count: number } | null;
   rc?: (...a: unknown[]) => unknown;
   updatePosSection?: (entry: Element, qty: number, label?: string) => void;
   __ssWrapped?: boolean;
@@ -472,6 +474,16 @@ function syncFromBuilder(win: BuilderWindow) {
   if (w && w !== st.width) st.setWidth(w);
   if (l && l !== st.length) st.setLength(l);
   if (h && h !== st.legHeight) st.setLegHeight(h);
+
+  // Truss spacing: mirror the program EXACTLY by calling its own getTrussInfo()
+  // (e.g. 24-wide standard = 5' OC, 4' OC upgrade, wide-span = 4'). Without this
+  // the 3D recomputed its own spacing from wind load and could show 4' OC where
+  // the quote — and its collision warnings — use 5', so doors looked clear in 3D
+  // but the panel flagged a truss hit. 0 → let the load engine decide (standalone).
+  // Only override when the program returns a real value (it returns null mid-edit
+  // when bw/bl read empty) so we never flicker back to the load-engine spacing.
+  const ti = typeof win.getTrussInfo === 'function' ? win.getTrussInfo() : null;
+  if (ti && ti.spacing > 0 && ti.spacing !== (st.trussSpacingFt ?? 0)) st.setTrussSpacing(ti.spacing);
 
   const mapped = TYPE_MAP[bt];
   if (mapped && mapped !== st.buildingType) st.setBuildingType(mapped);

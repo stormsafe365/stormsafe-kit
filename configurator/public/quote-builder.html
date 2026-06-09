@@ -7422,6 +7422,8 @@ async function printContract(){
   var W=parseInt(w)||30, L=parseInt(l)||40, H=parseInt(h)||10;
   var roofStyle=G('rs').value, wallStyle=G('ws').value, pitch=G('pitch').textContent;
   var pitchN=parseInt(pitch)||3;
+  var peakH=H+(W/2)*(pitchN/12);
+  var gAsp=(W/Math.max(peakH,1)).toFixed(2), eAsp=(L/Math.max(peakH,1)).toFixed(2); // elevation aspects
   var cert=G('sc').textContent;
   var fEl=G('foundation'); var foundText=fEl.selectedIndex>0?fEl.options[fEl.selectedIndex].text:'—';
   var bt2=G('btype').value;
@@ -7798,7 +7800,7 @@ async function printContract(){
   var svgLeft  = mkElev('_cl', L, true,  leftItems,  'left',  _gchLc, _spLc);
   // Contract building view: use the live 3D modeler capture when available,
   // else the 2D SVG elevation. Height-bounded so a tall capture stays compact.
-  function _ctv(svg, src){ return (imgs3D && src) ? '<img src="'+src+'" style="display:block;margin:0 auto;max-width:100%;max-height:160px;width:auto;height:auto;background:#08121d;border-radius:3px">' : svg; }
+  function _ctv(svg, src, aspect){ return (imgs3D && src) ? '<div style="width:100%;aspect-ratio:'+(aspect||'16/9')+';overflow:hidden;background:#0b1620;border-radius:4px"><img src="'+src+'" style="width:100%;height:100%;object-fit:cover;display:block"></div>' : svg; }
   document.body.removeChild(tmp);
 
   // ── Generate 2D top-down floor plan SVG ──
@@ -8128,7 +8130,7 @@ async function printContract(){
 
     // Building views page
     '.c-views-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}'+
-    '.c-view{background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;overflow:hidden}'+
+    '.c-view{background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}'+
     '.c-view-hdr{background:#111827;color:#ffffff;font-size:7.5pt;font-weight:900;letter-spacing:1.5px;text-align:center;padding:4px 5px;text-transform:uppercase}'+
     '.c-view-body{padding:5px 6px;background:#ffffff}'+
     '.c-floorplan{background:#f8fafc;border:1px solid #e2e8f0;border-radius:5px;overflow:hidden;break-inside:avoid;page-break-inside:avoid}'+
@@ -8197,7 +8199,7 @@ async function printContract(){
       (validStr?'<div class="c-tot-row disc" style="border-bottom:none;padding-top:0"><span class="l" style="font-size:7pt;font-style:italic">Discount valid through '+validStr+'</span><span class="v"></span></div>':'');
   }
 
-  var TOTAL_PAGES = 3;
+  var TOTAL_PAGES = 4;
 
   // ── PAGE 1: Order Summary ──
   var page1 =
@@ -8321,27 +8323,25 @@ async function printContract(){
     '</div>'+
 
     _footer(1, TOTAL_PAGES)+
+    '</div>';
 
-    // ── BUILDING VIEWS & FLOOR PLAN — flows on same logical page as order summary ──
-    // The .page wrapper has page-break-after:always but we DON'T close it here:
-    // building views are appended inside the same .page div so any blank space
-    // after the order-summary signature gets naturally filled by the views.
-    '<div class="c-sec" style="margin-top:14px;page-break-before:auto">'+
-    '<div class="c-sec-title">Building Views &amp; Floor Plan</div>'+
-    '</div>'+
-
+  // ── Building Views + Floor Plan on their OWN clean page. Previously appended
+  //    inside page1's flex .page, which broke awkwardly (split cells, blank page).
+  //    Gables side-by-side, eaves full-width, each render cropped to its building
+  //    so it fills the box (no more tiny renders).
+  var pageViews =
+    '<div class="page">'+
+    '<div class="c-sec"><div class="c-sec-title">Building Views</div></div>'+
     '<div class="c-views-grid">'+
-      '<div class="c-view"><div class="c-view-hdr">Front</div><div class="c-view-body">'+_ctv(svgFront, imgs3D&&imgs3D.front)+'</div></div>'+
-      '<div class="c-view"><div class="c-view-hdr">Right</div><div class="c-view-body">'+_ctv(svgRight, imgs3D&&imgs3D.right)+'</div></div>'+
-      '<div class="c-view"><div class="c-view-hdr">Back</div><div class="c-view-body">'+_ctv(svgBack, imgs3D&&imgs3D.back)+'</div></div>'+
-      '<div class="c-view"><div class="c-view-hdr">Left</div><div class="c-view-body">'+_ctv(svgLeft, imgs3D&&imgs3D.left)+'</div></div>'+
+      '<div class="c-view"><div class="c-view-hdr">Front</div><div class="c-view-body">'+_ctv(svgFront, imgs3D&&imgs3D.front, gAsp)+'</div></div>'+
+      '<div class="c-view"><div class="c-view-hdr">Back</div><div class="c-view-body">'+_ctv(svgBack, imgs3D&&imgs3D.back, gAsp)+'</div></div>'+
     '</div>'+
-
-    '<div class="c-floorplan" style="margin-top:6px">'+
+    '<div class="c-view" style="margin-top:10px"><div class="c-view-hdr">Right Eave</div><div class="c-view-body">'+_ctv(svgRight, imgs3D&&imgs3D.right, eAsp)+'</div></div>'+
+    '<div class="c-view" style="margin-top:10px"><div class="c-view-hdr">Left Eave</div><div class="c-view-body">'+_ctv(svgLeft, imgs3D&&imgs3D.left, eAsp)+'</div></div>'+
+    '<div class="c-floorplan" style="margin-top:10px">'+
       '<div class="c-floorplan-hdr">Top-Down Floor Plan</div>'+
       '<div class="c-floorplan-body">'+floorPlanSVG+'</div>'+
     '</div>'+
-
     '<div class="c-sec" style="margin-top:8px">'+
     '<div class="c-sec-title">Legends</div>'+
     '<div class="c-legends">'+
@@ -8358,6 +8358,7 @@ async function printContract(){
       '<div class="c-legend"><span class="code" style="color:#111827;border-color:#111827">C</span> Cupola</div>'+
     '</div>'+
     '</div>'+
+    _footer(2, TOTAL_PAGES)+
     '</div>';
 
   // (page2 is now empty — content merged into page1 above)
@@ -8432,7 +8433,7 @@ async function printContract(){
       '</div>'+
     '</div>'+
 
-    _footer(2, TOTAL_PAGES)+
+    _footer(3, TOTAL_PAGES)+
     '</div>';
 
   // ── PAGE 4: Site Readiness Agreement + Final Signature ──
@@ -8492,7 +8493,7 @@ async function printContract(){
       '</div>'+
     '</div>'+
 
-    _footer(3, TOTAL_PAGES)+
+    _footer(4, TOTAL_PAGES)+
     '</div>';
 
   // ── Assemble & open ──
@@ -8504,7 +8505,7 @@ async function printContract(){
   var fullDoc = '<!DOCTYPE html><html><head><meta charset="UTF-8">'+
     '<title>&nbsp;</title>'+
     '<style>'+CSS+'</style></head><body>'+
-    page1+page2+page3+page4+
+    page1+pageViews+page2+page3+page4+
     ((G('pdf-dims')&&G('pdf-dims').checked) ? dimSpacingPageHTML() : '')+
     '</body></html>';
 

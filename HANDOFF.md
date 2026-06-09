@@ -205,6 +205,23 @@ step is what made "Custom walls" silently do nothing.)
     to restore real styling; then restore the size‑based `trussStyles.test.ts`
     expectations (they're rewritten for single‑only right now).
 
+14. **Elevation views (left/right eave, front/back) clip long buildings** — live AND
+    in the PDF capture. Cause: the `<OrbitControls maxDistance>` clamp (was **120**).
+    Framing an 80ft eave needs the camera ~**146ft** back, but `controls.update()` pulled
+    it in to 120 → too close → ends clipped. The fit math was correct; the clamp masked
+    it. Fix: `maxDistance 120→400` + camera `far 400→800` + `fog 200→360`. The PDF capture
+    (`CaptureHook`) also temporarily drops fog, lifts the clamp, and extends `far` during
+    capture (restored after) → crisp, fully framed snapshots at ANY size. *Debug tip:* if
+    a preset camera lands closer than the fit formula predicts, suspect the `maxDistance`
+    clamp, not stale dims (verify `impliedL == storeLen` first).
+
+15. **PDF 3D rendering (`#pdf-render` toggle).** Save/Print PDF can embed the live
+    modeler: `__ssCapture3D()` cycles ISO + 4 elevations (`__ssSetViewInstant`), snapshots
+    the canvas (works because `preserveDrawingBuffer:true`), and `threeDPageHTML()` lays
+    them out (ISO hero + 2×2 grid). Toggle now **defaults to 3D**. The 3D page is
+    `.print-only` → shows in the saved PDF, NOT the popup's on‑screen view. If 3D capture
+    fails it falls back to the 2D SVG elevations.
+
 ---
 
 ## 6. Windows / PowerShell gotchas (this machine)

@@ -54,6 +54,7 @@
       "output": "release"
     },
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         "nsis",
         "portable"
@@ -61,7 +62,11 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "createDesktopShortcut": true,
+      "shortcutName": "StormSafe 3D Builder"
     }
   }
 }

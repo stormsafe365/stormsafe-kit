@@ -7249,8 +7249,20 @@ function threeDPageHTML(imgs){
 })();
 
 
-function printContract(){
+async function printContract(){
   if(!G('bw').value||!G('bl').value){ toast('Please select building dimensions first','err'); return; }
+
+  // Open the print window NOW (inside the click gesture) so it isn't popup-
+  // blocked, then capture the live 3D modeler before assembling — the contract's
+  // building views use the 3D renders (fall back to the 2D SVG elevations).
+  var pw = window.open('','_blank');
+  if(!pw){ toast('Popup blocked — please allow popups for this page, then try again','err'); return; }
+  try { pw.document.write('<!doctype html><html><body style="margin:0;background:#fff;color:#64748b;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;font-size:15px">Generating contract…</body></html>'); } catch(e){}
+  var imgs3D = null;
+  try {
+    var _capC = (window.parent && window.parent.__ssCapture3D) || window.__ssCapture3D;
+    if(typeof _capC === 'function'){ imgs3D = await _capC(); }
+  } catch(e){ console.warn('3D capture failed for contract, using 2D elevations', e); }
 
   // ── StormSafe logo (pulled from printQuote's source to avoid duplicating the 8KB base64) ──
   function _getLogo(){
@@ -7663,6 +7675,9 @@ function printContract(){
   var svgRight = mkElev('_cr', L, true,  rightItems, 'right', _gchRc, _spRc);
   var svgBack  = mkElev('_cb', W, false, backItems,  'back');
   var svgLeft  = mkElev('_cl', L, true,  leftItems,  'left',  _gchLc, _spLc);
+  // Contract building view: use the live 3D modeler capture when available,
+  // else the 2D SVG elevation. Height-bounded so a tall capture stays compact.
+  function _ctv(svg, src){ return (imgs3D && src) ? '<img src="'+src+'" style="display:block;margin:0 auto;max-width:100%;max-height:160px;width:auto;height:auto;background:#08121d;border-radius:3px">' : svg; }
   document.body.removeChild(tmp);
 
   // ── Generate 2D top-down floor plan SVG ──
@@ -8195,10 +8210,10 @@ function printContract(){
     '</div>'+
 
     '<div class="c-views-grid">'+
-      '<div class="c-view"><div class="c-view-hdr">Front</div><div class="c-view-body">'+svgFront+'</div></div>'+
-      '<div class="c-view"><div class="c-view-hdr">Right</div><div class="c-view-body">'+svgRight+'</div></div>'+
-      '<div class="c-view"><div class="c-view-hdr">Back</div><div class="c-view-body">'+svgBack+'</div></div>'+
-      '<div class="c-view"><div class="c-view-hdr">Left</div><div class="c-view-body">'+svgLeft+'</div></div>'+
+      '<div class="c-view"><div class="c-view-hdr">Front</div><div class="c-view-body">'+_ctv(svgFront, imgs3D&&imgs3D.front)+'</div></div>'+
+      '<div class="c-view"><div class="c-view-hdr">Right</div><div class="c-view-body">'+_ctv(svgRight, imgs3D&&imgs3D.right)+'</div></div>'+
+      '<div class="c-view"><div class="c-view-hdr">Back</div><div class="c-view-body">'+_ctv(svgBack, imgs3D&&imgs3D.back)+'</div></div>'+
+      '<div class="c-view"><div class="c-view-hdr">Left</div><div class="c-view-body">'+_ctv(svgLeft, imgs3D&&imgs3D.left)+'</div></div>'+
     '</div>'+
 
     '<div class="c-floorplan" style="margin-top:6px">'+
@@ -8371,17 +8386,12 @@ function printContract(){
     page1+page2+page3+page4+
     '</body></html>';
 
-  var pw = window.open('','_blank');
-  if(pw){
-    pw.document.open();
-    pw.document.write(fullDoc);
-    pw.document.close();
-    setTimeout(function(){ try{ pw.focus(); pw.print(); } catch(e){} }, 900);
-    toast('Opening contract','ok');
-  } else {
-    toast('Popup blocked — please allow popups for this page, then try again','err');
-    console.warn('printContract: window.open returned null — popup blocker enabled');
-  }
+  // pw was opened up front (inside the click gesture); write the finished doc.
+  pw.document.open();
+  pw.document.write(fullDoc);
+  pw.document.close();
+  setTimeout(function(){ try{ pw.focus(); pw.print(); } catch(e){} }, 900);
+  toast('Opening contract','ok');
 }
 
 // Small HTML-escape helper used by printContract

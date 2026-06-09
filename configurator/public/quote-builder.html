@@ -744,6 +744,10 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
       <option value="2d">2D Elevations</option>
     </select>
   </div>
+  <div style="margin-top:8px;display:flex;align-items:center;gap:7px;font-size:11px;color:#8aa3b5">
+    <input type="checkbox" id="pdf-dims" style="width:auto;margin:0;cursor:pointer">
+    <label for="pdf-dims" style="font-weight:600;cursor:pointer">Add dimensioned spacing page (exact placement &amp; distances)</label>
+  </div>
   <div style="margin-top:10px" class="desktop-btns">
     <button class="sbtn" type="button" onclick="printQuote()" style="background:#9fc839;color:#080f14">SAVE / PRINT PDF</button>
     <button class="sbtn" type="button" onclick="printContract()" style="background:#00d9d9;color:#080f14">GENERATE CONTRACT</button>
@@ -7196,7 +7200,7 @@ async function printQuote(){
     '.qfooter-r{font-size:7.5pt;color:#4e6070;text-align:right}'+
     '.print-only{display:none}'+
     '@media print{@page{margin:0;size:letter portrait}body{background:#080f14;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-only{display:block}.qpg{display:block!important;background:#080f14!important}.qbody{display:flex!important;align-items:stretch!important}.qsidebar{align-self:stretch!important}.qmain{display:flex!important;flex-direction:column!important;align-self:stretch!important;background:#111d28!important}.qfooter{margin-top:12px!important;position:static!important}.qsec{margin-bottom:8px!important;padding-bottom:6px!important}.qfield{margin-bottom:4px!important}.qsec-title{margin-bottom:5px!important;font-size:6pt!important}.qfield .fl{font-size:5.5pt!important}.qfield .fv{font-size:8pt!important}.qspec-box{padding:4px 5px!important}.qspec-box .fl{font-size:5pt!important}.qspec-box .fv{font-size:8pt!important}.qcolor-row{padding:2px 0!important}}'+
-    '</style></head><body>'+html.split("\'+LOGO+\'").join(LOGO)+'<div class="print-only">'+((imgs3D && imgs3D.iso) ? threeDPageHTML(imgs3D) : buildingPageHTML())+'</div>'+'</body></html>';
+    '</style></head><body>'+html.split("\'+LOGO+\'").join(LOGO)+'<div class="print-only">'+((imgs3D && imgs3D.iso) ? threeDPageHTML(imgs3D) : buildingPageHTML())+((G('pdf-dims')&&G('pdf-dims').checked) ? dimSpacingPageHTML() : '')+'</div>'+'</body></html>';
 
   // Inject into the window we opened up front (so the popup wasn't blocked).
   pwin.document.open();
@@ -7242,6 +7246,101 @@ function threeDPageHTML(imgs){
     caption
   );
   return pg1 + pg2;
+}
+
+// ── Dimensioned "spacing" drawing — clean black-on-white shop-drawing elevations
+//    showing exactly where each opening sits + distances. Optional PDF/contract page.
+function _dimFtIn(ft){ var ti=Math.round(ft*12), f=Math.floor(ti/12), i=ti%12; return i?(f+"'"+i+'"'):(f+"'"); }
+
+// Collect the openings placed on each wall (same dispatch the elevations use).
+function collectElevItems(){
+  var W=parseInt(G('bw').value)||30, L=parseInt(G('bl').value)||40;
+  var front=[],back=[],right=[],left=[];
+  function dispatch(loc,a,W2,L2,fw){ if(loc==='Front Gable End')fw(front,W2); else if(loc==='Back Gable End')fw(back,W2); else if(loc==='Left Eave Side')fw(left,L2); else if(loc==='Right Eave Side')fw(right,L2); }
+  document.querySelectorAll('.re').forEach(function(el){
+    var loc=el.querySelector('.rloc').value, sz=(el.querySelector('.rsz').value||'10x8').split('x');
+    var dW=parseFloat(sz[0])||10,dH=parseFloat(sz[1])||8,qty=parseInt(el.querySelector('.rqt').value)||1;
+    dispatch(loc,0,W,L,function(a,fw){ getPosItems(el,qty,dW,fw,dH,'rollup').forEach(function(it){a.push(it);}); });
+  });
+  document.querySelectorAll('.we').forEach(function(el){
+    dispatch(el.querySelector('.wloc').value,0,W,L,function(a,fw){ getPosItems(el,1,3,fw,6.67,'wtd').forEach(function(it){a.push(it);}); });
+  });
+  document.querySelectorAll('.ne').forEach(function(el){
+    var qty=parseInt(el.querySelector('.nqt')?el.querySelector('.nqt').value:1)||1;
+    dispatch(el.querySelector('.nloc').value,0,W,L,function(a,fw){ getPosItems(el,qty,2.5,fw,2.5,'win',4.16667).forEach(function(it){a.push(it);}); });
+  });
+  document.querySelectorAll('.ace').forEach(function(el){
+    var comp=el.querySelector('.act')?el.querySelector('.act').value:''; if(comp.indexOf('Framed Opening')<0) return;
+    var locRow=el.querySelector('.fo-loc-row'); if(!locRow||locRow.classList.contains('hidden')) return;
+    var qty=parseInt(el.querySelector('.acq').value)||1, foW=2.5,foH=2.5,foYo=4.16667;
+    if(comp.indexOf('(Custom Size)')>=0){var cwEl=el.querySelector('.fo-cw'),chEl=el.querySelector('.fo-ch');foW=parseFloat(cwEl&&cwEl.value)||10;foH=parseFloat(chEl&&chEl.value)||8;foYo=(comp.indexOf('Window')>=0)?4.16667:0;}
+    else if(comp.indexOf('Garage Door')>=0){var wm=comp.match(/(\d+)' Wide/);foW=wm?parseInt(wm[1]):10;foH=8;foYo=0;}
+    else if(comp.indexOf('Side Opening')>=0){var wm2=comp.match(/(\d+)' Wide/);foW=wm2?parseInt(wm2[1]):10;foH=8;foYo=0;}
+    else if(comp.indexOf('Double Door')>=0){foW=6;foH=6.67;foYo=0;}
+    else if(comp.indexOf('Walk-Through')>=0){foW=3;foH=6.67;foYo=0;}
+    dispatch(el.querySelector('.fo-loc').value,0,W,L,function(a,fw){ getPosItems(el,qty,foW,fw,foH,'fo',foYo).forEach(function(it){a.push(it);}); });
+  });
+  return {front:front,back:back,right:right,left:left,W:W,L:L};
+}
+
+// One clean dimensioned elevation (SVG): wall outline (+gable), openings with
+// W×H + sill labels, a horizontal dimension chain (corner->opening->corner),
+// overall width, and wall height on the left.
+function dimElevSVG(faceW, wallH, peakH, isGable, items){
+  var PADL=46, PADR=20, PADT=18, PADB=60, DRAWW=660;
+  var sc=DRAWW/Math.max(faceW,1);
+  var wallHpx=wallH*sc, peakHpx=(isGable?Math.max(peakH-wallH,0):0)*sc, totH=wallHpx+peakHpx;
+  var SVGW=DRAWW+PADL+PADR, SVGH=totH+PADT+PADB;
+  function X(xf){return +(PADL+xf*sc).toFixed(1);}
+  function Y(yf){return +(PADT+totH-yf*sc).toFixed(1);}
+  var sorted=items.slice().sort(function(a,b){return a.x-b.x;});
+  var s='<svg viewBox="0 0 '+SVGW+' '+SVGH+'" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">';
+  s+='<rect x="'+X(0)+'" y="'+Y(wallH)+'" width="'+(faceW*sc).toFixed(1)+'" height="'+wallHpx.toFixed(1)+'" fill="#ffffff" stroke="#1f2937" stroke-width="1.6"/>';
+  if(isGable&&peakHpx>0.5){ s+='<polygon points="'+X(0)+','+Y(wallH)+' '+X(faceW/2)+','+Y(peakH)+' '+X(faceW)+','+Y(wallH)+'" fill="#ffffff" stroke="#1f2937" stroke-width="1.6"/>'; }
+  sorted.forEach(function(it){
+    var yo=it.yo||0, ox=X(it.x), oy=Y(yo+it.h), ow=it.w*sc, oh=it.h*sc;
+    s+='<rect x="'+ox+'" y="'+oy+'" width="'+ow.toFixed(1)+'" height="'+oh.toFixed(1)+'" fill="#eef2f7" stroke="#1d4ed8" stroke-width="1.2"/>';
+    s+='<text x="'+(ox+ow/2).toFixed(1)+'" y="'+(oy+oh/2).toFixed(1)+'" font-size="9" fill="#0f172a" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-weight="700">'+_dimFtIn(it.w)+'×'+_dimFtIn(it.h)+'</text>';
+    if(yo>0.1){ s+='<text x="'+(ox+ow/2).toFixed(1)+'" y="'+((Y(0)+Y(yo))/2).toFixed(1)+'" font-size="7.5" fill="#475569" text-anchor="middle" dominant-baseline="middle" font-family="Arial">sill '+_dimFtIn(yo)+'</text>'; }
+  });
+  var dimY=PADT+totH+22;
+  var stops=[0]; sorted.forEach(function(it){stops.push(it.x);stops.push(it.x+it.w);}); stops.push(faceW);
+  stops=stops.filter(function(v,i,a){return a.indexOf(v)===i;}).sort(function(a,b){return a-b;});
+  for(var i=0;i<stops.length-1;i++){
+    var x1=X(stops[i]),x2=X(stops[i+1]),d=stops[i+1]-stops[i]; if(d<=0.02) continue;
+    s+='<line x1="'+x1+'" y1="'+dimY+'" x2="'+x2+'" y2="'+dimY+'" stroke="#64748b" stroke-width="0.8"/>';
+    s+='<line x1="'+x1+'" y1="'+(dimY-4)+'" x2="'+x1+'" y2="'+(dimY+4)+'" stroke="#64748b" stroke-width="0.8"/>';
+    s+='<line x1="'+x2+'" y1="'+(dimY-4)+'" x2="'+x2+'" y2="'+(dimY+4)+'" stroke="#64748b" stroke-width="0.8"/>';
+    s+='<text x="'+((x1+x2)/2).toFixed(1)+'" y="'+(dimY-5)+'" font-size="8.5" fill="#0f172a" text-anchor="middle" font-family="Arial">'+_dimFtIn(d)+'</text>';
+  }
+  var oy2=PADT+totH+44;
+  s+='<line x1="'+X(0)+'" y1="'+oy2+'" x2="'+X(faceW)+'" y2="'+oy2+'" stroke="#1f2937" stroke-width="0.9"/>';
+  s+='<text x="'+((X(0)+X(faceW))/2).toFixed(1)+'" y="'+(oy2-4)+'" font-size="9" fill="#0f172a" text-anchor="middle" font-family="Arial" font-weight="700">'+_dimFtIn(faceW)+' overall</text>';
+  var lx=PADL-24;
+  s+='<line x1="'+lx+'" y1="'+Y(0)+'" x2="'+lx+'" y2="'+Y(wallH)+'" stroke="#64748b" stroke-width="0.8"/>';
+  s+='<line x1="'+(lx-3)+'" y1="'+Y(0)+'" x2="'+(lx+3)+'" y2="'+Y(0)+'" stroke="#64748b" stroke-width="0.8"/>';
+  s+='<line x1="'+(lx-3)+'" y1="'+Y(wallH)+'" x2="'+(lx+3)+'" y2="'+Y(wallH)+'" stroke="#64748b" stroke-width="0.8"/>';
+  s+='<text x="'+(lx-5)+'" y="'+Y(wallH/2)+'" font-size="8.5" fill="#0f172a" text-anchor="middle" font-family="Arial" transform="rotate(-90 '+(lx-5)+' '+Y(wallH/2)+')">'+_dimFtIn(wallH)+'</text>';
+  s+='</svg>';
+  return s;
+}
+
+// Full dimensioned-spacing page (own page, clean white shop-drawing look).
+function dimSpacingPageHTML(){
+  if(!G('bw').value||!G('bl').value) return '';
+  var H=parseInt(G('bh').value)||10, pitch=parseInt(G('pitch')?G('pitch').textContent:'3')||3;
+  var it=collectElevItems(); var W=it.W, L=it.L, peakH=H+(W/2)*(pitch/12);
+  function box(label, faceW, isGable, items){
+    return '<div style="break-inside:avoid;page-break-inside:avoid;margin-bottom:16px;border:1px solid #cbd5e1;border-radius:5px;overflow:hidden;background:#fff">'+
+      '<div style="background:#1C2E3F;color:#fff;font-size:9pt;font-weight:800;letter-spacing:1.8px;text-align:center;padding:6px;text-transform:uppercase">'+label+'</div>'+
+      '<div style="padding:10px 12px;background:#fff">'+dimElevSVG(faceW,H,peakH,isGable,items)+'</div>'+
+    '</div>';
+  }
+  return '<div style="page-break-before:always;background:#ffffff;min-height:100vh;padding:24px;box-sizing:border-box;font-family:Arial,sans-serif">'+
+    '<div style="font-size:11pt;font-weight:800;letter-spacing:2px;color:#0D1B2A;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #1B8A8A;text-transform:uppercase">Dimensioned Layout &amp; Spacing</div>'+
+    box('Front',W,true,it.front)+box('Back',W,true,it.back)+box('Right Eave',L,false,it.right)+box('Left Eave',L,false,it.left)+
+    '<div style="margin-top:4px;font-size:8pt;color:#64748b;text-align:center">All dimensions measured along grade from the wall corners. &nbsp;Building '+W+"' W × "+L+"' L × "+H+"' H.</div>"+
+  '</div>';
 }
 
 // ── Populate configurator header logo from the same base64 embedded in printQuote ──
@@ -8391,6 +8490,7 @@ async function printContract(){
     '<title>&nbsp;</title>'+
     '<style>'+CSS+'</style></head><body>'+
     page1+page2+page3+page4+
+    ((G('pdf-dims')&&G('pdf-dims').checked) ? dimSpacingPageHTML() : '')+
     '</body></html>';
 
   // pw was opened up front (inside the click gesture); write the finished doc.

@@ -7857,6 +7857,23 @@ async function printContract(){
     function corner(x,y){ return '<rect x="'+(x-wt/2)+'" y="'+(y-wt/2)+'" width="'+wt+'" height="'+wt+'" fill="#111827"/>'; }
     s += corner(bx,by) + corner(bx+bw,by) + corner(bx,by+bl) + corner(bx+bw,by+bl);
 
+    // ── Partition wall (GCH only) ─────────────────────────────────────────────
+    // A garage-carport hybrid splits the length into an ENCLOSED bay at the BACK
+    // (top) and an OPEN carport bay at the FRONT (bottom) — same convention the
+    // side elevations use. Draw the dividing wall across the full width at the
+    // enclosed-length mark so the plan actually shows the partition.
+    (function(){
+      var isGCH = G('btype') && G('btype').value === 'gch';
+      var encL  = parseInt(G('gch-enc')  && G('gch-enc').value)  || 0;
+      var openL = parseInt(G('gch-open') && G('gch-open').value) || 0;
+      if(!(isGCH && encL > 0 && openL > 0)) return;
+      var py = by + Math.min(encL, L) * scale;          // enc measured from the BACK (top)
+      s += '<line x1="'+bx+'" y1="'+py+'" x2="'+(bx+bw)+'" y2="'+py+'" stroke="#111827" stroke-width="'+wt+'" stroke-linecap="square"/>';
+      // Label on a white chip so it stays readable over the divider line.
+      s += '<rect x="'+(bx+bw/2-44)+'" y="'+(py-8)+'" width="88" height="14" fill="#ffffff" stroke="none"/>';
+      s += '<text x="'+(bx+bw/2)+'" y="'+(py+2.5)+'" text-anchor="middle" font-family="Arial" font-size="8.5" font-weight="800" fill="#111827" letter-spacing="1">PARTITION WALL</text>';
+    })();
+
     // ── Translate each item from elevation coords → "floor plan position" (fp)
     // fp is distance along the wall starting from a consistent corner:
     //   front/back walls: fp=0 at LEFT corner, fp=W at RIGHT corner

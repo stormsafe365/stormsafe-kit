@@ -9403,9 +9403,8 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
         var dCx=innerX+innerW/2, dCy=innerY+innerH*0.26, dR=Math.min(innerW,innerH)*0.16;
         s+='<polygon points="'+dCx+','+(dCy-dR)+' '+(dCx+dR)+','+dCy+' '+dCx+','+(dCy+dR)+' '+(dCx-dR)+','+dCy+'" fill="'+(_dColor==='black'?'#9eb6c6':'#C8DFE8')+'" stroke="'+(_dColor==='black'?'#cfcfcf':'#9aa0a7')+'" stroke-width="2"/>';
       } else {
-        // Standard smooth door — two recessed long panels (top + bottom)
-        s+='<rect x="'+innerX+'" y="'+innerY+'" width="'+innerW+'" height="'+(innerH*0.55)+'" fill="'+dPanel+'" opacity="0.6"/>';
-        s+='<rect x="'+innerX+'" y="'+(innerY+innerH*0.55+innerH*0.04)+'" width="'+innerW+'" height="'+(innerH*0.36)+'" fill="'+dPanel+'" opacity="0.6"/>';
+        // Standard door — completely SOLID slab (CCI standard door is flat, no
+        // panels). Only the trim casing (drawn below) frames it.
       }
       // Trim casing — user's chosen trim color
       s+='<rect x="'+ix+'" y="'+wtdY+'" width="'+wtdW+'" height="'+wtdH+'" fill="none" stroke="'+tC+'" stroke-width="2.5"/>';

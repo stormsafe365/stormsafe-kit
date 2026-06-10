@@ -82,13 +82,10 @@ export function createDoorTexture(style: DoorStyle, dark: boolean): THREE.Canvas
     ctx.strokeStyle = dark ? '#cfcfcf' : '#9aa0a7';
     ctx.lineWidth = 5; // proud window frame
     ctx.stroke();
-  } else {
-    // std — two faint long recessed panels
-    ctx.globalAlpha = 0.55;
-    rect(ix, iy, iw, ih * 0.55, panel);
-    rect(ix, iy + ih * 0.59, iw, ih * 0.36, panel);
-    ctx.globalAlpha = 1;
   }
+  // std — a completely SOLID slab (the real CCI standard door is flat, no
+  // panels), so nothing is drawn over the base fill. The frame/casing is the
+  // separate 3D trim, not part of the slab.
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;

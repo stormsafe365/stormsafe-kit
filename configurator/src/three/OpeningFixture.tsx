@@ -40,6 +40,7 @@ export function OpeningFixture({
   h,
   sillHeight,
   trimColor,
+  panelColor,
   selected = false,
   onPanelPointerDown,
 }: {
@@ -50,6 +51,8 @@ export function OpeningFixture({
   h: number;
   sillHeight: number;
   trimColor: string;
+  /** Override the panel color (hex) — e.g. a CCI colored roll-up door. */
+  panelColor?: string;
   selected?: boolean;
   onPanelPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
 }) {
@@ -66,7 +69,10 @@ export function OpeningFixture({
       const tiles = Math.max(2, Math.round(h)); // 1 tile = 1 ft of slats
       map.repeat.set(1, tiles);
       bump.repeat.set(1, tiles);
-      return new THREE.MeshStandardMaterial({ map, bumpMap: bump, bumpScale: 0.03, color: PANEL_COLOR[type], metalness: 0.12, roughness: 0.5 });
+      // The slat texture is near-white, so the material color tints it — pass a
+      // colored door's hex (CCI roll-ups) and the slats take that color; default
+      // stays the standard white.
+      return new THREE.MeshStandardMaterial({ map, bumpMap: bump, bumpScale: 0.03, color: panelColor || PANEL_COLOR[type], metalness: 0.12, roughness: 0.5 });
     }
     if (isGlass) {
       const m = new THREE.MeshStandardMaterial({
@@ -94,7 +100,7 @@ export function OpeningFixture({
       return m;
     }
     return new THREE.MeshStandardMaterial({ color: PANEL_COLOR[type], metalness: 0.3, roughness: 0.6 });
-  }, [isSlat, isGlass, isFrameOut, type, h]);
+  }, [isSlat, isGlass, isFrameOut, type, h, panelColor]);
 
   const t = 0.17; // jamb/header face ~2"
   const trimDepth = 0.07;

@@ -117,6 +117,12 @@ export interface Opening {
    * Always true for `frameOut`; optional on doors/windows the buyer provides.
    */
   customerSupplied?: boolean;
+  /**
+   * Explicit panel color (hex) for the unit itself — e.g. a CCI colored roll-up
+   * door, which is ordered in its own color independent of the wall. When unset
+   * the fixture falls back to its default (door = trim/neutral).
+   */
+  color?: string;
 }
 
 /** Color targets — each can take any swatch code from config/colors. */

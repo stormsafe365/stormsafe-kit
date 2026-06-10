@@ -103,7 +103,9 @@ function DraggableOpening({
       const tiles = Math.max(2, Math.round(h)); // 1 tile = 1 ft of slats
       map.repeat.set(1, tiles);
       bump.repeat.set(1, tiles);
-      return new THREE.MeshStandardMaterial({ map, bumpMap: bump, bumpScale: 0.03, color: PANEL_COLOR[opening.type], metalness: 0.12, roughness: 0.5 });
+      // The slat texture is near-white, so the material color tints it — a CCI
+      // colored roll-up door carries its own hex (opening.color); default white.
+      return new THREE.MeshStandardMaterial({ map, bumpMap: bump, bumpScale: 0.03, color: opening.color || PANEL_COLOR[opening.type], metalness: 0.12, roughness: 0.5 });
     }
     if (isGlass) {
       // Neutral grey reflective glazing (matches IdeaRoom — not bright blue).
@@ -141,7 +143,7 @@ function DraggableOpening({
       metalness: 0.3,
       roughness: 0.6,
     });
-  }, [isSlat, isGlass, isFrameOut, opening.type, h]);
+  }, [isSlat, isGlass, isFrameOut, opening.type, h, opening.color]);
 
   const emissive = selected ? '#22d3c8' : '#000000';
 

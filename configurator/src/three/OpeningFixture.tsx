@@ -181,7 +181,9 @@ export function OpeningFixture({
         <group>
           <mesh position={[0, -h / 2 + 0.11, panelDepth / 2 + 0.005]} castShadow>
             <boxGeometry args={[w, 0.2, panelDepth + 0.02]} />
-            <meshStandardMaterial color="#dfe2e7" metalness={0.3} roughness={0.5} />
+            {/* Bottom rail matches the door color (a colored roll-up should be
+                ALL that color); default light gray for a standard white door. */}
+            <meshStandardMaterial color={panelColor || '#dfe2e7'} metalness={0.3} roughness={0.5} />
           </mesh>
           <mesh position={[0, -h / 2 + 0.42, panelDepth / 2 + 0.04]} castShadow>
             <boxGeometry args={[0.5, 0.07, 0.05]} />

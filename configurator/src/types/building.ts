@@ -123,6 +123,11 @@ export interface Opening {
    * the fixture falls back to its default (door = trim/neutral).
    */
   color?: string;
+  /**
+   * Walk-through door face style (CCI offers std / 6-panel / 9-lite / diamond).
+   * Drives which door-face texture the 3D draws. Unset → 'std'.
+   */
+  doorStyle?: 'std' | '6panel' | '9lite' | 'diamond';
 }
 
 /** Color targets — each can take any swatch code from config/colors. */

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { OpeningType } from '@/types/building';
-import { createSlatTexture } from './textures';
+import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures';
 
 /**
  * The visual fixture for an opening (door / window / roll-up / framed opening):
@@ -23,6 +23,17 @@ const _slatCache: Record<string, { map: THREE.CanvasTexture; bump: THREE.CanvasT
 export const slatTexFor = (type: OpeningType) =>
   (_slatCache[type] ??= createSlatTexture('#f7f9fc', type === 'rollUpDoor' ? 4 : 1));
 
+const _doorTexCache: Record<string, THREE.CanvasTexture> = {};
+const doorTexFor = (style: DoorStyle, dark: boolean) =>
+  (_doorTexCache[style + (dark ? '-blk' : '-wht')] ??= createDoorTexture(style, dark));
+const isDarkHex = (hex?: string): boolean => {
+  if (!hex) return false;
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) < 110;
+};
+
 export function TrimBar({ pos, size, color }: { pos: [number, number, number]; size: [number, number, number]; color: string }) {
   return (
     <mesh position={pos} castShadow>
@@ -41,6 +52,7 @@ export function OpeningFixture({
   sillHeight,
   trimColor,
   panelColor,
+  doorStyle,
   selected = false,
   onPanelPointerDown,
 }: {
@@ -53,14 +65,22 @@ export function OpeningFixture({
   trimColor: string;
   /** Override the panel color (hex) — e.g. a CCI colored roll-up door. */
   panelColor?: string;
+  /** Walk-through door face style (std / 6-panel / 9-lite / diamond). */
+  doorStyle?: DoorStyle;
   selected?: boolean;
   onPanelPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
 }) {
   const isGlass = type === 'window';
   const isSlat = type === 'rollUpDoor' || type === 'garageDoor';
   const isFrameOut = type === 'frameOut';
+  const isWalk = type === 'walkDoor';
+  const doorDark = isDarkHex(panelColor);
 
   const panelMat = useMemo(() => {
+    if (isWalk) {
+      const map = doorTexFor((doorStyle ?? 'std') as DoorStyle, doorDark);
+      return new THREE.MeshStandardMaterial({ map, metalness: 0.18, roughness: 0.55 });
+    }
     if (isSlat) {
       const base = slatTexFor(type);
       const map = base.map.clone();
@@ -100,14 +120,14 @@ export function OpeningFixture({
       return m;
     }
     return new THREE.MeshStandardMaterial({ color: PANEL_COLOR[type], metalness: 0.3, roughness: 0.6 });
-  }, [isSlat, isGlass, isFrameOut, type, h, panelColor]);
+  }, [isWalk, isSlat, isGlass, isFrameOut, type, h, panelColor, doorStyle, doorDark]);
 
   const t = 0.17; // jamb/header face ~2"
   const trimDepth = 0.07;
   const panelDepth = isFrameOut ? 0.06 : isGlass ? 0.035 : 0.09;
   const panelZ = isGlass ? -0.025 : 0;
   const onFloor = sillHeight <= 0.1;
-  const tc = selected ? '#22d3c8' : trimColor;
+  const tc = selected ? '#22d3c8' : isGlass && panelColor ? panelColor : trimColor;
   const emissive = selected ? '#22d3c8' : '#000000';
 
   return (

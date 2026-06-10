@@ -89,8 +89,10 @@ interface DesiredOpening {
   width: number;
   height: number;
   sillHeight: number;
-  /** Panel color (hex) for the unit — e.g. a CCI colored roll-up door. */
+  /** Panel color (hex) for the unit — e.g. a CCI colored roll-up door / black door. */
   color?: string;
+  /** Walk-through door face style (std / 6-panel / 9-lite / diamond). */
+  doorStyle?: 'std' | '6panel' | '9lite' | 'diamond';
   /** Source program entry + item index — lets a 3D drag write back to the program. */
   entry: Element;
   itemIndex: number;
@@ -105,7 +107,7 @@ interface DesiredOpening {
 function readOpenings(
   win: Window & {
     G?: (id: string) => HTMLInputElement | null;
-    getPosItems?: (el: Element, qty: number, itemW: number, faceW: number, itemH: number, type: string, extraH?: number) => Array<{ x: number; w: number; h: number; yo?: number }>;
+    getPosItems?: (el: Element, qty: number, itemW: number, faceW: number, itemH: number, type: string, extraH?: number) => Array<{ x: number; w: number; h: number; yo?: number; style?: string; color?: string }>;
     /** Active manufacturer config — used to resolve a roll-up door color key → hex. */
     MFR?: () => { rudColors?: Array<{ v: string; hex: string }> };
     document: Document;
@@ -127,7 +129,17 @@ function readOpenings(
     return e ? String(e.value || '') : '';
   };
 
-  const push = (el: Element, loc: string, qty: number, itemW: number, itemH: number, type: string, extraH?: number, color?: string) => {
+  // Resolve a roll-up door's color KEY (.rco value, e.g. 'earthBrown') to its hex
+  // via the program's own MFR().rudColors table — so the 3D matches the quote.
+  const rudColorHex = (key?: string): string | undefined => {
+    if (!key) return undefined;
+    const table = win.MFR ? win.MFR().rudColors : undefined;
+    return table?.find((c) => c.v === key)?.hex;
+  };
+  // Black hex shared by black walk doors and black window frames (mirrors the 2D).
+  const BLACK = '#1f1f1f';
+
+  const push = (el: Element, loc: string, qty: number, itemW: number, itemH: number, type: string, extraH?: number) => {
     const side = SIDE_MAP[loc];
     if (!side) return;
     const face = faceFor(loc);
@@ -141,6 +153,15 @@ function readOpenings(
       // which is now swapped above for the screen left/right convention.
       const mirror = loc === 'Left Eave Side' || loc === 'Back Gable End';
       const offset = mirror ? face - center : center;
+      // getPosItems attaches style/color per item: wtd has style + white/black
+      // color; win has white/black color; rollup's color is the .rco key.
+      let color: string | undefined;
+      let doorStyle: 'std' | '6panel' | '9lite' | 'diamond' | undefined;
+      if (type === 'rollup') color = rudColorHex(it.color);
+      else if (type === 'wtd') {
+        doorStyle = (it.style as typeof doorStyle) || 'std';
+        color = it.color === 'black' ? BLACK : undefined;
+      } else if (type === 'win') color = it.color === 'black' ? BLACK : undefined;
       out.push({
         type: OTYPE_MAP[type] ?? 'frameOut',
         side,
@@ -149,26 +170,16 @@ function readOpenings(
         height: it.h,
         sillHeight: it.yo ?? 0,
         color,
+        doorStyle,
         entry: el,
         itemIndex: i,
       });
     });
   };
 
-  // Resolve a roll-up door's color key (.rco, CCI only) to its hex via the
-  // program's own MFR().rudColors table — so the 3D door matches the quote's
-  // chosen color instead of defaulting to the building/wall color.
-  const rudHex = (el: Element): string | undefined => {
-    const key = lv(el, '.rco');
-    if (!key) return undefined;
-    const table = win.MFR ? win.MFR().rudColors : undefined;
-    const found = table?.find((c) => c.v === key);
-    return found?.hex;
-  };
-
   win.document.querySelectorAll('.re').forEach((el) => {
     const sz = (lv(el, '.rsz') || '10x8').split('x');
-    push(el, lv(el, '.rloc'), qv(el, '.rqt', 1), parseFloat(sz[0]) || 10, parseFloat(sz[1]) || 8, 'rollup', undefined, rudHex(el));
+    push(el, lv(el, '.rloc'), qv(el, '.rqt', 1), parseFloat(sz[0]) || 10, parseFloat(sz[1]) || 8, 'rollup');
   });
   win.document.querySelectorAll('.we').forEach((el) => {
     push(el, lv(el, '.wloc'), qv(el, '.wqt', 1), 3, 6.67, 'wtd');
@@ -596,7 +607,7 @@ function syncFromBuilder(win: BuilderWindow) {
     const map: NonNullable<BuilderWindow['__ssOpenMap']> = {};
     for (const d of desired) {
       const id = cur.addOpening(d.type, d.side);
-      cur.updateOpening(id, { offset: d.offset, width: d.width, height: d.height, sillHeight: d.sillHeight, color: d.color });
+      cur.updateOpening(id, { offset: d.offset, width: d.width, height: d.height, sillHeight: d.sillHeight, color: d.color, doorStyle: d.doorStyle });
       map[id] = { entry: d.entry, itemIndex: d.itemIndex, side: d.side, width: d.width };
     }
     win.__ssOpenMap = map;

@@ -8,7 +8,7 @@ import { clampOffset } from '@/engine/layout';
 import { TRUSS_CLEARANCE_FT } from '@/config/constants';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
-import { createSlatTexture } from './textures';
+import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures';
 
 interface OpeningsProps {
   openings: Opening[];
@@ -37,6 +37,21 @@ const PANEL_COLOR: Record<OpeningType, string> = {
 const _slatCache: Record<string, { map: THREE.CanvasTexture; bump: THREE.CanvasTexture }> = {};
 const slatTexFor = (type: OpeningType) =>
   (_slatCache[type] ??= createSlatTexture('#f7f9fc', type === 'rollUpDoor' ? 4 : 1));
+
+// Walk-door face textures, cached per (style, white/black).
+const _doorTexCache: Record<string, THREE.CanvasTexture> = {};
+const doorTexFor = (style: DoorStyle, dark: boolean) =>
+  (_doorTexCache[style + (dark ? '-blk' : '-wht')] ??= createDoorTexture(style, dark));
+// A color counts as "black/dark" when its luminance is low (the bridge sends a
+// black hex for black doors; white doors leave color unset).
+const isDarkHex = (hex?: string): boolean => {
+  if (!hex) return false;
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return 0.299 * r + 0.587 * g + 0.114 * b < 110;
+};
 
 export function Openings({ openings, structure, trimColor }: OpeningsProps) {
   // Render an opening wherever it's placed — doors / frame-outs commonly go on
@@ -93,8 +108,15 @@ function DraggableOpening({
   const isGlass = opening.type === 'window';
   const isSlat = opening.type === 'rollUpDoor' || opening.type === 'garageDoor';
   const isFrameOut = opening.type === 'frameOut';
+  const isWalk = opening.type === 'walkDoor';
+  const doorDark = isDarkHex(opening.color);
 
   const panelMat = useMemo(() => {
+    if (isWalk) {
+      // Walk-through door face: style (std/6-panel/9-lite/diamond) + white/black.
+      const map = doorTexFor((opening.doorStyle ?? 'std') as DoorStyle, doorDark);
+      return new THREE.MeshStandardMaterial({ map, metalness: 0.18, roughness: 0.55 });
+    }
     if (isSlat) {
       const base = slatTexFor(opening.type);
       const map = base.map.clone();
@@ -143,7 +165,7 @@ function DraggableOpening({
       metalness: 0.3,
       roughness: 0.6,
     });
-  }, [isSlat, isGlass, isFrameOut, opening.type, h, opening.color]);
+  }, [isWalk, isSlat, isGlass, isFrameOut, opening.type, h, opening.color, opening.doorStyle, doorDark]);
 
   const emissive = selected ? '#22d3c8' : '#000000';
 
@@ -190,7 +212,8 @@ function DraggableOpening({
   const panelDepth = isFrameOut ? 0.06 : isGlass ? 0.035 : 0.09;
   const panelZ = isGlass ? -0.025 : 0; // recess glass behind the proud frame
   const onFloor = opening.sillHeight <= 0.1;
-  const tc = selected ? '#22d3c8' : trimColor;
+  // A black window carries its frame color (opening.color) — black-framed glass.
+  const tc = selected ? '#22d3c8' : isGlass && opening.color ? opening.color : trimColor;
 
   return (
     <group>

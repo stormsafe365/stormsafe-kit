@@ -206,7 +206,7 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
   <div class="row"><label>Email</label><input id="ce" type="email" placeholder="email@example.com" oninput="sy()"></div>
   <div class="row"><label>ZIP Code</label><input id="zip" maxlength="5" placeholder="33411" oninput="doZip(this.value)"></div>
   <div class="row"><label>City</label><span class="av" id="city" contenteditable="true" style="cursor:text;min-width:80px;display:inline-block">—</span></div>
-  <div class="row"><label>County</label><span class="av" id="county" contenteditable="true" style="cursor:text;min-width:80px;display:inline-block">—</span></div>
+  <div class="row"><label>County</label><span class="av" id="county" contenteditable="true" onblur="onCountyEdit()" style="cursor:text;min-width:80px;display:inline-block">—</span></div>
   <div id="hi-impact-note" style="display:none;background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:8px 10px;margin:4px 0 6px;font-size:12px;color:#856404;font-weight:600">
     ⚠ Hi-Impact accessories typically required in this county
   </div>
@@ -557,10 +557,10 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
   </div>
   <div class="row"><label>Additional Discount</label>
     <div style="display:flex;gap:5px;align-items:center">
-      <button type="button" id="add-disc-btn-dollar" onclick="setAddDiscType('dollar')" style="padding:5px 10px;border:1px solid #1B8A8A;border-radius:5px;background:#1B8A8A;color:#fff;font-weight:700;font-size:12px;cursor:pointer">$</button>
-      <button type="button" id="add-disc-btn-pct" onclick="setAddDiscType('pct')" style="padding:5px 10px;border:1px solid #cbd5e1;border-radius:5px;background:#fff;color:#64748b;font-weight:700;font-size:12px;cursor:pointer">%</button>
-      <input id="add-disc" type="number" value="0" min="0" step="50" placeholder="0" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;flex:1">
-      <input type="hidden" id="add-disc-type" value="dollar">
+      <button type="button" id="add-disc-btn-dollar" onclick="setAddDiscType('dollar')" style="padding:5px 10px;border:1px solid #cbd5e1;border-radius:5px;background:#fff;color:#64748b;font-weight:700;font-size:12px;cursor:pointer">$</button>
+      <button type="button" id="add-disc-btn-pct" onclick="setAddDiscType('pct')" style="padding:5px 10px;border:1px solid #1B8A8A;border-radius:5px;background:#1B8A8A;color:#fff;font-weight:700;font-size:12px;cursor:pointer">%</button>
+      <input id="add-disc" type="number" value="0" min="0" step="0.5" max="100" placeholder="0" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;flex:1">
+      <input type="hidden" id="add-disc-type" value="pct">
     </div>
     <div style="display:flex;gap:6px;align-items:center;margin-top:5px">
       <label style="font-size:11px;color:#475569;font-weight:600;white-space:nowrap;min-width:78px">On Quote:</label>
@@ -3331,6 +3331,26 @@ function doZip(z){
     }
   }
   doPerm(); sy(); rc();
+}
+
+// When a ZIP isn't in the map the user types the county by hand — make that
+// manual entry drive the correct sales-tax rate too (previously the tax only
+// updated on a ZIP hit, so a manual lookup left the tax at the default/old rate).
+// Matches the typed county against COUNTY_TAX, tolerant of case, extra spaces,
+// and "Saint"/"St"/"St." variants (e.g. "saint johns" → "St. Johns").
+function onCountyEdit(){
+  var raw=(G('county').textContent||'').trim();
+  if(!raw || raw==='—') return;
+  var norm=raw.toLowerCase().replace(/\s+/g,' ').replace(/\s+county$/,'').replace(/^(saint|st|st\.)\s+/,'st. ');
+  var match=null;
+  for(var k in COUNTY_TAX){ if(k.toLowerCase()===norm){ match=k; break; } }
+  if(!match) return; // unknown county — leave tax as-is (likely out of state)
+  var taxRate=COUNTY_TAX[match];
+  var taxInput=G('tax'); if(taxInput) taxInput.value=taxRate;
+  window._salesTax=taxRate/100;
+  if(match==='Lee'){ var lap=G('lap'); if(lap) lap.value='yes'; }
+  var hiEl=G('hi-impact-note'); if(hiEl) hiEl.style.display=(HI_IMPACT_COUNTIES.indexOf(match)>=0)?'block':'none';
+  rc();
 }
 
 function doPT(){
@@ -8653,7 +8673,7 @@ function syncMobileSummary(){
 }
 
 
-var COUNTY_TAX={"Alachua":7.5,"Baker":7,"Bay":7,"Bradford":7,"Brevard":7,"Broward":7,"Calhoun":7.5,"Charlotte":7,"Citrus":6,"Clay":7.5,"Collier":6,"Columbia":7.5,"DeSoto":7.5,"Dixie":7,"Duval":7.5,"Escambia":7.5,"Flagler":7,"Franklin":7.5,"Gadsden":7.5,"Gilchrist":7,"Glades":7,"Gulf":7,"Hamilton":8,"Hardee":7,"Hendry":7.5,"Hernando":6.5,"Highlands":7.5,"Hillsborough":7.5,"Holmes":7.5,"Indian River":7,"Jackson":7.5,"Jefferson":7,"Lafayette":7,"Lake":7,"Lee":6.5,"Leon":7.5,"Levy":7,"Liberty":7.5,"Madison":7.5,"Manatee":7,"Marion":7.5,"Martin":7,"Miami-Dade":7,"Monroe":7.5,"Nassau":7,"Okaloosa":7,"Okeechobee":7,"Orange":6.5,"Osceola":7.5,"Palm Beach":7,"Pasco":7,"Pinellas":7,"Polk":7,"Putnam":7,"St. Johns":6.5,"St. Lucie":7,"Santa Rosa":7,"Sarasota":7,"Seminole":7,"Sumter":7,"Suwannee":7,"Taylor":7,"Union":7,"Volusia":6.5,"Wakulla":7.5,"Walton":7,"Washington":7.5};
+var COUNTY_TAX={"Alachua":7.5,"Baker":7,"Bay":7,"Bradford":7,"Brevard":7,"Broward":7,"Calhoun":7.5,"Charlotte":7,"Citrus":6,"Clay":7.5,"Collier":6,"Columbia":7.5,"DeSoto":7.5,"Dixie":7,"Duval":7.5,"Escambia":7.5,"Flagler":7,"Franklin":7.5,"Gadsden":7.5,"Gilchrist":7,"Glades":7,"Gulf":7,"Hamilton":8,"Hardee":7,"Hendry":7.5,"Hernando":6.5,"Highlands":7.5,"Hillsborough":7.5,"Holmes":7.5,"Indian River":7,"Jackson":7.5,"Jefferson":7,"Lafayette":7,"Lake":7,"Lee":6.5,"Leon":7.5,"Levy":7,"Liberty":7.5,"Madison":7.5,"Manatee":7,"Marion":7.5,"Martin":6.5,"Miami-Dade":7,"Monroe":7.5,"Nassau":7,"Okaloosa":7,"Okeechobee":7,"Orange":6.5,"Osceola":7.5,"Palm Beach":6.5,"Pasco":7,"Pinellas":7,"Polk":7,"Putnam":7,"St. Johns":6.5,"St. Lucie":7,"Santa Rosa":7,"Sarasota":7,"Seminole":7,"Sumter":7,"Suwannee":7,"Taylor":7,"Union":7,"Volusia":6.5,"Wakulla":7.5,"Walton":7,"Washington":7.5};
 var HI_IMPACT_COUNTIES=["Charlotte", "Collier", "Duval", "Flagler", "Indian River", "Lake", "Lee", "Martin", "Palm Beach", "Pinellas", "Sarasota", "Seminole", "St. Lucie"];
 // ══════════════════════════════════════════════════════════════════════════
 // QUOTE LOG

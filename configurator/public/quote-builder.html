@@ -7209,14 +7209,17 @@ async function printQuote(){
     '@media print{@page{margin:0;size:letter portrait}body{background:#080f14;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-only{display:block}.qpg{display:block!important;background:#080f14!important}.qbody{display:flex!important;align-items:stretch!important}.qsidebar{align-self:stretch!important}.qmain{display:flex!important;flex-direction:column!important;align-self:stretch!important;background:#111d28!important}.qfooter{margin-top:12px!important;position:static!important}.qsec{margin-bottom:8px!important;padding-bottom:6px!important}.qfield{margin-bottom:4px!important}.qsec-title{margin-bottom:5px!important;font-size:6pt!important}.qfield .fl{font-size:5.5pt!important}.qfield .fv{font-size:8pt!important}.qspec-box{padding:4px 5px!important}.qspec-box .fl{font-size:5pt!important}.qspec-box .fv{font-size:8pt!important}.qcolor-row{padding:2px 0!important}}'+
     '</style></head><body>'+html.split("\'+LOGO+\'").join(LOGO)+'<div class="print-only">'+((imgs3D && imgs3D.iso) ? threeDPageHTML(imgs3D) : buildingPageHTML())+zoningChecklistHTML()+((G('pdf-dims')&&G('pdf-dims').checked) ? dimSpacingPageHTML() : '')+'</div>'+'</body></html>';
 
-  // Inject into the window we opened up front (so the popup wasn't blocked).
-  pwin.document.open();
-  pwin.document.write(fullDoc);
-  pwin.document.close();
-  // Wait for content (images included) to render, then trigger print.
-  setTimeout(function(){
-    try{ pwin.focus(); pwin.print(); } catch(e){}
-  }, 900);
+  // Desktop app → real PDF + Save dialog + preview; browser → popup + print.
+  if(!_ssSavePdfViaElectron(fullDoc, _ssPdfName('Quote'), pwin)){
+    // Inject into the window we opened up front (so the popup wasn't blocked).
+    pwin.document.open();
+    pwin.document.write(fullDoc);
+    pwin.document.close();
+    // Wait for content (images included) to render, then trigger print.
+    setTimeout(function(){
+      try{ pwin.focus(); pwin.print(); } catch(e){}
+    }, 900);
+  }
 }
 
 // 3D-rendering PDF pages from the captured live-modeler images:
@@ -8534,17 +8537,47 @@ async function printContract(){
     '</body></html>';
 
   // pw was opened up front (inside the click gesture); write the finished doc.
-  pw.document.open();
-  pw.document.write(fullDoc);
-  pw.document.close();
-  setTimeout(function(){ try{ pw.focus(); pw.print(); } catch(e){} }, 900);
-  toast('Opening contract','ok');
+  // Desktop app → real PDF + Save dialog + preview; browser → popup + print.
+  if(!_ssSavePdfViaElectron(fullDoc, _ssPdfName('Contract'), pw)){
+    pw.document.open();
+    pw.document.write(fullDoc);
+    pw.document.close();
+    setTimeout(function(){ try{ pw.focus(); pw.print(); } catch(e){} }, 900);
+    toast('Opening contract','ok');
+  }
 }
 
 // Small HTML-escape helper used by printContract
 function _esc(s){
   if(s===null||s===undefined) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// A filesystem-safe default PDF name, e.g. "StormSafe Quote - John Doe.pdf".
+function _ssPdfName(kind){
+  var cn=(G('cn')&&G('cn').value)?(' - '+String(G('cn').value).trim()):'';
+  return ('StormSafe '+kind+cn).replace(/[\\/:*?"<>|]+/g,'').replace(/\s+/g,' ').trim().slice(0,80)+'.pdf';
+}
+
+// Desktop (Electron) app: the in-app window.print() has NO print preview / Save-
+// as-PDF, so route the finished document to the main process, which renders it
+// to a real PDF, shows a Save dialog, and opens it for preview. The pricing UI
+// runs inside an iframe, so the API may live on window.parent (same-origin under
+// the desktop app). Returns true if it handled the save — when it does, the
+// caller must NOT fall back to the browser window.print() path. In a normal
+// browser (no electronAPI) it returns false and the usual print flow runs.
+function _ssSavePdfViaElectron(fullDoc, suggestedName, popup){
+  var api=null;
+  try{ api = window.electronAPI || (window.parent && window.parent.electronAPI) || null; }catch(e){ api=null; }
+  if(!api || typeof api.savePdf!=='function') return false;
+  try{ if(popup) popup.close(); }catch(e){}
+  toast('Generating PDF…','ok');
+  Promise.resolve(api.savePdf(fullDoc, suggestedName)).then(function(r){
+    if(r && r.ok) toast('PDF saved','ok');
+    else if(r && r.canceled){ /* user cancelled the save dialog */ }
+    else toast('PDF save failed','err');
+  }).catch(function(){ toast('PDF save failed','err'); });
+  return true;
 }
 
 function toast(msg,type){

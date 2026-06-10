@@ -234,6 +234,25 @@ step is what made "Custom walls" silently do nothing.)
     unset). Guard: `trussSpacing.test.ts`. If trusses ever look misaligned vs the quote
     again, check `getTrussInfo` exists on the iframe and `trussSpacingFt` is reaching the store.
 
+17. **Windows Smart App Control (SAC) blocks the packaged `.exe`.** SAC is stricter than
+    SmartScreen — NO "Run anyway". It hard‑blocks the app because it's unsigned + an
+    unrecognized hash. Root cause: the stock Electron binary (`node_modules/electron/dist/
+    electron.exe`) is also unsigned, but its hash is globally common so SAC's cloud
+    recognizes it; electron‑builder **modifies** that exe (injects icon/version/asar‑
+    integrity) → unique hash → SAC distrusts it.
+    **Free workaround (no cert, no disabling SAC):** after the normal install (robocopy
+    `release/win-unpacked` → `%LOCALAPPDATA%\Programs\StormSafe 3D Builder`), OVERWRITE the
+    installed `StormSafe 3D Builder.exe` with the UNMODIFIED `node_modules/electron/dist/
+    electron.exe` (same bytes, just renamed → recognized hash; `isPackaged` stays true
+    because the exe name ≠ `electron.exe` AND there's no `resources/default_app.asar`, so it
+    still loads `app.asar/dist/build.html`). The stock exe carries the generic Electron icon,
+    so drop `assets/icon.ico` next to the app and point the desktop shortcut's `IconLocation`
+    at that `.ico` (not the exe). Verify with `--remote-debugging-port=9222` →
+    `http://127.0.0.1:9222/json` shows `…/app.asar/dist/build.html`.
+    **MUST redo this exe swap after every rebuild/reinstall** — `npm run dist` regenerates
+    the modified (blocked) exe. Proper long‑term fix = an EV code‑signing cert (instant SAC
+    trust) so the normal packaged exe + NSIS installer work unmodified.
+
 ---
 
 ## 6. Windows / PowerShell gotchas (this machine)

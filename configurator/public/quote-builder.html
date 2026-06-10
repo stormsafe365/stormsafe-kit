@@ -2916,8 +2916,9 @@ var MANUFACTURERS = {
       {v:'quakerGray',     label:'Quaker Gray',             hex:'#52524F', price:300},
       {v:'merlot',         label:'Vintage Burgundy',        hex:'#5D2A2E', price:300},
     ],
-    // ── Walk-Through Door types (CCI offers Standard, 6-Panel, 9-Lite — each in white or black)
-    wtdPrices: {std:400, 'std_blk':400, '6panel':800, '6panel_blk':900, '9lite':800, '9lite_blk':900, 'hiwind':600},
+    // ── Walk-Through Door types (CCI offers Standard, 6-Panel, 9-Lite — each in
+    //    white or black; Diamond-window door is WHITE ONLY). Prices per CCI sheet.
+    wtdPrices: {std:300, 'std_blk':400, '6panel':800, '6panel_blk':900, '9lite':800, '9lite_blk':900, 'diamond':400, 'hiwind':600},
     wtdTypes: [
       {v:'std',         label:'Standard — White 36×80',          style:'std',     color:'white'},
       {v:'std_blk',     label:'Standard — Black 36×80',          style:'std',     color:'black'},
@@ -2925,6 +2926,7 @@ var MANUFACTURERS = {
       {v:'6panel_blk',  label:'6-Panel — Black 36×80',           style:'6panel',  color:'black'},
       {v:'9lite',       label:'9-Lite — White 36×80',            style:'9lite',   color:'white'},
       {v:'9lite_blk',   label:'9-Lite — Black 36×80',            style:'9lite',   color:'black'},
+      {v:'diamond',     label:'Diamond Window — White 36×80',    style:'diamond', color:'white'},
       {v:'hiwind',      label:'Man Door (Hi-Wind Rated) 36×80',  style:'std',     color:'white'},
     ],
     // ── Window types ───────────────────────────────────────────────────────────────────────────────
@@ -9396,6 +9398,10 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
           var pBx=innerX + pBc*(pBw+liteGap);
           s+='<rect x="'+pBx+'" y="'+pBy+'" width="'+pBw+'" height="'+panelAreaH+'" fill="'+dPanel+'" stroke="'+dPanelLine+'" stroke-width="0.6"/>';
         }
+      } else if(_dStyle==='diamond'){
+        // Solid slab + a centered 10×10 diamond window in the upper third.
+        var dCx=innerX+innerW/2, dCy=innerY+innerH*0.26, dR=Math.min(innerW,innerH)*0.16;
+        s+='<polygon points="'+dCx+','+(dCy-dR)+' '+(dCx+dR)+','+dCy+' '+dCx+','+(dCy+dR)+' '+(dCx-dR)+','+dCy+'" fill="'+(_dColor==='black'?'#9eb6c6':'#C8DFE8')+'" stroke="'+(_dColor==='black'?'#cfcfcf':'#9aa0a7')+'" stroke-width="2"/>';
       } else {
         // Standard smooth door — two recessed long panels (top + bottom)
         s+='<rect x="'+innerX+'" y="'+innerY+'" width="'+innerW+'" height="'+(innerH*0.55)+'" fill="'+dPanel+'" opacity="0.6"/>';

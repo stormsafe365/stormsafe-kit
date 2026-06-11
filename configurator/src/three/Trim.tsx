@@ -258,12 +258,14 @@ function WainscotCap({
   if (enclosure.back === 'closed') endBar('back', halfL + o2, true);
   // Partition divider (utility split) — full-height wall, gets the full wainscot cap.
   if (enclosure.partitionZ !== null) endBar('partition', enclosure.partitionZ, false);
-  // Open-bay partial side panels — cap only where the eave panel is tall enough
-  // to hold the full band (otherwise the wainscot runs flush to the panel top).
+  // Open-bay side panels — a wainscot cap belongs ONLY on a side that is FULLY
+  // closed (sheeting reaches the ground, so there's a real lower wall section).
+  // A partial closure hangs from the eave and stops mid-wall; its bottom edge is
+  // open framing, not a wainscot divider, so it gets NO cap.
   if (structure.openBayZ) {
     const ob = structure.openBayZ;
-    if (Math.min(structure.eavePanelFt.left, H) >= wy - 0.01) sideBar('left', ob.start, ob.end);
-    if (Math.min(structure.eavePanelFt.right, H) >= wy - 0.01) sideBar('right', ob.start, ob.end);
+    if (structure.eavePanelFt.left >= H - 0.01) sideBar('left', ob.start, ob.end);
+    if (structure.eavePanelFt.right >= H - 0.01) sideBar('right', ob.start, ob.end);
   }
   return (
     <group>

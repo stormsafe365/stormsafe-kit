@@ -298,20 +298,34 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
         <option value="Open">Open (no gable sheeting)</option>
         <option value="Gable Only">Gable Only Sheeting</option>
       </select></div>
-    <div class="row"><label>Side Panels</label>
-      <select id="gch-panels" onchange="gchShowSides();rc()">
-        <option value="none">None</option>
-        <option value="1">1 Panel (3' down)</option>
-        <option value="2">2 Panels (6' down)</option>
-        <option value="3">3 Panels (9' down)</option>
-        <option value="half">½ Closed</option>
-        <option value="full">Fully Closed</option>
+    <div class="enote" style="margin:4px 0 6px;font-size:10px">Side paneling on the OPEN extension. Left &amp; right are independent — each comes down from the eave to the selected height.</div>
+    <div class="row"><label>Left Side Panels</label>
+      <select id="gch-left" onchange="rc()">
+        <option value="open">Open</option>
+        <option value="1panel">1 Panel (3')</option>
+        <option value="1_5panel">1 1/2 Panel (4.5')</option>
+        <option value="2panel">2 Panels (6')</option>
+        <option value="2_5panel">2 1/2 Panels (7.5')</option>
+        <option value="3panel">3 Panels (9')</option>
+        <option value="3_5panel">3 1/2 Panels (10.5')</option>
+        <option value="q1">1/4 Closed</option>
+        <option value="q2">1/2 Closed</option>
+        <option value="q3">3/4 Closed</option>
+        <option value="closed">Closed</option>
       </select></div>
-    <div class="row" id="gch-sides-row" style="display:none"><label>Which Sides</label>
-      <select id="gch-sides" onchange="rc()">
-        <option value="both">Both Sides</option>
-        <option value="right">Right Side Only</option>
-        <option value="left">Left Side Only</option>
+    <div class="row"><label>Right Side Panels</label>
+      <select id="gch-right" onchange="rc()">
+        <option value="open">Open</option>
+        <option value="1panel">1 Panel (3')</option>
+        <option value="1_5panel">1 1/2 Panel (4.5')</option>
+        <option value="2panel">2 Panels (6')</option>
+        <option value="2_5panel">2 1/2 Panels (7.5')</option>
+        <option value="3panel">3 Panels (9')</option>
+        <option value="3_5panel">3 1/2 Panels (10.5')</option>
+        <option value="q1">1/4 Closed</option>
+        <option value="q2">1/2 Closed</option>
+        <option value="q3">3/4 Closed</option>
+        <option value="closed">Closed</option>
       </select></div>
   </div>
   <div class="row"><label>Roof Style</label>
@@ -426,24 +440,34 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
 <!-- 4b. SIDE PANELS (Carport/GCH only) -->
 <div class="sec" id="side-panels-sec" style="display:none">
   <div class="st">4b — Side Panels</div>
-  <div class="enote" style="margin-bottom:8px">Add panels to open sides for sun/rain protection. Panels are 3' wide, priced per panel.</div>
-  <div class="row"><label>Panels</label>
-    <select id="sp-qty" onchange="spShowSides();updateSidePanelNote();rc()">
-      <option value="0">None</option>
-      <option value="1">1 Panel (3' down)</option>
-      <option value="2">2 Panels (6' down)</option>
-      <option value="3">3 Panels (9' down)</option>
+  <div class="enote" style="margin-bottom:8px">Add panels to open sides for sun/rain protection. Left &amp; right are independent — each comes down from the eave to the selected height. Panels are 3' tall, priced per panel.</div>
+  <div class="row"><label>Left Side Panels</label>
+    <select id="sp-left" onchange="updateSidePanelNote();rc()">
+      <option value="open">Open</option>
+      <option value="1panel">1 Panel (3')</option>
+      <option value="1_5panel">1 1/2 Panel (4.5')</option>
+      <option value="2panel">2 Panels (6')</option>
+      <option value="2_5panel">2 1/2 Panels (7.5')</option>
+      <option value="3panel">3 Panels (9')</option>
+      <option value="3_5panel">3 1/2 Panels (10.5')</option>
+      <option value="q1">1/4 Closed</option>
+      <option value="q2">1/2 Closed</option>
+      <option value="q3">3/4 Closed</option>
+      <option value="closed">Closed</option>
     </select></div>
-  <div class="row"><label>½ Panel (Split)</label>
-    <select id="sp-half" onchange="spShowSides();updateSidePanelNote();rc()">
-      <option value="no">No</option>
-      <option value="yes">Yes — ½ Panel w/ Trim</option>
-    </select></div>
-  <div class="row" id="sp-sides-row" style="display:none"><label>Which Sides</label>
-    <select id="sp-sides" onchange="updateSidePanelNote();rc()">
-      <option value="both">Both Sides</option>
-      <option value="right">Right Side Only</option>
-      <option value="left">Left Side Only</option>
+  <div class="row"><label>Right Side Panels</label>
+    <select id="sp-right" onchange="updateSidePanelNote();rc()">
+      <option value="open">Open</option>
+      <option value="1panel">1 Panel (3')</option>
+      <option value="1_5panel">1 1/2 Panel (4.5')</option>
+      <option value="2panel">2 Panels (6')</option>
+      <option value="2_5panel">2 1/2 Panels (7.5')</option>
+      <option value="3panel">3 Panels (9')</option>
+      <option value="3_5panel">3 1/2 Panels (10.5')</option>
+      <option value="q1">1/4 Closed</option>
+      <option value="q2">1/2 Closed</option>
+      <option value="q3">3/4 Closed</option>
+      <option value="closed">Closed</option>
     </select></div>
   <div id="sp-note" class="enote" style="margin-top:4px;display:none">—</div>
 </div>
@@ -3494,7 +3518,7 @@ function doBldType(){
   var spSec=G('side-panels-sec');
   if(spSec) spSec.style.display=(bt==='carport')?'block':'none';
   // Reset side panel selections when switching type
-  if(bt!=='carport'){ var spq=G('sp-qty'); if(spq) spq.value='0'; var sph=G('sp-half'); if(sph) sph.value='no'; }
+  if(bt!=='carport'){ var spl=G('sp-left'); if(spl) spl.value='open'; var spr=G('sp-right'); if(spr) spr.value='open'; }
 
   // Single ascending list (was previously evens-then-separator-then-odds, but that hid
   // the max width above the separator and caused confusion). Both even and odd widths
@@ -4345,18 +4369,6 @@ function gInsul(){
 }
 
 // ── SIDE PANELS (carport / GCH open section) ──────────────────────────────
-function spShowSides(){
-  // Show "Which Sides" row when any panels are selected
-  var qty=parseInt(G('sp-qty')?G('sp-qty').value:0)||0;
-  var isHalf=(G('sp-half')&&G('sp-half').value==='yes');
-  var row=G('sp-sides-row');
-  if(row) row.style.display=(qty>0||isHalf)?'':'none';
-}
-function gchShowSides(){
-  var val=G('gch-panels')?G('gch-panels').value:'none';
-  var row=G('gch-sides-row');
-  if(row) row.style.display=(val!=='none')?'':'none';
-}
 // Sync GCH-only Front Gable selector (in Section 3) → Front Gable in Section 4 (wfg).
 // User selects on the GCH-specific dropdown, and Section 4's main Front Gable updates.
 function syncGchFrontGable(val){
@@ -4422,6 +4434,56 @@ function sidePanelLength(){
   }
   return l;
 }
+// ── Eave-side closure options (independent Left/Right) ─────────────────────
+// One canonical list shared by the carport + GCH side dropdowns. Each value maps
+// to a closed-band height (ft) measured from the EAVE DOWN, and to a price.
+var SIDE_CLOSURE_OPTS=[
+  {v:'open',     t:'Open'},
+  {v:'1panel',   t:"1 Panel (3')"},
+  {v:'1_5panel', t:"1 1/2 Panel (4.5')"},
+  {v:'2panel',   t:"2 Panels (6')"},
+  {v:'2_5panel', t:"2 1/2 Panels (7.5')"},
+  {v:'3panel',   t:"3 Panels (9')"},
+  {v:'3_5panel', t:"3 1/2 Panels (10.5')"},
+  {v:'q1',       t:'1/4 Closed'},
+  {v:'q2',       t:'1/2 Closed'},
+  {v:'q3',       t:'3/4 Closed'},
+  {v:'closed',   t:'Closed'}
+];
+function sideClosureOptionsHTML(sel){
+  return SIDE_CLOSURE_OPTS.map(function(o){
+    return '<option value="'+o.v+'"'+(o.v===sel?' selected':'')+'>'+o.t+'</option>';
+  }).join('');
+}
+// Closed band height (ft), eave-down, for wall height H. Clamped to H (a panel
+// taller than the wall just fills the wall — never overshoots the eave).
+function sideClosureFeet(val, H){
+  H=H||0;
+  if(val==='open'||!val) return 0;
+  if(val==='closed') return H;
+  if(val==='q1') return H*0.25;
+  if(val==='q2') return H*0.5;
+  if(val==='q3') return H*0.75;
+  var m=/^(\d)(_5)?panel$/.exec(val);
+  if(m){ var ft=parseInt(m[1],10)*3+(m[2]?1.5:0); return Math.min(ft,H); }
+  return 0;
+}
+// Price for ONE eave side's closure. tier = panelTier(length); closedLen = the
+// length charged for a full "Closed" side; w = building width.
+function sideClosurePrice(val, H, tier, closedLen, w){
+  if(val==='open'||!val) return 0;
+  var sp=MFR().sidePanels; if(!sp) return 0;
+  var full=sp.full[tier]||0, halfTrim=sp.halfTrim[tier]||0;
+  if(val==='closed') return (typeof scLookup==='function')?scLookup(H, closedLen, w):0;
+  var m=/^(\d)(_5)?panel$/.exec(val);
+  if(m){ var p=parseInt(m[1],10)*full; if(m[2]) p+=Math.round(halfTrim/2); return p; }
+  // q1/q2/q3 → priced by sheeted height: (pct × H) ft ÷ 3 = equivalent panels
+  // at the per-panel rate (consistent with the panel model, no invented price).
+  var pct=(val==='q1')?0.25:(val==='q2')?0.5:(val==='q3')?0.75:0;
+  return Math.round((pct*H/3)*full);
+}
+
+// Per-side side-panel pricing for carport + GCH. Left and right are independent.
 function gSidePanels(){
   var bt=G('btype').value;
   if(bt!=='carport' && bt!=='gch') return 0;
@@ -4430,96 +4492,63 @@ function gSidePanels(){
   var l=sidePanelLength();
   if(l<=0) return 0;
   var tier=MFR().panelTier(l);
+  var H=parseInt(G('bh').value)||0;
+  var w=parseInt(G('bw').value)||0;
+  if(!H) return 0;
+  // For a "Closed" side, the charged length is the open-section length on a GCH,
+  // otherwise the full building length.
+  var closedLen = (bt==='gch') ? (parseInt(G('gch-open').value)||l) : l;
+  var leftId  = (bt==='gch') ? 'gch-left'  : 'sp-left';
+  var rightId = (bt==='gch') ? 'gch-right' : 'sp-right';
+  var lv=G(leftId)?G(leftId).value:'open';
+  var rv=G(rightId)?G(rightId).value:'open';
   var total=0;
-
   if(bt==='gch'){
-    gchShowSides();
-    var gchP=G('gch-panels');
-    var val=gchP?gchP.value:'none';
-    if(val==='none') return 0;
-    var sides=G('gch-sides')?G('gch-sides').value:'both';
-    var sideMult=(sides==='both')?2:1;
-    // For all GCH panel options, check the main wall state per-side.
-    // If a side's main wall is "Closed", that side is already fully sheeted (full L),
-    // so adding panels on top is redundant — the panels are already physically there
-    // and paid for via scLookup. Return $0 for that side regardless of panel option.
-    var revG=G('wre')?G('wre').value:'Open';
+    // GCH: a side whose MAIN wall is already "Closed" is sheeted full-length via
+    // scLookup, so side paneling on the open extension would double-charge → $0.
     var levG=G('wle')?G('wle').value:'Open';
-    var applyR = (sides==='both'||sides==='right') && revG!=='Closed';
-    var applyL = (sides==='both'||sides==='left')  && levG!=='Closed';
-    var activeSides = (applyR?1:0) + (applyL?1:0);
-    if(activeSides === 0) return 0;
-    if(val==='full'){
-      // "Fully Closed" → charge scLookup-equivalent for the OPEN section length,
-      // per side that's actually open (not already Closed by main wall state).
-      var openL2=parseInt(G('gch-open').value)||0;
-      var hG=parseInt(G('bh').value)||0;
-      var wG=parseInt(G('bw').value)||0;
-      if(!openL2||!hG||!wG) return 0;
-      return scLookup(hG, openL2, wG) * activeSides;
-    }
-    if(val==='half') return Math.round((sp.halfTrim[tier]||0)*(activeSides/2));
-    var qty=parseInt(val)||0;
-    total = qty * activeSides * (sp.full[tier]||0);
+    var revG=G('wre')?G('wre').value:'Open';
+    if(levG!=='Closed') total += sideClosurePrice(lv, H, tier, closedLen, w);
+    if(revG!=='Closed') total += sideClosurePrice(rv, H, tier, closedLen, w);
   } else {
-    spShowSides();
-    var qtyEl=G('sp-qty');
-    var halfEl=G('sp-half');
-    var qty=parseInt(qtyEl?qtyEl.value:0)||0;
-    var isHalf=(halfEl&&halfEl.value==='yes');
-    var sides=G('sp-sides')?G('sp-sides').value:'both';
-    var sideMult=(sides==='both')?2:1;
-    total = qty * sideMult * (sp.full[tier]||0);
-    if(isHalf) total += Math.round((sp.halfTrim[tier]||0)*(sideMult/2));
+    // Carport: the side panels ARE the sides — independent, no main-wall interplay.
+    total += sideClosurePrice(lv, H, tier, closedLen, w);
+    total += sideClosurePrice(rv, H, tier, closedLen, w);
   }
   return total;
 }
-// Returns which sides have panels: {left:bool, right:bool, panelCount:number}
+// Per-side side-panel config for the 2D elevation. Each side carries its own
+// eave-down drop (ft), a `full` flag (fully closed), and `hasPanels` (partial).
 function getSidePanelConfig(){
   var bt=G('btype').value;
-  var result={left:false,right:false,count:0,half:false,full:false};
-  if(bt==='gch'){
-    var val=G('gch-panels')?G('gch-panels').value:'none';
-    if(val==='none') return result;
-    var sides=G('gch-sides')?G('gch-sides').value:'both';
-    result.left=(sides==='both'||sides==='left');
-    result.right=(sides==='both'||sides==='right');
-    if(val==='full'){
-      result.full=true; result.count=999;
-    } else {
-      result.count=(val==='half')?1:parseInt(val)||0;
-      result.half=(val==='half');
-    }
-  } else if(bt==='carport'){
-    var qty=parseInt(G('sp-qty')?G('sp-qty').value:0)||0;
-    var isHalf=(G('sp-half')&&G('sp-half').value==='yes');
-    if(qty===0&&!isHalf) return result;
-    var sides=G('sp-sides')?G('sp-sides').value:'both';
-    result.count=qty;
-    result.half=isHalf;
-    result.left=(sides==='both'||sides==='left');
-    result.right=(sides==='both'||sides==='right');
-  }
-  return result;
+  var H=parseInt(G('bh').value)||0;
+  var side=function(id){
+    var v=G(id)?G(id).value:'open';
+    var ft=sideClosureFeet(v, H);
+    return { val:v, ft:ft, full:(v==='closed'), hasPanels:(v!=='open'&&v!=='closed'&&ft>0) };
+  };
+  var empty={ val:'open', ft:0, full:false, hasPanels:false };
+  if(bt==='gch')     return { left:side('gch-left'),  right:side('gch-right') };
+  if(bt==='carport') return { left:side('sp-left'),   right:side('sp-right')  };
+  return { left:empty, right:empty };
 }
 function updateSidePanelNote(){
   var note=G('sp-note');
   if(!note) return;
   var bt=G('btype').value;
   if(bt!=='carport'){ note.style.display='none'; return; }
-  var qty=parseInt(G('sp-qty')?G('sp-qty').value:0)||0;
-  var isHalf=(G('sp-half')&&G('sp-half').value==='yes');
-  if(qty===0 && !isHalf){ note.style.display='none'; return; }
-  var sp=MFR().sidePanels;
-  var l=sidePanelLength();
-  var tier=MFR().panelTier(l);
-  var sides=G('sp-sides')?G('sp-sides').value:'both';
-  var sideMult=(sides==='both')?2:1;
-  var sideLabel=(sides==='both')?'both sides':(sides+' side only');
+  var lv=G('sp-left')?G('sp-left').value:'open';
+  var rv=G('sp-right')?G('sp-right').value:'open';
+  if((lv==='open'||!lv) && (rv==='open'||!rv)){ note.style.display='none'; return; }
+  var lbl=function(v){ for(var i=0;i<SIDE_CLOSURE_OPTS.length;i++){ if(SIDE_CLOSURE_OPTS[i].v===v) return SIDE_CLOSURE_OPTS[i].t; } return v; };
+  var H=parseInt(G('bh').value)||0;
+  var tier=MFR().panelTier(sidePanelLength());
+  var w=parseInt(G('bw').value)||0;
+  var closedLen=sidePanelLength();
   var parts=[];
-  if(qty>0) parts.push(qty+' panel(s) × '+sideLabel+' = '+(qty*sideMult)+' panels × $'+(sp.full[tier]||0)+' = $'+(qty*sideMult*(sp.full[tier]||0)));
-  if(isHalf) parts.push('½ Panel w/Trim ('+sideLabel+') = $'+Math.round((sp.halfTrim[tier]||0)*(sideMult/2)));
-  note.textContent='Panel tier: '+tier+"' — "+parts.join(' + ');
+  if(lv!=='open') parts.push('Left: '+lbl(lv)+' = $'+sideClosurePrice(lv,H,tier,closedLen,w).toLocaleString());
+  if(rv!=='open') parts.push('Right: '+lbl(rv)+' = $'+sideClosurePrice(rv,H,tier,closedLen,w).toLocaleString());
+  note.textContent='Panel tier: '+tier+"' — "+parts.join(' · ');
   note.style.display='block';
 }
 
@@ -6215,8 +6244,8 @@ function buildingPageHTML(prefixHTML){
   var _bphGchR=null,_bphGchL=null,gchFrontInfo=null;
   if(G('btype')&&G('btype').value==='gch'){var _beL=parseInt(G('gch-enc').value)||0,_boL=parseInt(G('gch-open').value)||0;if(_beL>0&&_boL>0){_bphGchR={encLen:_beL,openLen:_boL,encSide:'right'};_bphGchL={encLen:_beL,openLen:_boL,encSide:'left'};gchFrontInfo={encLen:_beL,openLen:_boL};}}
   var _bphSpCfg=getSidePanelConfig();
-  var _bphSpR=(_bphSpCfg.right)?{hasPanels:true,count:_bphSpCfg.count,half:_bphSpCfg.half,full:_bphSpCfg.full}:null;
-  var _bphSpL=(_bphSpCfg.left)?{hasPanels:true,count:_bphSpCfg.count,half:_bphSpCfg.half,full:_bphSpCfg.full}:null;
+  var _bphSpR=(_bphSpCfg.right.hasPanels||_bphSpCfg.right.full)?_bphSpCfg.right:null;
+  var _bphSpL=(_bphSpCfg.left.hasPanels||_bphSpCfg.left.full)?_bphSpCfg.left:null;
   var svgFront = makeSVG('_pf', W, false, frontItems, 'front');
   var svgBack  = makeSVG('_pb', W, false, backItems,  'back');
   var svgRight = makeSVG('_pr', L, true,  rightItems, 'right', _bphGchR, _bphSpR);
@@ -6296,7 +6325,7 @@ function collectQuoteData(){
     'ws','brs','framing-upgrade','oc-spacing','pitch-sel','sheeting-upgrade','tax',
     'cr','cw','ct','cwn','wain','lap','disc','add-disc','add-disc-type','add-disc-show','add-disc-valid','rep','zoning-show',
     'insul-sel','foundation','fastener-add',
-    'gch-enc','gch-open','gch-gable','gch-panels','gch-sides','overhang-sel','sp-qty','sp-half','sp-sides'
+    'gch-enc','gch-open','gch-gable','gch-left','gch-right','overhang-sel','sp-left','sp-right'
   ];
   simpleIds.forEach(function(id){
     var el = G(id);
@@ -7024,20 +7053,12 @@ async function printQuote(){
   if(sidePanelPQ>0){
     var spBt=G('btype').value;
     var spDesc='Side Panels';
-    if(spBt==='gch'){
-      var gchPV=G('gch-panels')?G('gch-panels').value:'none';
-      if(gchPV==='half') spDesc='Side Panels — \u00BD Panel w/Trim (open section)';
-      else spDesc='Side Panels — '+gchPV+' panel(s)/side (open section)';
-    } else {
-      var spQty=parseInt(G('sp-qty')?G('sp-qty').value:0)||0;
-      var spHalf=(G('sp-half')&&G('sp-half').value==='yes');
-      var spSidesVal=G('sp-sides')?G('sp-sides').value:'both';
-      var spSidesLbl=(spSidesVal==='both')?'\u00D7 2 sides':(spSidesVal==='left'?'\u00D7 left side only':'\u00D7 right side only');
-      var parts2=[];
-      if(spQty>0) parts2.push(spQty+' panel(s)/side '+spSidesLbl);
-      if(spHalf) parts2.push('+\u00BD Panel w/Trim ('+(spSidesVal==='both'?'both sides':spSidesVal+' side')+')');
-      spDesc='Side Panels — '+parts2.join(' ');
-    }
+    var spCfgD=getSidePanelConfig();
+    var spLbl=function(v){ for(var i=0;i<SIDE_CLOSURE_OPTS.length;i++){ if(SIDE_CLOSURE_OPTS[i].v===v) return SIDE_CLOSURE_OPTS[i].t; } return v; };
+    var spParts=[];
+    if(spCfgD.left.val && spCfgD.left.val!=='open')   spParts.push('Left: '+spLbl(spCfgD.left.val));
+    if(spCfgD.right.val && spCfgD.right.val!=='open') spParts.push('Right: '+spLbl(spCfgD.right.val));
+    if(spParts.length) spDesc='Side Panels - '+spParts.join(', ')+(spBt==='gch'?' (open section)':'');
     rows+=row(spDesc,null,null,sidePanelPQ);
   }
 
@@ -7886,8 +7907,8 @@ async function printContract(){
   var _gchRc=null,_gchLc=null,_gfiC=null;
   if(G('btype')&&G('btype').value==='gch'){var _beLC=parseInt(G('gch-enc').value)||0,_boLC=parseInt(G('gch-open').value)||0;if(_beLC>0&&_boLC>0){_gchRc={encLen:_beLC,openLen:_boLC,encSide:'right'};_gchLc={encLen:_beLC,openLen:_boLC,encSide:'left'};_gfiC={encLen:_beLC,openLen:_boLC};}}
   var _spCfgC=getSidePanelConfig();
-  var _spRc=(_spCfgC.right)?{hasPanels:true,count:_spCfgC.count,half:_spCfgC.half,full:_spCfgC.full}:null;
-  var _spLc=(_spCfgC.left)?{hasPanels:true,count:_spCfgC.count,half:_spCfgC.half,full:_spCfgC.full}:null;
+  var _spRc=(_spCfgC.right.hasPanels||_spCfgC.right.full)?_spCfgC.right:null;
+  var _spLc=(_spCfgC.left.hasPanels||_spCfgC.left.full)?_spCfgC.left:null;
   function mkElev(id, fw, isSide, items, viewKey, gchSp, spCfg){
     tmp.innerHTML='';
     var d=document.createElement('div'); d.id=id; tmp.appendChild(d);
@@ -9172,8 +9193,7 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
     var panelDropPx=0;
     // Side panels: draw a panel strip from the top of the wall
     if(isSide && sidePanelCfg && sidePanelCfg.hasPanels){
-      var panelFt=sidePanelCfg.count*3; // each panel is 3' wide = 3' of drop
-      if(sidePanelCfg.half) panelFt=Math.max(panelFt, 1.5);
+      var panelFt=sidePanelCfg.ft||0; // eave-down closed height in feet
       panelDropPx=Math.min(panelFt*sc, wallH*0.85);
       // Draw panel strip at top
       s+='<rect x="'+x+'" y="'+(oy-wallH)+'" width="'+w_px+'" height="'+panelDropPx+'" fill="'+wC+'"/>';
@@ -10011,8 +10031,8 @@ function renderBuildingViews(){
 
   // Build side panel config for elevation rendering
   var _spCfg=getSidePanelConfig();
-  var spRight=(_spCfg.right)?{hasPanels:true,count:_spCfg.count,half:_spCfg.half,full:_spCfg.full}:null;
-  var spLeft=(_spCfg.left)?{hasPanels:true,count:_spCfg.count,half:_spCfg.half,full:_spCfg.full}:null;
+  var spRight=(_spCfg.right.hasPanels||_spCfg.right.full)?_spCfg.right:null;
+  var spLeft=(_spCfg.left.hasPanels||_spCfg.left.full)?_spCfg.left:null;
 
   // Build GCH front setback info — passes when building is GCH
   var gchFrontInfo=null;

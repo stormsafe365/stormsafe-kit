@@ -148,6 +148,15 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
             <GableEnd geo={geo} which="front" val={front} openings={lt.openings.filter((o) => o.wall === 'front')} material={polyMat(tex.walls, wallMetal, false)} />
             <GableEnd geo={geo} which="back" val={back} openings={lt.openings.filter((o) => o.wall === 'back')} material={polyMat(tex.walls, wallMetal, false)} />
 
+            {/* Wainscot band on a CLOSED gable end (matches the main building's
+                gable-end wainscot — only when the end is fully sheeted). */}
+            {front === 'closed' && wH > 0 && (
+              <PolyPanel corners={geo.frontGableWainscot(wH)} uvs={geo.frontGableWainscotUV(wH)} material={polyMat(tex.wainscot, wainMetal, false)} />
+            )}
+            {back === 'closed' && wH > 0 && (
+              <PolyPanel corners={geo.backGableWainscot(wH)} uvs={geo.backGableWainscotUV(wH)} material={polyMat(tex.wainscot, wainMetal, false)} />
+            )}
+
             {/* Door / window / roll-up fixtures on every sheeted wall (matches
                 the main-building fixture exactly via the shared component). */}
             {lt.openings
@@ -194,6 +203,11 @@ interface SurfaceSet {
   trim: BoxSpec[];
   wainscot: (wH: number) => Pt[];
   wainscotUV: (wH: number) => UV[];
+  // Wainscot band on a closed GABLE END (front/back), at the wall base.
+  frontGableWainscot: (wH: number) => Pt[];
+  frontGableWainscotUV: (wH: number) => UV[];
+  backGableWainscot: (wH: number) => Pt[];
+  backGableWainscotUV: (wH: number) => UV[];
   frontGable: (v: GableVal) => Pt[];
   frontGableUV: (v: GableVal) => UV[];
   backGable: (v: GableVal) => Pt[];
@@ -375,6 +389,10 @@ function eaveSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; f
       [z1, wH],
       [z0, wH],
     ],
+    frontGableWainscot: (wH) => { const z = (z0 - OUT) - 0.02; return [[innerX, 0, z], [outerX, 0, z], [outerX, wH, z], [innerX, wH, z]]; },
+    frontGableWainscotUV: (wH) => [[innerX, 0], [outerX, 0], [outerX, wH], [innerX, wH]],
+    backGableWainscot: (wH) => { const z = (z1 + OUT) + 0.02; return [[innerX, 0, z], [outerX, 0, z], [outerX, wH, z], [innerX, wH, z]]; },
+    backGableWainscotUV: (wH) => [[innerX, 0], [outerX, 0], [outerX, wH], [innerX, wH]],
     frontGable: (v) => gableXY(v, innerX, outerX, lh, connH, z0 - OUT),
     frontGableUV: (v) => gableXYUV(v, innerX, outerX, lh, connH),
     backGable: (v) => gableXY(v, innerX, outerX, lh, connH, z1 + OUT),
@@ -446,6 +464,10 @@ function gableSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; 
       [x1, wH],
       [x0, wH],
     ],
+    frontGableWainscot: (wH) => { const x = (x0 - OUT) - 0.02; return [[x, 0, innerZ], [x, 0, outerZ], [x, wH, outerZ], [x, wH, innerZ]]; },
+    frontGableWainscotUV: (wH) => [[innerZ, 0], [outerZ, 0], [outerZ, wH], [innerZ, wH]],
+    backGableWainscot: (wH) => { const x = (x1 + OUT) + 0.02; return [[x, 0, innerZ], [x, 0, outerZ], [x, wH, outerZ], [x, wH, innerZ]]; },
+    backGableWainscotUV: (wH) => [[innerZ, 0], [outerZ, 0], [outerZ, wH], [innerZ, wH]],
     frontGable: (v) => gableZY(v, innerZ, outerZ, lh, connH, x0 - OUT),
     frontGableUV: (v) => gableZYUV(v, innerZ, outerZ, lh, connH),
     backGable: (v) => gableZY(v, innerZ, outerZ, lh, connH, x1 + OUT),
@@ -454,39 +476,42 @@ function gableSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; 
 }
 
 // Outer long wall, honoring the side-wall setting (height fraction or panel count).
-function sideWallPolys(geo: SurfaceSet, side: SideVal, lh: number): Array<{ corners: Pt[]; uvs: UV[] }> {
+export function sideWallPolys(geo: SurfaceSet, side: SideVal, lh: number): Array<{ corners: Pt[]; uvs: UV[] }> {
   const { axis, plane, a, b } = geo.wall;
-  // Determine extent + height
+  const lo = a;
+  const hi = b;
+  // Sheeting hangs from the EAVE (low-leg top = lh) DOWNWARD. `h` is the height
+  // of the sheeted band; it fills [lh-h, lh] and the lower wall stays open.
   let h = lh;
-  let lo = a;
-  let hi = b;
   if (side === 'q1') h = lh * 0.25;
   else if (side === 'q2') h = lh * 0.5;
   else if (side === 'q3') h = lh * 0.75;
   else {
     const m = /^(\d)panel$/.exec(side);
-    if (m) hi = Math.min(b, a + parseInt(m[1], 10) * 3); // N × 3' panels from the start
+    if (m) h = Math.min(lh, parseInt(m[1], 10) * 3); // N × 3' panels DOWN from the eave
   }
+  const yTop = lh; // eave line
+  const yBot = lh - h; // where the closure stops; open framing below
 
   const corners: Pt[] =
     axis === 'z'
       ? [
-          [plane, 0, lo],
-          [plane, 0, hi],
-          [plane, h, hi],
-          [plane, h, lo],
+          [plane, yBot, lo],
+          [plane, yBot, hi],
+          [plane, yTop, hi],
+          [plane, yTop, lo],
         ]
       : [
-          [lo, 0, plane],
-          [hi, 0, plane],
-          [hi, h, plane],
-          [lo, h, plane],
+          [lo, yBot, plane],
+          [hi, yBot, plane],
+          [hi, yTop, plane],
+          [lo, yTop, plane],
         ];
   const uvs: UV[] = [
-    [lo, 0],
-    [hi, 0],
-    [hi, h],
-    [lo, h],
+    [lo, yBot],
+    [hi, yBot],
+    [hi, yTop],
+    [lo, yTop],
   ];
   return [{ corners, uvs }];
 }

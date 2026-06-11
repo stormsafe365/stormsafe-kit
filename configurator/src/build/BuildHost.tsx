@@ -554,22 +554,30 @@ function syncFromBuilder(win: BuilderWindow) {
         : false;
   if (gableOnly !== st.openEndGableSheeting) st.setOpenEndGableSheeting(gableOnly);
 
-  // GCH open-bay side panels (the "Side Panels" dropdown) → partial eave bands.
-  // none | full | half | 1 | 2 | 3  →  band height (ft from slab), per chosen side.
+  // Eave-side closures (carport + GCH) — Left and Right are INDEPENDENT. Each
+  // dropdown value maps to a closed-band height (ft) measured from the eave DOWN
+  // (must mirror sideClosureFeet() in quote-builder.html):
+  //   open=0 · 1/1.5/2/2.5/3/3.5 panel = N×3(+1.5) ft · q1/q2/q3 = 25/50/75% of H
+  //   closed = full wall. All clamped to wall height so a tall panel never
+  //   overshoots the eave.
+  const closureFeet = (v: string): number => {
+    if (!v || v === 'open') return 0;
+    if (v === 'closed') return h;
+    if (v === 'q1') return h * 0.25;
+    if (v === 'q2') return h * 0.5;
+    if (v === 'q3') return h * 0.75;
+    const m = /^(\d)(_5)?panel$/.exec(v);
+    if (m) return Math.min(parseInt(m[1], 10) * 3 + (m[2] ? 1.5 : 0), h);
+    return 0;
+  };
   let leftFt = 0;
   let rightFt = 0;
   if (bt === 'gch') {
-    const pv = val('gch-panels');
-    const sides = val('gch-sides') || 'both';
-    let band = 0;
-    if (pv === 'full') band = h;
-    else if (pv === 'half') band = 1.5;
-    else {
-      const n = parseInt(pv, 10);
-      if (n > 0) band = n * 3;
-    }
-    leftFt = sides === 'both' || sides === 'left' ? band : 0;
-    rightFt = sides === 'both' || sides === 'right' ? band : 0;
+    leftFt = closureFeet(val('gch-left'));
+    rightFt = closureFeet(val('gch-right'));
+  } else if (bt === 'carport') {
+    leftFt = closureFeet(val('sp-left'));
+    rightFt = closureFeet(val('sp-right'));
   }
   if (leftFt !== st.eavePanelFt.left || rightFt !== st.eavePanelFt.right) {
     st.setEavePanels({ left: leftFt, right: rightFt });

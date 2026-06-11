@@ -97,7 +97,8 @@ export interface StructureModel {
   enclosure: Enclosure;
   /** z-range of the OPEN (carport) eave portion — null when fully enclosed. */
   openBayZ: { start: number; end: number } | null;
-  /** Partial side-panel band height (ft from slab) on each open eave side. */
+  /** Partial side-panel band height (ft) on each open eave side, measured from
+   *  the eave DOWNWARD (the band fills [H-bh, H]; the lower wall stays open). */
   eavePanelFt: { left: number; right: number };
   walls: Record<WallSide, WallLayout>;
   areas: { roof: number; walls: number };

@@ -58,6 +58,17 @@ export function stripsAround(width: number, height: number, holes: LocalRect[]):
   return out;
 }
 
+/**
+ * Vertical extent of an eave-down closure band of height `bh` on a wall of
+ * height `H`. Sheeting ALWAYS starts at the eave and works downward, so the band
+ * fills [H-h, H] and the lower wall stays open. `bh` is clamped to [0, H] so a
+ * panel option taller than the wall never overshoots the eave.
+ */
+export function eaveDownBand(H: number, bh: number): { bottom: number; top: number; centerY: number; height: number } {
+  const h = Math.max(0, Math.min(bh, H));
+  return { bottom: H - h, top: H, centerY: H - h / 2, height: h };
+}
+
 const TILE = 3; // feet per texture tile (≈2 ribs/ft)
 // Vertical gap between the colored top roof skin and the galvalume underside —
 // just enough that each is nearest the camera from its own side (no z-fight).
@@ -278,18 +289,22 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
             { sx: halfW + SHEET_OUTSET, sd: 'right' as const, bh: Math.min(structure.eavePanelFt.right, H) },
           ]).map(({ sx, sd, bh }) => {
             if (bh <= 0) return null;
+            // Sheeting hangs from the EAVE downward (band fills [H-bh, H]).
+            // Openings only cut the band where they reach UP into it; anything in
+            // the still-open lower portion is left as see-through framing.
+            const band = eaveDownBand(H, bh);
             const holes = openings
-              .filter((o) => o.side === sd && o.sillHeight < bh - 0.01)
-              .map((o) => ({ u: -halfL + o.offset - midZ, v: o.sillHeight + o.height / 2 - bh / 2, w: o.width, h: o.height }));
-            return stripsAround(span, bh, holes).map((st, i) => (
+              .filter((o) => o.side === sd && o.sillHeight + o.height > band.bottom + 0.01)
+              .map((o) => ({ u: -halfL + o.offset - midZ, v: o.sillHeight + o.height / 2 - band.centerY, w: o.width, h: o.height }));
+            return stripsAround(span, band.height, holes).map((st, i) => (
               <BasisPanel
                 key={`obp-${sd}-${i}`}
-                center={[sx, bh / 2 + st.v, midZ + st.u]}
+                center={[sx, band.centerY + st.v, midZ + st.u]}
                 uVec={[0, 0, 1]}
                 vVec={[0, 1, 0]}
                 w={st.w}
                 h={st.h}
-                material={planeMat(tex.walls, st.w, st.h, wallDir, wallMetal, false, midZ + st.u - st.w / 2, bh / 2 + st.v - st.h / 2)}
+                material={planeMat(tex.walls, st.w, st.h, wallDir, wallMetal, false, midZ + st.u - st.w / 2, band.centerY + st.v - st.h / 2)}
               />
             ));
           });
@@ -309,7 +324,10 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
             { sx: -(halfW + wOut), sd: 'left' as const, bh: Math.min(structure.eavePanelFt.left, H) },
             { sx: halfW + wOut, sd: 'right' as const, bh: Math.min(structure.eavePanelFt.right, H) },
           ]).map(({ sx, sd, bh }) => {
-            const bandH = Math.min(wH, bh);
+            // Wainscot only sits where the sheeting reaches the ground (fully
+            // closed). On a partial closure the lower wall is open air, so the
+            // base band would float in space — suppress it on that side.
+            const bandH = bh >= H - 0.01 ? Math.min(wH, bh) : 0;
             if (bandH <= 0) return null;
             const holes = openings
               .filter((o) => o.side === sd && o.sillHeight < bandH - 0.01)

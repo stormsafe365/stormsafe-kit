@@ -934,7 +934,9 @@ var COLORS = [
 // Preserves the previously selected color if it's still available in the new palette.
 function rebuildColorDropdowns(){
   var ids = ['cr','cw','ct','cwn'];
-  var colors = (typeof MFR==='function' && MFR().colors) ? MFR().colors : COLORS;
+  // Alphabetical by color name (TBD stays pinned on top)
+  var colors = ((typeof MFR==='function' && MFR().colors) ? MFR().colors : COLORS)
+    .slice().sort(function(a,b){ return a.n.localeCompare(b.n); });
   var swMap = {cr:'cr-sw', cw:'cw-sw', ct:'ct-sw', cwn:'cwn-sw'};
   for(var i=0;i<ids.length;i++){
     var sel = G(ids[i]);
@@ -961,9 +963,10 @@ function rebuildColorDropdowns(){
   }
 }
 
-// Populate color dropdowns immediately on page load
+// Populate color dropdowns immediately on page load (alphabetical, TBD pinned on top)
 (function(){
   var ids = ['cr','cw','ct','cwn'];
+  var sorted = COLORS.slice().sort(function(a,b){ return a.n.localeCompare(b.n); });
   for(var i=0;i<ids.length;i++){
     var sel = G(ids[i]);
     if(!sel) continue;
@@ -971,10 +974,10 @@ function rebuildColorDropdowns(){
     var tbd = document.createElement('option');
     tbd.value = 'TBD'; tbd.textContent = 'TBD';
     sel.appendChild(tbd);
-    for(var j=0;j<COLORS.length;j++){
+    for(var j=0;j<sorted.length;j++){
       var opt = document.createElement('option');
-      opt.value = COLORS[j].h;
-      opt.textContent = COLORS[j].n + ' (' + COLORS[j].c + ')';
+      opt.value = sorted[j].h;
+      opt.textContent = sorted[j].n + ' (' + sorted[j].c + ')';
       sel.appendChild(opt);
     }
   }
@@ -2341,6 +2344,27 @@ var MANUFACTURERS = {
       {n:'Burgundy',      c:'WXR0081L', h:'#4A1E2A'},
       {n:'Copper Penny',  c:'KM2Y49352',h:'#C47F2A'}
     ],
+    // ── Roll-up door color palette (CA) — its OWN palette, separate from the
+    // building colors above (unlike CCI, whose door colors match its building
+    // chart). CA prices color as a PERCENTAGE of the door's listed price:
+    // +25% for any color, +30% for black. White is the standard finish at $0.
+    // The % rides on the price shown in the size dropdown (which includes the
+    // chain hoist on ★ sizes where it's built in) but NEVER on the separate
+    // +$325 chain hoist add-on line. Hexes sampled from CA's door screenshots.
+    rudColors: [
+      {v:'white',           label:'White (standard)',  hex:'#F2F1EA', price:0},
+      {v:'black',           label:'Black',             hex:'#15171A', pct:30},
+      {v:'bronze',          label:'Bronze',            hex:'#71685E', pct:25},
+      {v:'cedarRed',        label:'Cedar Red',         hex:'#84433A', pct:25},
+      {v:'continentalBrown',label:'Continental Brown', hex:'#54231C', pct:25},
+      {v:'desertSand',      label:'Desert Sand',       hex:'#A98F6C', pct:25},
+      {v:'desertTan',       label:'Desert Tan',        hex:'#D1C9AD', pct:25},
+      {v:'forestGreen',     label:'Forest Green',      hex:'#11492B', pct:25},
+      {v:'lightStone',      label:'Light Stone',       hex:'#C2BFAD', pct:25},
+      {v:'sandstone',       label:'Sandstone',         hex:'#B8B0A1', pct:25},
+      {v:'satinWhite',      label:'Satin White',       hex:'#CDD2CD', pct:25},
+      {v:'silhouetteGray',  label:'Silhouette Gray',   hex:'#85857D', pct:25}
+    ],
     // ── Scalar pricing ───────────────────────────────────────────────────────
     wtd_std: 300, wtd_hi: 600,
     win_std: 200, win_hi: 590,
@@ -2943,6 +2967,26 @@ var MANUFACTURERS = {
 var ACTIVE_MFR = 'CA';
 function MFR() { return MANUFACTURERS[ACTIVE_MFR]; }
 
+// ── Roll-up door color helpers (shared CA/CCI) ──────────────────────────────
+// CCI prices door color as a FLAT fee per door ({price}); CA as a PERCENTAGE
+// of the door's listed price ({pct}: 25 for any color, 30 for black).
+function rudColorUpcharge(colorDef, dtype, sz){
+  if(!colorDef) return 0;
+  if(colorDef.pct) return Math.round(getDoorPrice(dtype, sz) * colorDef.pct / 100);
+  return colorDef.price || 0;
+}
+function rudColorOptLabel(c){
+  if(c.pct) return c.label + ' (+' + c.pct + '% of door price)';
+  return c.label + (c.price ? (' (+$' + c.price + ' each)') : '');
+}
+// Sorted <option> markup for a roll-up door color select — White (standard)
+// pinned first, the rest alphabetical.
+function rudColorOptionsHTML(){
+  var colors=(MFR().rudColors||[{v:'white',label:'White (standard)',price:0}])
+    .slice().sort(function(a,b){ if(a.v==='white')return -1; if(b.v==='white')return 1; return a.label.localeCompare(b.label); });
+  return colors.map(function(c){ return '<option value="'+c.v+'">'+rudColorOptLabel(c)+'</option>'; }).join('');
+}
+
 // Build type dropdown option HTML from MFR config array
 // Works for wtdTypes and winTypes — each entry has {v, label, pk?}
 function mfrTypeOpts(types, priceMap){
@@ -3030,15 +3074,20 @@ function switchMfr(key){
     o.style.display=MFR().hiImpactRollup?'':'none';
     if(!MFR().hiImpactRollup && o.selected){o.closest('select').value='standard';updateRUDSizes(o.closest('select'));}
   });
-  // Rebuild roll-up door color dropdowns (CCI-only). For CA, the .cci-only-row hides them entirely.
-  document.querySelectorAll('.re .rco').forEach(function(sel){
+  // Rebuild roll-up door color dropdowns for the active manufacturer (CCI flat
+  // fees / CA percentages) — main-building doors AND lean-to accessories.
+  document.querySelectorAll('.re .rco, .lt-acc-e .lt-acc-color').forEach(function(sel){
     var cur=sel.value;
-    var colors=MFR().rudColors||[{v:'white',label:'White (standard)',price:0}];
-    sel.innerHTML=colors.map(function(c){
-      var pr=c.price?(' (+$'+c.price+' each)'):'';
-      return '<option value="'+c.v+'">'+c.label+pr+'</option>';
-    }).join('');
-    sel.value = colors.some(function(c){return c.v===cur;}) ? cur : 'white';
+    sel.innerHTML=rudColorOptionsHTML();
+    sel.value = (MFR().rudColors||[]).some(function(c){return c.v===cur;}) ? cur : 'white';
+  });
+  // Door-color rows show for any manufacturer with a rudColors palette (CA + CCI).
+  var hasRudColors = !!(MFR() && MFR().rudColors);
+  document.querySelectorAll('.rco-row').forEach(function(el){ el.style.display = hasRudColors ? '' : 'none'; });
+  document.querySelectorAll('.lt-acc-e').forEach(function(ae){
+    var cr=ae.querySelector('.lt-acc-color-row'); if(!cr) return;
+    var tEl=ae.querySelector('.lt-acc-type');
+    cr.style.display=(hasRudColors && tEl && tEl.value==='rollup')?'':'none';
   });
   // Toggle CCI-only UI elements
   var isCCI=(ACTIVE_MFR==='CCI');
@@ -3193,6 +3242,16 @@ var RDP_HI = {
 // Sizes needing lift (hi-impact: 13'+ width or 14'+ height)
 var HI_LIFT_WIDTHS = [13,14,16,18];
 var HI_LIFT_HEIGHTS = [14,16,18];
+// Dropdown ordering for roll-up door sizes: by door HEIGHT asc, then width asc
+// (all the 7' tall doors first — 6x7, 7x7, 8x7, 9x7 — then the 8' tall, etc.).
+// Handles the '*' lift-required prefix on chain/hi-impact keys.
+function rudSizeSort(a,b){
+  var ca=a.charAt(0)==='*'?a.substring(1):a, cb=b.charAt(0)==='*'?b.substring(1):b;
+  var ap=ca.split('x'), bp=cb.split('x');
+  var ah=parseFloat(ap[1])||0, bh=parseFloat(bp[1])||0;
+  if(ah!==bh) return ah-bh;
+  return (parseFloat(ap[0])||0)-(parseFloat(bp[0])||0);
+}
 var EXT_SH={12:[2075,2245,2420,2590,2935,3110,3285,3460,3800,3975,4150,4320],14:[3685,3995,4300,4610,5225,5530,5835,6140,6760,7065,7370,7680],16:[5575,6020,6680,7125,8020,8470,8915,9360,10250,10770,11150,11595],18:[6720,7200,8640,9120,10080,10560,11040,11520,12480,12960,13440,13920],20:[8545,9225,10230,10945,12340,13020,13700,14380,15730,16410,17090,17770]};
 var EXT_BSC={}; // populated by initMfrPricing()
 var EXT_SH_30={12:[1835,1990,2135,2280,2435,2590,2735,2880,3275,3420,3575,3730],14:[2795,3000,3430,3860,4065,4270,4585,4900,5360,5790,5995,6200],16:[4680,5040,5400,5760,6240,6720,7200,7680,8280,8640,9120,9600],18:[6720,7200,9120,9600,10080,10560,11040,11520,13920,14400,14880,15360],20:[8545,9225,10945,11660,12340,13020,13700,14380,16775,17490,18170,18850]};
@@ -4210,12 +4269,13 @@ function gRUD(){
     // 45° angle cut: $85 per door
     var r45El=el.querySelector('.r45');
     if(r45El && r45El.value==='yes') t+=85*qty;
-    // Color upcharge (CCI only — CA's rudColors will be undefined)
+    // Color upcharge — CCI flat per door; CA % of the door's listed price
     var rcoEl=el.querySelector('.rco');
     if(rcoEl && MFR().rudColors){
       var _rcv=rcoEl.value;
       var _rcd=MFR().rudColors.find(function(c){return c.v===_rcv;});
-      if(_rcd && _rcd.price) t+=_rcd.price*qty;
+      var _rcUp=rudColorUpcharge(_rcd,dtype,sz);
+      if(_rcUp) t+=_rcUp*qty;
     }
     if(ea){
       // ── Eave-side header (structural beam at top of door opening) ─────────
@@ -4520,6 +4580,13 @@ function gLT(){
       if(atype==='rollup'){
         var asz=ae.querySelector('.lt-acc-size')?ae.querySelector('.lt-acc-size').value:'9x8';
         accAdj+=getDoorPrice('standard',asz)*aqty;
+        // Door color upcharge (CCI flat / CA % of the door's listed price)
+        var acoEl=ae.querySelector('.lt-acc-color');
+        if(acoEl && MFR().rudColors){
+          var _acd=MFR().rudColors.find(function(c){return c.v===acoEl.value;});
+          var _acUp=rudColorUpcharge(_acd,'standard',asz);
+          if(_acUp) accAdj+=_acUp*aqty;
+        }
         // Chain hoist add-on
         var ach=parseInt(ae.querySelector('.lt-acc-ch')&&ae.querySelector('.lt-acc-ch').value)||0;
         accAdj+=ach*(window._chain||325);
@@ -4559,7 +4626,7 @@ function getLTDims(lte){
 //                           door HEIGHT ≤ lt_h - 1  (some clearance at outer post)
 function getValidRDPSizes(lt_w, lt_h, loc){
   var valid=[];
-  Object.keys(RDP_STD).forEach(function(k){
+  Object.keys(RDP_STD).sort(rudSizeSort).forEach(function(k){
     var p=k.split('x'),dw=parseFloat(p[0])||0,dh=parseFloat(p[1])||0;
     var ok=true;
     if(loc==='outer'){
@@ -4634,6 +4701,8 @@ function addLTAcc(entry){
     '</select></div>'+
     '<div class="row lt-acc-rud-row"><label>Door Size</label>'+
     '<select class="lt-acc-size" onchange="updLTAccRudSize(this);rc()"></select></div>'+
+    '<div class="row lt-acc-color-row"'+(MFR().rudColors?'':' style="display:none"')+'><label>Door Color</label>'+
+    '<select class="lt-acc-color" onchange="rc()">'+rudColorOptionsHTML()+'</select></div>'+
     '<div class="row lt-acc-fo-row" style="display:none"><label>Frame-Out Size (W &times; H ft)</label>'+
     '<div style="display:flex;gap:6px;width:100%">'+
     '<input type="number" class="lt-acc-fo-w" min="1" max="20" step="0.5" value="10" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%" placeholder="W">'+
@@ -4684,6 +4753,8 @@ function updLTAccType(sel){
   var e=sel.closest('.lt-acc-e');
   var isRollup=sel.value==='rollup';
   e.querySelector('.lt-acc-rud-row').style.display=isRollup?'':'none';
+  var colorRow=e.querySelector('.lt-acc-color-row');
+  if(colorRow) colorRow.style.display=(isRollup && MFR().rudColors)?'':'none';
   var chRow=e.querySelector('.lt-acc-rud-ch-row'), slRow=e.querySelector('.lt-acc-rud-sl-row');
   if(chRow) chRow.style.display=isRollup?'':'none';
   if(slRow) slRow.style.display=isRollup?'':'none';
@@ -5583,13 +5654,8 @@ function aRUD(){
     '<option value="no">No</option>'+
     '<option value="yes">Yes (+$85 per door)</option>'+
     '</select></div>'+
-    '<div class="row rco-row cci-only-row"><label>Door Color</label>'+
-    '<select class="rco" onchange="rc()">'+
-    ((MFR().rudColors||[{v:'white',label:'White (standard)',price:0}]).map(function(c){
-      var pr=c.price?(' (+$'+c.price+' each)'):'';
-      return '<option value="'+c.v+'">'+c.label+pr+'</option>';
-    }).join(''))+
-    '</select></div>'+
+    '<div class="row rco-row"'+(MFR().rudColors?'':' style="display:none"')+'><label>Door Color</label>'+
+    '<select class="rco" onchange="rc()">'+rudColorOptionsHTML()+'</select></div>'+
     '<div class="pos-section rpos-section"></div>'+
     '<div class="enote ren" style="display:none;align-items:center;gap:8px">'+
     '<span style="color:#8aa3b5;font-weight:400;font-size:11px">Max door height: <strong>'+(h-2)+"'</strong></span></div>"+
@@ -5671,14 +5737,8 @@ function updateRUDSizes(dtypeEl){
       if(sizeMap[clean]) return;     // STD already covers this size; keep STD price
       sizeMap[clean] = {price: RDP_CHAIN[rawK], chainIncluded: true, lift: lift};
     });
-    // Sort by (area asc, then width asc) so smaller doors come first
-    var keys = Object.keys(sizeMap).sort(function(a,b){
-      var ap=a.split('x'),bp=b.split('x');
-      var aw=parseFloat(ap[0])||0, ah=parseFloat(ap[1])||0;
-      var bw=parseFloat(bp[0])||0, bh=parseFloat(bp[1])||0;
-      var aa=aw*ah, ba=bw*bh;
-      return aa===ba ? (aw-bw) : (aa-ba);
-    });
+    // Sort by door height, then width (see rudSizeSort)
+    var keys = Object.keys(sizeMap).sort(rudSizeSort);
     keys.forEach(function(k){
       var info = sizeMap[k];
       var label = k +
@@ -5691,7 +5751,7 @@ function updateRUDSizes(dtypeEl){
     });
   } else if(dtype==='standard'){
     chRow.style.display=''; slRow.style.display='';
-    Object.keys(RDP_STD).forEach(function(k){
+    Object.keys(RDP_STD).sort(rudSizeSort).forEach(function(k){
       if(!fits(k)) return;
       var o=document.createElement('option'); o.value=k;
       o.textContent=k+" — "+fC(RDP_STD[k]);
@@ -5699,7 +5759,7 @@ function updateRUDSizes(dtypeEl){
     });
   } else if(dtype==='chain'){
     chRow.style.display='none'; slRow.style.display='';
-    Object.keys(RDP_CHAIN).forEach(function(k){
+    Object.keys(RDP_CHAIN).sort(rudSizeSort).forEach(function(k){
       if(!fits(k)) return;
       var liftFlag=k.charAt(0)==='*';
       var display=liftFlag?k.substring(1):k;
@@ -5711,7 +5771,7 @@ function updateRUDSizes(dtypeEl){
     if(note) note.insertAdjacentHTML('afterend','<div style="font-size:10px;color:#475569;margin-top:3px">★ = Reach Lift required on site</div>');
   } else if(dtype==='hiimpact'){
     chRow.style.display='none'; slRow.style.display='';
-    Object.keys(RDP_HI).forEach(function(k){
+    Object.keys(RDP_HI).sort(rudSizeSort).forEach(function(k){
       if(!fits(k)) return;
       var liftFlag=k.charAt(0)==='*';
       var display=liftFlag?k.substring(1):k;
@@ -6843,7 +6903,8 @@ async function printQuote(){
     if(rcoEl && MFR().rudColors){
       var _rcv=rcoEl.value;
       var _rcd=MFR().rudColors.find(function(c){return c.v===_rcv;});
-      if(_rcd && _rcd.price) rows+=row('Door Color — '+_rcd.label,qty,_rcd.price,_rcd.price*qty);
+      var _rcUp2=rudColorUpcharge(_rcd,dtype,sz);
+      if(_rcd && _rcUp2) rows+=row('Door Color — '+_rcd.label,qty,_rcUp2,_rcUp2*qty);
     }
     // Eave-side door header: width-bucketed per CA dealer handbook
     // (6-12' = $200, 12-16' = $360, 17-20' = $720 for standard 12-30W bldgs;
@@ -6905,6 +6966,13 @@ async function printQuote(){
           var asz=ae.querySelector('.lt-acc-size')?ae.querySelector('.lt-acc-size').value:'9x8';
           var ap=getDoorPrice('standard',asz);
           rows+=row('  Lean-To: '+asz+' Roll-Up Door ('+alocLabel+')',aqty,ap,ap*aqty);
+          // Door color upcharge (CCI flat / CA % of door price)
+          var acoEl2=ae.querySelector('.lt-acc-color');
+          if(acoEl2 && MFR().rudColors){
+            var _acd2=MFR().rudColors.find(function(c){return c.v===acoEl2.value;});
+            var _acUp2=rudColorUpcharge(_acd2,'standard',asz);
+            if(_acd2 && _acUp2) rows+=row('    Lean-To: Door Color — '+_acd2.label,aqty,_acUp2,_acUp2*aqty);
+          }
           // Chain hoist add-on
           var ach=parseInt(ae.querySelector('.lt-acc-ch')&&ae.querySelector('.lt-acc-ch').value)||0;
           if(ach>0){var cp=window._chain||325;rows+=row('    Lean-To: Chain Hoist',ach,cp,ach*cp);}
@@ -7742,7 +7810,8 @@ async function printContract(){
     if(rcoEl && MFR().rudColors){
       var _rcv=rcoEl.value;
       var _rcd=MFR().rudColors.find(function(c){return c.v===_rcv;});
-      if(_rcd && _rcd.price) row('Door Color — '+_rcd.label,qty,_rcd.price,_rcd.price*qty);
+      var _rcUp3=rudColorUpcharge(_rcd,dtype,sz);
+      if(_rcd && _rcUp3) row('Door Color — '+_rcd.label,qty,_rcUp3,_rcUp3*qty);
     }
     var rloc=el.querySelector('.rloc')?el.querySelector('.rloc').value:'';
     if(rloc==='Left Eave Side' || rloc==='Right Eave Side'){
@@ -8949,7 +9018,7 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
       lt.accessories.forEach(function(acc){
         if(acc.loc !== (lt.viewEnd||'front')) return;
         for(var qi=0;qi<acc.qty;qi++){
-          if(acc.type==='rollup'){var sz=(acc.size||'9x8').split('x');faceAccItems.push({type:'rollup',w:parseFloat(sz[0])||9,h:parseFloat(sz[1])||8});}
+          if(acc.type==='rollup'){var sz=(acc.size||'9x8').split('x');faceAccItems.push({type:'rollup',w:parseFloat(sz[0])||9,h:parseFloat(sz[1])||8,color:acc.color});}
           else if(acc.type==='wtd'){faceAccItems.push({type:'wtd',w:3,h:6.67});}
           else if(acc.type==='win'){faceAccItems.push({type:'win',w:2.5,h:2.5});}
         }
@@ -9681,7 +9750,7 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
         // Build items for THIS entry
         var entryItems=[];
         for(var qi=0; qi<acc.qty; qi++){
-          if(acc.type==='rollup'){var sz=(acc.size||'9x8').split('x');entryItems.push({type:'rollup',w:parseFloat(sz[0])||9,h:parseFloat(sz[1])||8});}
+          if(acc.type==='rollup'){var sz=(acc.size||'9x8').split('x');entryItems.push({type:'rollup',w:parseFloat(sz[0])||9,h:parseFloat(sz[1])||8,color:acc.color});}
           else if(acc.type==='wtd'){entryItems.push({type:'wtd',w:3,h:6.67});}
           else if(acc.type==='win'){entryItems.push({type:'win',w:2.5,h:2.5});}
         }
@@ -9800,7 +9869,10 @@ function collectLTsForViews(){
       var aoffs=Array.prototype.map.call(offInputs,function(i){return parseFloat(i.value)||0;});
       if(aoffs.length===0) aoffs=[0];
       var acc={type:atype,qty:aqty,loc:aloc,pos:apos,offs:aoffs,off:aoffs[0]};
-      if(atype==='rollup') acc.size=ae.querySelector('.lt-acc-size')?ae.querySelector('.lt-acc-size').value:'9x8';
+      if(atype==='rollup'){
+        acc.size=ae.querySelector('.lt-acc-size')?ae.querySelector('.lt-acc-size').value:'9x8';
+        acc.color=ae.querySelector('.lt-acc-color')?ae.querySelector('.lt-acc-color').value:'white';
+      }
       else if(atype==='wtd'){var _wtdv=ae.querySelector('.lt-acc-wtd-hi')&&ae.querySelector('.lt-acc-wtd-hi').value;acc.hi=(_wtdv&&_wtdv!=='std');}
       else if(atype==='win'){var _winv=ae.querySelector('.lt-acc-win-hi')&&ae.querySelector('.lt-acc-win-hi').value;acc.hi=(_winv&&_winv!=='std');}
       ltAcc.push(acc);

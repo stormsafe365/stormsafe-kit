@@ -56,6 +56,8 @@ export interface LeanToOpening {
   sillFt: number;
   /** Center position measured (ft) from the wall's left edge (start of the run). */
   offsetFt: number;
+  /** Explicit panel color (hex) — e.g. a CA/CCI colored roll-up door. */
+  color?: string;
 }
 
 export interface LeanTo {

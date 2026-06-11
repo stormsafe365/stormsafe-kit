@@ -388,6 +388,13 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     const n = e ? parseFloat(e.value) : NaN;
     return Number.isFinite(n) ? n : d;
   };
+  // Resolve a roll-up door color KEY (.lt-acc-color value) to its hex via the
+  // program's MFR().rudColors table — same mapping the main-building doors use.
+  const rudColorHex = (key?: string): string | undefined => {
+    if (!key) return undefined;
+    const mfr = (win as unknown as { MFR?: () => { rudColors?: Array<{ v: string; hex: string }> } }).MFR;
+    return mfr ? mfr().rudColors?.find((c) => c.v === key)?.hex : undefined;
+  };
 
   const ltOpenMap: NonNullable<BuilderWindow['__ssLeanToOpenMap']> = {};
 
@@ -418,7 +425,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
 
     // ── Lean-to accessories (doors / windows / roll-ups) → openings ──
     // Each `.lt-acc-e` entry: type + size + which wall + position + quantity.
-    const ltOpenings: Array<{ id: string; type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number }> = [];
+    const ltOpenings: Array<{ id: string; type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number; color?: string }> = [];
     el.querySelectorAll('.lt-acc-e').forEach((ae, accIndex) => {
       const t = strVal(ae, '.lt-acc-type');
       const oType = t === 'wtd' ? 'walkDoor' : t === 'win' ? 'window' : t === 'frameout' ? 'frameOut' : 'rollUpDoor';
@@ -427,10 +434,13 @@ function readLeanTos(win: Window & { document: Document }): Array<{
       const qty = Math.max(1, Math.min(3, parseInt(strVal(ae, '.lt-acc-qty'), 10) || 1));
       const pos = strVal(ae, '.lt-acc-pos') || 'auto';
       let w = 9, h = 8, sill = 0;
+      let accColor: string | undefined;
       if (oType === 'rollUpDoor') {
         const sz = (strVal(ae, '.lt-acc-size') || '9x8').toLowerCase().split('x');
         w = parseFloat(sz[0]) || 9;
         h = parseFloat(sz[1]) || 8;
+        // Door color (CA % / CCI flat palette) → hex so the 3D matches the quote
+        accColor = rudColorHex(strVal(ae, '.lt-acc-color') || undefined);
       } else if (oType === 'walkDoor') {
         w = 3; h = 6.67; sill = 0;
       } else if (oType === 'window') {
@@ -454,7 +464,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
         center = Math.max(w / 2 + 0.2, Math.min(wallLen - w / 2 - 0.2, center)); // keep on the wall
         const id = `lt${ltIndex}:acc${accIndex}:item${i}`; // deterministic + stable across polls
         ltOpenMap[id] = { entry: ae, itemIndex: i, width: w };
-        ltOpenings.push({ id, type: oType, wall, widthFt: w, heightFt: h, sillFt: sill, offsetFt: center });
+        ltOpenings.push({ id, type: oType, wall, widthFt: w, heightFt: h, sillFt: sill, offsetFt: center, color: accColor });
       }
     });
 

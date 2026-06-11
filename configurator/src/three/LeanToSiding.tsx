@@ -711,6 +711,7 @@ function DraggableLeanToOpening({
         h={opening.heightFt}
         sillHeight={opening.sillFt}
         trimColor={trimColor}
+        panelColor={opening.color}
         selected={selected}
         onPanelPointerDown={onDown}
       />

@@ -22,6 +22,8 @@ export function CameraRig() {
 
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null;
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
   const cmd = useEditorStore((s) => s.cameraCmd);
 
   const goalPos = useRef<THREE.Vector3 | null>(null);
@@ -127,11 +129,14 @@ export function CameraRig() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [W, L, top]);
 
-  // Dev: expose camera + controls so a precise view can be set for screenshots.
+  // Dev: expose camera + controls (+ gl/scene for scene-graph verification)
+  // so a precise view can be set for screenshots.
   useEffect(() => {
     (window as unknown as Record<string, unknown>).__ssCam = camera;
     (window as unknown as Record<string, unknown>).__ssControls = controls;
-  }, [camera, controls]);
+    (window as unknown as Record<string, unknown>).__ssGl = gl;
+    (window as unknown as Record<string, unknown>).__ssScene = scene;
+  }, [camera, controls, gl, scene]);
 
   // Instant (no-lerp) view setter — used by the PDF capture to jump the camera
   // to each preset and snapshot it deterministically. Recomputed when the

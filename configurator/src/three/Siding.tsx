@@ -184,6 +184,13 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
   const sideMidZ = side ? (side.start + side.end) / 2 : 0;
   const wH = wainscot.enabled ? Math.min(wainscot.heightFt, H - 0.5) : 0;
   const wOut = SHEET_OUTSET + 0.02;
+  // Partition wainscot faces the open carport bay — offset its band toward that
+  // side so it sits in front of the divider's visible (open-bay) face.
+  const partWainZ =
+    enclosure.partitionZ !== null
+      ? enclosure.partitionZ +
+        (structure.openBayZ && (structure.openBayZ.start + structure.openBayZ.end) / 2 < enclosure.partitionZ ? -wOut : wOut)
+      : 0;
 
   // Openings projected onto a gable end wall (front/back/partition), in the
   // wall's centered local coords (u = X across the wall, v = up from mid-height).
@@ -288,6 +295,39 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           });
         })()}
 
+      {/* Wainscot band overlaid on the open-bay partial side panels — same band
+          as the enclosed sides, but capped at the eave-panel height so it never
+          floats above the open-bay sheeting. */}
+      {structure.openBayZ &&
+        wH > 0 &&
+        (() => {
+          const ob = structure.openBayZ!;
+          const span = ob.end - ob.start;
+          const midZ = (ob.start + ob.end) / 2;
+          if (span <= 0) return null;
+          return ([
+            { sx: -(halfW + wOut), sd: 'left' as const, bh: Math.min(structure.eavePanelFt.left, H) },
+            { sx: halfW + wOut, sd: 'right' as const, bh: Math.min(structure.eavePanelFt.right, H) },
+          ]).map(({ sx, sd, bh }) => {
+            const bandH = Math.min(wH, bh);
+            if (bandH <= 0) return null;
+            const holes = openings
+              .filter((o) => o.side === sd && o.sillHeight < bandH - 0.01)
+              .map((o) => ({ u: -halfL + o.offset - midZ, v: o.sillHeight + o.height / 2 - bandH / 2, w: o.width, h: o.height }));
+            return stripsAround(span, bandH, holes).map((st, i) => (
+              <BasisPanel
+                key={`obw-${sd}-${i}`}
+                center={[sx, bandH / 2 + st.v, midZ + st.u]}
+                uVec={[0, 0, 1]}
+                vVec={[0, 1, 0]}
+                w={st.w}
+                h={st.h}
+                material={planeMat(tex.wainscot, st.w, st.h, wallDir, wainMetal, false, midZ + st.u - st.w / 2, bandH / 2 + st.v - st.h / 2)}
+              />
+            ));
+          });
+        })()}
+
       {/* Gable end walls (+ wainscot) — closed = full (cut around openings),
           gableOnly = triangle, open = none */}
       {enclosure.front !== 'open' && (
@@ -332,9 +372,9 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           holes={gableHoles('partition', H)}
           wallStripMat={(w, h, au, av) => planeMat(tex.walls, w, h, wallDir, wallMetal, false, au, av)}
           gableMat={shapeMat(tex.walls, wallDir, wallMetal)}
-          wH={0}
-          wainZ={enclosure.partitionZ}
-          wainHoles={[]}
+          wH={wH}
+          wainZ={partWainZ}
+          wainHoles={gableHoles('partition', wH, true)}
           wainStripMat={(w, h, au, av) => planeMat(tex.wainscot, w, h, wallDir, wainMetal, false, au, av)}
         />
       )}

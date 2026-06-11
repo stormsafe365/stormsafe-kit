@@ -83,7 +83,7 @@ export function BuildingModel() {
           overhangFt={structure.roofOverhangFt}
           trimColor={trimHex}
         />
-        <Trim structure={structure} color={trimHex} wainscot={config.wainscot} />
+        <Trim structure={structure} color={trimHex} wainscot={config.wainscot} openings={config.openings} />
         <Openings openings={config.openings} structure={structure} trimColor={trimHex} />
       </ShellGroup>
     </group>

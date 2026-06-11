@@ -1,13 +1,14 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { ROOF_LIFT, SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
-import type { Wainscot } from '@/types/building';
+import type { Opening, Wainscot, WallSide } from '@/types/building';
 import { SteelMember } from './SteelMember';
 
 interface TrimProps {
   structure: StructureModel;
   color: string;
   wainscot: Wainscot;
+  openings: Opening[];
 }
 
 /**
@@ -17,7 +18,7 @@ interface TrimProps {
  *    corner and covers the panel edges
  *  - base trim + wainscot divider trim
  */
-export function Trim({ structure, color, wainscot }: TrimProps) {
+export function Trim({ structure, color, wainscot, openings }: TrimProps) {
   const { width: W, length: L, legHeight: H, peakHeight, rise, roofOverhangFt: oh, enclosure } = structure;
   const halfW = W / 2;
   const halfL = L / 2;
@@ -93,7 +94,10 @@ export function Trim({ structure, color, wainscot }: TrimProps) {
 
   // --- Partition corner flashing: seals the gap where the interior partition
   // wall (the "additional end wall" of a utility build) meets the side walls.
-  // Same folded-L as the building corners, placed at the partition Z. ---
+  // Same folded-L as the building corners, placed at the partition Z. Only
+  // drawn where the trim separates an enclosed wall from an OPEN bay — when
+  // the carport extension has side paneling on that side, the wall reads as
+  // one continuous panel run and gets NO transition trim. ---
   if (enclosure.partitionZ !== null && enclosure.sideZ) {
     const pz = enclosure.partitionZ;
     const f = 0.25;
@@ -102,6 +106,8 @@ export function Trim({ structure, color, wainscot }: TrimProps) {
     const openSign = Math.abs(pz - enclosure.sideZ.end) < 0.01 ? 1 : -1;
     let pk = 0;
     for (const sx of [-1, 1] as const) {
+      const panelFt = sx < 0 ? structure.eavePanelFt.left : structure.eavePanelFt.right;
+      if (panelFt > 0.01) continue; // paneled extension → continuous wall, no trim
       corners.push(<Box key={`ps${pk++}`} pos={[sx * (halfW + out + tt / 2), H / 2, pz - (openSign * f) / 2]} size={[tt, H, f]} />);
       corners.push(<Box key={`pe${pk++}`} pos={[sx * (halfW - f / 2), H / 2, pz + openSign * (out / 2 + tt / 2)]} size={[f, H, tt]} />);
       corners.push(<Box key={`pb${pk++}`} pos={[sx * (halfW + out / 2), H / 2, pz + openSign * (out / 2)]} size={[out * 1.5, H, tt]} rotY={Math.atan2(-openSign, -sx)} />);
@@ -184,24 +190,81 @@ export function Trim({ structure, color, wainscot }: TrimProps) {
       {/* No base trim — wall sheeting runs to the slab (matches IdeaRoom). */}
 
       {/* Wainscot divider trim (~2.5") */}
-      {wainscot.enabled && <WainscotCap structure={structure} color={color} heightFt={wainscot.heightFt} />}
+      {wainscot.enabled && <WainscotCap structure={structure} color={color} heightFt={wainscot.heightFt} openings={openings} />}
     </group>
   );
 }
 
-function WainscotCap({ structure, color, heightFt }: { structure: StructureModel; color: string; heightFt: number }) {
+function WainscotCap({
+  structure,
+  color,
+  heightFt,
+  openings,
+}: {
+  structure: StructureModel;
+  color: string;
+  heightFt: number;
+  openings: Opening[];
+}) {
   const { width: W, length: L, legHeight: H, enclosure } = structure;
   const halfW = W / 2;
   const halfL = L / 2;
   const o2 = SHEET_OUTSET + 0.02;
   const wy = Math.min(heightFt, H - 0.5);
+
+  // Openings that vertically CROSS the cap line on a wall leave a gap in the
+  // bar (same rule as the band sheeting: a door/frame-out is a real hole, the
+  // trim doesn't run across it). `center` maps an opening to its world coord
+  // along the wall's axis.
+  const cutsFor = (sd: WallSide, center: (o: Opening) => number) =>
+    openings
+      .filter((o) => o.side === sd && o.sillHeight < wy + 0.08 && o.sillHeight + o.height > wy - 0.08)
+      .map((o) => ({ a: center(o) - o.width / 2, b: center(o) + o.width / 2 }));
+  const splitBar = (start: number, end: number, cuts: { a: number; b: number }[]) => {
+    let segs = [{ a: Math.min(start, end), b: Math.max(start, end) }];
+    for (const c of cuts) {
+      const next: typeof segs = [];
+      for (const s of segs) {
+        if (c.b <= s.a || c.a >= s.b) {
+          next.push(s);
+          continue;
+        }
+        if (c.a > s.a) next.push({ a: s.a, b: c.a });
+        if (c.b < s.b) next.push({ a: c.b, b: s.b });
+      }
+      segs = next;
+    }
+    return segs.filter((s) => s.b - s.a > 0.05);
+  };
+
   const bars: { s: [number, number, number]; e: [number, number, number] }[] = [];
+  // Eave-side bars run along Z at x = ±(halfW + o2); openings sit at z = -halfL + offset.
+  const sideBar = (sd: 'left' | 'right', zStart: number, zEnd: number) => {
+    const sx = (sd === 'left' ? -1 : 1) * (halfW + o2);
+    for (const s of splitBar(zStart, zEnd, cutsFor(sd, (o) => -halfL + o.offset)))
+      bars.push({ s: [sx, wy, s.a], e: [sx, wy, s.b] });
+  };
+  // End-wall bars run along X at a fixed z; back-gable offsets mirror.
+  const endBar = (sd: WallSide, z: number, mirror: boolean) => {
+    for (const s of splitBar(-halfW, halfW, cutsFor(sd, (o) => (mirror ? halfW - o.offset : -halfW + o.offset))))
+      bars.push({ s: [s.a, wy, z], e: [s.b, wy, z] });
+  };
+
   if (enclosure.sideZ) {
-    bars.push({ s: [-(halfW + o2), wy, enclosure.sideZ.start], e: [-(halfW + o2), wy, enclosure.sideZ.end] });
-    bars.push({ s: [halfW + o2, wy, enclosure.sideZ.start], e: [halfW + o2, wy, enclosure.sideZ.end] });
+    sideBar('left', enclosure.sideZ.start, enclosure.sideZ.end);
+    sideBar('right', enclosure.sideZ.start, enclosure.sideZ.end);
   }
-  if (enclosure.front === 'closed') bars.push({ s: [-halfW, wy, -(halfL + o2)], e: [halfW, wy, -(halfL + o2)] });
-  if (enclosure.back === 'closed') bars.push({ s: [-halfW, wy, halfL + o2], e: [halfW, wy, halfL + o2] });
+  if (enclosure.front === 'closed') endBar('front', -(halfL + o2), false);
+  if (enclosure.back === 'closed') endBar('back', halfL + o2, true);
+  // Partition divider (utility split) — full-height wall, gets the full wainscot cap.
+  if (enclosure.partitionZ !== null) endBar('partition', enclosure.partitionZ, false);
+  // Open-bay partial side panels — cap only where the eave panel is tall enough
+  // to hold the full band (otherwise the wainscot runs flush to the panel top).
+  if (structure.openBayZ) {
+    const ob = structure.openBayZ;
+    if (Math.min(structure.eavePanelFt.left, H) >= wy - 0.01) sideBar('left', ob.start, ob.end);
+    if (Math.min(structure.eavePanelFt.right, H) >= wy - 0.01) sideBar('right', ob.start, ob.end);
+  }
   return (
     <group>
       {bars.map((b, i) => (

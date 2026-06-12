@@ -2790,7 +2790,29 @@ var MANUFACTURERS = {
     // Per-size roll-up price overrides (clean WxH key) where CCI's chart
     // differs from the shared tables (entered from CA's sheet). Applies to the
     // standard/chain/merged tiers — NOT hi-impact.
-    rudPriceOverrides: { '10x14': 1780 },
+    // ── CCI roll-up door charts (June 2021 sheet, WHITE column) ──────────
+    // Uncertified = no hoist (+$325 hoist add-on per the sheet footnote).
+    // Certified   = chain hoist INCLUDED. StormSafe quotes certified doors,
+    // so the merged Roll-Up tier prefers the certified chart (rudPreferChain).
+    rdpStd: {
+      '6x6':500,'6x7':550,'6x8':550,'6x9':600,'6x10':600,'6x11':650,'6x12':650,'6x13':975,'6x14':975,'6x15':1025,'6x16':1025,
+      '8x6':575,'8x7':600,'8x8':600,'8x9':650,'8x10':650,'8x11':700,'8x12':700,'8x13':1025,'8x14':1025,'8x15':1075,'8x16':1075,
+      '9x6':625,'9x7':650,'9x8':650,'9x9':700,'9x10':700,'9x11':750,'9x12':750,'9x13':1075,'9x14':1075,'9x15':1125,'9x16':1125,
+      '10x6':675,'10x7':700,'10x8':700,'10x9':800,'10x10':800,'10x11':850,'10x12':850,'10x13':1125,'10x14':1125,'10x15':1175,'10x16':1175,
+      '12x6':1150,'12x7':1200,'12x8':1200,'12x9':1250,'12x10':1250,'12x11':1400,'12x12':1400,'12x13':1450,'12x14':1450,'12x15':1500,'12x16':1500,
+      '14x6':1850,'14x7':1900,'14x8':1900,'14x9':1950,'14x10':1950,'14x11':2050,'14x12':2050,'14x13':2100,'14x14':2100,'14x15':2350,'14x16':2350,
+      '16x6':1950,'16x7':2000,'16x8':2000,'16x9':2100,'16x10':2100,'16x11':2200,'16x12':2200,'16x13':2350,'16x14':2350,'16x15':2500,'16x16':2500
+    },
+    rdpChain: {
+      '6x6':750,'6x7':800,'6x8':800,'6x9':850,'6x10':850,'6x11':1050,'6x12':1050,'6x13':1700,'6x14':1700,'6x15':1800,'6x16':1800,
+      '8x6':800,'8x7':800,'8x8':800,'8x9':1400,'8x10':1400,'8x11':1600,'8x12':1600,'8x13':1700,'8x14':1700,'8x15':1800,'8x16':1800,
+      '9x6':850,'9x7':850,'9x8':850,'9x9':1500,'9x10':1500,'9x11':1700,'9x12':1700,'9x13':1800,'9x14':1800,'9x15':1900,'9x16':1900,
+      '10x6':950,'10x7':950,'10x8':950,'10x9':1050,'10x10':1050,'10x11':1800,'10x12':1800,'10x13':1900,'10x14':1900,'10x15':2000,'10x16':2000,
+      '12x6':1600,'12x7':1700,'12x8':1700,'12x9':1800,'12x10':1800,'12x11':1900,'12x12':1900,'12x13':2000,'12x14':2000,'12x15':2200,'12x16':2200,
+      '14x6':2100,'14x7':2200,'14x8':2200,'14x9':2300,'14x10':2300,'14x11':2400,'14x12':2400,'14x13':2500,'14x14':2500,'14x15':2600,'14x16':2600,
+      '16x6':2200,'16x7':2300,'16x8':2300,'16x9':2400,'16x10':2400,'16x11':2500,'16x12':2500,'16x13':2600,'16x14':2600,'16x15':2700,'16x16':2700
+    },
+    rudPreferChain: true,
     // CCI charges a FLAT side-connection fee for eave-attached lean-tos
     // (Sensei: 'Side Connection Fees' $400). Gable connections keep the formula.
     eaveConnFlat: 400,
@@ -3180,6 +3202,10 @@ function initMfrPricing() {
   PP = m.plans;
   PL = m.planLabels;
   AC_PRICES = m.acPrices;
+  // Roll-up door charts: manufacturer-specific when provided (CCI), CA defaults otherwise
+  RDP_STD = m.rdpStd || RDP_STD_CA;
+  RDP_CHAIN = m.rdpChain || RDP_CHAIN_CA;
+  if(typeof refreshAllRUDSizes==='function') try{ refreshAllRUDSizes(); }catch(e){}
   // Rebuild plans dropdown options
   var pSel = G('plans-sel');
   if(pSel) pSel.innerHTML = m.planOptions;
@@ -3288,6 +3314,9 @@ var RDP_HI = {
   '*16x14':3100,
   '*18x14':3350
 };
+// The literals above are CA's charts — keep them as the defaults and let a
+// manufacturer supply its own (CCI: rdpStd/rdpChain from its June 2021 sheet).
+var RDP_STD_CA = RDP_STD, RDP_CHAIN_CA = RDP_CHAIN;
 // Sizes needing lift (hi-impact: 13'+ width or 14'+ height)
 var HI_LIFT_WIDTHS = [13,14,16,18];
 var HI_LIFT_HEIGHTS = [14,16,18];
@@ -4240,8 +4269,10 @@ function getDoorPrice(type, size){
   else if(type==='chain') p=RDP_CHAIN[size]||RDP_CHAIN['*'+size]||0;
   else if(type==='hiimpact') p=RDP_HI[size]||RDP_HI['*'+size]||0;
   else if(type==='rollup'){
-    // Merged: prefer STD price (smaller/cheaper, manual operation); fall back to CHAIN.
-    p=RDP_STD[size]?RDP_STD[size]:(RDP_CHAIN[size]||RDP_CHAIN['*'+size]||0);
+    // Merged tier. CA: prefer STD (cheaper, manual). CCI (rudPreferChain):
+    // prefer the CERTIFIED chart (hoist included) — StormSafe quotes certified.
+    if(typeof MFR==='function' && MFR().rudPreferChain) p=RDP_CHAIN[size]||RDP_CHAIN['*'+size]||RDP_STD[size]||0;
+    else p=RDP_STD[size]?RDP_STD[size]:(RDP_CHAIN[size]||RDP_CHAIN['*'+size]||0);
   }
   return rudPriceAdj(type, size, p);
 }
@@ -4253,7 +4284,10 @@ function doorHasChainIncluded(type, size){
   if(type==='chain') return true;            // legacy explicit chain type
   if(type==='hiimpact') return true;         // hi-impact doors always include hoist
   if(type==='rollup'){
-    // Chain is included only if the size lives in the CHAIN table, NOT in STD.
+    // CCI (rudPreferChain): merged tier sells the CERTIFIED door → hoist included
+    // whenever the size exists in the certified chart. CA: chain included only
+    // when the size lives in the CHAIN table, NOT in STD.
+    if(typeof MFR==='function' && MFR().rudPreferChain) return !!(RDP_CHAIN[size]||RDP_CHAIN['*'+size]);
     if(RDP_STD[size]) return false;
     return !!(RDP_CHAIN[size]||RDP_CHAIN['*'+size]);
   }
@@ -4290,6 +4324,7 @@ function doorNeedsLift(type, size){
   if(type==='standard') return false;
   if(type==='chain') return !!RDP_CHAIN['*'+size];
   if(type==='rollup'){
+    if(typeof MFR==='function' && MFR().rudPreferChain) return !!RDP_CHAIN['*'+size];
     if(RDP_STD[size]) return false;          // STD-tier sizes never need lift
     return !!RDP_CHAIN['*'+size];            // chain-tier with leading * = lift required
   }
@@ -5835,6 +5870,21 @@ function updateRUDSizes(dtypeEl){
     //   ⚠ Lift   = reach lift required on site (* prefix in CHAIN key)
     chRow.style.display=''; slRow.style.display='';
     var sizeMap = {};   // dedupe map: size → {price, chainIncluded, lift}
+    var preferChain = (typeof MFR==='function' && !!MFR().rudPreferChain);
+    if(preferChain){
+      // CCI: the merged tier IS the certified chart (hoist included); any size
+      // missing from it falls back to the uncertified chart.
+      Object.keys(RDP_CHAIN).forEach(function(rawK){
+        var lift = (rawK.charAt(0) === '*');
+        var clean = lift ? rawK.substring(1) : rawK;
+        if(!fits(clean)) return;
+        sizeMap[clean] = {price: rudPriceAdj('rollup', clean, RDP_CHAIN[rawK]), chainIncluded: true, lift: lift};
+      });
+      Object.keys(RDP_STD).forEach(function(k){
+        if(!fits(k) || sizeMap[k]) return;
+        sizeMap[k] = {price: rudPriceAdj('rollup', k, RDP_STD[k]), chainIncluded: false, lift: false};
+      });
+    } else {
     Object.keys(RDP_STD).forEach(function(k){
       if(!fits(k)) return;
       sizeMap[k] = {price: rudPriceAdj('rollup', k, RDP_STD[k]), chainIncluded: false, lift: false};
@@ -5846,6 +5896,7 @@ function updateRUDSizes(dtypeEl){
       if(sizeMap[clean]) return;     // STD already covers this size; keep STD price
       sizeMap[clean] = {price: rudPriceAdj('rollup', clean, RDP_CHAIN[rawK]), chainIncluded: true, lift: lift};
     });
+    }
     // Sort by door height, then width (see rudSizeSort)
     var keys = Object.keys(sizeMap).sort(rudSizeSort);
     keys.forEach(function(k){

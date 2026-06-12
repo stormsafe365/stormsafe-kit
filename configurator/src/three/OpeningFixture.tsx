@@ -138,16 +138,16 @@ export function OpeningFixture({
       <TrimBar pos={[w / 2 + t / 2, onFloor ? t / 2 : 0, 0]} size={[t, onFloor ? h + t : h + 2 * t, trimDepth]} color={tc} />
       {!onFloor && <TrimBar pos={[0, -h / 2 - t / 2, 0]} size={[w + 2 * t, t, trimDepth]} color={tc} />}
 
-      {/* Panel. For a framed opening (a real see-through cut) the issue is you
-          look straight through it to the OPPOSITE wall's frame. A depth-only
-          occluder sits in the opening: it writes depth but no color and renders
-          first (renderOrder -1), so the far wall + its frame fail the depth test
-          and aren't painted — the cut reads clean/empty (the trim border is the
-          only thing left). DoubleSide so it occludes from inside too. */}
+      {/* Panel. A framed opening on a LEAN-TO is a true see-through cut: what's
+          behind it is the lean-to interior (the main building's wall, posts,
+          roof underside) and SHOULD stay visible — unlike the main building,
+          whose frame-outs keep a depth occluder to hide the far wall's frame.
+          So the opening renders NOTHING — just an invisible plane (writes
+          neither color nor depth) kept purely as the click/drag target. */}
       {isFrameOut ? (
-        <mesh renderOrder={-1} onPointerDown={onPanelPointerDown}>
+        <mesh onPointerDown={onPanelPointerDown}>
           <planeGeometry args={[w, h]} />
-          <meshBasicMaterial colorWrite={false} side={THREE.DoubleSide} />
+          <meshBasicMaterial colorWrite={false} depthWrite={false} side={THREE.DoubleSide} userData={{ keepTransparent: true }} />
         </mesh>
       ) : (
         <mesh position={[0, 0, panelZ]} material={panelMat} castShadow onPointerDown={onPanelPointerDown}>

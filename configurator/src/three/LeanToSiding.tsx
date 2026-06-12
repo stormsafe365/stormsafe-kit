@@ -135,34 +135,54 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
                   <PolyPanel key={`side-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.walls, wallMetal, false)} />
                 ))
               : side !== 'open' &&
-                sideWallPolys(geo, side, lt.lowLegHeightFt).map((p, i) => (
+                sideWallPolys(geo, side, lt.lowLegHeightFt, lt.openings.filter((o) => o.wall === 'outer')).map((p, i) => (
                   <PolyPanel key={`side-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.walls, wallMetal, false)} />
                 ))}
 
-            {/* Wainscot band on the outer wall (only when the wall is fully closed) */}
-            {side === 'closed' && wH > 0 && (
-              <PolyPanel corners={geo.wainscot(wH)} uvs={geo.wainscotUV(wH)} material={polyMat(tex.wainscot, wainMetal, false)} />
-            )}
+            {/* Wainscot band on the outer wall (only when the wall is fully
+                closed) — cut around openings reaching into it, like the main
+                building's wainscot. */}
+            {side === 'closed' &&
+              wH > 0 &&
+              wallBandStrips(geo, 0, wH, lt.openings.filter((o) => o.wall === 'outer'), 0.02).map((p, i) => (
+                <PolyPanel key={`wain-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} />
+              ))}
 
             {/* Gable ends — cut around their openings when closed */}
             <GableEnd geo={geo} which="front" val={front} openings={lt.openings.filter((o) => o.wall === 'front')} material={polyMat(tex.walls, wallMetal, false)} />
             <GableEnd geo={geo} which="back" val={back} openings={lt.openings.filter((o) => o.wall === 'back')} material={polyMat(tex.walls, wallMetal, false)} />
 
             {/* Wainscot band on a CLOSED gable end (matches the main building's
-                gable-end wainscot — only when the end is fully sheeted). */}
-            {front === 'closed' && wH > 0 && (
-              <PolyPanel corners={geo.frontGableWainscot(wH)} uvs={geo.frontGableWainscotUV(wH)} material={polyMat(tex.wainscot, wainMetal, false)} />
-            )}
-            {back === 'closed' && wH > 0 && (
-              <PolyPanel corners={geo.backGableWainscot(wH)} uvs={geo.backGableWainscotUV(wH)} material={polyMat(tex.wainscot, wainMetal, false)} />
-            )}
+                gable-end wainscot — only when the end is fully sheeted), cut
+                around that wall's openings. */}
+            {front === 'closed' &&
+              wH > 0 &&
+              gableWainscotStrips(geo, 'front', wH, lt.openings.filter((o) => o.wall === 'front')).map((p, i) => (
+                <PolyPanel key={`fgw-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} />
+              ))}
+            {back === 'closed' &&
+              wH > 0 &&
+              gableWainscotStrips(geo, 'back', wH, lt.openings.filter((o) => o.wall === 'back')).map((p, i) => (
+                <PolyPanel key={`bgw-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} />
+              ))}
+
+            {/* Wainscot cap/divider trim — same ~2" bar the main building runs
+                along the top of its wainscot, broken around openings. */}
+            {wH > 0 &&
+              leanToWainscotCaps(geo, wH, walls, lt.openings).map((bar, i) => (
+                <mesh key={`wcap-${i}`} position={bar.pos} material={trimMat} castShadow receiveShadow>
+                  <boxGeometry args={bar.size} />
+                </mesh>
+              ))}
 
             {/* Door / window / roll-up fixtures on every sheeted wall (matches
-                the main-building fixture exactly via the shared component). */}
+                the main-building fixture exactly via the shared component).
+                Outer-wall fixtures also render on PARTIAL (eave-down) closures
+                — the band cuts around them, so the fixture must be there. */}
             {lt.openings
               .filter(
                 (o) =>
-                  (o.wall === 'outer' && side === 'closed') ||
+                  (o.wall === 'outer' && side !== 'open') ||
                   (o.wall === 'front' && front === 'closed') ||
                   (o.wall === 'back' && back === 'closed'),
               )
@@ -267,6 +287,11 @@ function leanToTrim(
   // it (recessed inboard + dropped below the drip lip), plus a thin dark drip. ──
   specs.push(box(outerAcrossOh - outwardA * TUCK, lipUp - FASCIA_H / 2 - 0.03, runMid, TRIM_T, FASCIA_H, runLen));
   specs.push(box(outerAcrossOh - outwardA * (TUCK * 0.4), lipUp - 0.07, runMid, 0.05, 0.04, runLen, true));
+
+  // ── Ridge/attachment flashing: caps the joint where the lean-to roof meets
+  // the main building's wall (the lean-to's "ridge") — a flashing band along
+  // the high edge, tight against the building face. ──
+  specs.push(box(innerAcross - outwardA * 0.02, innerUp + 0.07, runMid, 0.12, 0.24, runLen));
 
   // ── Rake boards: follow each gable-end roof slope, tucked UNDER the roof so
   // the gable edge overhangs them (recessed inboard along the run + dropped). ──
@@ -476,10 +501,7 @@ function gableSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; 
 }
 
 // Outer long wall, honoring the side-wall setting (height fraction or panel count).
-export function sideWallPolys(geo: SurfaceSet, side: SideVal, lh: number): Array<{ corners: Pt[]; uvs: UV[] }> {
-  const { axis, plane, a, b } = geo.wall;
-  const lo = a;
-  const hi = b;
+export function sideWallPolys(geo: SurfaceSet, side: SideVal, lh: number, openings: LeanToOpening[] = []): Array<{ corners: Pt[]; uvs: UV[] }> {
   // Sheeting hangs from the EAVE (low-leg top = lh) DOWNWARD. `h` is the height
   // of the sheeted band; it fills [lh-h, lh] and the lower wall stays open.
   let h = lh;
@@ -490,46 +512,38 @@ export function sideWallPolys(geo: SurfaceSet, side: SideVal, lh: number): Array
     const m = /^(\d)panel$/.exec(side);
     if (m) h = Math.min(lh, parseInt(m[1], 10) * 3); // N × 3' panels DOWN from the eave
   }
-  const yTop = lh; // eave line
-  const yBot = lh - h; // where the closure stops; open framing below
-
-  const corners: Pt[] =
-    axis === 'z'
-      ? [
-          [plane, yBot, lo],
-          [plane, yBot, hi],
-          [plane, yTop, hi],
-          [plane, yTop, lo],
-        ]
-      : [
-          [lo, yBot, plane],
-          [hi, yBot, plane],
-          [hi, yTop, plane],
-          [lo, yTop, plane],
-        ];
-  const uvs: UV[] = [
-    [lo, yBot],
-    [hi, yBot],
-    [hi, yTop],
-    [lo, yTop],
-  ];
-  return [{ corners, uvs }];
+  // Cut the band around any opening that reaches up into it — sheeting never
+  // crosses a framed opening (same rule as the fully-closed wall / the main
+  // building's open-bay panels).
+  return wallBandStrips(geo, lh - h, h, openings);
 }
 
 // Outer long wall (height lh, run a..b) cut around its openings via stripsAround.
 function cutOuterWall(geo: SurfaceSet, lh: number, openings: LeanToOpening[]): Array<{ corners: Pt[]; uvs: UV[] }> {
-  const { axis, plane, a, b } = geo.wall;
+  return wallBandStrips(geo, 0, lh, openings);
+}
+
+// A horizontal sheeting band on the outer wall plane spanning [yBot, yBot+bandH],
+// cut into solid strips around the openings that intersect it. `proud` shifts
+// the band outward off the wall plane (e.g. the wainscot overlay sits 0.02 out).
+function wallBandStrips(geo: SurfaceSet, yBot: number, bandH: number, openings: LeanToOpening[], proud = 0): Array<{ corners: Pt[]; uvs: UV[] }> {
+  const { axis, a, b } = geo.wall;
+  const outward = Math.sign(geo.wall.plane - (geo.gable?.innerAcross ?? 0)) || 1;
+  const plane = geo.wall.plane + (proud ? outward * proud : 0);
   const wallLen = b - a;
   const midRun = (a + b) / 2;
-  const holes: LocalRect[] = openings.map((o) => ({
-    u: a + o.offsetFt - midRun,
-    v: o.sillFt + o.heightFt / 2 - lh / 2,
-    w: o.widthFt,
-    h: o.heightFt,
-  }));
-  return stripsAround(wallLen, lh, holes).map((st) => {
+  const yMid = yBot + bandH / 2;
+  const holes: LocalRect[] = openings
+    .filter((o) => o.sillFt + o.heightFt > yBot + 0.01 && o.sillFt < yBot + bandH - 0.01)
+    .map((o) => ({
+      u: a + o.offsetFt - midRun,
+      v: o.sillFt + o.heightFt / 2 - yMid,
+      w: o.widthFt,
+      h: o.heightFt,
+    }));
+  return stripsAround(wallLen, bandH, holes).map((st) => {
     const runC = midRun + st.u;
-    const yC = lh / 2 + st.v;
+    const yC = yMid + st.v;
     const r0 = runC - st.w / 2;
     const r1 = runC + st.w / 2;
     const y0 = yC - st.h / 2;
@@ -541,6 +555,96 @@ function cutOuterWall(geo: SurfaceSet, lh: number, openings: LeanToOpening[]): A
     const uvs: UV[] = [[r0, y0], [r1, y0], [r1, y1], [r0, y1]];
     return { corners, uvs };
   });
+}
+
+// Wainscot band on a closed gable end, cut around that wall's openings —
+// replaces the old single uncut polygon so a door / frame-out leaves a real
+// gap in the band (same rule as the main building's gable wainscot).
+function gableWainscotStrips(geo: SurfaceSet, which: 'front' | 'back', wH: number, openings: LeanToOpening[]): Array<{ corners: Pt[]; uvs: UV[] }> {
+  const g = geo.gable;
+  const outward = which === 'front' ? -1 : 1;
+  const plane = (which === 'front' ? g.frontPlane : g.backPlane) + outward * 0.02;
+  const minA = Math.min(g.innerAcross, g.outerAcross);
+  const maxA = Math.max(g.innerAcross, g.outerAcross);
+  const width = maxA - minA;
+  const midA = (minA + maxA) / 2;
+  const holes: LocalRect[] = openings
+    .filter((o) => o.sillFt < wH - 0.01)
+    .map((o) => ({ u: minA + o.offsetFt - midA, v: o.sillFt + o.heightFt / 2 - wH / 2, w: o.widthFt, h: o.heightFt }));
+  return stripsAround(width, wH, holes).map((st) => {
+    const aC = midA + st.u;
+    const yC = wH / 2 + st.v;
+    const a0 = aC - st.w / 2;
+    const a1 = aC + st.w / 2;
+    const y0 = yC - st.h / 2;
+    const y1 = yC + st.h / 2;
+    const corners: Pt[] =
+      g.kind === 'eave'
+        ? [[a0, y0, plane], [a1, y0, plane], [a1, y1, plane], [a0, y1, plane]]
+        : [[plane, y0, a0], [plane, y0, a1], [plane, y1, a1], [plane, y1, a0]];
+    const uvs: UV[] = [[a0, y0], [a1, y0], [a1, y1], [a0, y1]];
+    return { corners, uvs };
+  });
+}
+
+/** Split [start,end] into segments avoiding the cut intervals. */
+function splitSegs(start: number, end: number, cuts: Array<{ a: number; b: number }>): Array<{ a: number; b: number }> {
+  let segs = [{ a: Math.min(start, end), b: Math.max(start, end) }];
+  for (const c of cuts) {
+    const next: typeof segs = [];
+    for (const s of segs) {
+      if (c.b <= s.a || c.a >= s.b) { next.push(s); continue; }
+      if (c.a > s.a) next.push({ a: s.a, b: c.a });
+      if (c.b < s.b) next.push({ a: c.b, b: s.b });
+    }
+    segs = next;
+  }
+  return segs.filter((s) => s.b - s.a > 0.05);
+}
+
+// Wainscot cap/divider trim bars (~2") at the top of the wainscot band —
+// outer wall + closed gable ends, broken around any opening that crosses the
+// wainscot line (mirrors the main building's WainscotCap rule).
+function leanToWainscotCaps(
+  geo: SurfaceSet,
+  wH: number,
+  walls: { side: SideVal; front: GableVal; back: GableVal },
+  openings: LeanToOpening[],
+): Array<{ pos: Pt; size: [number, number, number] }> {
+  const bars: Array<{ pos: Pt; size: [number, number, number] }> = [];
+  const crossing = (wall: LeanToOpening['wall'], origin: number) =>
+    openings
+      .filter((o) => o.wall === wall && o.sillFt < wH + 0.08 && o.sillFt + o.heightFt > wH - 0.08)
+      .map((o) => ({ a: origin + o.offsetFt - o.widthFt / 2, b: origin + o.offsetFt + o.widthFt / 2 }));
+  const SZ = 0.16;
+  // Outer wall — bar along the run at the band's proud face.
+  if (walls.side === 'closed') {
+    const { axis, a, b } = geo.wall;
+    const outward = Math.sign(geo.wall.plane - geo.gable.innerAcross) || 1;
+    const plane = geo.wall.plane + outward * (0.02 + SZ / 2);
+    for (const s of splitSegs(a, b, crossing('outer', a)))
+      bars.push(
+        axis === 'z'
+          ? { pos: [plane, wH, (s.a + s.b) / 2], size: [SZ, SZ, s.b - s.a] }
+          : { pos: [(s.a + s.b) / 2, wH, plane], size: [s.b - s.a, SZ, SZ] },
+      );
+  }
+  // Closed gable ends — bar along the across direction.
+  const g = geo.gable;
+  const minA = Math.min(g.innerAcross, g.outerAcross);
+  const maxA = Math.max(g.innerAcross, g.outerAcross);
+  for (const which of ['front', 'back'] as const) {
+    if (walls[which] !== 'closed') continue;
+    const outward = which === 'front' ? -1 : 1;
+    const plane = (which === 'front' ? g.frontPlane : g.backPlane) + outward * (0.02 + SZ / 2);
+    for (const s of splitSegs(minA, maxA, crossing(which, minA)))
+      bars.push(
+        g.kind === 'eave'
+          ? { pos: [(s.a + s.b) / 2, wH, plane], size: [s.b - s.a, SZ, SZ] }
+          : { pos: [plane, wH, (s.a + s.b) / 2], size: [SZ, SZ, s.b - s.a] },
+      );
+  }
+  return bars;
 }
 
 // Gable end (front/back). When fully closed AND it has openings, cut the lower

@@ -2786,7 +2786,14 @@ var MANUFACTURERS = {
     ],
     // ── Scalar pricing ───────────────────────────────────────────────────────
     wtd_std: 400, wtd_hi: 600,
-    win_std: 200, win_hi: 600,
+    win_std: 200, win_hi: 675,
+    // Per-size roll-up price overrides (clean WxH key) where CCI's chart
+    // differs from the shared tables (entered from CA's sheet). Applies to the
+    // standard/chain/merged tiers — NOT hi-impact.
+    rudPriceOverrides: { '10x14': 1780 },
+    // CCI charges a FLAT side-connection fee for eave-attached lean-tos
+    // (Sensei: 'Side Connection Fees' $400). Gable connections keep the formula.
+    eaveConnFlat: 400,
     chain: 325, seal: 12.00,
     freeThresh: 10000, fastenerAlwaysFree: true,
     // ── Side Panel pricing (carport/GCH open sections) ───────────────────────
@@ -2996,7 +3003,7 @@ var MANUFACTURERS = {
       {v:'hiwind',      label:'Man Door (Hi-Wind Rated) 36×80',  style:'std',     color:'white'},
     ],
     // ── Window types ───────────────────────────────────────────────────────────────────────────────
-    winPrices: {std:200, w3036:225, b3030:250, b3036:275, hi:600},
+    winPrices: {std:200, w3036:225, b3030:250, b3036:275, hi:675},
     winTypes: [
       {v:'std',   label:'White 30×30',                     fw:30, fh:30, color:'white'},
       {v:'w3036', label:'White 30×36',                     fw:30, fh:36, color:'white'},
@@ -3991,8 +3998,8 @@ function gConnectionFees(){
       // Gable-end connection: higher base ($700) — matches CCI Sensei (e.g., 30' gable connection = $750)
       total+=700+Math.ceil(Math.max(0,connLen-21)/5)*25;
     } else {
-      // Eave Side-to-Side connection: per CCI accessories sheet ("Start at $100 + $25/5' past 21'")
-      total+=100+Math.ceil(Math.max(0,connLen-21)/5)*25;
+      // Eave side connection: CCI = flat fee (eaveConnFlat); CA = $100 + $25/5' past 21'
+      total+=(typeof MFR==='function'&&MFR().eaveConnFlat)?MFR().eaveConnFlat:(100+Math.ceil(Math.max(0,connLen-21)/5)*25);
     }
   });
   return total;
@@ -4218,16 +4225,25 @@ function gWalls(){
   }
   return Math.round(t);
 }
+// Apply the active manufacturer's per-size roll-up price override (if any).
+// Keys are clean "WxH" (no '*'); hi-impact is never overridden.
+function rudPriceAdj(type, size, price){
+  if(type==='hiimpact') return price;
+  var ov=(typeof MFR==='function' && MFR().rudPriceOverrides)||null;
+  if(!ov) return price;
+  var clean=size && size.charAt(0)==='*' ? size.substring(1) : size;
+  return ov[clean]!==undefined ? ov[clean] : price;
+}
 function getDoorPrice(type, size){
-  if(type==='standard') return RDP_STD[size]||0;
-  if(type==='chain') return RDP_CHAIN[size]||RDP_CHAIN['*'+size]||0;
-  if(type==='hiimpact') return RDP_HI[size]||RDP_HI['*'+size]||0;
-  if(type==='rollup'){
+  var p=0;
+  if(type==='standard') p=RDP_STD[size]||0;
+  else if(type==='chain') p=RDP_CHAIN[size]||RDP_CHAIN['*'+size]||0;
+  else if(type==='hiimpact') p=RDP_HI[size]||RDP_HI['*'+size]||0;
+  else if(type==='rollup'){
     // Merged: prefer STD price (smaller/cheaper, manual operation); fall back to CHAIN.
-    if(RDP_STD[size]) return RDP_STD[size];
-    return RDP_CHAIN[size]||RDP_CHAIN['*'+size]||0;
+    p=RDP_STD[size]?RDP_STD[size]:(RDP_CHAIN[size]||RDP_CHAIN['*'+size]||0);
   }
-  return 0;
+  return rudPriceAdj(type, size, p);
 }
 // Does this (type, size) combo include a chain hoist in the price? Used to:
 //   • Mark the option with ★ in the dropdown
@@ -4473,6 +4489,30 @@ function sideClosureOptionsHTML(sel){
     return '<option value="'+o.v+'"'+(o.v===sel?' selected':'')+'>'+o.t+'</option>';
   }).join('');
 }
+// Lean-to frame-out (framed opening) price by opening width + wall. CCI prices
+// EAVE-side openings from its 'Side Opening, No Door' chart and gable-end
+// openings from the 'Framed Opening — Garage Door' chart; CA charges its flat
+// per-opening garage-door frameout price.
+function ltFrameoutPrice(wFt, loc){
+  var ac=AC_PRICES||{};
+  if(ACTIVE_MFR==='CCI'){
+    if(loc==='outer'){
+      var k = wFt<=10 ? "Framed Opening — Side Opening, No Door (6'-10' Wide)"
+            : wFt<=12 ? "Framed Opening — Side Opening, No Door (12' Wide)"
+            : wFt<=14 ? "Framed Opening — Side Opening, No Door (14' Wide)"
+            : wFt<=16 ? "Framed Opening — Side Opening, No Door (16' Wide)"
+            : wFt<=18 ? "Framed Opening — Side Opening, No Door (18' Wide)"
+            : "Framed Opening — Side Opening, No Door (20' Wide)";
+      return ac[k]||0;
+    }
+    var g = wFt<=10 ? "Framed Opening — Garage Door (6'-10' Wide)"
+          : wFt<=12 ? "Framed Opening — Garage Door (12' Wide)"
+          : wFt<=14 ? "Framed Opening — Garage Door (14' Wide)"
+          : "Framed Opening — Garage Door (16' Wide)";
+    return ac[g]||0;
+  }
+  return ac['Framed Opening — Garage Door (per opening)']||0;
+}
 // Closed band height (ft), eave-down, for wall height H. Clamped to H (a panel
 // taller than the wall just fills the wall — never overshoots the eave).
 function sideClosureFeet(val, H){
@@ -4663,6 +4703,12 @@ function gLT(){
       } else if(atype==='win'){
         var ahi=ae.querySelector('.lt-acc-win-hi')?ae.querySelector('.lt-acc-win-hi').value:'std';
         accAdj+=aqty*(MFR().winPrices[ahi]||window._win_std||200);
+      } else if(atype==='frameout'){
+        // Framed opening on the lean-to — priced from the manufacturer's
+        // frameout charts (CCI: Side Opening chart on the outer wall).
+        var afoW=parseFloat(ae.querySelector('.lt-acc-fo-w')&&ae.querySelector('.lt-acc-fo-w').value)||10;
+        var afoLoc=ae.querySelector('.lt-acc-loc')?ae.querySelector('.lt-acc-loc').value:'outer';
+        accAdj+=aqty*ltFrameoutPrice(afoW, afoLoc);
       }
     });
     t+=bp+heightAdj+encAdj+accAdj;
@@ -4698,7 +4744,7 @@ function getValidRDPSizes(lt_w, lt_h, loc){
       if(dw>lt_w-2) ok=false;
       if(dh>lt_h-1) ok=false;
     }
-    if(ok) valid.push({key:k,price:RDP_STD[k]});
+    if(ok) valid.push({key:k,price:rudPriceAdj('standard', k, RDP_STD[k])});
   });
   return valid;
 }
@@ -5791,14 +5837,14 @@ function updateRUDSizes(dtypeEl){
     var sizeMap = {};   // dedupe map: size → {price, chainIncluded, lift}
     Object.keys(RDP_STD).forEach(function(k){
       if(!fits(k)) return;
-      sizeMap[k] = {price: RDP_STD[k], chainIncluded: false, lift: false};
+      sizeMap[k] = {price: rudPriceAdj('rollup', k, RDP_STD[k]), chainIncluded: false, lift: false};
     });
     Object.keys(RDP_CHAIN).forEach(function(rawK){
       var lift = (rawK.charAt(0) === '*');
       var clean = lift ? rawK.substring(1) : rawK;
       if(!fits(clean)) return;
       if(sizeMap[clean]) return;     // STD already covers this size; keep STD price
-      sizeMap[clean] = {price: RDP_CHAIN[rawK], chainIncluded: true, lift: lift};
+      sizeMap[clean] = {price: rudPriceAdj('rollup', clean, RDP_CHAIN[rawK]), chainIncluded: true, lift: lift};
     });
     // Sort by door height, then width (see rudSizeSort)
     var keys = Object.keys(sizeMap).sort(rudSizeSort);
@@ -5817,7 +5863,7 @@ function updateRUDSizes(dtypeEl){
     Object.keys(RDP_STD).sort(rudSizeSort).forEach(function(k){
       if(!fits(k)) return;
       var o=document.createElement('option'); o.value=k;
-      o.textContent=k+" — "+fC(RDP_STD[k]);
+      o.textContent=k+" — "+fC(rudPriceAdj('standard', k, RDP_STD[k]));
       szSel.appendChild(o);
     });
   } else if(dtype==='chain'){
@@ -5827,7 +5873,7 @@ function updateRUDSizes(dtypeEl){
       var liftFlag=k.charAt(0)==='*';
       var display=liftFlag?k.substring(1):k;
       var o=document.createElement('option'); o.value=display;
-      o.textContent=display+(liftFlag?' ★':'')+' — '+fC(RDP_CHAIN[k]);
+      o.textContent=display+(liftFlag?' ★':'')+' — '+fC(rudPriceAdj('chain', display, RDP_CHAIN[k]));
       szSel.appendChild(o);
     });
     var note=entry.querySelector('.ren');
@@ -7045,6 +7091,12 @@ async function printQuote(){
         }
         else if(atype==='wtd'){var ahi=ae.querySelector('.lt-acc-wtd-hi')?ae.querySelector('.lt-acc-wtd-hi').value:'std';var ap=MFR().wtdPrices[ahi]||window._wtd_std||300;var wtdLbl=MFR().wtdTypes.find(function(t){return t.v===ahi;})||{label:ahi};rows+=row('  Lean-To: Walk-Through Door ('+wtdLbl.label+') ('+alocLabel+')',aqty,ap,ap*aqty);}
         else if(atype==='win'){var ahi=ae.querySelector('.lt-acc-win-hi')?ae.querySelector('.lt-acc-win-hi').value:'std';var ap=MFR().winPrices[ahi]||window._win_std||200;var winLbl=MFR().winTypes.find(function(t){return t.v===ahi;})||{label:ahi};rows+=row('  Lean-To: Window ('+winLbl.label+') ('+alocLabel+')',aqty,ap,ap*aqty);}
+        else if(atype==='frameout'){
+          var afoW2=parseFloat(ae.querySelector('.lt-acc-fo-w')&&ae.querySelector('.lt-acc-fo-w').value)||10;
+          var afoH2=parseFloat(ae.querySelector('.lt-acc-fo-h')&&ae.querySelector('.lt-acc-fo-h').value)||10;
+          var afp=ltFrameoutPrice(afoW2, aloc);
+          if(afp) rows+=row('  Lean-To: '+afoW2+'x'+afoH2+"' Framed Opening ("+alocLabel+')',aqty,afp,afp*aqty);
+        }
       });
       // Per-lean-to End Connection Fee (skip for free-standing)
       if(!ltIsFree){
@@ -7055,7 +7107,7 @@ async function printQuote(){
         var _connFeeQ=0;
         if(_isWSQ){ _connFeeQ=300+Math.ceil(Math.max(0,ll-20)/4)*25; }
         else if(_isGableQ){ _connFeeQ=700+Math.ceil(Math.max(0,ll-21)/5)*25; }
-        else { _connFeeQ=100+Math.ceil(Math.max(0,ll-21)/5)*25; }
+        else { _connFeeQ=(typeof MFR==='function'&&MFR().eaveConnFlat)?MFR().eaveConnFlat:(100+Math.ceil(Math.max(0,ll-21)/5)*25); }
         if(_connFeeQ>0){
           var _connLblQ=_isGableQ?'Lean-To: End Connection Fee ('+ls+', '+ll+"')":'Lean-To: Connection Fee ('+ls+', '+ll+"')";
           rows+=row('  '+_connLblQ,null,null,_connFeeQ);

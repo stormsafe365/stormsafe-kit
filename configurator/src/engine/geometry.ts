@@ -273,6 +273,40 @@ function clipFrameAtLeanToOpenings(members: Member[], leanTos: LeanToStructure[]
 
   const out: Member[] = [];
   for (const m of members) {
+    // Outer-wall BASE RAIL: a horizontal member at the slab line along the run.
+    // A floor-level opening (sill ≈ 0) removes the rail across its width — same
+    // rule as the main building's base rails (no rail across a framed opening).
+    if (m.kind === 'baseRail' && Math.abs(m.start[1]) < 0.1 && Math.abs(m.end[1]) < 0.1) {
+      let railSegs: Array<[Vec3, Vec3]> = [[m.start, m.end]];
+      let railCut = false;
+      for (const b of bands) {
+        if (b.ylo > 0.1) continue; // opening doesn't reach the slab
+        const runAxis = b.eave ? 2 : 0;
+        const planeAxis = b.eave ? 0 : 2;
+        const onPlane =
+          Math.abs(m.start[planeAxis] - b.plane) < 0.1 && Math.abs(m.end[planeAxis] - b.plane) < 0.1;
+        if (!onPlane) continue;
+        const next: Array<[Vec3, Vec3]> = [];
+        for (const [s, e] of railSegs) {
+          const spans = subtractSpans(s[runAxis], e[runAxis], [[b.lo, b.hi]]);
+          if (spans.length !== 1 || Math.abs(spans[0][1] - spans[0][0] - Math.abs(e[runAxis] - s[runAxis])) > 0.01) railCut = true;
+          for (const [p, q] of spans) {
+            const ns = [...s] as Vec3;
+            const ne = [...e] as Vec3;
+            ns[runAxis] = p;
+            ne[runAxis] = q;
+            next.push([ns, ne]);
+          }
+        }
+        railSegs = next;
+      }
+      if (railCut) {
+        for (const [s, e] of railSegs) out.push(member('baseRail', s, e));
+        continue;
+      }
+      out.push(m);
+      continue;
+    }
     if (m.kind !== 'leg' && m.kind !== 'brace') {
       out.push(m);
       continue;

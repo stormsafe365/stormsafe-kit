@@ -429,11 +429,29 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
     <select id="wre" onchange="rc()">
       <option value="Closed">Closed</option>
       <option value="Open">Open</option>
+      <option value="1panel">1 Panel (3')</option>
+      <option value="1_5panel">1 1/2 Panel (4.5')</option>
+      <option value="2panel">2 Panels (6')</option>
+      <option value="2_5panel">2 1/2 Panels (7.5')</option>
+      <option value="3panel">3 Panels (9')</option>
+      <option value="3_5panel">3 1/2 Panels (10.5')</option>
+      <option value="q1">1/4 Closed</option>
+      <option value="q2">1/2 Closed</option>
+      <option value="q3">3/4 Closed</option>
     </select></div>
   <div class="row"><label>Left Eave Side</label>
     <select id="wle" onchange="rc()">
       <option value="Closed">Closed</option>
       <option value="Open">Open</option>
+      <option value="1panel">1 Panel (3')</option>
+      <option value="1_5panel">1 1/2 Panel (4.5')</option>
+      <option value="2panel">2 Panels (6')</option>
+      <option value="2_5panel">2 1/2 Panels (7.5')</option>
+      <option value="3panel">3 Panels (9')</option>
+      <option value="3_5panel">3 1/2 Panels (10.5')</option>
+      <option value="q1">1/4 Closed</option>
+      <option value="q2">1/2 Closed</option>
+      <option value="q3">3/4 Closed</option>
     </select></div>
 </div>
 
@@ -4483,10 +4501,14 @@ function sideClosurePrice(val, H, tier, closedLen, w){
   return Math.round((pct*H/3)*full);
 }
 
-// Per-side side-panel pricing for carport + GCH. Left and right are independent.
+// Per-side side-panel pricing for carport + GCH + standard. Left and right are
+// independent. On a standard/widespan building the partial options live on the
+// main Right/Left Eave Side dropdowns (wre/wle); 'Closed' walls price in
+// gWalls and 'Open' costs nothing, so only the panel/quarter values add here.
 function gSidePanels(){
   var bt=G('btype').value;
-  if(bt!=='carport' && bt!=='gch') return 0;
+  var isStd=(bt==='standard'||bt==='widespan');
+  if(bt!=='carport' && bt!=='gch' && !isStd) return 0;
   var sp=MFR().sidePanels;
   if(!sp) return 0;
   var l=sidePanelLength();
@@ -4510,10 +4532,15 @@ function gSidePanels(){
     var revG=G('wre')?G('wre').value:'Open';
     if(levG!=='Closed') total += sideClosurePrice(lv, H, tier, closedLen, w);
     if(revG!=='Closed') total += sideClosurePrice(rv, H, tier, closedLen, w);
-  } else {
+  } else if(bt==='carport'){
     // Carport: the side panels ARE the sides — independent, no main-wall interplay.
     total += sideClosurePrice(lv, H, tier, closedLen, w);
     total += sideClosurePrice(rv, H, tier, closedLen, w);
+  } else {
+    // Standard/widespan: partial panel values on wre/wle price per panel;
+    // 'Closed'/'Open' return 0 from sideClosurePrice by design.
+    total += sideClosurePrice(G('wle')?G('wle').value:'Closed', H, tier, closedLen, w);
+    total += sideClosurePrice(G('wre')?G('wre').value:'Closed', H, tier, closedLen, w);
   }
   return total;
 }
@@ -4530,7 +4557,14 @@ function getSidePanelConfig(){
   var empty={ val:'open', ft:0, full:false, hasPanels:false };
   if(bt==='gch')     return { left:side('gch-left'),  right:side('gch-right') };
   if(bt==='carport') return { left:side('sp-left'),   right:side('sp-right')  };
+  if(bt==='standard'||bt==='widespan') return { left:side('wle'), right:side('wre') };
   return { left:empty, right:empty };
+}
+// Base wall mode for DRAWING a side elevation: the partial panel selections
+// draw as an OPEN wall (the eave-down band overlay comes from the side-panel
+// config above), while the classic values pass through unchanged.
+function baseWallMode(v){
+  return (v==='Closed'||v==='Open'||v==='Gable Only'||v==='Half Closed') ? v : 'Open';
 }
 function updateSidePanelNote(){
   var note=G('sp-note');
@@ -6155,8 +6189,8 @@ function buildingPageHTML(prefixHTML){
   // Per-wall enclosure status (matches live preview in renderBuildingViews)
   var wFront = G('wfg') ? G('wfg').value : 'Closed';
   var wBack  = G('wbg') ? G('wbg').value : 'Closed';
-  var wRight = G('wre') ? G('wre').value : 'Closed';
-  var wLeft  = G('wle') ? G('wle').value : 'Closed';
+  var wRight = baseWallMode(G('wre') ? G('wre').value : 'Closed');
+  var wLeft  = baseWallMode(G('wle') ? G('wle').value : 'Closed');
   var _bphWall = {front:wFront, back:wBack, right:wRight, left:wLeft};
 
   // Collect items same as renderBuildingViews
@@ -7557,8 +7591,8 @@ async function printContract(){
   // Wall enclosed status
   var wFront=G('wfg')?G('wfg').value:'Closed';
   var wBack=G('wbg')?G('wbg').value:'Closed';
-  var wRight=G('wre')?G('wre').value:'Closed';
-  var wLeft=G('wle')?G('wle').value:'Closed';
+  var wRight=baseWallMode(G('wre')?G('wre').value:'Closed');
+  var wLeft=baseWallMode(G('wle')?G('wle').value:'Closed');
 
   // Colors
   function ics(id){ var el=G(id); return el && el.value && el.value!=='TBD'; }
@@ -9948,8 +9982,8 @@ function renderBuildingViews(){
   // Wall enclosure states
   var wFront = G('wfg') ? G('wfg').value : 'Closed';
   var wBack  = G('wbg') ? G('wbg').value : 'Closed';
-  var wRight = G('wre') ? G('wre').value : 'Closed';
-  var wLeft  = G('wle') ? G('wle').value : 'Closed';
+  var wRight = baseWallMode(G('wre') ? G('wre').value : 'Closed');
+  var wLeft  = baseWallMode(G('wle') ? G('wle').value : 'Closed');
 
   // Collect lean-to data by attachment side (using shared helper)
   var _ltViews = collectLTsForViews();
@@ -10374,7 +10408,7 @@ function drawBlueprintWall(wt,fw,wh,items,wn,bw){var SW=540,MX=50,MT=38,MB=26,dW
 function getBPItems(wt,W,L){var fw=(wt==='front'||wt==='back')?W:L,items=[];document.querySelectorAll('.re').forEach(function(el){var loc=el.querySelector('.rloc').value,wm=(loc==='Front Gable End'&&wt==='front')||(loc==='Back Gable End'&&wt==='back')||(loc==='Left Eave Side'&&wt==='left')||(loc==='Right Eave Side'&&wt==='right');if(!wm)return;var sz=(el.querySelector('.rsz').value||'10x8').split('x'),dW=parseFloat(sz[0])||10,dH=parseFloat(sz[1])||8,qty=parseInt(el.querySelector('.rqt').value)||1;var its=getPosItems(el,qty,dW,fw,dH,'rollup');var _is45=(el.querySelector('.r45')&&el.querySelector('.r45').value==='yes');its.forEach(function(it){if(_is45)it.angle45=true;items.push(it);});});document.querySelectorAll('.we').forEach(function(el){var loc=el.querySelector('.wloc').value,wm=(loc==='Front Gable End'&&wt==='front')||(loc==='Back Gable End'&&wt==='back')||(loc==='Left Eave Side'&&wt==='left')||(loc==='Right Eave Side'&&wt==='right');if(!wm)return;var its=getPosItems(el,1,3,fw,6.67,'wtd');its.forEach(function(it){items.push(it);});});document.querySelectorAll('.ne').forEach(function(el){var loc=el.querySelector('.nloc').value,wm=(loc==='Front Gable End'&&wt==='front')||(loc==='Back Gable End'&&wt==='back')||(loc==='Left Eave Side'&&wt==='left')||(loc==='Right Eave Side'&&wt==='right');if(!wm)return;var qty=parseInt(el.querySelector('.nqt')?el.querySelector('.nqt').value:1)||1;var its=getPosItems(el,qty,2.5,fw,2.5,'win',4.16667);its.forEach(function(it){items.push(it);});});return items;}
 function renderBlueprintViews(){adjustViewProportions();var W=parseInt(G('bw').value)||30,L=parseInt(G('bl').value)||40,H=parseInt(G('bh').value)||10,wn=G('wain')&&G('wain').value==='yes';var _bpLTs=collectLTsForViews();['front','back','right','left'].forEach(function(w){var fw=(w==='front'||w==='back')?W:L,el=G('bp-'+w);if(el)el.innerHTML=drawBlueprintWall(w,fw,H,getBPItems(w,W,L),wn,W,_bpLTs[w]);});}
 var _bvMode='color';function setBldViewMode(m){_bvMode=m;var cv=G('bld-views'),bv=G('bld-blueprint-views'),cb=G('bvt-color'),bb=G('bvt-bp');if(m==='color'){if(cv)cv.style.display='grid';if(bv)bv.style.display='none';if(cb)cb.classList.add('active');if(bb)bb.classList.remove('active');renderBuildingViews();}else{if(cv)cv.style.display='none';if(bv)bv.style.display='grid';if(cb)cb.classList.remove('active');if(bb)bb.classList.add('active');renderBlueprintViews();}}
-function sendToClient(mode){if(!G('bw').value||!G('bl').value){toast('Set dimensions first','err');return;}var W=parseInt(G('bw').value)||30,L=parseInt(G('bl').value)||40,H=parseInt(G('bh').value)||10,pt=G('pitch')?G('pitch').textContent:'3:12',pitch=parseInt(pt)||3,cn=G('cn').value||'Client';function ics(id){var e=G(id);return e&&e.value&&e.value!=='TBD';}var rH=ics('cr')?G('cr').value:'#F0EFE8',wH=ics('cw')?G('cw').value:'#9EA5A8',tH2=ics('ct')?G('ct').value:'#F0EFE8',waH=ics('cwn')?G('cwn').value:'#F0EFE8',wn=G('wain')&&G('wain').value==='yes',ws=G('ws')?G('ws').value:'Vertical';var fI=[],bI=[],rI=[],lI=[];document.querySelectorAll('.re').forEach(function(el){var loc=el.querySelector('.rloc').value,sz=(el.querySelector('.rsz').value||'10x8').split('x'),dW=parseFloat(sz[0])||10,dH=parseFloat(sz[1])||8,qty=parseInt(el.querySelector('.rqt').value)||1;function pl(a,fw){getPosItems(el,qty,dW,fw,dH,'rollup').forEach(function(it){a.push(it);});}if(loc==='Front Gable End')pl(fI,W);else if(loc==='Back Gable End')pl(bI,W);else if(loc==='Left Eave Side')pl(lI,L);else if(loc==='Right Eave Side')pl(rI,L);});document.querySelectorAll('.we').forEach(function(el){var loc=el.querySelector('.wloc').value;function pl(a,fw){getPosItems(el,1,3,fw,6.67,'wtd').forEach(function(it){a.push(it);});}if(loc==='Front Gable End')pl(fI,W);else if(loc==='Back Gable End')pl(bI,W);else if(loc==='Left Eave Side')pl(lI,L);else if(loc==='Right Eave Side')pl(rI,L);});document.querySelectorAll('.ne').forEach(function(el){var loc=el.querySelector('.nloc').value,qty=parseInt(el.querySelector('.nqt')?el.querySelector('.nqt').value:1)||1;function pl(a,fw){getPosItems(el,qty,2.5,fw,2.5,'win',4.16667).forEach(function(it){a.push(it);});}if(loc==='Front Gable End')pl(fI,W);else if(loc==='Back Gable End')pl(bI,W);else if(loc==='Left Eave Side')pl(lI,L);else if(loc==='Right Eave Side')pl(rI,L);});var tmp=document.createElement('div');document.body.appendChild(tmp);var _stcLTs=collectLTsForViews();function _stcWallOpen(loc){var wo={front:G('wfg')?G('wfg').value:'Closed',back:G('wbg')?G('wbg').value:'Closed',left:G('wle')?G('wle').value:'Closed',right:G('wre')?G('wre').value:'Closed'};return wo[loc]||'Closed';}function mkC(id,fw,isSide,items,viewKey,gchSp){tmp.innerHTML='';var d=document.createElement('div');d.id=id;tmp.appendChild(d);drawElev(id,fw,H,pitch,rH,wH,tH2,waH,wn,items,isSide,ws,_stcWallOpen(viewKey),_stcLTs[viewKey],gchSp);return d.innerHTML;}var pages='',bx=function(l,svg,bg,tc){return'<div style="background:'+bg+';border-radius:6px;overflow:hidden;border:1px solid #333"><div style="background:'+(tc||'#1C2E3F')+';color:#fff;font-size:9pt;font-weight:800;letter-spacing:2px;text-align:center;padding:5px;font-family:Arial">'+l+'</div>'+svg+'</div>';},pw=function(t,v,bg){return'<div style="page-break-before:always;background:'+bg+';min-height:100vh;padding:24px;box-sizing:border-box"><div style="font-family:Arial;font-size:11pt;font-weight:800;letter-spacing:2px;color:'+(bg==='#06101a'?'#1fcec4':'#0D1B2A')+';margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid '+(bg==='#06101a'?'#1fcec4':'#1B8A8A')+';text-transform:uppercase">'+t+' - '+cn+' | '+W+"x"+L+"x"+H+"</div><div style=\"display:grid;grid-template-columns:1fr 1fr;gap:16px\">"+v+'</div></div>';};var _pGchR=null,_pGchL=null;if(G('btype')&&G('btype').value==='gch'){var _peL=parseInt(G('gch-enc').value)||0,_poL=parseInt(G('gch-open').value)||0;if(_peL>0&&_poL>0){_pGchR={encLen:_peL,openLen:_poL,encSide:'right'};_pGchL={encLen:_peL,openLen:_poL,encSide:'left'};}}if(mode==='colored'||mode==='both'){var cF=mkC('_cf',W,false,fI,'front'),cR=mkC('_cr',L,true,rI,'right',_pGchR),cB=mkC('_cb',W,false,bI,'back'),cL=mkC('_cl',L,true,lI,'left',_pGchL);pages+=pw('Color Rendering',bx('FRONT',cF,'#fff')+bx('RIGHT',cR,'#fff')+bx('BACK',cB,'#fff')+bx('LEFT',cL,'#fff'),'#f5f0e8');}if(mode==='blueprint'||mode==='both'){var bF=drawBlueprintWall('front',W,H,getBPItems('front',W,L),wn,W,_stcLTs.front),bR=drawBlueprintWall('right',L,H,getBPItems('right',W,L),wn,W,_stcLTs.right),bB=drawBlueprintWall('back',W,H,getBPItems('back',W,L),wn,W,_stcLTs.back),bL=drawBlueprintWall('left',L,H,getBPItems('left',W,L),wn,W,_stcLTs.left);pages+=pw('Engineering Blueprint',bx('FRONT',bF,'#06101a','#0f1e2e')+bx('RIGHT',bR,'#06101a','#0f1e2e')+bx('BACK',bB,'#06101a','#0f1e2e')+bx('LEFT',bL,'#06101a','#0f1e2e'),'#06101a');}document.body.removeChild(tmp);var doc='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>StormSafe Elevations</title><style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{background:#0D1B2A}@media print{@page{margin:0;size:letter landscape}}</style></head><body>'+pages+'</body></html>';var w2=window.open('','_blank');if(w2){w2.document.open();w2.document.write(doc);w2.document.close();setTimeout(function(){try{w2.focus();w2.print();}catch(e){}},900);toast('Opening elevations','ok');}else{toast('Popup blocked — please allow popups for this page, then try again','err');console.warn('sendToClient: window.open returned null — popup blocker enabled');}}
+function sendToClient(mode){if(!G('bw').value||!G('bl').value){toast('Set dimensions first','err');return;}var W=parseInt(G('bw').value)||30,L=parseInt(G('bl').value)||40,H=parseInt(G('bh').value)||10,pt=G('pitch')?G('pitch').textContent:'3:12',pitch=parseInt(pt)||3,cn=G('cn').value||'Client';function ics(id){var e=G(id);return e&&e.value&&e.value!=='TBD';}var rH=ics('cr')?G('cr').value:'#F0EFE8',wH=ics('cw')?G('cw').value:'#9EA5A8',tH2=ics('ct')?G('ct').value:'#F0EFE8',waH=ics('cwn')?G('cwn').value:'#F0EFE8',wn=G('wain')&&G('wain').value==='yes',ws=G('ws')?G('ws').value:'Vertical';var fI=[],bI=[],rI=[],lI=[];document.querySelectorAll('.re').forEach(function(el){var loc=el.querySelector('.rloc').value,sz=(el.querySelector('.rsz').value||'10x8').split('x'),dW=parseFloat(sz[0])||10,dH=parseFloat(sz[1])||8,qty=parseInt(el.querySelector('.rqt').value)||1;function pl(a,fw){getPosItems(el,qty,dW,fw,dH,'rollup').forEach(function(it){a.push(it);});}if(loc==='Front Gable End')pl(fI,W);else if(loc==='Back Gable End')pl(bI,W);else if(loc==='Left Eave Side')pl(lI,L);else if(loc==='Right Eave Side')pl(rI,L);});document.querySelectorAll('.we').forEach(function(el){var loc=el.querySelector('.wloc').value;function pl(a,fw){getPosItems(el,1,3,fw,6.67,'wtd').forEach(function(it){a.push(it);});}if(loc==='Front Gable End')pl(fI,W);else if(loc==='Back Gable End')pl(bI,W);else if(loc==='Left Eave Side')pl(lI,L);else if(loc==='Right Eave Side')pl(rI,L);});document.querySelectorAll('.ne').forEach(function(el){var loc=el.querySelector('.nloc').value,qty=parseInt(el.querySelector('.nqt')?el.querySelector('.nqt').value:1)||1;function pl(a,fw){getPosItems(el,qty,2.5,fw,2.5,'win',4.16667).forEach(function(it){a.push(it);});}if(loc==='Front Gable End')pl(fI,W);else if(loc==='Back Gable End')pl(bI,W);else if(loc==='Left Eave Side')pl(lI,L);else if(loc==='Right Eave Side')pl(rI,L);});var tmp=document.createElement('div');document.body.appendChild(tmp);var _stcLTs=collectLTsForViews();var _stcSpC=getSidePanelConfig();var _stcSpR=(_stcSpC.right.hasPanels||_stcSpC.right.full)?_stcSpC.right:null;var _stcSpL=(_stcSpC.left.hasPanels||_stcSpC.left.full)?_stcSpC.left:null;function _stcWallOpen(loc){var wo={front:G('wfg')?G('wfg').value:'Closed',back:G('wbg')?G('wbg').value:'Closed',left:baseWallMode(G('wle')?G('wle').value:'Closed'),right:baseWallMode(G('wre')?G('wre').value:'Closed')};return wo[loc]||'Closed';}function mkC(id,fw,isSide,items,viewKey,gchSp,spCfg){tmp.innerHTML='';var d=document.createElement('div');d.id=id;tmp.appendChild(d);drawElev(id,fw,H,pitch,rH,wH,tH2,waH,wn,items,isSide,ws,_stcWallOpen(viewKey),_stcLTs[viewKey],gchSp,spCfg);return d.innerHTML;}var pages='',bx=function(l,svg,bg,tc){return'<div style="background:'+bg+';border-radius:6px;overflow:hidden;border:1px solid #333"><div style="background:'+(tc||'#1C2E3F')+';color:#fff;font-size:9pt;font-weight:800;letter-spacing:2px;text-align:center;padding:5px;font-family:Arial">'+l+'</div>'+svg+'</div>';},pw=function(t,v,bg){return'<div style="page-break-before:always;background:'+bg+';min-height:100vh;padding:24px;box-sizing:border-box"><div style="font-family:Arial;font-size:11pt;font-weight:800;letter-spacing:2px;color:'+(bg==='#06101a'?'#1fcec4':'#0D1B2A')+';margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid '+(bg==='#06101a'?'#1fcec4':'#1B8A8A')+';text-transform:uppercase">'+t+' - '+cn+' | '+W+"x"+L+"x"+H+"</div><div style=\"display:grid;grid-template-columns:1fr 1fr;gap:16px\">"+v+'</div></div>';};var _pGchR=null,_pGchL=null;if(G('btype')&&G('btype').value==='gch'){var _peL=parseInt(G('gch-enc').value)||0,_poL=parseInt(G('gch-open').value)||0;if(_peL>0&&_poL>0){_pGchR={encLen:_peL,openLen:_poL,encSide:'right'};_pGchL={encLen:_peL,openLen:_poL,encSide:'left'};}}if(mode==='colored'||mode==='both'){var cF=mkC('_cf',W,false,fI,'front'),cR=mkC('_cr',L,true,rI,'right',_pGchR,_stcSpR),cB=mkC('_cb',W,false,bI,'back'),cL=mkC('_cl',L,true,lI,'left',_pGchL,_stcSpL);pages+=pw('Color Rendering',bx('FRONT',cF,'#fff')+bx('RIGHT',cR,'#fff')+bx('BACK',cB,'#fff')+bx('LEFT',cL,'#fff'),'#f5f0e8');}if(mode==='blueprint'||mode==='both'){var bF=drawBlueprintWall('front',W,H,getBPItems('front',W,L),wn,W,_stcLTs.front),bR=drawBlueprintWall('right',L,H,getBPItems('right',W,L),wn,W,_stcLTs.right),bB=drawBlueprintWall('back',W,H,getBPItems('back',W,L),wn,W,_stcLTs.back),bL=drawBlueprintWall('left',L,H,getBPItems('left',W,L),wn,W,_stcLTs.left);pages+=pw('Engineering Blueprint',bx('FRONT',bF,'#06101a','#0f1e2e')+bx('RIGHT',bR,'#06101a','#0f1e2e')+bx('BACK',bB,'#06101a','#0f1e2e')+bx('LEFT',bL,'#06101a','#0f1e2e'),'#06101a');}document.body.removeChild(tmp);var doc='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>StormSafe Elevations</title><style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{background:#0D1B2A}@media print{@page{margin:0;size:letter landscape}}</style></head><body>'+pages+'</body></html>';var w2=window.open('','_blank');if(w2){w2.document.open();w2.document.write(doc);w2.document.close();setTimeout(function(){try{w2.focus();w2.print();}catch(e){}},900);toast('Opening elevations','ok');}else{toast('Popup blocked — please allow popups for this page, then try again','err');console.warn('sendToClient: window.open returned null — popup blocker enabled');}}
 
 
 // ══ MINI SIDEBAR BLUEPRINT ════════════════════════════════════════════════

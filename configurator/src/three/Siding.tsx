@@ -233,18 +233,25 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           { sx: -(halfW + SHEET_OUTSET), sd: 'left' as const },
           { sx: halfW + SHEET_OUTSET, sd: 'right' as const },
         ]).map(({ sx, sd }) => {
+          if (enclosure.sideOpen[sd]) return null; // program "Eave Side: Open"
+          // Partial closure ("1 Panel / 2 Panels / ¼ Closed…"): the band hangs
+          // from the eave DOWN; the wall below stays open. Full closed = band
+          // spanning the whole height.
+          const band = enclosure.sideBandFt[sd];
+          const bandH = band > 0 ? Math.min(band, H) : H;
+          const yBot = H - bandH;
           const holes = openings
-            .filter((o) => o.side === sd)
-            .map((o) => ({ u: -halfL + o.offset - sideMidZ, v: o.sillHeight + o.height / 2 - H / 2, w: o.width, h: o.height }));
-          return stripsAround(sideSpan, H, holes).map((st, i) => (
+            .filter((o) => o.side === sd && (band <= 0 || o.sillHeight + o.height > yBot + 0.01))
+            .map((o) => ({ u: -halfL + o.offset - sideMidZ, v: o.sillHeight + o.height / 2 - (yBot + bandH / 2), w: o.width, h: o.height }));
+          return stripsAround(sideSpan, bandH, holes).map((st, i) => (
             <BasisPanel
               key={`${sd}-${i}`}
-              center={[sx, H / 2 + st.v, sideMidZ + st.u]}
+              center={[sx, yBot + bandH / 2 + st.v, sideMidZ + st.u]}
               uVec={[0, 0, 1]}
               vVec={[0, 1, 0]}
               w={st.w}
               h={st.h}
-              material={planeMat(tex.walls, st.w, st.h, wallDir, wallMetal, false, sideMidZ + st.u - st.w / 2, H / 2 + st.v - st.h / 2)}
+              material={planeMat(tex.walls, st.w, st.h, wallDir, wallMetal, false, sideMidZ + st.u - st.w / 2, yBot + bandH / 2 + st.v - st.h / 2)}
             />
           ));
         })}
@@ -254,6 +261,9 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           { sx: -(halfW + wOut), sd: 'left' as const },
           { sx: halfW + wOut, sd: 'right' as const },
         ]).map(({ sx, sd }) => {
+          // No wainscot on an open OR partially-closed (eave-down band) side —
+          // the slab-level wall area is open framing there.
+          if (enclosure.sideOpen[sd] || enclosure.sideBandFt[sd] > 0) return null;
           // Cut the wainscot band the same way as the wall sheeting — a floor
           // door / base-sitting frame-out leaves NO base band across it. Only
           // openings that actually reach DOWN into the band (sill below wH) cut
@@ -418,7 +428,7 @@ function EndWall({
   W: number;
   H: number;
   peak: number;
-  mode: 'closed' | 'gableOnly' | 'open';
+  mode: 'closed' | 'gableOnly' | 'open' | 'halfClosed';
   /** Openings on this wall (centered local coords) to cut from the rect 0..H. */
   holes: LocalRect[];
   /** Fresh material per cut strip; (w, h, anchorU, anchorV) world-anchors ribs. */
@@ -450,6 +460,26 @@ function EndWall({
           ))}
         </>
       )}
+      {mode === 'halfClosed' &&
+        // "Half Closed (6' Panel)": a 6-ft sheeting band hanging from the eave
+        // DOWN, open below — cut around any opening that reaches up into it.
+        (() => {
+          const B = Math.min(6, H);
+          const bandHoles = holes
+            .filter((ho) => H / 2 + ho.v + ho.h / 2 > H - B + 0.01)
+            .map((ho) => ({ ...ho, v: ho.v - (H - B) / 2 }));
+          return stripsAround(W, B, bandHoles).map((st, i) => (
+            <mesh
+              key={`hc-${i}`}
+              position={[st.u, H - B + B / 2 + st.v, z]}
+              material={wallStripMat(st.w, st.h, st.u - st.w / 2, H - B + B / 2 + st.v - st.h / 2)}
+              castShadow
+              receiveShadow
+            >
+              <planeGeometry args={[st.w, st.h]} />
+            </mesh>
+          ));
+        })()}
       {/* Gable triangle above the eave is never crossed by an opening → keep solid. */}
       <GableTriangle z={z} halfW={W / 2} H={H} peak={peak} material={gableMat} />
       {wH > 0 &&

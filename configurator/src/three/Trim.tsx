@@ -69,25 +69,34 @@ export function Trim({ structure, color, wainscot, openings }: TrimProps) {
     const tt = 0.04; // ~0.5" metal thickness
     let k = 0;
     for (const sx of [-1, 1] as const) {
+      // Program "Eave Side: Open" (or a partial eave-down band) → no full-
+      // height sheeting on that side wall, so no side-wall corner face or fold
+      // there (an end-wall face may remain).
+      const sideIsOpen =
+        sx < 0
+          ? enclosure.sideOpen.left || enclosure.sideBandFt.left > 0
+          : enclosure.sideOpen.right || enclosure.sideBandFt.right > 0;
       for (const z of [-halfL, halfL] as const) {
         if (!within(z)) continue;
         const sz = z < 0 ? -1 : 1;
         const endClosed =
           (z === -halfL && enclosure.front === 'closed') || (z === halfL && enclosure.back === 'closed');
         // face on the side wall
-        corners.push(<Box key={`cs${k++}`} pos={[sx * (halfW + out + tt / 2), H / 2, sz * (halfL - f / 2)]} size={[tt, H, f]} />);
+        if (!sideIsOpen)
+          corners.push(<Box key={`cs${k++}`} pos={[sx * (halfW + out + tt / 2), H / 2, sz * (halfL - f / 2)]} size={[tt, H, f]} />);
         // face on the end wall
         if (endClosed)
           corners.push(<Box key={`ce${k++}`} pos={[sx * (halfW - f / 2), H / 2, sz * (halfL + out + tt / 2)]} size={[f, H, tt]} />);
-        // beveled fold across the corner notch
-        corners.push(
-          <Box
-            key={`cb${k++}`}
-            pos={[sx * (halfW + out / 2), H / 2, sz * (halfL + out / 2)]}
-            size={[out * 1.5, H, tt]}
-            rotY={Math.atan2(-sz, -sx)}
-          />,
-        );
+        // beveled fold across the corner notch (caps the side sheeting edge)
+        if (!sideIsOpen)
+          corners.push(
+            <Box
+              key={`cb${k++}`}
+              pos={[sx * (halfW + out / 2), H / 2, sz * (halfL + out / 2)]}
+              size={[out * 1.5, H, tt]}
+              rotY={Math.atan2(-sz, -sx)}
+            />,
+          );
       }
     }
   }
@@ -251,8 +260,8 @@ function WainscotCap({
   };
 
   if (enclosure.sideZ) {
-    sideBar('left', enclosure.sideZ.start, enclosure.sideZ.end);
-    sideBar('right', enclosure.sideZ.start, enclosure.sideZ.end);
+    if (!enclosure.sideOpen.left && enclosure.sideBandFt.left <= 0) sideBar('left', enclosure.sideZ.start, enclosure.sideZ.end);
+    if (!enclosure.sideOpen.right && enclosure.sideBandFt.right <= 0) sideBar('right', enclosure.sideZ.start, enclosure.sideZ.end);
   }
   if (enclosure.front === 'closed') endBar('front', -(halfL + o2), false);
   if (enclosure.back === 'closed') endBar('back', halfL + o2, true);

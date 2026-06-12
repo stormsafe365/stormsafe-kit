@@ -38,6 +38,7 @@ export const DEFAULT_CONFIG: BuildingConfig = {
   enclosedLengthFt: 20,
   openEnd: 'front',
   openEndGableSheeting: false,
+  wallOverrides: { leftOpen: false, rightOpen: false },
   framingGauge: '14-gauge',
   sheetingGauge: '29-gauge',
   panelOrientation: 'Horizontal',

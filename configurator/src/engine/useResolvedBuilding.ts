@@ -41,6 +41,7 @@ function selectConfig(s: ReturnType<typeof useBuildingStore.getState>): Building
     enclosedLengthFt: s.enclosedLengthFt,
     openEnd: s.openEnd,
     openEndGableSheeting: s.openEndGableSheeting,
+    wallOverrides: s.wallOverrides,
     framingGauge: s.framingGauge,
     sheetingGauge: s.sheetingGauge,
     panelOrientation: s.panelOrientation,

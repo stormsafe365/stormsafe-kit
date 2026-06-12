@@ -1,4 +1,4 @@
-import type { BuildingType, EndSheeting, LeanToOpening, OpenEnd, Opening, WallSide } from '@/types/building';
+import type { BuildingType, EndSheeting, LeanToOpening, OpenEnd, Opening, WallOverrides, WallSide } from '@/types/building';
 import type { ResolvedBuilding } from './ruleEngine';
 
 /**
@@ -42,6 +42,13 @@ export interface Enclosure {
   front: EndSheeting; // gable end at z = -L/2
   back: EndSheeting; // gable end at z = +L/2
   partitionZ: number | null; // interior gable wall (utility split)
+  /** Per-side full-open override (garage "Right/Left Eave Side: Open"). */
+  sideOpen: { left: boolean; right: boolean };
+  /**
+   * Partial closure band (ft from the eave down) per garage eave side —
+   * 0 = no band (side is fully closed, or open per sideOpen).
+   */
+  sideBandFt: { left: number; right: number };
 }
 
 export interface TrussLine {
@@ -305,13 +312,28 @@ function deriveEnclosure(
   enclosedLengthFt: number,
   openEnd: OpenEnd,
   openEndGable: boolean,
+  ov?: WallOverrides,
 ): Enclosure {
   const openMode: EndSheeting = openEndGable ? 'gableOnly' : 'open';
+  const noOpen = { left: false, right: false };
+  const noBand = { left: 0, right: 0 };
   switch (type) {
     case 'carport':
-      return { type, sideZ: null, front: openMode, back: openMode, partitionZ: null };
+      // Program Wall Options can CLOSE (or gable/half-close) a carport end.
+      return { type, sideZ: null, front: ov?.front ?? openMode, back: ov?.back ?? openMode, partitionZ: null, sideOpen: noOpen, sideBandFt: noBand };
     case 'garage':
-      return { type, sideZ: { start: -halfL, end: halfL }, front: 'closed', back: 'closed', partitionZ: null };
+      // Program Wall Options can open / gable-only / half-close either end,
+      // fully open either eave side, or partially close a side with eave-down
+      // panels (1/1.5/2… panels, ¼/½/¾) — each side independent.
+      return {
+        type,
+        sideZ: { start: -halfL, end: halfL },
+        front: ov?.front ?? 'closed',
+        back: ov?.back ?? 'closed',
+        partitionZ: null,
+        sideOpen: { left: !!ov?.leftOpen, right: !!ov?.rightOpen },
+        sideBandFt: { left: ov?.leftBandFt ?? 0, right: ov?.rightBandFt ?? 0 },
+      };
     case 'utility': {
       const encLen = Math.max(4, Math.min(L, enclosedLengthFt));
       const split = encLen < L;
@@ -323,6 +345,8 @@ function deriveEnclosure(
           front: openMode,
           back: 'closed',
           partitionZ: split ? halfL - encLen : null,
+          sideOpen: noOpen,
+          sideBandFt: noBand,
         };
       }
       return {
@@ -331,6 +355,8 @@ function deriveEnclosure(
         front: 'closed',
         back: openMode,
         partitionZ: split ? -halfL + encLen : null,
+        sideOpen: noOpen,
+        sideBandFt: noBand,
       };
     }
   }
@@ -371,7 +397,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       ? [0]
       : Array.from({ length: frameCount }, (_, i) => -halfL + (i * L) / (frameCount - 1));
 
-  const enclosure = deriveEnclosure(buildingType, halfL, L, enclosedLengthFt, openEnd, openEndGableSheeting);
+  const enclosure = deriveEnclosure(buildingType, halfL, L, enclosedLengthFt, openEnd, openEndGableSheeting, config.wallOverrides);
   // The OPEN (carport) eave portion: whole length for a carport, the un-enclosed
   // bay for a utility/GCH, none for a fully enclosed garage.
   const openBayZ: { start: number; end: number } | null =
@@ -527,10 +553,16 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     const y = (H * i) / (girtRows + 1);
     if (enclosure.sideZ) {
       const { start, end } = enclosure.sideZ;
-      for (const [s, e] of subtractSpans(start, end, gapsAtHeight(leftHoles, y)))
-        members.push(member('girt', [-halfW, y, s], [-halfW, y, e]));
-      for (const [s, e] of subtractSpans(start, end, gapsAtHeight(rightHoles, y)))
-        members.push(member('girt', [halfW, y, s], [halfW, y, e]));
+      // A partially-closed side (eave-down band) only has girts within the
+      // band — the open framing below gets none.
+      const within = (sd: 'left' | 'right') =>
+        !enclosure.sideOpen[sd] && (enclosure.sideBandFt[sd] <= 0 || y >= H - enclosure.sideBandFt[sd] - 0.01);
+      if (within('left'))
+        for (const [s, e] of subtractSpans(start, end, gapsAtHeight(leftHoles, y)))
+          members.push(member('girt', [-halfW, y, s], [-halfW, y, e]));
+      if (within('right'))
+        for (const [s, e] of subtractSpans(start, end, gapsAtHeight(rightHoles, y)))
+          members.push(member('girt', [halfW, y, s], [halfW, y, e]));
     }
     if (enclosure.front === 'closed')
       for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(frontHoles, y)))
@@ -546,19 +578,31 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     const { start, end } = enclosure.sideZ;
     for (let i = 1; i <= rows; i++) {
       const y = (H * i) / (rows + 1);
-      for (const [s, e] of subtractSpans(start, end, gapsAtHeight(leftHoles, y)))
-        members.push(member('hatChannel', [-halfW, y, s], [-halfW, y, e]));
-      for (const [s, e] of subtractSpans(start, end, gapsAtHeight(rightHoles, y)))
-        members.push(member('hatChannel', [halfW, y, s], [halfW, y, e]));
+      const within = (sd: 'left' | 'right') =>
+        !enclosure.sideOpen[sd] && (enclosure.sideBandFt[sd] <= 0 || y >= H - enclosure.sideBandFt[sd] - 0.01);
+      if (within('left'))
+        for (const [s, e] of subtractSpans(start, end, gapsAtHeight(leftHoles, y)))
+          members.push(member('hatChannel', [-halfW, y, s], [-halfW, y, e]));
+      if (within('right'))
+        for (const [s, e] of subtractSpans(start, end, gapsAtHeight(rightHoles, y)))
+          members.push(member('hatChannel', [halfW, y, s], [halfW, y, e]));
     }
   }
 
   // --- Sheet-metal areas ---
   const gableTriangle = 0.5 * W * rise;
   const sideSpan = enclosure.sideZ ? enclosure.sideZ.end - enclosure.sideZ.start : 0;
-  const sideWallArea = enclosure.sideZ ? 2 * sideSpan * H : 0;
+  const sideSheetH = (sd: 'left' | 'right') =>
+    enclosure.sideOpen[sd] ? 0 : enclosure.sideBandFt[sd] > 0 ? Math.min(enclosure.sideBandFt[sd], H) : H;
+  const sideWallArea = enclosure.sideZ ? (sideSheetH('left') + sideSheetH('right')) * sideSpan : 0;
   const endArea = (mode: EndSheeting) =>
-    mode === 'closed' ? W * H + gableTriangle : mode === 'gableOnly' ? gableTriangle : 0;
+    mode === 'closed'
+      ? W * H + gableTriangle
+      : mode === 'gableOnly'
+        ? gableTriangle
+        : mode === 'halfClosed'
+          ? W * Math.min(6, H) + gableTriangle // 6' band below the eave + gable
+          : 0;
   const endWallArea =
     endArea(enclosure.front) + endArea(enclosure.back) + (enclosure.partitionZ !== null ? W * H + gableTriangle : 0);
 

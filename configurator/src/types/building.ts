@@ -23,7 +23,30 @@ export type BuildingType = 'carport' | 'garage' | 'utility';
 export type OpenEnd = 'front' | 'back';
 
 /** How a gable end is sheeted. */
-export type EndSheeting = 'closed' | 'open' | 'gableOnly';
+export type EndSheeting = 'closed' | 'open' | 'gableOnly' | 'halfClosed';
+
+/**
+ * Per-wall sheeting overrides from the program's Wall Options (section 4).
+ * End values apply to garage + carport ends; the side flags fully open a
+ * garage eave wall. NOTE the left/right swap: the internal 'left' wall (-X)
+ * is the program's "Right Eave Side" and vice versa (same convention as
+ * component placement).
+ */
+export interface WallOverrides {
+  front?: EndSheeting;
+  back?: EndSheeting;
+  /** Internal left wall (-X — program "Right Eave Side") fully open. */
+  leftOpen: boolean;
+  /** Internal right wall (+X — program "Left Eave Side") fully open. */
+  rightOpen: boolean;
+  /**
+   * Partial closure band (ft, hanging from the eave DOWN) on a garage eave
+   * side — the "1 Panel / 2 Panels / ¼ Closed…" options. Unset = fully closed
+   * (unless the side is open). Internal left = program Right Eave Side.
+   */
+  leftBandFt?: number;
+  rightBandFt?: number;
+}
 
 /**
  * Per-wall state (Sensei "Custom" walls):
@@ -162,6 +185,8 @@ export interface BuildingConfig {
   openEnd: OpenEnd;
   /** Sheet the gable triangle over an open end (e.g. RV-shelter "gable-only" front). */
   openEndGableSheeting: boolean;
+  /** Per-wall sheeting overrides (program Wall Options) for garage/carport. */
+  wallOverrides: WallOverrides;
 
   framingGauge: FramingGauge;
   sheetingGauge: SheetingGauge;

@@ -18,7 +18,7 @@ import { useEffect, useRef } from 'react';
 import { Viewport } from '@/components/Viewport';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
-import type { BuildingType, OpeningType, WallSide } from '@/types/building';
+import type { BuildingType, EndSheeting, OpeningType, WallOverrides, WallSide } from '@/types/building';
 
 /** Map the program's btype → the 3D building family. */
 const TYPE_MAP: Record<string, BuildingType> = {
@@ -581,6 +581,41 @@ function syncFromBuilder(win: BuilderWindow) {
   }
   if (leftFt !== st.eavePanelFt.left || rightFt !== st.eavePanelFt.right) {
     st.setEavePanels({ left: leftFt, right: rightFt });
+  }
+
+  // Per-wall sheeting overrides (section 4 Wall Options) → 3D enclosure.
+  // Ends: Open / Closed / Gable Only / Half Closed (6' band below the eave).
+  // Eave sides (garage only): Open fully removes that side's sheeting. NOTE
+  // the swap: program "Right Eave Side" is the internal 'left' (-X) wall and
+  // vice versa — same convention as component placement (SIDE_MAP).
+  const endMap = (v: string): EndSheeting | undefined =>
+    v === 'Open' ? 'open' : v === 'Closed' ? 'closed' : v === 'Gable Only' ? 'gableOnly' : v === 'Half Closed' ? 'halfClosed' : undefined;
+  const isGarage = bt === 'standard' || bt === 'widespan';
+  // Partial eave-side closure ("1panel"/"q2"/…) → band ft via the same rule as
+  // the GCH/carport sides; 'Closed'/'Open' are NOT bands.
+  const sideBand = (v: string): number | undefined => {
+    if (v === 'Closed' || v === 'Open' || !v) return undefined;
+    const ft = closureFeet(v);
+    return ft > 0 ? ft : undefined;
+  };
+  const ov: WallOverrides = {
+    front: isGarage ? (endMap(fg) ?? 'closed') : bt === 'carport' ? endMap(fg) : undefined,
+    back: isGarage ? (endMap(bg) ?? 'closed') : bt === 'carport' ? endMap(bg) : undefined,
+    leftOpen: isGarage && val('wre') === 'Open',
+    rightOpen: isGarage && val('wle') === 'Open',
+    leftBandFt: isGarage ? sideBand(val('wre')) : undefined,
+    rightBandFt: isGarage ? sideBand(val('wle')) : undefined,
+  };
+  const curOv = st.wallOverrides;
+  if (
+    curOv.front !== ov.front ||
+    curOv.back !== ov.back ||
+    curOv.leftOpen !== ov.leftOpen ||
+    curOv.rightOpen !== ov.rightOpen ||
+    curOv.leftBandFt !== ov.leftBandFt ||
+    curOv.rightBandFt !== ov.rightBandFt
+  ) {
+    st.setWallOverrides(ov);
   }
 
   // Wainscot (base accent band) on/off from the program's #wain select.

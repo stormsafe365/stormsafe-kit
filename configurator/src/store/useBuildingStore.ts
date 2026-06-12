@@ -11,6 +11,7 @@ import type {
   OpenEnd,
   PanelOrientation,
   SheetingGauge,
+  WallOverrides,
   WallSide,
 } from '@/types/building';
 import { OPENING_DEFAULTS } from '@/types/building';
@@ -39,6 +40,7 @@ export interface BuildingStore extends BuildingConfig {
   setEnclosedLength: (ft: number) => void;
   setOpenEnd: (e: OpenEnd) => void;
   setOpenEndGableSheeting: (on: boolean) => void;
+  setWallOverrides: (ov: WallOverrides) => void;
   setFramingGauge: (g: FramingGauge) => void;
   setSheetingGauge: (g: SheetingGauge) => void;
   setPanelOrientation: (o: PanelOrientation) => void;
@@ -119,6 +121,7 @@ export const useBuildingStore = create<BuildingStore>((set) => ({
     set((s) => ({ enclosedLengthFt: Math.max(4, Math.min(s.length, Math.round(ft))) })),
   setOpenEnd: (e) => set(() => ({ openEnd: e })),
   setOpenEndGableSheeting: (on) => set(() => ({ openEndGableSheeting: on })),
+  setWallOverrides: (ov) => set(() => ({ wallOverrides: ov })),
 
   // Guard: at/above the heavy-frame width, 14-gauge isn't selectable.
   setFramingGauge: (g) => set({ framingGauge: g }),

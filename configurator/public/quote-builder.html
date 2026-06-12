@@ -4666,31 +4666,69 @@ function ltBasePrice(w,l){
   // Lean-to base price: $7.00/sqft (derived from CA/CCI lean-to pricing)
   return Math.round(w * l * 7.00);
 }
-function gLT(){
-  var t=0;
-  document.querySelectorAll('.lte').forEach(function(el){
-    var w=parseInt(el.querySelector('.ltw').value)||0;
-    var l=parseInt(el.querySelector('.ltl2').value)||0;
-    var typeEl=el.querySelector('.lt-type');
-    var isFree=(typeEl&&typeEl.value==='freestanding');
-    var stEl=el.querySelector('.ltst');
-    var isCont=stEl&&stEl.value==='cont';
-    var h;
-    if(isFree){
-      // Free-standing: use tall side height for pricing
-      h=parseInt(el.querySelector('.lt-tall-h')&&el.querySelector('.lt-tall-h').value)||10;
-    } else {
-      h=isCont ? (parseFloat(el.querySelector('.lth-cont').value)||6) : (parseInt(el.querySelector('.lth').value)||6);
+// ── Per-lean-to unit price (base + height + walls; NOT accessories) ─────────
+// Single source of truth shared by the pricing engine (gLT) and the printed
+// quote rows, so the printed lines always sum to the Building Amount.
+//
+// CA / free-standing: original model (ltBasePrice + CA SH/2 + flat wall adders).
+// CCI attached leans: dealer handbook Barns split method, calibrated against
+// Sensei QTE-000262 (10x40x10 lean on a 30x40x14 vertical main):
+//   base   = HALF of the standard chart at (2W+2)-wide x L  -> $2,647.50 (ok)
+//   height = HALF of the main-width leg chart at the lean height -> $407.50 (ok)
+//   side closed = sides chart at (leanH, L, 2W)             -> $753 ~= 752.50 (ok)
+//   certified-gable end = $112.50 each ($225/pair)          (ok)
+//   closed end = HALF of ecLookup(2W, leanH) each (handbook ends-split)
+//   partial side panels keep the flat LT_SIDE_P adders.
+function ltUnit(el){
+  var w=parseInt(el.querySelector('.ltw').value)||0;
+  var l=parseInt(el.querySelector('.ltl2').value)||0;
+  var typeEl=el.querySelector('.lt-type');
+  var isFree=(typeEl&&typeEl.value==='freestanding');
+  var stEl=el.querySelector('.ltst');
+  var isCont=stEl&&stEl.value==='cont';
+  var h;
+  if(isFree){ h=parseInt(el.querySelector('.lt-tall-h')&&el.querySelector('.lt-tall-h').value)||10; }
+  else { h=isCont ? (parseFloat(el.querySelector('.lth-cont').value)||6) : (parseInt(el.querySelector('.lth').value)||6); }
+  if(!w||!l) return {w:w,l:l,h:h,isFree:isFree,bp:0,heightAdj:0,encAdj:0,total:0};
+  var ltWalls2=getLTWalls(el);
+  var bp, heightAdj=0, encAdj;
+  if(ACTIVE_MFR==='CCI' && !isFree){
+    var vw=2*w+2; if(vw%2) vw++;
+    var T=(G('rs')&&G('rs').value==='Regular')?PR:((G('rs')&&G('rs').value==='Boxed Eave')?PB:PV);
+    var wi=WIDTHS.indexOf(vw);
+    bp=0;
+    if(wi>=0){
+      if(l<=51){ bp=((T[nearestStd(l)]||[])[wi]||0)/2; }
+      else if(MFR().standardCombinations){
+        var combos=MFR().standardCombinations, ks=Object.keys(combos).map(Number).sort(function(a,b){return a-b;}), tk=null;
+        for(var ci3=0;ci3<ks.length;ci3++){ if(ks[ci3]>=l){ tk=ks[ci3]; break; } }
+        if(tk){ var pts=combos[tk], sm=0; for(var pj=0;pj<pts.length;pj++) sm+=(T[pts[pj]]||[])[wi]||0; bp=sm/2; }
+      }
     }
-    if(!w||!l) return;
-    var bp=ltBasePrice(w,l);
-    // Height adj: use CA SH table for nearest std width, divided by 2
-    var heightAdj=0;
+    bp=Math.round(bp*100)/100;
+    if(h>6){
+      var mw=parseInt(G('bw').value)||0; if(mw%2) mw++;
+      var huT3=(mw<=24?HU_N:(mw<=30?HU_M:HU));
+      var hk3=h<=16?h:(h<=18?18:20);
+      var li3=LENGTHS.indexOf(nearestStd(Math.min(l,40)));
+      var huFull=(li3>=0)?((huT3[hk3]||huT3[16]||[])[li3]||0):0;
+      if(l>40 && huFull){
+        var hu21=(huT3[hk3]||huT3[16]||[])[LENGTHS.indexOf(21)]||0;
+        var hu41=(huT3[hk3]||huT3[16]||[])[LENGTHS.indexOf(41)]||0;
+        huFull=Math.round(hu41+(hu41-hu21)/20*(l-40));
+      }
+      heightAdj=Math.round(huFull/2*100)/100;
+    }
+    var endP=function(v){ return v==='closed'?Math.round(ecLookup(vw,h)/2):(v==='gable'?112.5:0); };
+    var sideP=(ltWalls2.side==='closed')?scLookup(h,l,2*w):(LT_SIDE_P[ltWalls2.side]||0);
+    encAdj=endP(ltWalls2.front)+endP(ltWalls2.back)+sideP;
+  } else {
+    bp=ltBasePrice(w,l);
     if(h>6){
       var ltW2=w<=12?12:(w<=14?14:(w<=16?16:(w<=18?18:20)));
       var hk=h<=16?h:(h<=18?18:20);
       var huT2=(ltW2<=24?HU_N:HU_M);
-      var shCol=l<=40?nearestStd(l):41; // use col40 for >40ft, then extrapolate
+      var shCol=l<=40?nearestStd(l):41;
       var li2=LENGTHS.indexOf(shCol);
       var shFull=(li2>=0)?(huT2[hk]||huT2[16]||[])[li2]||0:0;
       if(l>40 && shFull){
@@ -4700,17 +4738,16 @@ function gLT(){
       }
       heightAdj=Math.round(shFull/2);
     }
-    // Enclosure: CA BSC / 2 per side
-    var ltHk=h<=8?'8-9':(h<=10?'10':(h<=12?'11-12':(h<=14?'14':(h<=16?'16':'16'))));
-    var SC_COLS=[20,25,30,35,40];
-    var sc_ci2=SC_COLS.length-1;
-    for(var sci2=0;sci2<SC_COLS.length;sci2++){if(SC_COLS[sci2]>=l){sc_ci2=sci2;break;}}
-    var ltScH=h<=9?9:(h<=10?10:(h<=12?12:(h<=14?14:16)));
-    var scBase2=(SC[ltScH]||SC[16]||{})[SC_COLS[sc_ci2]]||0;
-    var perSide=Math.round(scBase2/2);
-    var ltWalls2=getLTWalls(el);
-    var encAdj=ltWalls2.frontP+ltWalls2.backP+ltWalls2.sideP;
-    // Lean-to accessories (doors, windows)
+    encAdj=ltWalls2.frontP+ltWalls2.backP+ltWalls2.sideP;
+  }
+  return {w:w,l:l,h:h,isFree:isFree,bp:bp,heightAdj:heightAdj,encAdj:encAdj,total:bp+heightAdj+encAdj};
+}
+function gLT(){
+  var t=0;
+  document.querySelectorAll('.lte').forEach(function(el){
+    var u=ltUnit(el);
+    if(!u.w||!u.l) return;
+    // Lean-to accessories (doors, windows, frame-outs)
     var accAdj=0;
     el.querySelectorAll('.lt-acc-e').forEach(function(ae){
       var atype=ae.querySelector('.lt-acc-type')?ae.querySelector('.lt-acc-type').value:'rollup';
@@ -4746,7 +4783,7 @@ function gLT(){
         accAdj+=aqty*ltFrameoutPrice(afoW, afoLoc);
       }
     });
-    t+=bp+heightAdj+encAdj+accAdj;
+    t+=u.total+accAdj;
   });
   return t;
 }
@@ -7113,8 +7150,8 @@ async function printQuote(){
     var ls=ltIsFree?'Free-Standing Single Slope':(el.querySelector('.lts')?el.querySelector('.lts').value:'');
     var ltW3=getLTWalls(el);
     if(lw&&ll){
-      var wallAdj3=ltW3.frontP+ltW3.backP+ltW3.sideP;
-      var lp=ltBasePrice(lw,ll)+((lh>6)?Math.round((lh-6)*50*(ll/10)):0)+wallAdj3;
+      // Printed line = EXACTLY what the pricing engine charges for this lean-to
+      var lp=ltUnit(el).total;
     var ltStEl3=el.querySelector(".ltst"),ltIsCont3=ltStEl3&&ltStEl3.value==="cont"; var ltPitch3=el.querySelector(".ltp")?el.querySelector(".ltp").value:"2:12"; rows+=row((ltIsFree?"Free-Standing Single Slope":"Lean-To")+" ("+lw+"' \xD7 "+ll+"') — "+ls+" | "+ltPitch3+" Pitch",null,null,lp);
       // Lean-to accessories
       el.querySelectorAll('.lt-acc-e').forEach(function(ae){

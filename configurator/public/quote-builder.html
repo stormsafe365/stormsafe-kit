@@ -4280,14 +4280,26 @@ function getDoorPrice(type, size){
 //   • Mark the option with ★ in the dropdown
 //   • Hide the manual "Chain Hoist" add-on row (already included)
 //   • Label the printed quote as "Roll-Up w/ Chain Hoist" instead of "Roll-Up Door"
+// CCI certified roll-up doors that come WITH a chain hoist (the yellow-
+// highlighted sizes on the June 2021 sheet). Rule: 6/8/9/10-wide need height
+// 13'+, 12-wide needs 12'+, and anything wider than 12' always includes one.
+// Every OTHER certified size is hoist-OPTIONAL (+$325 add-on).
+function cciCertHoistIncluded(size){
+  var p=(size||'').replace('*','').split('x');
+  var w=parseInt(p[0])||0, h=parseInt(p[1])||0;
+  if(w>12) return true;       // 14', 16' wide — any height
+  if(w===12) return h>=12;    // 12' wide — 12'-16'
+  return h>=13;               // 6'/8'/9'/10' wide — 13'-16'
+}
 function doorHasChainIncluded(type, size){
   if(type==='chain') return true;            // legacy explicit chain type
   if(type==='hiimpact') return true;         // hi-impact doors always include hoist
   if(type==='rollup'){
-    // CCI (rudPreferChain): merged tier sells the CERTIFIED door → hoist included
-    // whenever the size exists in the certified chart. CA: chain included only
-    // when the size lives in the CHAIN table, NOT in STD.
-    if(typeof MFR==='function' && MFR().rudPreferChain) return !!(RDP_CHAIN[size]||RDP_CHAIN['*'+size]);
+    // CCI (rudPreferChain): the merged tier sells the CERTIFIED door; only the
+    // chart's auto-hoisted sizes include one (cciCertHoistIncluded) — the rest
+    // are hoist-optional. CA: chain included only when the size lives in the
+    // CHAIN table, NOT in STD.
+    if(typeof MFR==='function' && MFR().rudPreferChain) return cciCertHoistIncluded(size);
     if(RDP_STD[size]) return false;
     return !!(RDP_CHAIN[size]||RDP_CHAIN['*'+size]);
   }
@@ -5909,13 +5921,14 @@ function updateRUDSizes(dtypeEl){
     var sizeMap = {};   // dedupe map: size → {price, chainIncluded, lift}
     var preferChain = (typeof MFR==='function' && !!MFR().rudPreferChain);
     if(preferChain){
-      // CCI: the merged tier IS the certified chart (hoist included); any size
-      // missing from it falls back to the uncertified chart.
+      // CCI: the merged tier IS the certified chart; only the auto-hoisted
+      // sizes (cciCertHoistIncluded) carry the ★ / included flag — the rest are
+      // hoist-optional. Any size missing falls back to the uncertified chart.
       Object.keys(RDP_CHAIN).forEach(function(rawK){
         var lift = (rawK.charAt(0) === '*');
         var clean = lift ? rawK.substring(1) : rawK;
         if(!fits(clean)) return;
-        sizeMap[clean] = {price: rudPriceAdj('rollup', clean, RDP_CHAIN[rawK]), chainIncluded: true, lift: lift};
+        sizeMap[clean] = {price: rudPriceAdj('rollup', clean, RDP_CHAIN[rawK]), chainIncluded: cciCertHoistIncluded(clean), lift: lift};
       });
       Object.keys(RDP_STD).forEach(function(k){
         if(!fits(k) || sizeMap[k]) return;
@@ -6012,17 +6025,25 @@ function chkDoorLift(szSel){
   var needsLift=doorNeedsLift(dtype,sz);
   var liftEl=entry.querySelector('.rlift');
   if(liftEl) liftEl.style.display=needsLift?'block':'none';
-  // Toggle the manual "Chain Hoist" add-on row:
-  //   Show when the selected size does NOT include a chain hoist (STD-tier rollup or legacy standard)
-  //   Hide when the size already includes one (★ rollup, chain, or hiimpact)
+  // Chain Hoist row. The row ALWAYS shows for a roll-up/standard door:
+  //   • size INCLUDES a hoist  → "Included ✓" (read-only, no charge)
+  //   • size is hoist-optional → "None / 1 (+$325)" add-on dropdown
+  // (chain / hi-impact types always include one → "Included ✓".)
   var chRow=entry.querySelector('.rch-row');
   if(chRow){
+    var rchEl=entry.querySelector('.rch');
     var hoistIncluded = doorHasChainIncluded(dtype, sz);
-    chRow.style.display = hoistIncluded ? 'none' : '';
-    if(hoistIncluded){
-      // Reset to 0 so we don't double-charge a hoist
-      var rchEl=entry.querySelector('.rch');
-      if(rchEl) rchEl.value='0';
+    chRow.style.display='';
+    if(rchEl){
+      if(hoistIncluded){
+        rchEl.innerHTML='<option value="0">Included &#10003;</option>';
+        rchEl.value='0'; rchEl.disabled=true;
+      } else {
+        var prevSel=rchEl.value;
+        rchEl.disabled=false;
+        rchEl.innerHTML='<option value="0">None</option><option value="1">1 (+$325)</option>';
+        rchEl.value=(prevSel==='1')?'1':'0';
+      }
     }
   }
   // Refresh seal dropdown price for this door width

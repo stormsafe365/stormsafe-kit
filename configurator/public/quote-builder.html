@@ -10974,11 +10974,16 @@ function setTrussState(el, isHit, hitPositions){
   }
 }
 
-// Hook truss checks into rc() — side frames in .wsf/.nsf now carry header cost ($150 each)
+// Hook truss checks into rc(). Run the truss/side-frame auto-set FIRST so the
+// price is computed from the CURRENT side-frame counts — otherwise moving a
+// door off a truss left the price one cycle stale (door read "None" while the
+// breakdown still showed "Side Frames (auto)"). runTrussChecks only reads door
+// positions + sets .wsf/.nsf programmatically (no rc recursion), so it's safe
+// to run before the pricing pass.
 var _origRC2 = rc;
 rc = function(){
-  _origRC2();
   runTrussChecks();
+  _origRC2();
 };
 
 // Also hook into position changes on eave sides

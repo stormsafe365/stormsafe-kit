@@ -55,6 +55,10 @@ function selectConfig(s: ReturnType<typeof useBuildingStore.getState>): Building
     windSpeedMph: s.windSpeedMph,
     exposureCategory: s.exposureCategory,
     groundSnowPsf: s.groundSnowPsf,
+    // The program's actual truss spacing (5' OC / 4' OC upgrade). Without this
+    // the rule engine has no program spacing and falls back to the LOAD engine,
+    // which forces 4' OC at 150+ mph — so the 3D ignored 5' OC entirely.
+    trussSpacingFt: s.trussSpacingFt,
     leanTos: s.leanTos,
     openings: s.openings,
   };

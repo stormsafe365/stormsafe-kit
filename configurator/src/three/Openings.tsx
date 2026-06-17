@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import type { Opening, OpeningType, WallSide } from '@/types/building';
 import { COMPONENT_OUTSET, openingWorldTransform, type StructureModel, type Vec3 } from '@/engine/geometry';
 import { clampOffset } from '@/engine/layout';
-import { TRUSS_CLEARANCE_FT } from '@/config/constants';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures';
@@ -363,7 +362,6 @@ function OpeningDimensions({
   const eave = wall.eaveHeightFt;
   const top = Math.min(eave - 0.2, sill + h);
   const baseY = 0.4;
-  const clear = TRUSS_CLEARANCE_FT;
 
   // Nearest neighbor opening edge on each side (null if none).
   let leftN: number | null = null;
@@ -379,7 +377,11 @@ function OpeningDimensions({
   // Truss/post positions on this wall.
   const trusses = wall.trussLines.map((t) => t.posFt);
   const guideTrusses = trusses.filter((p) => p >= L - 1.5 && p <= R + 1.5);
-  const hit = trusses.some((p) => p >= L - clear && p <= R + clear);
+  // A door needs a side-frame ONLY when a truss actually falls inside the
+  // opening (strict overlap) — same rule as the quote's side-frame pricing
+  // (checkTrussHitFromFront). No clearance margin, so a door placed in the bay
+  // between two trusses clears (matches the price).
+  const hit = trusses.some((p) => p > L + 0.02 && p < R - 0.02);
 
   // Point on the guide plane (pushed just in front of the component).
   const pt = (along: number, y: number): Vec3 =>
@@ -389,7 +391,7 @@ function OpeningDimensions({
     <group>
       {/* Vertical truss/post guides (only while editing this component) */}
       {guideTrusses.map((p, i) => {
-        const conflict = p >= L - clear && p <= R + clear;
+        const conflict = p > L + 0.02 && p < R - 0.02;
         return (
           <GuideLine
             key={`tr-${i}`}

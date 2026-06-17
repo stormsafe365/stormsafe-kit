@@ -417,7 +417,7 @@ function endTrussLines(W: number): TrussLine[] {
 }
 
 export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
-  const { config, frameCount, requiresHatChannels } = resolved;
+  const { config, legSpacing, requiresHatChannels } = resolved;
   const { width: W, length: L, legHeight: H, roofPitch, buildingType, enclosedLengthFt, openEnd, openEndGableSheeting, eavePanelFt } = config;
 
   const halfW = W / 2;
@@ -426,10 +426,18 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   const peakHeight = H + rise;
   const rafterLength = Math.hypot(halfW, rise);
 
-  const framePositionsZ =
-    frameCount <= 1
-      ? [0]
-      : Array.from({ length: frameCount }, (_, i) => -halfL + (i * L) / (frameCount - 1));
+  // Frames sit at EXACT on-center intervals from the front gable (with end
+  // frames at both walls and a possibly-short last bay) — NOT evenly
+  // distributed. So "4' OC" really means a truss every 4', matching the shop
+  // drawings + the quote's collision logic, so a door placed in a bay clears.
+  const framePositionsZ = (() => {
+    if (L <= 0 || legSpacing <= 0) return [0];
+    const out = [-halfL];
+    for (let t = legSpacing; t < L - 0.01; t += legSpacing) out.push(-halfL + t);
+    out.push(halfL);
+    return out;
+  })();
+  const frameCount = framePositionsZ.length;
 
   const enclosure = deriveEnclosure(buildingType, halfL, L, enclosedLengthFt, openEnd, openEndGableSheeting, config.wallOverrides);
   // The OPEN (carport) eave portion: whole length for a carport, the un-enclosed

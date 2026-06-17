@@ -29,13 +29,17 @@ export function checkCollision(
   let hit = false;
 
   for (const t of wall.trussLines) {
+    // The gable-end frames (posFt 0 / span) are the end walls, not a side-frame
+    // trigger — only INTERIOR frame legs count.
+    if (t.posFt <= 0.05 || t.posFt >= wall.spanFt - 0.05) continue;
     // distance from the leg to the nearest framed edge (0 inside the opening)
     const edgeDist = t.posFt < left ? left - t.posFt : t.posFt > right ? t.posFt - right : -1;
     if (edgeDist < minClear) {
       minClear = edgeDist;
       nearest = t.posFt;
     }
-    if (edgeDist <= clearance) hit = true;
+    // Strictly within the clearance — a leg exactly `clearance` away clears.
+    if (edgeDist < clearance) hit = true;
   }
 
   return { hit, legPosFt: hit ? nearest : null, clearanceFt: round(minClear) };

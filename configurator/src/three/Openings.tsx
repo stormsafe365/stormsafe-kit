@@ -4,7 +4,8 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Opening, OpeningType, WallSide } from '@/types/building';
 import { COMPONENT_OUTSET, openingWorldTransform, type StructureModel, type Vec3 } from '@/engine/geometry';
-import { clampOffset } from '@/engine/layout';
+import { clampOffset, checkCollision } from '@/engine/layout';
+import { TRUSS_CLEARANCE_FT } from '@/config/constants';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures';
@@ -377,11 +378,13 @@ function OpeningDimensions({
   // Truss/post positions on this wall.
   const trusses = wall.trussLines.map((t) => t.posFt);
   const guideTrusses = trusses.filter((p) => p >= L - 1.5 && p <= R + 1.5);
-  // A door needs a side-frame ONLY when a truss actually falls inside the
-  // opening (strict overlap) — same rule as the quote's side-frame pricing
-  // (checkTrussHitFromFront). No clearance margin, so a door placed in the bay
-  // between two trusses clears (matches the price).
-  const hit = trusses.some((p) => p > L + 0.02 && p < R - 0.02);
+  // A door needs a side frame when an INTERIOR frame leg is inside the opening
+  // OR within the jamb clearance (2") of either edge — shared checkCollision()
+  // so the 3D guide, the building flag and the quote's side-frame pricing all
+  // agree. (A leg exactly the clearance away clears.)
+  const isInterior = (p: number) => p > 0.05 && p < span - 0.05;
+  const edgeDist = (p: number) => (p < L ? L - p : p > R ? p - R : -1);
+  const hit = checkCollision(offset, w, wall).hit;
 
   // Point on the guide plane (pushed just in front of the component).
   const pt = (along: number, y: number): Vec3 =>
@@ -391,7 +394,7 @@ function OpeningDimensions({
     <group>
       {/* Vertical truss/post guides (only while editing this component) */}
       {guideTrusses.map((p, i) => {
-        const conflict = p > L + 0.02 && p < R - 0.02;
+        const conflict = isInterior(p) && edgeDist(p) < TRUSS_CLEARANCE_FT;
         return (
           <GuideLine
             key={`tr-${i}`}

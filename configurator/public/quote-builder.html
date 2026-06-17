@@ -10748,11 +10748,15 @@ function checkTrussHit(itemX, itemW, bldgLength){
 // distFromFront = how far the item's near edge is from the front gable end.
 // Trusses are at oc, 2*oc, 3*oc... measured from the front gable (consistent with "From Front Gable" UI).
 function checkTrussHitFromFront(distFromFront, itemW, bldgLength){
-  var oc = getTrussOC(), hits = [];
-  for(var t = oc; t < bldgLength; t += oc){
-    if(t > distFromFront && t < distFromFront + itemW){
-      hits.push(t);
-    }
+  // A door needs a side frame when an interior truss falls inside the opening
+  // OR within 2" (jamb clearance) of either edge. Matches the 3D guide's
+  // checkCollision() so the on-model warning and the price always agree. Only
+  // interior trusses (oc, 2oc, ... < length) count — the gable ends don't.
+  var oc = getTrussOC(), hits = [], C = 2/12;
+  var L = distFromFront, R = distFromFront + itemW;
+  for(var t = oc; t < bldgLength - 0.05; t += oc){
+    var edgeDist = (t < L) ? (L - t) : (t > R) ? (t - R) : -1;
+    if(edgeDist < C) hits.push(t);   // strict: a truss exactly 2" away clears
   }
   return hits;
 }

@@ -28,7 +28,7 @@ export const BUILDING_TYPES: { value: BuildingType; label: string; blurb: string
 ];
 
 /** Truss-clearance rule: warn when an opening comes within this of a leg (ft). */
-export const TRUSS_CLEARANCE_FT = 3 / 12; // 3 inches each side
+export const TRUSS_CLEARANCE_FT = 2 / 12; // 2" jamb clearance each side (truss within 2" of a door edge needs a side frame)
 
 export const DEFAULT_CONFIG: BuildingConfig = {
   buildingType: 'garage',

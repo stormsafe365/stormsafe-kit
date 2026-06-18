@@ -153,6 +153,8 @@ export interface Opening {
    * Drives which door-face texture the 3D draws. Unset → 'std'.
    */
   doorStyle?: 'std' | '6panel' | '9lite' | 'diamond';
+  /** Roll-up door with its top corners cut at 45° (program "45° Angle Cut"). */
+  cut45?: boolean;
 }
 
 /** Color targets — each can take any swatch code from config/colors. */

@@ -110,6 +110,9 @@ function DraggableOpening({
   const isFrameOut = opening.type === 'frameOut';
   const isWalk = opening.type === 'walkDoor';
   const doorDark = isDarkHex(opening.color);
+  // Roll-up "45° Angle Cut": both top corners chamfered at 45°.
+  const cut45 = opening.type === 'rollUpDoor' && !!opening.cut45;
+  const cutC = Math.min(w / 3, h / 3, 1.5); // chamfer leg (equal H/V = 45°)
 
   const panelMat = useMemo(() => {
     if (isWalk) {
@@ -167,6 +170,30 @@ function DraggableOpening({
     });
   }, [isWalk, isSlat, isGlass, isFrameOut, opening.type, h, opening.color, opening.doorStyle, doorDark]);
 
+  // Door panel with both top corners cut at 45° (extruded chamfered rectangle).
+  // Front-face UVs are normalized 0..1 over the bounding box so the slat texture
+  // tiles exactly like the plain box panel does.
+  const cutGeo = useMemo(() => {
+    if (!cut45) return null;
+    const c = cutC;
+    const d = isFrameOut ? 0.06 : 0.09;
+    const s = new THREE.Shape();
+    s.moveTo(-w / 2, -h / 2);
+    s.lineTo(w / 2, -h / 2);
+    s.lineTo(w / 2, h / 2 - c);
+    s.lineTo(w / 2 - c, h / 2);
+    s.lineTo(-w / 2 + c, h / 2);
+    s.lineTo(-w / 2, h / 2 - c);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false });
+    g.translate(0, 0, -d / 2);
+    const p = g.attributes.position;
+    const uv = g.attributes.uv;
+    for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + w / 2) / w, (p.getY(i) + h / 2) / h);
+    uv.needsUpdate = true;
+    return g;
+  }, [cut45, cutC, w, h, isFrameOut]);
+
   const emissive = selected ? '#22d3c8' : '#000000';
 
   // --- Direct 3D drag: grab the component and slide it along its wall ---
@@ -218,16 +245,42 @@ function DraggableOpening({
   return (
     <group>
       <group position={pos} rotation={[0, rotY, 0]}>
-        {/* Proud jamb / header / sill trim — floor-mounted doors omit the sill. */}
-        <TrimBar pos={[0, h / 2 + t / 2, 0]} size={[w + 2 * t, t, trimDepth]} color={tc} />
-        <TrimBar pos={[-w / 2 - t / 2, onFloor ? t / 2 : 0, 0]} size={[t, onFloor ? h + t : h + 2 * t, trimDepth]} color={tc} />
-        <TrimBar pos={[w / 2 + t / 2, onFloor ? t / 2 : 0, 0]} size={[t, onFloor ? h + t : h + 2 * t, trimDepth]} color={tc} />
+        {/* Proud jamb / header / sill trim — floor-mounted doors omit the sill.
+            A 45° angle-cut roll-up shortens the jambs to the cut, runs a flat
+            top trim only across the un-cut middle, and adds a diagonal trim bar
+            down each chamfer. */}
+        {cut45 ? (
+          <>
+            <TrimBar pos={[0, h / 2 + t / 2, 0]} size={[w - 2 * cutC + t, t, trimDepth]} color={tc} />
+            <TrimBar pos={[-w / 2 - t / 2, onFloor ? (h - cutC) / 2 - t / 2 : -cutC / 2, 0]} size={[t, onFloor ? h - cutC + t : h - cutC + t, trimDepth]} color={tc} />
+            <TrimBar pos={[w / 2 + t / 2, onFloor ? (h - cutC) / 2 - t / 2 : -cutC / 2, 0]} size={[t, onFloor ? h - cutC + t : h - cutC + t, trimDepth]} color={tc} />
+            <mesh position={[-(w / 2 - cutC / 2), h / 2 - cutC / 2, 0]} rotation={[0, 0, Math.PI / 4]}>
+              <boxGeometry args={[cutC * Math.SQRT2 + t, t, trimDepth]} />
+              <meshStandardMaterial color={tc} metalness={0.08} roughness={0.5} />
+            </mesh>
+            <mesh position={[w / 2 - cutC / 2, h / 2 - cutC / 2, 0]} rotation={[0, 0, -Math.PI / 4]}>
+              <boxGeometry args={[cutC * Math.SQRT2 + t, t, trimDepth]} />
+              <meshStandardMaterial color={tc} metalness={0.08} roughness={0.5} />
+            </mesh>
+          </>
+        ) : (
+          <>
+            <TrimBar pos={[0, h / 2 + t / 2, 0]} size={[w + 2 * t, t, trimDepth]} color={tc} />
+            <TrimBar pos={[-w / 2 - t / 2, onFloor ? t / 2 : 0, 0]} size={[t, onFloor ? h + t : h + 2 * t, trimDepth]} color={tc} />
+            <TrimBar pos={[w / 2 + t / 2, onFloor ? t / 2 : 0, 0]} size={[t, onFloor ? h + t : h + 2 * t, trimDepth]} color={tc} />
+          </>
+        )}
         {!onFloor && <TrimBar pos={[0, -h / 2 - t / 2, 0]} size={[w + 2 * t, t, trimDepth]} color={tc} />}
 
-        {/* Panel — flush slab (door) or recessed glazing (window) — grab + drag */}
-        <mesh position={[0, 0, panelZ]} material={panelMat} castShadow={!isFrameOut} onPointerDown={onDown}>
-          <boxGeometry args={[w, h, panelDepth]} />
-        </mesh>
+        {/* Panel — flush slab (door) or recessed glazing (window) — grab + drag.
+            45° cut roll-up uses the chamfered extrusion instead of a box. */}
+        {cutGeo ? (
+          <mesh position={[0, 0, panelZ]} geometry={cutGeo} material={panelMat} castShadow onPointerDown={onDown} />
+        ) : (
+          <mesh position={[0, 0, panelZ]} material={panelMat} castShadow={!isFrameOut} onPointerDown={onDown}>
+            <boxGeometry args={[w, h, panelDepth]} />
+          </mesh>
+        )}
         {selected && (
           <mesh position={[0, 0, trimDepth / 2 + 0.02]}>
             <planeGeometry args={[w + t, h + t]} />

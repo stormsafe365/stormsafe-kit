@@ -3985,11 +3985,16 @@ function gLeg(){
     }
     return extVal30;
   }
-  // Other standard widths: extrapolate from CA table
+  // Other standard widths: extrapolate from the leg-height table, but ROUND THE
+  // LENGTH UP to the standard build tier first (CCI builds a 42' as a 46' — same
+  // as the base price). Using the literal length here under-charged in-between
+  // lengths (42-44, 47-49) vs the rounded base, which is why a 26x42x14 leg read
+  // ~$229 low against Sensei. Long buildings (l>51) keep the linear extrapolation.
   var sh40s=(huT[hk2]||huT[16]||[])[LENGTHS.indexOf(41)]||0;
   var sh20s=(huT[hk2]||huT[16]||[])[LENGTHS.indexOf(21)]||0;
   if(!sh40s||!sh20s) return 0;
-  return Math.round(sh40s + (sh40s-sh20s)/20*(l-40));
+  var lEffLeg = (l<=51) ? nearestStd(l) : l;
+  return Math.round(sh40s + (sh40s-sh20s)/20*(lEffLeg-40));
 }
 function getSqFt(){
   var w=parseInt(G('bw').value)||0, l=parseInt(G('bl').value)||0;
@@ -4123,10 +4128,14 @@ function scLookup(h,l,w){
   for(var sci=0;sci<SC_COLS.length;sci++){if(SC_COLS[sci]>=l){sc_ci=sci;break;}}
   var scVal=((SC[hk]||SC[16])[SC_COLS[sc_ci]]||0);
   if(l>40){
+    // Side-closing chart tops out at 40' and CCI builds in 5' tiers (…40,45,50),
+    // so a 42' bills as 45'. Round the length UP to the next 5' tier before
+    // extrapolating (the literal length under-charged in-between lengths).
     var scBase=((SC[hk]||SC[16])[20]||0);
     var sc40v=((SC[hk]||SC[16])[40]||0);
     var scRate=(sc40v-scBase)/20;
-    scVal=Math.round(sc40v+scRate*(l-40));
+    var lEffSc = (l<=50) ? Math.ceil(l/5)*5 : l;
+    scVal=Math.round(sc40v+scRate*(lEffSc-40));
   }
   return Math.round(scVal/2);
 }

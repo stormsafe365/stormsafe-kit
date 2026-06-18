@@ -110,9 +110,12 @@ function DraggableOpening({
   const isFrameOut = opening.type === 'frameOut';
   const isWalk = opening.type === 'walkDoor';
   const doorDark = isDarkHex(opening.color);
-  // Roll-up "45° Angle Cut": both top corners chamfered at 45°.
+  // Roll-up "45° Angle Cut": a SMALL manufacturer-style clip on both top
+  // corners (~6"–10"), not a structural brace. Subtle + proportional so the
+  // door still reads as a clean rectangle with clipped corners (matches Sensei
+  // / IdeaRoom), never a trapezoid.
   const cut45 = opening.type === 'rollUpDoor' && !!opening.cut45;
-  const cutC = Math.min(w / 3, h / 3, 1.5); // chamfer leg (equal H/V = 45°)
+  const cutC = Math.min(0.83, w * 0.09, h * 0.09); // chamfer leg (equal H/V = 45°)
 
   const panelMat = useMemo(() => {
     if (isWalk) {

@@ -177,6 +177,9 @@ function DraggableOpening({
   }, [isWalk, isSlat, isGlass, isFrameOut, opening.type, h, opening.color, opening.doorStyle, doorDark]);
 
   // Door panel with both top corners cut at 45° (extruded chamfered rectangle).
+  const t = 0.17; // jamb/header face ~2" (spec 2–3") — folded flashing
+  const trimDepth = 0.07; // shallow proud depth (not a thick picture frame)
+
   // Front-face UVs are normalized 0..1 over the bounding box so the slat texture
   // tiles exactly like the plain box panel does.
   const cutGeo = useMemo(() => {
@@ -199,6 +202,35 @@ function DraggableOpening({
     uv.needsUpdate = true;
     return g;
   }, [cut45, cutC, w, h, isFrameOut]);
+
+  // Trim as ONE continuous folded U-frame following the chamfered outline:
+  // jambs + header + the two corner clips traced as a single band of uniform
+  // width `t`, open at the bottom (floor door). Perfectly mitered corners — no
+  // overshoot/notches from stacking separate boxes.
+  const cutFrameGeo = useMemo(() => {
+    if (!cut45) return null;
+    const c = cutC;
+    const a = t * (Math.SQRT2 - 1); // chamfer endpoints shift along the edges when offset out by t
+    const s = new THREE.Shape();
+    // Outer perimeter: up the left edge, across the top (around both clips), down the right.
+    s.moveTo(-w / 2 - t, -h / 2);
+    s.lineTo(-w / 2 - t, h / 2 - c + a);
+    s.lineTo(-w / 2 + c - a, h / 2 + t);
+    s.lineTo(w / 2 - c + a, h / 2 + t);
+    s.lineTo(w / 2 + t, h / 2 - c + a);
+    s.lineTo(w / 2 + t, -h / 2);
+    // Inner perimeter (door edge) back down the right, across top, up the left.
+    s.lineTo(w / 2, -h / 2);
+    s.lineTo(w / 2, h / 2 - c);
+    s.lineTo(w / 2 - c, h / 2);
+    s.lineTo(-w / 2 + c, h / 2);
+    s.lineTo(-w / 2, h / 2 - c);
+    s.lineTo(-w / 2, -h / 2);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: trimDepth, bevelEnabled: false });
+    g.translate(0, 0, -trimDepth / 2);
+    return g;
+  }, [cut45, cutC, w, h, t, trimDepth]);
 
   // The chamfer removes the door's top corners, exposing the rectangular wall
   // opening behind → you'd see straight inside. Cap each cut corner with a
@@ -260,8 +292,6 @@ function DraggableOpening({
     window.addEventListener('pointerup', up);
   };
 
-  const t = 0.17; // jamb/header face ~2" (spec 2–3") — folded flashing
-  const trimDepth = 0.07; // shallow proud depth (not a thick picture frame)
   const panelDepth = isFrameOut ? 0.06 : isGlass ? 0.035 : 0.09;
   const panelZ = isGlass ? -0.025 : 0; // recess glass behind the proud frame
   const onFloor = opening.sillHeight <= 0.1;
@@ -277,23 +307,13 @@ function DraggableOpening({
             down each chamfer. */}
         {cut45 ? (
           <>
-            <TrimBar pos={[0, h / 2 + t / 2, 0]} size={[w - 2 * cutC + t, t, trimDepth]} color={tc} />
-            {/* Jambs run from the slab up to where the clip begins (h/2 - cutC),
-                flush with the door edge — center -cutC/2, height h-cutC. */}
-            <TrimBar pos={[-w / 2 - t / 2, -cutC / 2, 0]} size={[t, h - cutC + t, trimDepth]} color={tc} />
-            <TrimBar pos={[w / 2 + t / 2, -cutC / 2, 0]} size={[t, h - cutC + t, trimDepth]} color={tc} />
-            {/* Diagonal clip trim — offset OUTWARD by t/2 along the 45° normal so
-                the full band sits outside the door edge (same visible width as
-                the jambs/header); centered, only half showed. Length extends
-                past each end so it miters cleanly into the jamb + header. */}
-            <mesh position={[-(w / 2 - cutC / 2) - t / (2 * Math.SQRT2), h / 2 - cutC / 2 + t / (2 * Math.SQRT2), 0]} rotation={[0, 0, Math.PI / 4]}>
-              <boxGeometry args={[cutC * Math.SQRT2 + 2 * t, t, trimDepth]} />
-              <meshStandardMaterial color={tc} metalness={0.08} roughness={0.5} />
-            </mesh>
-            <mesh position={[w / 2 - cutC / 2 + t / (2 * Math.SQRT2), h / 2 - cutC / 2 + t / (2 * Math.SQRT2), 0]} rotation={[0, 0, -Math.PI / 4]}>
-              <boxGeometry args={[cutC * Math.SQRT2 + 2 * t, t, trimDepth]} />
-              <meshStandardMaterial color={tc} metalness={0.08} roughness={0.5} />
-            </mesh>
+            {/* One continuous folded U-frame (jambs + header + corner clips) —
+                uniform width, cleanly mitered corners, open at the floor. */}
+            {cutFrameGeo && (
+              <mesh geometry={cutFrameGeo}>
+                <meshStandardMaterial color={tc} metalness={0.08} roughness={0.5} />
+              </mesh>
+            )}
             {/* Wall-colored caps so the clipped corners read as solid sheeting, not a see-through hole. */}
             {cutFillGeo && (
               <mesh geometry={cutFillGeo}>

@@ -255,8 +255,10 @@ function DraggableOpening({
         {cut45 ? (
           <>
             <TrimBar pos={[0, h / 2 + t / 2, 0]} size={[w - 2 * cutC + t, t, trimDepth]} color={tc} />
-            <TrimBar pos={[-w / 2 - t / 2, onFloor ? (h - cutC) / 2 - t / 2 : -cutC / 2, 0]} size={[t, onFloor ? h - cutC + t : h - cutC + t, trimDepth]} color={tc} />
-            <TrimBar pos={[w / 2 + t / 2, onFloor ? (h - cutC) / 2 - t / 2 : -cutC / 2, 0]} size={[t, onFloor ? h - cutC + t : h - cutC + t, trimDepth]} color={tc} />
+            {/* Jambs run from the slab up to where the clip begins (h/2 - cutC),
+                flush with the door edge — center -cutC/2, height h-cutC. */}
+            <TrimBar pos={[-w / 2 - t / 2, -cutC / 2, 0]} size={[t, h - cutC + t, trimDepth]} color={tc} />
+            <TrimBar pos={[w / 2 + t / 2, -cutC / 2, 0]} size={[t, h - cutC + t, trimDepth]} color={tc} />
             <mesh position={[-(w / 2 - cutC / 2), h / 2 - cutC / 2, 0]} rotation={[0, 0, Math.PI / 4]}>
               <boxGeometry args={[cutC * Math.SQRT2 + t, t, trimDepth]} />
               <meshStandardMaterial color={tc} metalness={0.08} roughness={0.5} />

@@ -84,7 +84,7 @@ export function BuildingModel() {
           trimColor={trimHex}
         />
         <Trim structure={structure} color={trimHex} wainscot={config.wainscot} openings={config.openings} />
-        <Openings openings={config.openings} structure={structure} trimColor={trimHex} />
+        <Openings openings={config.openings} structure={structure} trimColor={trimHex} wallColor={swatchHex(config.colors.walls)} />
       </ShellGroup>
     </group>
   );

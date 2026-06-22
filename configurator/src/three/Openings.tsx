@@ -3,7 +3,7 @@ import { useThree, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Opening, OpeningType, WallSide } from '@/types/building';
-import { COMPONENT_OUTSET, openingWorldTransform, type StructureModel, type Vec3 } from '@/engine/geometry';
+import { COMPONENT_OUTSET, SHEET_OUTSET, openingWorldTransform, type StructureModel, type Vec3 } from '@/engine/geometry';
 import { clampOffset, checkCollision } from '@/engine/layout';
 import { TRUSS_CLEARANCE_FT } from '@/config/constants';
 import { useBuildingStore } from '@/store/useBuildingStore';
@@ -14,6 +14,7 @@ interface OpeningsProps {
   openings: Opening[];
   structure: StructureModel;
   trimColor: string;
+  wallColor: string;
 }
 
 /** Feet (decimal) → feet-inches string, e.g. 4.75 → 4'9". */
@@ -53,7 +54,7 @@ const isDarkHex = (hex?: string): boolean => {
   return 0.299 * r + 0.587 * g + 0.114 * b < 110;
 };
 
-export function Openings({ openings, structure, trimColor }: OpeningsProps) {
+export function Openings({ openings, structure, trimColor, wallColor }: OpeningsProps) {
   // Render an opening wherever it's placed — doors / frame-outs commonly go on
   // open carport ends, gable-only ends, and partial-sheeted sides. The only
   // guard: a partition opening needs an actual partition (GCH split) to exist.
@@ -63,7 +64,7 @@ export function Openings({ openings, structure, trimColor }: OpeningsProps) {
   return (
     <group>
       {visible.map((o) => (
-        <DraggableOpening key={o.id} opening={o} structure={structure} trimColor={trimColor} />
+        <DraggableOpening key={o.id} opening={o} structure={structure} trimColor={trimColor} wallColor={wallColor} />
       ))}
       {sel && (
         <OpeningDimensions
@@ -80,10 +81,12 @@ function DraggableOpening({
   opening,
   structure,
   trimColor,
+  wallColor,
 }: {
   opening: Opening;
   structure: StructureModel;
   trimColor: string;
+  wallColor: string;
 }) {
   const updateOpening = useBuildingStore((s) => s.updateOpening);
   const { selectedOpeningId, selectOpening, setActiveWall, setDragging } = useEditorStore();
@@ -197,6 +200,26 @@ function DraggableOpening({
     return g;
   }, [cut45, cutC, w, h, isFrameOut]);
 
+  // The chamfer removes the door's top corners, exposing the rectangular wall
+  // opening behind → you'd see straight inside. Cap each cut corner with a
+  // wall-colored triangle at the WALL plane so it reads as solid sheeting
+  // (matching the manufacturer look) instead of a see-through gap.
+  const cutFillGeo = useMemo(() => {
+    if (!cut45) return null;
+    const c = cutC;
+    const z = -(COMPONENT_OUTSET - SHEET_OUTSET); // wall sheeting plane in the fixture frame
+    const v = new Float32Array([
+      // top-right corner triangle
+      w / 2, h / 2 - c, z, w / 2, h / 2, z, w / 2 - c, h / 2, z,
+      // top-left corner triangle
+      -w / 2, h / 2 - c, z, -w / 2 + c, h / 2, z, -w / 2, h / 2, z,
+    ]);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(v, 3));
+    g.computeVertexNormals();
+    return g;
+  }, [cut45, cutC, w, h]);
+
   const emissive = selected ? '#22d3c8' : '#000000';
 
   // --- Direct 3D drag: grab the component and slide it along its wall ---
@@ -267,6 +290,12 @@ function DraggableOpening({
               <boxGeometry args={[cutC * Math.SQRT2 + t, t, trimDepth]} />
               <meshStandardMaterial color={tc} metalness={0.08} roughness={0.5} />
             </mesh>
+            {/* Wall-colored caps so the clipped corners read as solid sheeting, not a see-through hole. */}
+            {cutFillGeo && (
+              <mesh geometry={cutFillGeo}>
+                <meshStandardMaterial color={wallColor} metalness={0.0} roughness={0.9} side={THREE.DoubleSide} />
+              </mesh>
+            )}
           </>
         ) : (
           <>

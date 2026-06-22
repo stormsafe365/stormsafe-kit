@@ -282,12 +282,16 @@ function DraggableOpening({
                 flush with the door edge — center -cutC/2, height h-cutC. */}
             <TrimBar pos={[-w / 2 - t / 2, -cutC / 2, 0]} size={[t, h - cutC + t, trimDepth]} color={tc} />
             <TrimBar pos={[w / 2 + t / 2, -cutC / 2, 0]} size={[t, h - cutC + t, trimDepth]} color={tc} />
-            <mesh position={[-(w / 2 - cutC / 2), h / 2 - cutC / 2, 0]} rotation={[0, 0, Math.PI / 4]}>
-              <boxGeometry args={[cutC * Math.SQRT2 + t, t, trimDepth]} />
+            {/* Diagonal clip trim — offset OUTWARD by t/2 along the 45° normal so
+                the full band sits outside the door edge (same visible width as
+                the jambs/header); centered, only half showed. Length extends
+                past each end so it miters cleanly into the jamb + header. */}
+            <mesh position={[-(w / 2 - cutC / 2) - t / (2 * Math.SQRT2), h / 2 - cutC / 2 + t / (2 * Math.SQRT2), 0]} rotation={[0, 0, Math.PI / 4]}>
+              <boxGeometry args={[cutC * Math.SQRT2 + 2 * t, t, trimDepth]} />
               <meshStandardMaterial color={tc} metalness={0.08} roughness={0.5} />
             </mesh>
-            <mesh position={[w / 2 - cutC / 2, h / 2 - cutC / 2, 0]} rotation={[0, 0, -Math.PI / 4]}>
-              <boxGeometry args={[cutC * Math.SQRT2 + t, t, trimDepth]} />
+            <mesh position={[w / 2 - cutC / 2 + t / (2 * Math.SQRT2), h / 2 - cutC / 2 + t / (2 * Math.SQRT2), 0]} rotation={[0, 0, -Math.PI / 4]}>
+              <boxGeometry args={[cutC * Math.SQRT2 + 2 * t, t, trimDepth]} />
               <meshStandardMaterial color={tc} metalness={0.08} roughness={0.5} />
             </mesh>
             {/* Wall-colored caps so the clipped corners read as solid sheeting, not a see-through hole. */}

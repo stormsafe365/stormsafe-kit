@@ -44,7 +44,20 @@ export function CaptureHook() {
       camera.updateProjectionMatrix();
       if (controls) controls.maxDistance = 100000;
 
+      // Render the snapshots at high resolution so the building views are sharp
+      // in the printed quote/contract PDF (the interactive view runs at the
+      // device pixel ratio, which is too low once the image is placed on paper).
+      // Bump the renderer's backing buffer to ~3× the CSS size for the capture,
+      // then restore so the live view is untouched.
+      const canvas = gl.domElement;
+      const cssW = canvas.clientWidth || canvas.width;
+      const cssH = canvas.clientHeight || canvas.height;
+      const savedPR = gl.getPixelRatio();
+      const CAPTURE_PR = 3;
+
       try {
+        gl.setPixelRatio(CAPTURE_PR);
+        gl.setSize(cssW, cssH, false); // false = don't touch CSS size; only the buffer grows
         for (const v of views) {
           if (setView) setView(v);
           else goToView(v);
@@ -53,12 +66,15 @@ export function CaptureHook() {
           out[v] = gl.domElement.toDataURL('image/png');
         }
       } finally {
+        gl.setPixelRatio(savedPR);
+        gl.setSize(cssW, cssH, false);
         scene.fog = savedFog;
         camera.far = savedFar;
         camera.updateProjectionMatrix();
         if (controls && savedMax != null) controls.maxDistance = savedMax;
         if (setView) setView('iso');
         else goToView('iso');
+        gl.render(scene, camera); // repaint the live view at the restored resolution
       }
       return out;
     };

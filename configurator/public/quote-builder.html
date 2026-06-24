@@ -8919,6 +8919,8 @@ async function printContract(){
       '<div class="c-spec"><div class="l">Roof Color</div><div class="v">'+_esc(roofColor)+'</div></div>'+
       '<div class="c-spec"><div class="l">Wall Color</div><div class="v">'+_esc(wallColor)+'</div></div>'+
       '<div class="c-spec"><div class="l">Trim Color</div><div class="v">'+_esc(trimColor)+'</div></div>'+
+      // Wainscot color — only when wainscot is added to the build.
+      (wainOn ? '<div class="c-spec"><div class="l">Wainscot Color</div><div class="v">'+_esc((wainColor&&wainColor!=='N/A')?wainColor:'—')+'</div></div>' : '')+
     '</div>'+
     '</div>'+
 

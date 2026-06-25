@@ -6356,10 +6356,19 @@ function chkDoorLift(szSel){
         rchEl.innerHTML='<option value="0">Included &#10003;</option>';
         rchEl.value='0'; rchEl.disabled=true;
       } else {
-        var prevSel=rchEl.value;
+        // Hoist-optional: offer 1..(door qty) just like the brush-seal dropdown
+        // below, so each of multiple doors can get a hoist (was hardcoded None/1,
+        // capping it at 1 even when 2+ doors were ordered).
+        var prevSel=parseInt(rchEl.value)||0;
+        var chQty=parseInt(((entry.querySelector('.rqt'))||{value:'1'}).value)||1;
         rchEl.disabled=false;
-        rchEl.innerHTML='<option value="0">None</option><option value="1">1 (+$325)</option>';
-        rchEl.value=(prevSel==='1')?'1':'0';
+        rchEl.innerHTML='<option value="0">None</option>';
+        for(var ci=1;ci<=chQty;ci++){
+          var co=document.createElement('option');
+          co.value=ci; co.textContent=ci+' (+$'+(ci*325).toLocaleString()+')';
+          rchEl.appendChild(co);
+        }
+        rchEl.value=Math.min(prevSel,chQty)||0;
       }
     }
   }

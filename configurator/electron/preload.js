@@ -8,4 +8,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // for preview — the desktop stand-in for the browser's print preview / Save-as-PDF.
   // Resolves to { ok, filePath } | { ok:false, canceled } | { ok:false, error }.
   savePdf: (html, suggestedName) => ipcRenderer.invoke('ss:save-pdf', { html, suggestedName }),
+
+  // Saved-quote log persistence — the desktop replacement for the non-persistent
+  // file:// localStorage. quotesLoad() -> JSON string; quotesSave(json) -> {ok}.
+  quotesLoad: () => ipcRenderer.invoke('ss:quotes-load'),
+  quotesSave: (json) => ipcRenderer.invoke('ss:quotes-save', json),
 });

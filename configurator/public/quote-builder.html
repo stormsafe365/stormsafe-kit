@@ -6981,6 +6981,42 @@ function collectQuoteData(){
   return data;
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// SAVED-QUOTE STORAGE
+// In a browser the quote log lives in localStorage. In the packaged desktop app
+// the pricing UI runs from file:// inside an iframe, where localStorage is an
+// opaque, non-persistent origin — so saved quotes never stuck. When the Electron
+// bridge is present (window.parent.electronAPI) we persist the log to a real
+// JSON file on disk and keep a synchronous in-memory mirror, so the existing
+// render/load/delete code keeps working unchanged.
+// ════════════════════════════════════════════════════════════════════════════
+var _ssQuotesApi = (function(){ try { return window.electronAPI || (window.parent && window.parent.electronAPI) || null; } catch(e){ return null; } })();
+var _ssQuotesCache = null; // desktop: in-memory mirror of the on-disk log
+function _quotesRead(){
+  if(_ssQuotesApi){ return Array.isArray(_ssQuotesCache) ? _ssQuotesCache.slice() : []; }
+  try { return JSON.parse(localStorage.getItem('ss_quotes')||'[]'); } catch(e){ return []; }
+}
+function _quotesWrite(log){
+  log = Array.isArray(log) ? log : [];
+  if(_ssQuotesApi){
+    _ssQuotesCache = log.slice();
+    try { _ssQuotesApi.quotesSave(JSON.stringify(_ssQuotesCache)); } catch(e){ console.warn('desktop quote save failed:', e&&e.message); }
+    return;
+  }
+  try { localStorage.setItem('ss_quotes', JSON.stringify(log)); } catch(e){ console.warn('localStorage unavailable:', e&&e.message); }
+}
+function _quotesLoadCache(cb){
+  if(!_ssQuotesApi){ if(cb) cb(); return; }
+  Promise.resolve(_ssQuotesApi.quotesLoad()).then(function(json){
+    try { _ssQuotesCache = JSON.parse(json||'[]'); } catch(e){ _ssQuotesCache = []; }
+    if(!Array.isArray(_ssQuotesCache)) _ssQuotesCache = [];
+    if(cb) cb();
+  }).catch(function(){ _ssQuotesCache = []; if(cb) cb(); });
+}
+// Warm the desktop cache as soon as the script runs; refresh the Saved tab if
+// it's already on screen once the load resolves.
+_quotesLoadCache(function(){ try { if(typeof renderQuoteLog==='function' && G('quotes-panel') && G('quotes-panel').style.display!=='none') renderQuoteLog(); } catch(e){} });
+
 function saveQuote(){
   var data, cn, bw, bl, bh, filename, json, blob, url, a;
   try {
@@ -7009,13 +7045,13 @@ function saveQuote(){
   // Save to localStorage log (best-effort, may fail under file:// — don't block save)
   data.meta = { name: cn, size: size, date: dateStr, time: timeStr, filename: filename, savedAt: today.toISOString() };
   try {
-    var log = JSON.parse(localStorage.getItem('ss_quotes')||'[]');
+    var log = _quotesRead();
     var existing = log.findIndex(function(q){ return q.meta&&q.meta.filename===filename; });
     if(existing>=0) log[existing]=data; else log.unshift(data);
     if(log.length>100) log = log.slice(0,100);
-    localStorage.setItem('ss_quotes', JSON.stringify(log));
+    _quotesWrite(log);
   } catch(lsErr){
-    console.warn('localStorage unavailable (file:// or private mode):', lsErr.message);
+    console.warn('Saved-quote log write failed:', lsErr.message);
   }
 
   // Download JSON file to computer — wrap in try/catch
@@ -9380,7 +9416,7 @@ var HI_IMPACT_COUNTIES=["Charlotte", "Collier", "Duval", "Flagler", "Indian Rive
 function renderQuoteLog(){
   var list = G('quote-log-list');
   if(!list) return;
-  var log = JSON.parse(localStorage.getItem('ss_quotes')||'[]');
+  var log = _quotesRead();
   if(log.length===0){
     list.innerHTML='<div style="color:#8EA8BC;font-size:13px;padding:20px;text-align:center">No saved quotes yet. Save your first quote using the 💾 SAVE QUOTE button.</div>';
     return;
@@ -9418,14 +9454,14 @@ function renderQuoteLog(){
 }
 
 function loadFromLog(idx){
-  var log = JSON.parse(localStorage.getItem('ss_quotes')||'[]');
+  var log = _quotesRead();
   if(!log[idx]) return;
   restoreQuoteData(log[idx]);
   switchTab('quote');
 }
 
 function downloadFromLog(idx){
-  var log = JSON.parse(localStorage.getItem('ss_quotes')||'[]');
+  var log = _quotesRead();
   if(!log[idx]) return;
   var q=log[idx];
   var filename=(q.meta&&q.meta.filename)||'quote.json';
@@ -9437,9 +9473,9 @@ function downloadFromLog(idx){
 
 function deleteFromLog(idx){
   if(!confirm('Delete this saved quote? This cannot be undone.')) return;
-  var log = JSON.parse(localStorage.getItem('ss_quotes')||'[]');
+  var log = _quotesRead();
   log.splice(idx,1);
-  localStorage.setItem('ss_quotes',JSON.stringify(log));
+  _quotesWrite(log);
   renderQuoteLog();
 }
 

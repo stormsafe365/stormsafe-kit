@@ -77,6 +77,29 @@ ipcMain.handle('ss:save-pdf', async (_evt, { html, suggestedName }) => {
   }
 });
 
+// ── Durable saved-quote log ─────────────────────────────────────────────────
+// The pricing UI runs from file:// inside an iframe, where localStorage is an
+// opaque, non-persistent origin — so "Save Quote" never stuck in the desktop
+// app even though it works on the https web version. Persist the quote log to a
+// real JSON file in the app's userData dir instead.
+//   ss:quotes-load -> JSON string (the array, or '[]')
+//   ss:quotes-save(json) -> { ok } | { ok:false, error }
+function _quotesFilePath() {
+  return path.join(app.getPath('userData'), 'saved-quotes.json');
+}
+ipcMain.handle('ss:quotes-load', async () => {
+  try { return fs.readFileSync(_quotesFilePath(), 'utf8'); }
+  catch (e) { return '[]'; }
+});
+ipcMain.handle('ss:quotes-save', async (_evt, json) => {
+  try {
+    fs.writeFileSync(_quotesFilePath(), typeof json === 'string' ? json : JSON.stringify(json), 'utf8');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: String(e && e.message ? e.message : e) };
+  }
+});
+
 app.on('ready', createWindow);
 
 app.on('window-all-closed', () => {

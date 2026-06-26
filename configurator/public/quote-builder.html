@@ -4552,25 +4552,17 @@ function gWalls(){
       // utility-sides chart below; partial panels add their cost in gSidePanels).
       var gchL = G('gch-left')  ? G('gch-left').value  : 'open';
       var gchR = G('gch-right') ? G('gch-right').value : 'open';
-      // Step 1: Closed sides — full-length scLookup
-      var sideOpenCount = 0;
-      if(gchR==='closed') t += scLookup(h, l, w); else sideOpenCount++;
-      if(gchL==='closed') t += scLookup(h, l, w); else sideOpenCount++;
-      // Step 2: Divider end wall (always)
-      t += ecLookup(w, h);
-      // Step 3: Utility sides chart for OPEN sides (only the enclosed portion)
-      if(sideOpenCount > 0){
-        var utilSidesPair = 0;
-        if(typeof MFR==='function' && MFR().utilitySidesFn){
-          utilSidesPair = MFR().utilitySidesFn(w, h, encL);
-        }
-        if(utilSidesPair === null || utilSidesPair === 0){
-          // Fallback for widths outside chart (e.g., CA 32+ wide): use scLookup pro-rated
-          utilSidesPair = scLookup(h, encL, w);
-        }
-        // Chart price covers both sides — divide by 2 per open side
-        t += Math.round(utilSidesPair * sideOpenCount / 2);
-      }
+      // Each eave side: 'closed' sheets the FULL length (enclosed + open extension)
+      // via scLookup; any other setting sheets only the ENCLOSED portion
+      // (scLookup at the enclosed length) — the open extension is bare ($0) or
+      // gets partial panels in gSidePanels. The enclosed-side sheeting plus the
+      // internal divider are what Sensei bills as "Utility Storage".
+      //   (The old utility-sides CHART only ran to 15' of length; extrapolating it
+      //    out to a long enclosed section over-charged — e.g. 60' returned $2,620
+      //    for the pair vs the correct 2×scLookup(60)=$2,480.)
+      t += (gchR==='closed') ? scLookup(h, l, w) : scLookup(h, encL, w);
+      t += (gchL==='closed') ? scLookup(h, l, w) : scLookup(h, encL, w);
+      t += ecLookup(w, h); // internal divider end wall (always)
     }
   } else {
     // Regular building: full-length side close for each closed eave side
@@ -7396,39 +7388,38 @@ async function printQuote(){
   // Sides: closed sides charge full-length scLookup. Name the specific side when only
   // one is closed (mirrors the gable-end Front/Back/Each split). Open eave sides are
   // noted as "Open (No Sheeting)" on non-GCH buildings so each side's state is clear.
-  var _rClosed=(wrev==='Closed'), _lClosed=(wlev==='Closed');
-  if(_rClosed||_lClosed){
-    var sideP=scLookup(wallH,lv,parseInt(w)||0);
-    if(_rClosed && _lClosed) rows+=row('Each Side Closed ('+wallStyle+')',2,sideP,sideP*2);
-    else if(_lClosed)        rows+=row('Left Eave Side Closed ('+wallStyle+')',1,sideP,sideP);
-    else                     rows+=row('Right Eave Side Closed ('+wallStyle+')',1,sideP,sideP);
-  }
-  if(_btQ!=='gch'){
+  if(_btQ==='gch'){
+    // GCH sides are the Left/Right Side Panels (gch-left/gch-right). A 'closed'
+    // side sheets full length; otherwise the open extension is bare ($0) and the
+    // enclosed-side sheeting goes into "Utility Storage" (divider + enclosed
+    // sides) — matching Sensei's breakdown and the gWalls total.
+    var _encLQ=parseInt(G('gch-enc')&&G('gch-enc').value)||0;
+    var _wQ=parseInt(w)||0;
+    var _gchL=G('gch-left')?G('gch-left').value:'open';
+    var _gchR=G('gch-right')?G('gch-right').value:'open';
+    var _rC=(_gchR==='closed'), _lC=(_gchL==='closed');
+    var _sideP=scLookup(wallH, lv, _wQ);
+    if(_rC && _lC) rows+=row('Each Side Closed ('+wallStyle+')',2,_sideP,_sideP*2);
+    else if(_lC)   rows+=row('Left Eave Side Closed ('+wallStyle+')',1,_sideP,_sideP);
+    else if(_rC)   rows+=row('Right Eave Side Closed ('+wallStyle+')',1,_sideP,_sideP);
+    if(_gchR==='open') rows+=row('Right Side — Open (No Sheeting)',null,null,0);
+    if(_gchL==='open') rows+=row('Left Side — Open (No Sheeting)',null,null,0);
+    if(_encLQ>0){
+      var _utilStorage = ecLookup(_wQ, wallH);            // internal divider (always)
+      if(!_rC) _utilStorage += scLookup(wallH, _encLQ, _wQ); // enclosed right side
+      if(!_lC) _utilStorage += scLookup(wallH, _encLQ, _wQ); // enclosed left side
+      if(_utilStorage>0) rows+=row('Utility Storage — '+_encLQ+" Feet",null,null,_utilStorage);
+    }
+  } else {
+    var _rClosed=(wrev==='Closed'), _lClosed=(wlev==='Closed');
+    if(_rClosed||_lClosed){
+      var sideP=scLookup(wallH,lv,parseInt(w)||0);
+      if(_rClosed && _lClosed) rows+=row('Each Side Closed ('+wallStyle+')',2,sideP,sideP*2);
+      else if(_lClosed)        rows+=row('Left Eave Side Closed ('+wallStyle+')',1,sideP,sideP);
+      else                     rows+=row('Right Eave Side Closed ('+wallStyle+')',1,sideP,sideP);
+    }
     if(wlev==='Open') rows+=row('Left Eave Side — Open (No Sheeting)',null,null,0);
     if(wrev==='Open') rows+=row('Right Eave Side — Open (No Sheeting)',null,null,0);
-  }
-  // GCH-only: "Utility Storage X Feet" — includes the internal divider end wall,
-  // plus the utility-sides chart for ANY OPEN sides (matching Sensei's display).
-  if(_btQ==='gch'){
-    var _encLQ=parseInt(G('gch-enc')&&G('gch-enc').value)||0;
-    if(_encLQ>0){
-      var wQ=parseInt(w)||0;
-      var _utilStorage = ecLookup(wQ, wallH); // divider end wall (always)
-      var _openSides = (wrev!=='Closed' ? 1 : 0) + (wlev!=='Closed' ? 1 : 0);
-      if(_openSides > 0){
-        var _utilPair = 0;
-        if(typeof MFR==='function' && MFR().utilitySidesFn){
-          _utilPair = MFR().utilitySidesFn(wQ, wallH, _encLQ);
-        }
-        if(_utilPair === null || _utilPair === 0){
-          _utilPair = scLookup(wallH, _encLQ, wQ);
-        }
-        _utilStorage += Math.round(_utilPair * _openSides / 2);
-      }
-      if(_utilStorage > 0){
-        rows+=row('Utility Storage — '+_encLQ+" Feet",null,null,_utilStorage);
-      }
-    }
   }
   if(vertWallUpgP) rows+=row('Vertical Wall Upgrade',null,null,vertWallUpgP);
   if(sheetUpgrade) rows+=row('26-Gauge Sheeting Upgrade (+10%)',null,null,sheetUpgrade);
@@ -8329,37 +8320,37 @@ async function printContract(){
   } else if(bHalf_b){
     row('Back End Partial Close — 6&prime; Panel ('+wallStyle+')', 1, halfP_b, halfP_b);
   }
-  var _rClosed_b=(wrev==='Closed'), _lClosed_b=(wlev==='Closed');
-  if(_rClosed_b||_lClosed_b){
-    var sideP=scLookup(wallH,lv,parseInt(w)||0);
-    if(_rClosed_b && _lClosed_b) row('Each Side Closed ('+wallStyle+')',2,sideP,sideP*2);
-    else if(_lClosed_b)          row('Left Eave Side Closed ('+wallStyle+')',1,sideP,sideP);
-    else                         row('Right Eave Side Closed ('+wallStyle+')',1,sideP,sideP);
-  }
-  if(_btQ!=='gch'){
+  if(_btQ==='gch'){
+    // GCH sides = Left/Right Side Panels (gch-left/gch-right). 'closed' → full-length
+    // sheeting; otherwise the open extension is bare ($0) and the enclosed-side
+    // sheeting + divider bill as "Utility Storage" (matches Sensei + gWalls total).
+    var _encLQ=parseInt(G('gch-enc')&&G('gch-enc').value)||0;
+    var _wQ=parseInt(w)||0;
+    var _gchL=G('gch-left')?G('gch-left').value:'open';
+    var _gchR=G('gch-right')?G('gch-right').value:'open';
+    var _rC=(_gchR==='closed'), _lC=(_gchL==='closed');
+    var _sideP=scLookup(wallH, lv, _wQ);
+    if(_rC && _lC) row('Each Side Closed ('+wallStyle+')',2,_sideP,_sideP*2);
+    else if(_lC)   row('Left Eave Side Closed ('+wallStyle+')',1,_sideP,_sideP);
+    else if(_rC)   row('Right Eave Side Closed ('+wallStyle+')',1,_sideP,_sideP);
+    if(_gchR==='open') row('Right Side — Open (No Sheeting)',null,null,0);
+    if(_gchL==='open') row('Left Side — Open (No Sheeting)',null,null,0);
+    if(_encLQ>0){
+      var _utilStorage = ecLookup(_wQ, wallH);
+      if(!_rC) _utilStorage += scLookup(wallH, _encLQ, _wQ);
+      if(!_lC) _utilStorage += scLookup(wallH, _encLQ, _wQ);
+      if(_utilStorage>0) row('Utility Storage — '+_encLQ+" Feet",null,null,_utilStorage);
+    }
+  } else {
+    var _rClosed_b=(wrev==='Closed'), _lClosed_b=(wlev==='Closed');
+    if(_rClosed_b||_lClosed_b){
+      var sideP=scLookup(wallH,lv,parseInt(w)||0);
+      if(_rClosed_b && _lClosed_b) row('Each Side Closed ('+wallStyle+')',2,sideP,sideP*2);
+      else if(_lClosed_b)          row('Left Eave Side Closed ('+wallStyle+')',1,sideP,sideP);
+      else                         row('Right Eave Side Closed ('+wallStyle+')',1,sideP,sideP);
+    }
     if(wlev==='Open') row('Left Eave Side — Open (No Sheeting)',null,null,0);
     if(wrev==='Open') row('Right Eave Side — Open (No Sheeting)',null,null,0);
-  }
-  if(_btQ==='gch'){
-    var _encLQ=parseInt(G('gch-enc')&&G('gch-enc').value)||0;
-    if(_encLQ>0){
-      var wQ=parseInt(w)||0;
-      var _utilStorage = ecLookup(wQ, wallH);
-      var _openSides = (wrev!=='Closed' ? 1 : 0) + (wlev!=='Closed' ? 1 : 0);
-      if(_openSides > 0){
-        var _utilPair = 0;
-        if(typeof MFR==='function' && MFR().utilitySidesFn){
-          _utilPair = MFR().utilitySidesFn(wQ, wallH, _encLQ);
-        }
-        if(_utilPair === null || _utilPair === 0){
-          _utilPair = scLookup(wallH, _encLQ, wQ);
-        }
-        _utilStorage += Math.round(_utilPair * _openSides / 2);
-      }
-      if(_utilStorage > 0){
-        row('Utility Storage — '+_encLQ+" Feet",null,null,_utilStorage);
-      }
-    }
   }
   if(vertWallUpgP) row('Vertical Wall Upgrade',null,null,vertWallUpgP);
   if(sheetUpgrade) row('26-Gauge Sheeting Upgrade (+10%)',null,null,sheetUpgrade);

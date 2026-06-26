@@ -1,0 +1,62 @@
+name: Build StormSafe 3D Builder (Windows desktop app)
+
+# Builds the Electron desktop app (configurator/) into a Windows installer and
+# publishes it to GitHub Releases. To update the desktop app on a PC: open this
+# repo's Releases, download the latest "Setup" .exe, and run it.
+#
+# Runs automatically when the configurator code changes on this branch, and can
+# also be started by hand from the Actions tab (Run workflow).
+
+on:
+  push:
+    branches: [claude/quoting-tool-3d-mobile-eobn6b]
+    paths:
+      - 'configurator/**'
+      - '.github/workflows/build-desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # required to create a Release and upload the installer
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: configurator
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: configurator/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web bundle (tsc + vite)
+        run: npm run build
+
+      - name: Package Windows installer (electron-builder)
+        run: npx electron-builder --win --publish never
+
+      - name: Upload installer as workflow artifact (backup download)
+        uses: actions/upload-artifact@v4
+        with:
+          name: StormSafe-3D-Builder-Windows
+          path: configurator/release/*.exe
+          if-no-files-found: error
+
+      - name: Publish installer to Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $files = Get-ChildItem -Path release -Filter *.exe | ForEach-Object { $_.FullName }
+          if (-not $files) { Write-Error "No .exe produced in configurator/release"; exit 1 }
+          gh release create "desktop-v${{ github.run_number }}" $files `
+            --title "StormSafe 3D Builder — build ${{ github.run_number }}" `
+            --notes "Automated Windows build from commit ${{ github.sha }}.`n`nTo update your desktop app: download the **Setup** .exe below and run it."

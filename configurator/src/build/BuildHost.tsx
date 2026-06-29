@@ -213,8 +213,13 @@ function readOpenings(
     let foH = 2.5;
     let foYo = 4.16667; // window sill 4'-2"
     if (comp.indexOf('(Custom Size)') >= 0) {
-      foW = fnum(el, '.fo-cw') || 10;
-      foH = fnum(el, '.fo-ch') || 8;
+      // Custom frame-out dimensions can be entered in ft or inches (.fo-unit).
+      const foUnit = (el.querySelector('.fo-unit') as HTMLSelectElement | null)?.value;
+      const foK = foUnit === 'in' ? 1 / 12 : 1;
+      const cwRaw = fnum(el, '.fo-cw');
+      const chRaw = fnum(el, '.fo-ch');
+      foW = cwRaw ? cwRaw * foK : 10;
+      foH = chRaw ? chRaw * foK : 8;
       foYo = comp.indexOf('Window') >= 0 ? 4.16667 : 0;
     } else if (comp.indexOf('Garage Door') >= 0 || comp.indexOf('Side Opening') >= 0) {
       const m = comp.match(/(\d+)' Wide/);

@@ -3094,7 +3094,7 @@ var MANUFACTURERS = {
     ],
     // ── Scalar pricing ───────────────────────────────────────────────────────
     wtd_std: 400, wtd_hi: 600,
-    win_std: 200, win_hi: 675,
+    win_std: 200, win_hi: 895,
     // Per-size roll-up price overrides (clean WxH key) where CCI's chart
     // differs from the shared tables (entered from CA's sheet). Applies to the
     // standard/chain/merged tiers — NOT hi-impact.
@@ -3333,13 +3333,14 @@ var MANUFACTURERS = {
       {v:'hiwind',      label:'Man Door (Hi-Wind Rated) 36×80',  style:'std',     color:'white'},
     ],
     // ── Window types ───────────────────────────────────────────────────────────────────────────────
-    winPrices: {std:200, w3036:225, b3030:250, b3036:275, hi:675},
+    winPrices: {std:200, w3036:225, b3030:250, b3036:275, hi:895, hi3036:995},
     winTypes: [
-      {v:'std',   label:'White 30×30',                     fw:30, fh:30, color:'white'},
-      {v:'w3036', label:'White 30×36',                     fw:30, fh:36, color:'white'},
-      {v:'b3030', label:'Black 30×30 (non-impact areas)',  fw:30, fh:30, color:'black'},
-      {v:'b3036', label:'Black 30×36 (non-impact areas)',  fw:30, fh:36, color:'black'},
-      {v:'hi',    label:'Hi-Impact',                       fw:30, fh:30, color:'white'},
+      {v:'std',    label:'White 30×30',                     fw:30, fh:30, color:'white'},
+      {v:'w3036',  label:'White 30×36',                     fw:30, fh:36, color:'white'},
+      {v:'b3030',  label:'Black 30×30 (non-impact areas)',  fw:30, fh:30, color:'black'},
+      {v:'b3036',  label:'Black 30×36 (non-impact areas)',  fw:30, fh:36, color:'black'},
+      {v:'hi',     label:'Hi-Impact 30×30',                 fw:30, fh:30, color:'white'},
+      {v:'hi3036', label:'Hi-Impact 30×36',                 fw:30, fh:36, color:'white'},
     ],
   }
 };

@@ -581,7 +581,7 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
 <div class="sec">
   <div class="st">12 — Site Information</div>
   <div class="row"><label>Foundation Type</label>
-    <select id="foundation" onchange="sy()">
+    <select id="foundation" onchange="sy();rc()">
       <option value="">— select —</option>
       <option value="concrete">Concrete</option>
       <option value="footers">Footers Only</option>
@@ -4793,6 +4793,20 @@ function gWIN(){
 // Roof: (Width+2) x Length x $1.50
 // Side Walls: Length x Height x 2 x $1.50
 // End Walls: Width x (Height+2) x 2 x $1.50
+// ── Mobile home anchors (CCI, ground installs only) ───────────────────────────
+// CCI installs ONE mobile home anchor per LEG (2 legs per bent), $68 each, when
+// the unit is set directly on the ground (concrete/other surfaces use concrete/
+// rebar anchors that are included). Legs = 2 × the truss/bent count. CA anchor
+// pricing wasn't provided, so this stays $0 for CA.
+var ANCHOR_UNIT=68; // $ per mobile home anchor
+function gAnchorLegs(){
+  if(ACTIVE_MFR!=='CCI') return 0;
+  if((G('foundation')?G('foundation').value:'')!=='ground') return 0;
+  var ti=(typeof getTrussInfo==='function')?getTrussInfo():null;
+  return (ti&&ti.count)?ti.count*2:0;
+}
+function gAnchors(){ return gAnchorLegs()*ANCHOR_UNIT; }
+
 var INSUL_RATE=1.50;
 function gInsul(){
   var insulSel=G('insul-sel');
@@ -5964,7 +5978,7 @@ function rc(){
   var perm=G('perm').value, co=G('county').textContent, pt=G('pt').value;
 
   var fastenerP=(G('fastener-add')&&G('fastener-add').checked&&!fastenerFree)?150:0;
-  var sub=base+leg+framingUpgrade+ocUpgrade+pitchUpgrade+walls+vertWallUpg+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+leanToTotal+connFeeTotal+addCompTotal+insulTotal+fastenerP+overhangP+sidePanelP;
+  var sub=base+leg+framingUpgrade+ocUpgrade+pitchUpgrade+walls+vertWallUpg+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+leanToTotal+connFeeTotal+addCompTotal+insulTotal+fastenerP+overhangP+sidePanelP+gAnchors();
   var da=Math.round(sub*(disc/100));
   var ad=sub-da;
   var ta=agEx?0:Math.round(ad*(tax/100));
@@ -7389,6 +7403,7 @@ async function printQuote(){
   var wci2=0; for(var wi3=0;wi3<WAIN_COLS2.length;wi3++){if(WAIN_COLS2[wi3]<=lv)wci2=wi3;else break;}
   var wainP=(G('wain').value==='yes'&&wallsVert)?WAIN_VALS2[wci2]:0;
   var leanToPr=gLT(), addCompPr=gAC(), insulPr=gInsul();
+  var anchorLegsQ=gAnchorLegs(), anchorPr=gAnchors();
   // Overhang for PDF
   var overhangPQ=0;
   var ohSelP=G('overhang-sel');
@@ -7410,7 +7425,7 @@ async function printQuote(){
   var tax=parseFloat(G('tax').value)||0;
   var agEx=(G('agx')&&G('agx').value==='yes');
   var fastenerPQ=(G('fastener-add')&&G('fastener-add').checked&&!fastenerFreeP)?150:0;
-  var sub=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+leanToPr+addCompPr+insulPr+fastenerPQ+overhangPQ+sidePanelPQ;
+  var sub=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+leanToPr+addCompPr+insulPr+fastenerPQ+overhangPQ+sidePanelPQ+anchorPr;
   if(INPUT_MODE) sub=manualSubtotal();
 
   // Build plans HTML now that sub is computed (CCI Site Specific = 5% of retail)
@@ -7613,6 +7628,7 @@ async function printQuote(){
     var iSel=G('insul-sel');
     rows+=row((iSel&&iSel.value==='roof-walls'?'Fully Insulated — Roof & Walls':'Insulation — Roof Only'),null,null,insulPr);
   }
+  if(anchorPr) rows+=row('Mobile Home Anchors — Ground Install',anchorLegsQ,ANCHOR_UNIT,anchorPr);
   // Lean-tos
   document.querySelectorAll('.lte').forEach(function(el){
     var lw=parseInt(el.querySelector('.ltw').value)||0;
@@ -8280,6 +8296,7 @@ async function printContract(){
   var wci2=0; for(var wi3=0;wi3<WAIN_COLS2.length;wi3++){if(WAIN_COLS2[wi3]<=lv)wci2=wi3;else break;}
   var wainP=(G('wain').value==='yes'&&wallsVert)?WAIN_VALS2[wci2]:0;
   var leanToPr=gLT(), addCompPr=gAC(), insulPr=gInsul();
+  var anchorLegsQ=gAnchorLegs(), anchorPr=gAnchors();
   var overhangPQ=0;
   var ohSelP=G('overhang-sel');
   if(ohSelP && ACTIVE_MFR==='CCI' && ohSelP.value!=='none' && MFR().overhang){
@@ -8299,7 +8316,7 @@ async function printContract(){
   var tax=parseFloat(G('tax').value)||0;
   var agEx=(G('agx')&&G('agx').value==='yes');
   var fastenerPQ=(G('fastener-add')&&G('fastener-add').checked&&!fastenerFreeP)?150:0;
-  var sub=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+leanToPr+addCompPr+insulPr+fastenerPQ+overhangPQ+sidePanelPQ;
+  var sub=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+leanToPr+addCompPr+insulPr+fastenerPQ+overhangPQ+sidePanelPQ+anchorPr;
   if(INPUT_MODE) sub=manualSubtotal();
 
   // ── Engineered Plans + Permit Service (both invoiced separately by engineering firm) ──
@@ -8545,6 +8562,7 @@ async function printContract(){
     var iSel=G('insul-sel');
     row((iSel&&iSel.value==='roof-walls'?'Fully Insulated — Roof & Walls':'Insulation — Roof Only'),null,null,insulPr);
   }
+  if(anchorPr) row('Mobile Home Anchors — Ground Install',anchorLegsQ,ANCHOR_UNIT,anchorPr);
 
   // ── Build line items HTML ──
   if(INPUT_MODE){ lineItems.length=0; manualLineItems().forEach(function(it){ lineItems.push({desc:it.desc, qty:null, unit:null, amt:it.amt}); }); }

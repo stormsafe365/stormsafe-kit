@@ -152,10 +152,10 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
     <span style="font-size:9px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px">MFR</span>
     <select id="mfr-sel" onchange="switchMfr(this.value)" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:5px;padding:3px 8px;font-size:11px;font-weight:700;cursor:pointer;outline:none">
       <option value="CA">Carports Anywhere</option>
-      <option value="CCI">CCI</option>
+      <option value="CCI" selected>CCI</option>
       <option value="INPUT">Input (manual pricing)</option>
     </select>
-    <span id="mfr-badge" style="background:#f15e30;color:#1a1a2e;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:800;letter-spacing:.3px">CA</span>
+    <span id="mfr-badge" style="background:#9fc839;color:#1a1a2e;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:800;letter-spacing:.3px">CCI</span>
   </div>
   <span class="hdr-d" id="hdr-d" style="margin-left:8px"></span>
 </div>
@@ -3344,7 +3344,7 @@ var MANUFACTURERS = {
     ],
   }
 };
-var ACTIVE_MFR = 'CA';
+var ACTIVE_MFR = 'CCI'; // default manufacturer (switchable to CA / Input)
 function MFR() { return MANUFACTURERS[ACTIVE_MFR]; }
 
 // ── Roll-up door color helpers (shared CA/CCI) ──────────────────────────────
@@ -11549,8 +11549,13 @@ drawBlueprintWall = function(wt, fw, wh, items, wn, bw, lts){
   return svg;
 };
 
-// Apply initial manufacturer settings on page load (sets pitch labels, etc.)
-try { if(typeof initMfrPricing==='function') initMfrPricing(); } catch(e){ console.warn('initMfrPricing on load failed:', e); }
+// Apply initial manufacturer settings on page load. switchMfr(ACTIVE_MFR) does a
+// full setup for the default manufacturer (CCI): pricing tables, badge, per-mfr
+// dropdowns, CCI-only rows, and color palette. Falls back to initMfrPricing.
+try {
+  if(typeof switchMfr==='function') switchMfr(ACTIVE_MFR);
+  else if(typeof initMfrPricing==='function') initMfrPricing();
+} catch(e){ console.warn('initial manufacturer setup failed:', e); }
 try { if(typeof rebuildColorDropdowns==='function') rebuildColorDropdowns(); } catch(e){ console.warn('rebuildColorDropdowns on load failed:', e); }
 
 </script>

@@ -20,6 +20,14 @@ import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import type { BuildingType, EndSheeting, OpeningType, WallOverrides, WallSide } from '@/types/building';
 
+// Cache-bust the pricing iframe on the WEB (CRM embed) so a redeploy shows up
+// without a hard refresh. Skipped for the packaged desktop app, where the page
+// loads over file:// and a query string on the path would 404 the file.
+const QB_SRC =
+  typeof window !== 'undefined' && window.location.protocol !== 'file:'
+    ? `quote-builder.html?v=${Date.now()}`
+    : 'quote-builder.html';
+
 /** Map the program's btype → the 3D building family. */
 const TYPE_MAP: Record<string, BuildingType> = {
   carport: 'carport',
@@ -827,7 +835,7 @@ export default function BuildHost() {
               in BOTH the dev server (/quote-builder.html) and the packaged
               desktop app (file://…/dist/quote-builder.html). A leading-slash
               path would resolve to the filesystem root under file:// and 404. */}
-          <iframe ref={iframeRef} src="quote-builder.html" title="StormSafe Pricing" style={{ border: 'none', width: '100%', height: '100%', display: 'block' }} />
+          <iframe ref={iframeRef} src={QB_SRC} title="StormSafe Pricing" style={{ border: 'none', width: '100%', height: '100%', display: 'block' }} />
         </div>
 
         {/* Right: the 3D preview */}

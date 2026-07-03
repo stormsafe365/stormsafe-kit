@@ -763,6 +763,10 @@ export default function BuildHost() {
         const snapToEntryWall = (target: EventTarget | null) => {
           const el = target as Element | null;
           if (!el || typeof el.closest !== 'function') return;
+          // Never move the camera while you're focusing/typing a text or number
+          // field (e.g. the position/offset input) — it's disruptive and can pull
+          // focus off the field. Only snap when the location DROPDOWN changes.
+          if ((el as HTMLElement).tagName === 'INPUT' || (el as HTMLElement).tagName === 'TEXTAREA') return;
           const entry = el.closest('.re, .we, .ne');
           if (!entry) return;
           const loc = entry.querySelector('.rloc, .wloc, .nloc') as HTMLInputElement | null;

@@ -5723,6 +5723,10 @@ function aAC(){
     '<option>Front Gable End</option><option>Back Gable End</option>'+
     '<option>Left Eave Side</option><option>Right Eave Side</option>'+
     '</select></div>'+
+    // Display-only: how this framed opening's size shows on the Dimensioned Layout
+    // & Spacing sheet. No onchange / no rc() — never affects pricing or the model.
+    '<div class="row fo-dispunit-row hidden"><label>Layout Sheet Units</label>'+
+    '<select class="fo-disp-unit"><option value="ft">Feet</option><option value="in">Inches</option></select></div>'+
     '<div class="pos-section fo-pos-section"></div>';
   d.appendChild(mkRm('.ace'));
   G('acl').appendChild(d);
@@ -5737,6 +5741,7 @@ function updACPrice(sel){
   if(foBox) foBox.classList.toggle('hidden',!isCustomSz);
   var isFO = sel.value.indexOf('Framed Opening') === 0;
   entry.querySelector('.fo-loc-row').classList.toggle('hidden', !isFO);
+  var _duRow=entry.querySelector('.fo-dispunit-row'); if(_duRow) _duRow.classList.toggle('hidden', !isFO);
   if(isFO){
     var qty = parseInt(entry.querySelector('.acq').value)||1;
     updatePosSection(entry, qty, 'Opening');
@@ -7072,7 +7077,7 @@ function collectQuoteData(){
     var d = {};
     // fo-loc = the wall a framed opening sits on; was missing, so loads reverted
     // every framed opening to the first wall (Front Gable End).
-    ['act','acq','acp','fo-cw','fo-ch','fo-unit','fo-loc'].forEach(function(cls){
+    ['act','acq','acp','fo-cw','fo-ch','fo-unit','fo-disp-unit','fo-loc'].forEach(function(cls){
       var f=el.querySelector('.'+cls); if(f) d[cls]=f.value;
     });
     // Position rows (placement along the wall) — same as doors/windows/roll-ups.
@@ -7335,6 +7340,7 @@ function restoreQuoteData(data){
     if(typeof foApplyUnit==='function') foApplyUnit(el); // relabel ft/in (no conversion)
     // Wall location (was reverting framed openings to the first wall).
     var foLocEl=el.querySelector('.fo-loc'); if(foLocEl&&d['fo-loc']) foLocEl.value=d['fo-loc'];
+    var foDuEl=el.querySelector('.fo-disp-unit'); if(foDuEl&&d['fo-disp-unit']) foDuEl.value=d['fo-disp-unit'];
     // Rebuild + restore placement rows for framed openings (act starts with "Framed Opening").
     if(actEl && actEl.value.indexOf('Framed Opening')===0){
       var foQty=parseInt(d.acq)||1;
@@ -8116,6 +8122,9 @@ function threeDPageHTML(imgs){
 // ── Dimensioned "spacing" drawing — clean black-on-white shop-drawing elevations
 //    showing exactly where each opening sits + distances. Optional PDF/contract page.
 function _dimFtIn(ft){ var ti=Math.round(ft*12), f=Math.floor(ti/12), i=ti%12; return i?(f+"'"+i+'"'):(f+"'"); }
+// Whole-inches label (e.g. 3.9167 ft -> 47"). Display only; used for framed
+// openings the user opts into inches on the dimensioned layout sheet.
+function _dimIn(ft){ return Math.round(ft*12)+'"'; }
 
 // Collect the openings placed on each wall (same dispatch the elevations use).
 function collectElevItems(){
@@ -8145,7 +8154,8 @@ function collectElevItems(){
     else if(comp.indexOf('Side Opening')>=0){var wm2=comp.match(/(\d+)' Wide/);foW=wm2?parseInt(wm2[1]):10;foH=8;foYo=0;}
     else if(comp.indexOf('Double Door')>=0){foW=6;foH=6.67;foYo=0;}
     else if(comp.indexOf('Walk-Through')>=0){foW=3;foH=6.67;foYo=0;}
-    dispatch(el.querySelector('.fo-loc').value,0,W,L,function(a,fw){ getPosItems(el,qty,foW,fw,foH,'fo',foYo).forEach(function(it){a.push(it);}); });
+    var _duEl=el.querySelector('.fo-disp-unit'), _du=_duEl?_duEl.value:'ft';
+    dispatch(el.querySelector('.fo-loc').value,0,W,L,function(a,fw){ getPosItems(el,qty,foW,fw,foH,'fo',foYo).forEach(function(it){ it.dispUnit=_du; a.push(it); }); });
   });
   return {front:front,back:back,right:right,left:left,W:W,L:L};
 }
@@ -8174,9 +8184,12 @@ function dimElevSVG(faceW, wallH, peakH, isGable, items, gchFront, frontSide){
   if(isGable&&peakHpx>0.5){ s+='<polygon points="'+X(0)+','+Y(wallH)+' '+X(faceW/2)+','+Y(peakH)+' '+X(faceW)+','+Y(wallH)+'" fill="'+(gchFront?'#e8edf2':'#ffffff')+'" stroke="#1f2937" stroke-width="1.6"/>'; }
   sorted.forEach(function(it){
     var yo=it.yo||0, ox=X(it.x), oy=Y(yo+it.h), ow=it.w*sc, oh=it.h*sc;
+    // Framed openings can opt into inch labels (display only — the spacing chain,
+    // overall width and wall height below always stay in feet-inches).
+    var _f=(it.type==='fo'&&it.dispUnit==='in')?_dimIn:_dimFtIn;
     s+='<rect x="'+ox+'" y="'+oy+'" width="'+ow.toFixed(1)+'" height="'+oh.toFixed(1)+'" fill="#eef2f7" stroke="#1d4ed8" stroke-width="1.2"/>';
-    s+='<text x="'+(ox+ow/2).toFixed(1)+'" y="'+(oy+oh/2).toFixed(1)+'" font-size="9" fill="#0f172a" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-weight="700">'+_dimFtIn(it.w)+'×'+_dimFtIn(it.h)+'</text>';
-    if(yo>0.1){ s+='<text x="'+(ox+ow/2).toFixed(1)+'" y="'+((Y(0)+Y(yo))/2).toFixed(1)+'" font-size="7.5" fill="#475569" text-anchor="middle" dominant-baseline="middle" font-family="Arial">sill '+_dimFtIn(yo)+'</text>'; }
+    s+='<text x="'+(ox+ow/2).toFixed(1)+'" y="'+(oy+oh/2).toFixed(1)+'" font-size="9" fill="#0f172a" text-anchor="middle" dominant-baseline="middle" font-family="Arial" font-weight="700">'+_f(it.w)+'×'+_f(it.h)+'</text>';
+    if(yo>0.1){ s+='<text x="'+(ox+ow/2).toFixed(1)+'" y="'+((Y(0)+Y(yo))/2).toFixed(1)+'" font-size="7.5" fill="#475569" text-anchor="middle" dominant-baseline="middle" font-family="Arial">sill '+_f(yo)+'</text>'; }
   });
   var dimY=PADT+totH+22;
   var stops=[0]; sorted.forEach(function(it){stops.push(it.x);stops.push(it.x+it.w);}); stops.push(faceW);

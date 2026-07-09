@@ -8121,10 +8121,12 @@ function threeDPageHTML(imgs){
 
 // ── Dimensioned "spacing" drawing — clean black-on-white shop-drawing elevations
 //    showing exactly where each opening sits + distances. Optional PDF/contract page.
-function _dimFtIn(ft){ var ti=Math.round(ft*12), f=Math.floor(ti/12), i=ti%12; return i?(f+"'"+i+'"'):(f+"'"); }
-// Whole-inches label (e.g. 3.9167 ft -> 47"). Display only; used for framed
-// openings the user opts into inches on the dimensioned layout sheet.
-function _dimIn(ft){ return Math.round(ft*12)+'"'; }
+// Exact feet-inches — inches kept to 1/100" (decimal, trailing zeros trimmed) so
+// the sheet reflects the entered size/position precisely rather than snapping to
+// the nearest whole inch. e.g. 3.9583ft -> 3'11.5"  ·  51.0833ft -> 51'1"  ·  30ft -> 30'
+function _dimFtIn(ft){ var ti=parseFloat((ft*12).toFixed(2)), f=Math.floor(ti/12), i=parseFloat((ti-f*12).toFixed(2)); if(i>=12){f+=1;i=0;} return i?(f+"'"+i+'"'):(f+"'"); }
+// Exact inches label (decimal, trailing zeros trimmed). e.g. 3.9583ft -> 47.5"  ·  51.0833ft -> 613"
+function _dimIn(ft){ return parseFloat((ft*12).toFixed(2))+'"'; }
 
 // Collect the openings placed on each wall (same dispatch the elevations use).
 function collectElevItems(){

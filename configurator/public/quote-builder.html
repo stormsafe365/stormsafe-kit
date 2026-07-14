@@ -9069,11 +9069,14 @@ async function printContract(){
 
   // ── Header HTML (reused on every page) ──
   function _header(titleText, subText){
+    // CCI contract: keep the logo + contact line only — no "STORMSAFE STEEL"
+    // wordmark or tagline (per CCI branding). CA keeps the full header.
+    var _hCCI = (ACTIVE_MFR === 'CCI');
     return '<div class="c-hdr">'+
       '<img class="c-hdr-logo" src="'+LOGO+'" alt="StormSafe">'+
       '<div>'+
-        '<div class="c-hdr-brand-name">STORM<span>SAFE</span> STEEL</div>'+
-        '<div class="c-hdr-brand-tag">Where Durability Meets Peace of Mind</div>'+
+        (_hCCI ? '' : '<div class="c-hdr-brand-name">STORM<span>SAFE</span> STEEL</div>')+
+        (_hCCI ? '' : '<div class="c-hdr-brand-tag">Where Durability Meets Peace of Mind</div>')+
         '<div class="c-hdr-brand-contact">561-771-5555 &bull; connect@stormsafesteel.com &bull; stormsafesteel.com</div>'+
       '</div>'+
       '<div class="c-hdr-meta">'+
@@ -9276,11 +9279,50 @@ async function printContract(){
   var page2 = '';
 
   // ── PAGE 3: Full Terms & Conditions ──
+  // The CCI contract uses Carolina Carports Inc.'s own "Terms, Conditions, and
+  // Warranties" (reproduced verbatim from CCI's document, Rev. June 10, 2022).
+  // CA keeps StormSafe's terms in the false branch below.
+  var isCCI = (ACTIVE_MFR === 'CCI');
+  var ccTermsInner =
+    '<p style="margin:0 0 8px;font-weight:700">Terms, Conditions, and Warranties</p>'+
+    '<p><strong>1. Products and Warranties.</strong> Buyer has been educated about CCI\'s various products and warranties.</p>'+
+    '<p><strong>2. Warranty Limitations.</strong></p>'+
+    '<p style="padding-left:16px"><strong>a. Unlevel Installation Site Voids Warranty.</strong> Warranties shall be immediately void if the foundation is not level prior to installation. Units installed on an installation site that is not level may be installed "as is."</p>'+
+    '<p style="padding-left:16px"><strong>b. Modification of Structure Voids Warranty.</strong> Warranties shall be immediately void if buyer alters the unit in any manner.</p>'+
+    '<p style="padding-left:16px"><strong>c. Baserail Leaks.</strong> CCI does not seal under the base of the unit and is not responsible for leaks under the baserail.</p>'+
+    '<p><strong>3. Pricing Terms.</strong></p>'+
+    '<p style="padding-left:16px"><strong>a. Price Subject to Change.</strong> CCI\'s prices are subject to change without notice.</p>'+
+    '<p style="padding-left:16px"><strong>b. Additional Charges.</strong></p>'+
+    '<p style="padding-left:32px"><strong>i. Labor Charge.</strong> Buyer will pay an additional labor charge of not less than fifty dollars ($50.00) if the installation contractor is required to dig, level, carry installation materials further than a reasonable distance or install the unit on any wall, dock, or over any existing structure.</p>'+
+    '<p style="padding-left:32px"><strong>ii. Service Charge.</strong> Buyer will pay a service charge of not less than two hundred dollars ($200.00) if the installation contractor must return to install an addition to an existing unit or if unit must be re-shipped due to customer error, unlevel jobsite or other similar issue.</p>'+
+    '<p style="padding-left:32px"><strong>iii. Taxes and Fees.</strong> Buyer agreed to pay all applicable sales or other taxes, unless exempt therefrom. Freight fees and surcharges may apply depending on location and size of order.</p>'+
+    '<p style="padding-left:32px"><strong>iv. Right to Correct.</strong> CCI shall have the right to correct any pricing or tax errors made by dealer. Prices for orders placed on hold will only be guaranteed for a 90 calendar day period. If an order is on hold for more than 90 days, customer may be subject to a price increase that equals CCI\'s current pricing at the time of delivery/installation.</p>'+
+    '<p><strong>4. Payment Terms.</strong></p>'+
+    '<p style="padding-left:16px"><strong>a. Down Payment.</strong> Buyer shall pay dealer a down payment equal to ___ of the retail price at the time of the sale. Buyer shall not pay dealer an amount exceeding the down payment. In the event Buyer pays dealer an amount exceeding the down payment, Buyer does so at his own risk with the understanding that Buyer is contractually obligated to remit payment of any remaining balance of the purchase price (the "Balance") as set forth below.</p>'+
+    '<p style="padding-left:16px"><strong>b. Balance.</strong> Buyer shall pay the balance to the installation contractor on the date of installation. Payment may be made by check or credit card. Payments made by credit card are subject to an additional fee equal to two percent (2%) of the balance paid by credit card.</p>'+
+    '<p style="padding-left:16px"><strong>c. Excess Down Payment.</strong> If Buyer pays more than the required Down Payment at the time of the sale, CCI must receive these funds from the dealer prior to installation or CCI will not schedule installation without payment from the Buyer.</p>'+
+    '<p style="padding-left:16px"><strong>d. No Refunds.</strong> In the event Buyer cancels the order, Buyer shall receive no refund of the down payment.</p>'+
+    '<p style="padding-left:16px"><strong>e. Security Interest.</strong> Buyer expressly agrees that the unit shall remain property of CCI until the purchase price under the agreement is paid in full. CCI hereby retains a purchase money security interest in the unit as set forth in Section 9 of the Uniform Commercial Code as enacted in the state where unit is being installed. Failure to pay the purchase price under the agreement will result in repossession of unit. Repossession does not relieve Buyer from liability for specific performance of the agreement.</p>'+
+    '<p><strong>5. Delivery and Installation; Limitation on Liability.</strong></p>'+
+    '<p style="padding-left:16px"><strong>a. Delayed Delivery.</strong> CCI is not responsible for changes in delivery dates caused by circumstances out of CCI\'s control, including but not limited to inclement weather conditions, installation contractor running behind, accidents, and acts of God.</p>'+
+    '<p style="padding-left:16px"><strong>b. Buyer Responsible for Locating Underground Utilities.</strong> Buyer is responsible for informing installation contractors of any underground/overhead cables, gas lines, utility hazards, or relevant matters prior to installation. This may require Buyer to contact the utility company to request that the locations of the Underground Utilities be marked. Buyer agrees to indemnify and hold CCI harmless for any damage done to lines, pipes, cables, or other utility instrumentalities during installation.</p>'+
+    '<p style="padding-left:16px"><strong>c. Buyer Responsible for Permits.</strong> Buyer shall be solely responsible for, and shall obtain, any necessary city or county permits prior to commencement of installation. Buyer agrees to indemnify and hold CCI harmless for violation of any city or county ordinance or code.</p>'+
+    '<p style="padding-left:16px"><strong>d. Limitation on Liability.</strong> CCI will not be liable to Buyer for punitive, indirect, incidental, special, or consequential damages resulting from any defect or deficiencies. CCI will not be liable for any misinformation provided by the dealers during the sale process.</p>'+
+    '<p style="padding-left:16px"><strong>e. Lead Times.</strong> Lead times are for estimation purposes only. Lead times will vary based on location, size of order, orders within a certain area, weather and other factors. No lead time is guaranteed. Orders under $5,000 are considered work-in orders and do not have an estimated lead time. CCI is not responsible for misinformation provided by the dealer regarding lead times.</p>'+
+    '<p><strong>6. Jurisdiction and Venue.</strong> The parties hereto: (i) consent to submit itself to the personal jurisdiction of any state or federal court sitting in the County of Surry, State of North Carolina, in any action or proceeding arising out of or relating to the Agreement, (ii) agree that all claims in respect of such action or proceeding may be heard and determined in any such court, (iii) agree that they shall not attempt to deny or defeat such personal jurisdiction by motion or other request for leave from any such court, and (iv) agree not to bring any action or proceeding arising out of or related to the Agreement in any other court. Each of the parties hereto waives any defense of inconvenient forum to the maintenance of any action or proceeding so brought and waives any bond, surety or other security that might be required of the other party with respect thereto.</p>'+
+    '<p><strong>7. Governing Law.</strong> This Agreement shall be interpreted and construed according to, and governed by, the laws of the State of North Carolina.</p>'+
+    '<p><strong>8. Cumulative Remedies.</strong> The rights and remedies under this Agreement are cumulative and are in addition to and not in substitution for any other rights and remedies available at law or in equity or otherwise.</p>'+
+    '<p><strong>9. Entire Agreement.</strong> The parties agree that this Agreement is the complete and exclusive statement of the agreement between the parties, and supersedes all prior written or oral communications, representations and agreements relating to the subject matter of this agreement.</p>'+
+    '<p><strong>10. Modification.</strong> The terms of this Agreement, save and except the price term in the event of a pricing error/change order, may be modified or amended only by a written instrument executed by the parties hereto.</p>'+
+    '<p><strong>11. Waiver; Enforceability.</strong> The waiver by any party of a breach or a default of any provision of this Agreement by the other party shall not be construed as a waiver of any succeeding breach of the same or any other provision, nor shall any delay or omission on the part of any party to exercise or avail itself of any right, power or privilege that it has, or may have hereunder, operate as a waiver of any right, power or privilege by such party. If one or more provisions of this Agreement are held to be illegal or unenforceable under applicable law, such illegal or unenforceable portion shall be limited or excluded to the minimum extent required so that this Agreement shall otherwise remain in full force and effect and enforceable.</p>'+
+    '<p><strong>12. Survival.</strong> Provisions of this Agreement which by their nature should apply beyond their terms will remain in force after any termination or expiration of this Agreement including, but not limited to, the following provisions: Warranties, Indemnification, Governing Law, and Survival.</p>'+
+    '<p style="text-align:right;margin-top:10px;color:#64748b">Rev. June 10, 2022</p>';
   var page3 =
     '<div class="page">'+
     _header('Terms &amp; Conditions','')+
 
     '<div class="c-tc-cols">'+
+    (isCCI ? ccTermsInner : (''+
 
       '<h3>Rejection of Order and Cancellation of Contract</h3>'+
       '<p>Seller reserves the right, at any time before installation of the Unit, to reject this Order or cancel this contract by notice in writing to Buyer. <strong>Upon giving such notice, Seller will NOT issue any refund of the deposit received from Buyer on this iteration of the contract. ALL DEPOSITS AND PAYMENTS ARE NON-REFUNDABLE.</strong> Buyer agrees that no refund shall be provided for such cancellation. Seller reserves the right to find another Factory who can fulfill the order. This applies to new orders and order revisions.</p>'+
@@ -9329,12 +9371,13 @@ async function printContract(){
       '<p>At the time of installation, should the site be determined obstructed or inaccessible due to permanent or temporary structures, Buyer will pay any and all consequential damages, including but not limited to return trip fees prior to reinstallation. <strong>Buyer agrees to pay minimum of $250.00 return trip for unsuitable site conditions.</strong></p>'+
 
       '<h3>Execution of Contract</h3>'+
-      '<p>Contract may be executed in multiple counterparts each of which shall be deemed an original and together shall constitute but one and the same Contract. Counterparts of this Contract may be exchanged via electronic facsimile machines or by PDF. An electronic facsimile or PDF of a party\'s signature shall be deemed to be an original signature for all purposes.</p>'+
+      '<p>Contract may be executed in multiple counterparts each of which shall be deemed an original and together shall constitute but one and the same Contract. Counterparts of this Contract may be exchanged via electronic facsimile machines or by PDF. An electronic facsimile or PDF of a party\'s signature shall be deemed to be an original signature for all purposes.</p>'
+    ))+
 
     '</div>'+
 
     '<div class="c-ack" style="margin-top:10px">'+
-      '<strong>ACKNOWLEDGMENT &mdash;</strong> I HAVE READ AND AGREED TO ALL THE TERMS AND CONDITIONS STATED ABOVE AS RELATING TO THE PURCHASE OF SAID STRUCTURE FROM STORMSAFE STEEL. I UNDERSTAND AND ACKNOWLEDGE THAT <strong>ALL PAYMENTS ARE NON-REFUNDABLE</strong> AND THAT <strong>NO CHANGES TO BUILDING DIMENSIONS ARE PERMITTED AFTER SIGNING THIS AGREEMENT.</strong>'+
+      '<strong>ACKNOWLEDGMENT &mdash;</strong> I HAVE READ AND AGREED TO ALL THE TERMS AND CONDITIONS STATED ABOVE AS RELATING TO THE PURCHASE OF SAID STRUCTURE FROM '+(isCCI?'CAROLINA CARPORTS':'STORMSAFE STEEL')+'. I UNDERSTAND AND ACKNOWLEDGE THAT <strong>ALL PAYMENTS ARE NON-REFUNDABLE</strong> AND THAT <strong>NO CHANGES TO BUILDING DIMENSIONS ARE PERMITTED AFTER SIGNING THIS AGREEMENT.</strong>'+
     '</div>'+
 
     '<div class="c-sig-block">'+

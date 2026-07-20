@@ -252,6 +252,7 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
         <option value="Master Files">Master Files — $250</option>
         <option value="No Permit Required">No Permit Required — $0</option>
       </select></div>
+    <div id="plans-auto-note" class="anote hidden" style="margin:-2px 0 8px">Wall height over 14&prime; &mdash; <strong>Site Specific Plans required</strong> (CCI), regardless of county or property type.</div>
     <div class="row"><label>Permitting Service</label>
       <select id="permit-svc" onchange="rc()">
         <option value="none">None — Buyer pulls own permit</option>
@@ -3875,6 +3876,14 @@ function doPerm(){
     var planType, cert;
     if(pt==='rc2r'||pt==='com'){ planType=MFR().autoHighPlan; cert='170 MPH'; }
     else { planType=CP[co]||MFR().defaultPlan; cert=HW.indexOf(co)>=0?'170 MPH':'150 MPH'; }
+    // CCI ONLY: any wall height over 14' requires Site Specific Plans, no matter
+    // the county or property type. Force the choice and lock it so it can't be
+    // switched to a cheaper plan by mistake.
+    var _bhTall = (parseFloat((G('bh') && G('bh').value) || 0) || 0) > 14;
+    var _cciTall = (ACTIVE_MFR === 'CCI' && _bhTall);
+    if(_cciTall) planType = 'Site Specific Plans';
+    var _paNote = G('plans-auto-note'); if(_paNote) _paNote.classList.toggle('hidden', !_cciTall);
+    var _paSel = G('plans-sel'); if(_paSel) _paSel.disabled = _cciTall;
     G('plans-sel').value = planType;
     G('cert-req').textContent = cert;
     // CA: update As Built/Master Files label to show correct price for property type

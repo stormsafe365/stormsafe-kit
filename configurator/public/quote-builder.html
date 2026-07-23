@@ -5352,6 +5352,9 @@ function updLTAccFoType(sel){
   var d=ltFoDefaults(sel.value);
   var szRow=e.querySelector('.lt-acc-fo-row');
   if(szRow) szRow.style.display=d.noRender?'none':'';
+  // Adjustable sill only for WINDOW framed openings
+  var slRow=e.querySelector('.lt-acc-fo-sill-row');
+  if(slRow) slRow.style.display=(sel.value.indexOf('Window')>=0)?'':'none';
   if(!d.noRender){
     var wEl=e.querySelector('.lt-acc-fo-w'), hEl=e.querySelector('.lt-acc-fo-h');
     if(wEl&&d.w) wEl.value=d.w;
@@ -5410,6 +5413,8 @@ function addLTAcc(entry){
     '<input type="number" class="lt-acc-fo-w" min="1" max="20" step="0.5" value="10" oninput="refreshLTAccQty(this.closest(\'.lt-acc-e\'));rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%" placeholder="W">'+
     '<input type="number" class="lt-acc-fo-h" min="1" max="16" step="0.5" value="10" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%" placeholder="H">'+
     '</div></div>'+
+    '<div class="row lt-acc-fo-sill-row" style="display:none"><label>Sill Height (ft)</label>'+
+    '<input type="number" class="lt-acc-fo-sill" value="4.17" min="0" max="14" step="0.25" oninput="rc()" title="Bottom of the window opening off the ground — standard 4&#39;2&#34; (4.17 ft)" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
     '<div class="row lt-acc-rud-ch-row" style="display:none"><label>Chain Hoist</label>'+
     '<select class="lt-acc-ch" onchange="rc()">'+
     '<option value="0">None</option><option value="1">1 (+$325)</option>'+
@@ -5464,6 +5469,7 @@ function updLTAccType(sel){
   e.querySelector('.lt-acc-win-row').style.display=sel.value==='win'?'':'none';
   var foRow=e.querySelector('.lt-acc-fo-row'); if(foRow) foRow.style.display=sel.value==='frameout'?'':'none';
   var ftRow=e.querySelector('.lt-acc-fo-type-row'); if(ftRow) ftRow.style.display=sel.value==='frameout'?'':'none';
+  var _ltSl=e.querySelector('.lt-acc-fo-sill-row'); if(_ltSl&&sel.value!=='frameout') _ltSl.style.display='none';
   if(sel.value==='frameout'){ var ftSel=e.querySelector('.lt-acc-fo-type'); if(ftSel) updLTAccFoType(ftSel); }
   updateLTAccSize(e);
   if(isRollup) refreshLTAccChSl(e);
@@ -5805,6 +5811,8 @@ function aAC(){
       '<div class="row fo-ch-row"><label class="fo-ch-label">Opening Height (ft)</label>'+
       '<input type="number" class="fo-ch" placeholder="8" min="1" max="16" step="0.5" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
     '</div>'+
+    '<div class="row fo-sill-row hidden"><label>Sill Height (ft)</label>'+
+    '<input type="number" class="fo-sill" value="4.17" min="0" max="14" step="0.25" oninput="rc()" title="Bottom of the window opening off the ground — standard 4&#39;2&#34; (4.17 ft)" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
     '<div class="row fo-loc-row hidden"><label>Wall Location</label>'+
     '<select class="fo-loc" onchange="refreshPosLabels(this.closest(\'.ace\'));rc()">'+
     '<option>Front Gable End</option><option>Back Gable End</option>'+
@@ -5829,6 +5837,8 @@ function updACPrice(sel){
   var isFO = sel.value.indexOf('Framed Opening') === 0;
   entry.querySelector('.fo-loc-row').classList.toggle('hidden', !isFO);
   var _duRow=entry.querySelector('.fo-dispunit-row'); if(_duRow) _duRow.classList.toggle('hidden', !isFO);
+  // Adjustable sill only makes sense for WINDOW framed openings.
+  var _slRow=entry.querySelector('.fo-sill-row'); if(_slRow) _slRow.classList.toggle('hidden', !(isFO && sel.value.indexOf('Window')>=0));
   if(isFO){
     var qty = parseInt(entry.querySelector('.acq').value)||1;
     updatePosSection(entry, qty, 'Opening');
@@ -5845,6 +5855,13 @@ function foCustomFeet(el){
   var cw=parseFloat((el.querySelector('.fo-cw')||{}).value);
   var ch=parseFloat((el.querySelector('.fo-ch')||{}).value);
   return { w:(cw>0?cw*k:10), h:(ch>0?ch*k:8) };
+}
+// Sill height (ft) for a WINDOW framed opening — the entry's adjustable Sill
+// Height input (some jobs need windows higher than standard), falling back to
+// the standard 4'2". Placement only — never affects pricing.
+function foSillFt(el){
+  var s=parseFloat((el.querySelector('.fo-sill')||{}).value);
+  return (isFinite(s)&&s>=0)?s:4.16667;
 }
 // Update the width/height labels + input constraints to match the chosen unit.
 // Does NOT touch the entered numbers (used on init/restore).
@@ -6958,8 +6975,8 @@ function buildingPageHTML(prefixHTML){
     if(!locRow || locRow.classList.contains('hidden')) return;
     var loc = el.querySelector('.fo-loc').value;
     var qty = parseInt(el.querySelector('.acq').value)||1;
-    var foW=2.5, foH=2.5, foYo=4.16667;
-    if(comp.indexOf('(Custom Size)')>=0){var _fos=foCustomFeet(el);foW=_fos.w;foH=_fos.h;foYo=(comp.indexOf('Window')>=0)?4.16667:0;}
+    var foW=2.5, foH=2.5, foYo=foSillFt(el);
+    if(comp.indexOf('(Custom Size)')>=0){var _fos=foCustomFeet(el);foW=_fos.w;foH=_fos.h;foYo=(comp.indexOf('Window')>=0)?foSillFt(el):0;}
     else if(comp.indexOf('Garage Door')>=0){var wm=comp.match(/(\d+)' Wide/);foW=wm?parseInt(wm[1]):10;foH=8;foYo=0;}
     else if(comp.indexOf('Side Opening')>=0){var wm2=comp.match(/(\d+)' Wide/);foW=wm2?parseInt(wm2[1]):10;foH=8;foYo=0;}
     else if(comp.indexOf('Double Door') >= 0){ foW=6; foH=6.67; foYo=0; }
@@ -7149,7 +7166,7 @@ function collectQuoteData(){
     d.accs=[];
     el.querySelectorAll('.lt-acc-e').forEach(function(ae){
       var a={};
-      ['lt-acc-type','lt-acc-fo-type','lt-acc-size','lt-acc-color','lt-acc-fo-w','lt-acc-fo-h','lt-acc-ch','lt-acc-sl','lt-acc-wtd-hi','lt-acc-win-hi','lt-acc-qty','lt-acc-loc','lt-acc-pos'].forEach(function(cls){
+      ['lt-acc-type','lt-acc-fo-type','lt-acc-size','lt-acc-color','lt-acc-fo-w','lt-acc-fo-h','lt-acc-fo-sill','lt-acc-ch','lt-acc-sl','lt-acc-wtd-hi','lt-acc-win-hi','lt-acc-qty','lt-acc-loc','lt-acc-pos'].forEach(function(cls){
         var f=ae.querySelector('.'+cls); if(f) a[cls]=f.value;
       });
       a.offs=Array.prototype.map.call(ae.querySelectorAll('.lt-acc-off'),function(i){return i.value;});
@@ -7164,7 +7181,7 @@ function collectQuoteData(){
     var d = {};
     // fo-loc = the wall a framed opening sits on; was missing, so loads reverted
     // every framed opening to the first wall (Front Gable End).
-    ['act','acq','acp','fo-cw','fo-ch','fo-unit','fo-disp-unit','fo-loc'].forEach(function(cls){
+    ['act','acq','acp','fo-cw','fo-ch','fo-unit','fo-disp-unit','fo-sill','fo-loc'].forEach(function(cls){
       var f=el.querySelector('.'+cls); if(f) d[cls]=f.value;
     });
     // Position rows (placement along the wall) — same as doors/windows/roll-ups.
@@ -7402,8 +7419,8 @@ function restoreQuoteData(data){
       // computed from the opening width, so restore the real width first or a
       // saved qty could get clamped against the 10' default.
       var ftEl=ae.querySelector('.lt-acc-fo-type'); if(ftEl&&a['lt-acc-fo-type']!==undefined) ftEl.value=a['lt-acc-fo-type'];
-      ['lt-acc-fo-w','lt-acc-fo-h'].forEach(function(cls){
-        var f=ae.querySelector('.'+cls); if(f&&a[cls]!==undefined) f.value=a[cls];
+      ['lt-acc-fo-w','lt-acc-fo-h','lt-acc-fo-sill'].forEach(function(cls){
+        var f=ae.querySelector('.'+cls); if(f&&a[cls]!==undefined&&a[cls]!=='') f.value=a[cls];
       });
       var locEl=ae.querySelector('.lt-acc-loc'); if(locEl&&a['lt-acc-loc']!==undefined) locEl.value=a['lt-acc-loc'];
       updateLTAccSize(ae); // rebuilds size list + fit-based qty for the restored wall/size
@@ -7435,6 +7452,7 @@ function restoreQuoteData(data){
     // Wall location (was reverting framed openings to the first wall).
     var foLocEl=el.querySelector('.fo-loc'); if(foLocEl&&d['fo-loc']) foLocEl.value=d['fo-loc'];
     var foDuEl=el.querySelector('.fo-disp-unit'); if(foDuEl&&d['fo-disp-unit']) foDuEl.value=d['fo-disp-unit'];
+    var foSlEl=el.querySelector('.fo-sill'); if(foSlEl&&d['fo-sill']!==undefined&&d['fo-sill']!=='') foSlEl.value=d['fo-sill'];
     // Rebuild + restore placement rows for framed openings (act starts with "Framed Opening").
     if(actEl && actEl.value.indexOf('Framed Opening')===0){
       var foQty=parseInt(d.acq)||1;
@@ -8248,8 +8266,8 @@ function collectElevItems(){
   document.querySelectorAll('.ace').forEach(function(el){
     var comp=el.querySelector('.act')?el.querySelector('.act').value:''; if(comp.indexOf('Framed Opening')<0) return;
     var locRow=el.querySelector('.fo-loc-row'); if(!locRow||locRow.classList.contains('hidden')) return;
-    var qty=parseInt(el.querySelector('.acq').value)||1, foW=2.5,foH=2.5,foYo=4.16667;
-    if(comp.indexOf('(Custom Size)')>=0){var _fos=foCustomFeet(el);foW=_fos.w;foH=_fos.h;foYo=(comp.indexOf('Window')>=0)?4.16667:0;}
+    var qty=parseInt(el.querySelector('.acq').value)||1, foW=2.5,foH=2.5,foYo=foSillFt(el);
+    if(comp.indexOf('(Custom Size)')>=0){var _fos=foCustomFeet(el);foW=_fos.w;foH=_fos.h;foYo=(comp.indexOf('Window')>=0)?foSillFt(el):0;}
     else if(comp.indexOf('Garage Door')>=0){var wm=comp.match(/(\d+)' Wide/);foW=wm?parseInt(wm[1]):10;foH=8;foYo=0;}
     else if(comp.indexOf('Side Opening')>=0){var wm2=comp.match(/(\d+)' Wide/);foW=wm2?parseInt(wm2[1]):10;foH=8;foYo=0;}
     else if(comp.indexOf('Double Door')>=0){foW=6;foH=6.67;foYo=0;}
@@ -8575,8 +8593,8 @@ async function printContract(){
     if(!locRow || locRow.classList.contains('hidden')) return;
     var loc = el.querySelector('.fo-loc').value;
     var qty = parseInt(el.querySelector('.acq').value)||1;
-    var foW=2.5, foH=2.5, foYo=4.16667;
-    if(comp.indexOf('(Custom Size)')>=0){var _fos=foCustomFeet(el);foW=_fos.w;foH=_fos.h;foYo=(comp.indexOf('Window')>=0)?4.16667:0;}
+    var foW=2.5, foH=2.5, foYo=foSillFt(el);
+    if(comp.indexOf('(Custom Size)')>=0){var _fos=foCustomFeet(el);foW=_fos.w;foH=_fos.h;foYo=(comp.indexOf('Window')>=0)?foSillFt(el):0;}
     else if(comp.indexOf('Garage Door')>=0){var wm=comp.match(/(\d+)' Wide/);foW=wm?parseInt(wm[1]):10;foH=8;foYo=0;}
     else if(comp.indexOf('Side Opening')>=0){var wm2=comp.match(/(\d+)' Wide/);foW=wm2?parseInt(wm2[1]):10;foH=8;foYo=0;}
     else if(comp.indexOf('Double Door') >= 0){ foW=6; foH=6.67; foYo=0; }
@@ -10834,7 +10852,8 @@ function collectLTsForViews(){
         acc.foType=(ae.querySelector('.lt-acc-fo-type')||{}).value||'';
         acc.w=parseFloat(ae.querySelector('.lt-acc-fo-w')&&ae.querySelector('.lt-acc-fo-w').value)||10;
         acc.h=parseFloat(ae.querySelector('.lt-acc-fo-h')&&ae.querySelector('.lt-acc-fo-h').value)||10;
-        acc.sill=(acc.foType.indexOf('Window')>=0)?4.16667:0; // window frame-outs sit at sill height
+        // Window frame-outs sit at their (adjustable) sill height; default 4'2"
+        acc.sill=(acc.foType.indexOf('Window')>=0)?(parseFloat((ae.querySelector('.lt-acc-fo-sill')||{}).value)||4.16667):0;
       }
       ltAcc.push(acc);
     });
@@ -10938,8 +10957,8 @@ function renderBuildingViews(){
     if(!locRow||locRow.classList.contains('hidden')) return;
     var loc=el.querySelector('.fo-loc').value;
     var qty=parseInt(el.querySelector('.acq').value)||1;
-    var foW=2.5,foH=2.5,foYo=4.16667;
-    if(comp.indexOf('(Custom Size)')>=0){var _fos=foCustomFeet(el);foW=_fos.w;foH=_fos.h;foYo=(comp.indexOf('Window')>=0)?4.16667:0;}
+    var foW=2.5,foH=2.5,foYo=foSillFt(el);
+    if(comp.indexOf('(Custom Size)')>=0){var _fos=foCustomFeet(el);foW=_fos.w;foH=_fos.h;foYo=(comp.indexOf('Window')>=0)?foSillFt(el):0;}
     else if(comp.indexOf('Garage Door')>=0){var wm3=comp.match(/(\d+)' Wide/);foW=wm3?parseInt(wm3[1]):10;foH=8;foYo=0;}
     else if(comp.indexOf('Side Opening')>=0){var wm4=comp.match(/(\d+)' Wide/);foW=wm4?parseInt(wm4[1]):10;foH=8;foYo=0;}
     else if(comp.indexOf('Double Door')>=0){foW=6;foH=6.67;foYo=0;}

@@ -217,9 +217,12 @@ function readOpenings(
     if (!locRow || locRow.classList.contains('hidden')) return;
     const loc = lv(el, '.fo-loc');
     const qty = qv(el, '.acq', 1);
+    // Window frame-outs have an adjustable sill (.fo-sill); standard 4'2".
+    const sillIn = fnum(el, '.fo-sill');
+    const winSill = Number.isFinite(sillIn) && sillIn >= 0 ? sillIn : 4.16667;
     let foW = 2.5;
     let foH = 2.5;
-    let foYo = 4.16667; // window sill 4'-2"
+    let foYo = winSill;
     if (comp.indexOf('(Custom Size)') >= 0) {
       // Custom frame-out dimensions can be entered in ft or inches (.fo-unit).
       const foUnit = (el.querySelector('.fo-unit') as HTMLSelectElement | null)?.value;
@@ -228,7 +231,7 @@ function readOpenings(
       const chRaw = fnum(el, '.fo-ch');
       foW = cwRaw ? cwRaw * foK : 10;
       foH = chRaw ? chRaw * foK : 8;
-      foYo = comp.indexOf('Window') >= 0 ? 4.16667 : 0;
+      foYo = comp.indexOf('Window') >= 0 ? winSill : 0;
     } else if (comp.indexOf('Garage Door') >= 0 || comp.indexOf('Side Opening') >= 0) {
       const m = comp.match(/(\d+)' Wide/);
       foW = m ? parseInt(m[1], 10) : 10;
@@ -474,7 +477,9 @@ function readLeanTos(win: Window & { document: Document }): Array<{
         if (foType.includes('45')) return;
         w = parseFloat(strVal(ae, '.lt-acc-fo-w')) || 10;
         h = parseFloat(strVal(ae, '.lt-acc-fo-h')) || 10;
-        sill = foType.includes('Window') ? 4.16667 : 0;
+        // Window frame-outs: adjustable sill (.lt-acc-fo-sill); standard 4'2"
+        const ltSill = parseFloat(strVal(ae, '.lt-acc-fo-sill'));
+        sill = foType.includes('Window') ? (Number.isFinite(ltSill) && ltSill >= 0 ? ltSill : 4.16667) : 0;
       }
       // Wall the opening sits on determines the run length it's positioned along.
       const wallLen = wall === 'outer' ? lengthFt : widthFt;
@@ -838,7 +843,9 @@ export default function BuildHost() {
       </header>
 
       {/* ── Two panes ── */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', minHeight: 0 }}>
+      {/* Pricing form pinned at ~500px; the 3D pane takes every remaining pixel
+          so long buildings fit in the eave views without zooming out. */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(440px, 500px) 1fr', minHeight: 0 }}>
         {/* Left: the program (untouched) */}
         <div style={{ position: 'relative', minWidth: 0, background: '#fff' }}>
           {/* RELATIVE path (no leading slash) so it resolves next to build.html

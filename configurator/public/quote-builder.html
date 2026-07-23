@@ -402,7 +402,7 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
 <div class="sec">
   <div class="st">4 — Wall Options</div>
   <div class="row"><label>Wall Style</label>
-    <select id="ws" onchange="rc()">
+    <select id="ws" onchange="_wsAutoVert=false;rc()">
       <option value="Horizontal">Horizontal</option>
       <option value="Vertical">Vertical</option>
     </select></div>
@@ -4104,6 +4104,7 @@ function populateLength(){
 
 
 var _prevOcWidth = -1; // last width doBld saw — resets the 4' OC upgrade on width change
+var _wsAutoVert = false; // true only while ws=Vertical came from the >30ft auto rule (not manual/restored)
 function doBld(){
   var w=parseInt(G('bw').value)||0, h=parseInt(G('bh').value)||6, f=[];
   var bt=G('btype').value;
@@ -4113,14 +4114,19 @@ function doBld(){
     populateLength();
   }
 
-  // Auto wall style — only width > 30ft forces vertical. Height ≥ 16ft shows warning only.
+  // Auto wall style — width > 30ft forces vertical; carports are horizontal.
+  // The auto rule may only undo ITS OWN auto-set value (_wsAutoVert): a manual
+  // or quote-restored Vertical upgrade must survive size changes — doBld runs
+  // on every width/height tweak and used to silently stomp the upgrade back to
+  // Horizontal (which then saved, losing the client's vertical walls).
   if(bt==='carport'){
-    G('ws').value='Horizontal';
+    G('ws').value='Horizontal'; _wsAutoVert=false;
   } else if(w>30){
-    G('ws').value='Vertical'; f.push(bdg('Auto: Vertical Walls (>30ft)','bb'));
+    if(G('ws').value!=='Vertical'){ G('ws').value='Vertical'; _wsAutoVert=true; }
+    f.push(bdg('Auto: Vertical Walls (>30ft)','bb'));
   } else if(w>0){
-    G('ws').value='Horizontal';
-    if(h>=16) f.push(bdg('⚠ Tall Building (≥16ft) — consider Vertical Walls','bo'));
+    if(_wsAutoVert){ G('ws').value='Horizontal'; _wsAutoVert=false; }
+    if(h>=16 && G('ws').value!=='Vertical') f.push(bdg('⚠ Tall Building (≥16ft) — consider Vertical Walls','bo'));
   }
 
   // CA 62'-70' wide provisional support

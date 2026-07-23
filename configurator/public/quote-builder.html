@@ -4437,17 +4437,23 @@ function connFeeFor(attachedSide, connLen){
   var bt=G('btype')?G('btype').value:'';
   var isWS=(bw>=32||bt==='widespan');
   var isGable=(attachedSide==='Front Gable'||attachedSide==='Back Gable');
-  if(isWS){
-    // Wide-span connection — calibrated against Sensei 2026-07: a 100'
-    // connection on a 40x100x20 widespan = $1,100 ($40 per 4ft past 20').
-    return 300+Math.ceil(Math.max(0,connLen-20)/4)*40;
+  if(ACTIVE_MFR==='CCI' && !isGable){
+    // CCI eave connection — Sensei-verified per-length chart (2026-07-23):
+    // 40'→$400 · 60'→$700 · 80'→$800 · 100'→$1,100. $400 floor (matches the
+    // old flat-$400 observation at 40' on a standard main); edge-rate
+    // extrapolation past 100'.
+    return Math.max(400, Math.round(_ltsInterp(LTS_CONN, connLen)));
   }
   if(isGable){
     // Gable-end connection: higher base ($700) — matches CCI Sensei (e.g., 30' gable connection = $750)
     return 700+Math.ceil(Math.max(0,connLen-21)/5)*25;
   }
-  // Eave side connection: CCI = flat fee (eaveConnFlat); CA = $100 + $25/5' past 21'
-  return (typeof MFR==='function'&&MFR().eaveConnFlat)?MFR().eaveConnFlat:(100+Math.ceil(Math.max(0,connLen-21)/5)*25);
+  if(isWS){
+    // CA wide-span connection (unverified formula — CCI uses the chart above)
+    return 300+Math.ceil(Math.max(0,connLen-20)/4)*25;
+  }
+  // CA eave side connection: $100 + $25/5' past 21'
+  return 100+Math.ceil(Math.max(0,connLen-21)/5)*25;
 }
 function gConnectionFees(){
   var total=0;
@@ -5131,6 +5137,109 @@ function ltBasePrice(w,l){
   // Lean-to base price: $7.00/sqft (derived from CA/CCI lean-to pricing)
   return Math.round(w * l * 7.00);
 }
+// ── Sensei-verified CCI lean-to pricing (calibrated 2026-07-23) ─────────────
+// Anchor tables measured directly in Sensei on a 40x100x20 widespan main
+// (screenshots: Pictures/lean-to pricing check + the original QTE-000262
+// 10x40x10 case, which lands exactly on these curves). Linear interpolation
+// between anchors, edge-rate extrapolation beyond. Structure confirmed from
+// the data: ENDS depend on width+height only; SIDE WALL and HEIGHT adder are
+// width-independent. Configs outside table coverage fall back to the legacy
+// split method in ltUnit.
+var LTS_SIZE = {        // lean width → [[length, $], …]
+  10: [[40,2647.5],[60,3995],[100,6592.5]],
+  12: [[40,4295],[60,6390],[80,8590],[100,10785]]
+};
+var LTS_HEIGHT = {      // low-leg height → curve (or shape-scaled off h12)
+  10: [[40,407.5],[100,1032.5]],
+  12: [[40,720],[60,1140],[80,1440],[100,1865]],
+  14: {shape:12, at:[100,3100]},
+  16: {shape:12, at:[60,2880]}
+};
+var LTS_SIDE = {        // closed outer side wall (width-independent)
+  10: [[40,752.5],[100,2547.5]],
+  12: [[40,1280],[60,1900],[80,2560],[100,3100]],
+  14: {shape:12, at:[100,3605]},
+  16: {shape:12, at:[60,2545]}
+};
+var LTS_ENDS = {        // per (width, height): BOTH fully-enclosed gable ends
+  10: {14:2225,16:2375},
+  12: {10:2100,12:2530,14:3110}
+};
+var LTS_CONN = [[40,400],[60,700],[80,800],[100,1100]]; // per eave connection
+
+function _ltsInterp(pts, x){
+  if(!pts||!pts.length) return 0;
+  if(pts.length===1) return pts[0][1];
+  if(x<=pts[0][0]){
+    var r0=(pts[1][1]-pts[0][1])/(pts[1][0]-pts[0][0]);
+    return Math.max(0, pts[0][1]-r0*(pts[0][0]-x));
+  }
+  for(var i=1;i<pts.length;i++){
+    if(x<=pts[i][0]){
+      var t=(x-pts[i-1][0])/(pts[i][0]-pts[i-1][0]);
+      return pts[i-1][1]+t*(pts[i][1]-pts[i-1][1]);
+    }
+  }
+  var n=pts.length, rN=(pts[n-1][1]-pts[n-2][1])/(pts[n-1][0]-pts[n-2][0]);
+  return pts[n-1][1]+rN*(x-pts[n-1][0]);
+}
+// Resolve a height-keyed curve: a plain anchor array, or {shape, at} which
+// reuses another height's curve SHAPE scaled through its own measured point.
+function _ltsCurve(curves, key, L){
+  var c=curves[key];
+  if(!c) return null;
+  if(Object.prototype.toString.call(c)==='[object Array]') return _ltsInterp(c,L);
+  var base=curves[c.shape];
+  var ref=_ltsInterp(base,c.at[0]);
+  return ref>0 ? _ltsInterp(base,L)*(c.at[1]/ref) : 0;
+}
+// Value at (height, length): interpolate between the two nearest height curves.
+// Below the lowest curve, scale toward zero at h=hZero (adders vanish there).
+function _ltsByHeight(curves, h, L, hZero){
+  var hs=Object.keys(curves).map(Number).sort(function(a,b){return a-b;});
+  if(h<=hs[0]){
+    var v0=_ltsCurve(curves,hs[0],L);
+    if(hZero===undefined) return v0;
+    if(h<=hZero) return 0;
+    return v0*(h-hZero)/(hs[0]-hZero);
+  }
+  for(var i=1;i<hs.length;i++){
+    if(h<=hs[i]){
+      var lo=_ltsCurve(curves,hs[i-1],L), hi=_ltsCurve(curves,hs[i],L);
+      var t=(h-hs[i-1])/(hs[i]-hs[i-1]);
+      return lo+t*(hi-lo);
+    }
+  }
+  var last=_ltsCurve(curves,hs[hs.length-1],L);
+  var prev=_ltsCurve(curves,hs[hs.length-2],L);
+  var rate=(last-prev)/(hs[hs.length-1]-hs[hs.length-2]);
+  return last+rate*(h-hs[hs.length-1]); // above top curve: edge-rate extrapolation
+}
+function ltsSize(w,l){
+  var ws=Object.keys(LTS_SIZE).map(Number).sort(function(a,b){return a-b;});
+  if(w<ws[0]||w>ws[ws.length-1]) return null; // outside coverage → legacy
+  if(LTS_SIZE[w]) return _ltsInterp(LTS_SIZE[w],l);
+  var lo=_ltsInterp(LTS_SIZE[ws[0]],l), hi=_ltsInterp(LTS_SIZE[ws[ws.length-1]],l);
+  return lo+(hi-lo)*(w-ws[0])/(ws[ws.length-1]-ws[0]);
+}
+function ltsEndsPair(w,h){
+  var ws=Object.keys(LTS_ENDS).map(Number).sort(function(a,b){return a-b;});
+  if(w<ws[0]||w>ws[ws.length-1]) return null;
+  function rowVal(row,hh){
+    var hs=Object.keys(row).map(Number).sort(function(a,b){return a-b;});
+    if(hs.length===1) return row[hs[0]];
+    if(hh<=hs[0]){var r=(row[hs[1]]-row[hs[0]])/(hs[1]-hs[0]);return Math.max(0,row[hs[0]]-r*(hs[0]-hh));}
+    for(var i=1;i<hs.length;i++){
+      if(hh<=hs[i]){var t=(hh-hs[i-1])/(hs[i]-hs[i-1]);return row[hs[i-1]]+t*(row[hs[i]]-row[hs[i-1]]);}
+    }
+    var n=hs.length,rN=(row[hs[n-1]]-row[hs[n-2]])/(hs[n-1]-hs[n-2]);
+    return row[hs[n-1]]+rN*(hh-hs[n-1]);
+  }
+  if(LTS_ENDS[w]) return rowVal(LTS_ENDS[w],h);
+  var lo=rowVal(LTS_ENDS[ws[0]],h), hi=rowVal(LTS_ENDS[ws[ws.length-1]],h);
+  return lo+(hi-lo)*(w-ws[0])/(ws[ws.length-1]-ws[0]);
+}
+
 // ── Per-lean-to unit price (base + height + walls; NOT accessories) ─────────
 // Single source of truth shared by the pricing engine (gLT) and the printed
 // quote rows, so the printed lines always sum to the Building Amount.
@@ -5157,7 +5266,18 @@ function ltUnit(el){
   if(!w||!l) return {w:w,l:l,h:h,isFree:isFree,bp:0,heightAdj:0,encAdj:0,total:0};
   var ltWalls2=getLTWalls(el);
   var bp, heightAdj=0, encAdj;
-  if(ACTIVE_MFR==='CCI' && !isFree){
+  if(ACTIVE_MFR==='CCI' && !isFree && ltsSize(w,l)!==null){
+    // ── Sensei-verified model (widths 10–12; LTS_* anchor tables above). ──
+    // Exact at every measured Sensei point; interpolated between them.
+    bp=Math.round(ltsSize(w,l)*100)/100;
+    heightAdj=(h>6)?Math.round(_ltsByHeight(LTS_HEIGHT,h,l,6)*100)/100:0;
+    var endPairS=ltsEndsPair(w,h)||0;
+    var endP=function(v){ return v==='closed'?Math.round(endPairS/2):(v==='gable'?112.5:0); };
+    var sideP=(ltWalls2.side==='closed')?Math.round(_ltsByHeight(LTS_SIDE,h,l,0)):(LT_SIDE_P[ltWalls2.side]||0);
+    encAdj=endP(ltWalls2.front)+endP(ltWalls2.back)+sideP;
+  } else if(ACTIVE_MFR==='CCI' && !isFree){
+    // Legacy dealer-handbook split method — widths the Sensei tables don't
+    // cover yet. Known to drift low at long lengths; verify vs Sensei.
     var vw=2*w+2; if(vw%2) vw++;
     var T=(G('rs')&&G('rs').value==='Regular')?PR:((G('rs')&&G('rs').value==='Boxed Eave')?PB:PV);
     var wi=WIDTHS.indexOf(vw);
@@ -5184,9 +5304,9 @@ function ltUnit(el){
       }
       heightAdj=Math.round(huFull/2*100)/100;
     }
-    var endP=function(v){ return v==='closed'?Math.round(ecLookup(vw,h)/2):(v==='gable'?112.5:0); };
-    var sideP=(ltWalls2.side==='closed')?scLookup(h,l,2*w):(LT_SIDE_P[ltWalls2.side]||0);
-    encAdj=endP(ltWalls2.front)+endP(ltWalls2.back)+sideP;
+    var endPL=function(v){ return v==='closed'?Math.round(ecLookup(vw,h)/2):(v==='gable'?112.5:0); };
+    var sidePL=(ltWalls2.side==='closed')?scLookup(h,l,2*w):(LT_SIDE_P[ltWalls2.side]||0);
+    encAdj=endPL(ltWalls2.front)+endPL(ltWalls2.back)+sidePL;
   } else {
     bp=ltBasePrice(w,l);
     if(h>6){

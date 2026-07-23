@@ -5227,11 +5227,16 @@ function gLT(){
         var ahi=ae.querySelector('.lt-acc-win-hi')?ae.querySelector('.lt-acc-win-hi').value:'std';
         accAdj+=aqty*(MFR().winPrices[ahi]||window._win_std||200);
       } else if(atype==='frameout'){
-        // Framed opening on the lean-to — priced from the manufacturer's
-        // frameout charts (CCI: Side Opening chart on the outer wall).
+        // Typed framed opening — same price as the Section 10 chart for the
+        // active manufacturer. Zero-priced customs (Custom Garage Door / Custom
+        // Walk-Through / Custom Frame Out) fall back to the width-based
+        // lean-to frame-out chart, matching how they're quoted by hand.
         var afoW=parseFloat(ae.querySelector('.lt-acc-fo-w')&&ae.querySelector('.lt-acc-fo-w').value)||10;
         var afoLoc=ae.querySelector('.lt-acc-loc')?ae.querySelector('.lt-acc-loc').value:'outer';
-        accAdj+=aqty*ltFrameoutPrice(afoW, afoLoc);
+        var afoKey=(ae.querySelector('.lt-acc-fo-type')||{}).value||'';
+        var afoUnit=(afoKey&&AC_PRICES&&AC_PRICES[afoKey])||0;
+        if(!afoUnit) afoUnit=ltFrameoutPrice(afoW, afoLoc);
+        accAdj+=aqty*afoUnit;
       }
     });
     t+=u.total+accAdj;
@@ -5275,6 +5280,7 @@ function getValidRDPSizes(lt_w, lt_h, loc){
 function updateLTAccSize(accEntry){
   var lte=accEntry.closest('.lte'); if(!lte) return;
   var dims=getLTDims(lte);
+  refreshLTAccQty(accEntry); // qty offering tracks what fits on the chosen wall
   var typeEl=accEntry.querySelector('.lt-acc-type');
   var locEl=accEntry.querySelector('.lt-acc-loc');
   if(!typeEl||!locEl) return;
@@ -5318,6 +5324,68 @@ function refreshLTAccSizes(lte){
   lte.querySelectorAll('.lt-acc-e').forEach(function(ae){updateLTAccSize(ae);});
 }
 
+// ── Typed framed openings on lean-tos ────────────────────────────────────────
+// The lean-to "Framed Opening" offers the SAME per-type list Section 10 offers
+// (built live from the active manufacturer's AC_PRICES chart), priced the same.
+function ltFoTypeOptionsHTML(){
+  var keys=Object.keys(AC_PRICES||{}).filter(function(k){return k.indexOf('Framed Opening')===0;});
+  return keys.map(function(k){
+    var p=AC_PRICES[k];
+    return '<option value="'+k.replace(/"/g,'&quot;')+'">'+k.replace('Framed Opening — ','')+(p?' — $'+p:'')+'</option>';
+  }).join('');
+}
+// Default render size (+ window sill) per framed-opening subtype — mirrors the
+// Section 10 defaults (collectElevItems). noRender: the 45° angle cut is a
+// charge, not an opening — nothing to draw.
+function ltFoDefaults(label){
+  label=label||'';
+  if(label.indexOf('45')>=0) return {w:0,h:0,sill:false,noRender:true};
+  if(label.indexOf('Window')>=0) return {w:2.5,h:2.5,sill:true};
+  if(label.indexOf('Walk-Through')>=0) return {w:3,h:6.67,sill:false};
+  var m=label.match(/\((\d+)'(?:-(\d+)')?\s*Wide\)/);
+  if(m) return {w:parseInt(m[2]||m[1])||10,h:8,sill:false};
+  if(label.indexOf('Garage')>=0||label.indexOf('Side Opening')>=0) return {w:10,h:8,sill:false};
+  return {w:10,h:10,sill:false}; // custom frame out
+}
+function updLTAccFoType(sel){
+  var e=sel.closest('.lt-acc-e');
+  var d=ltFoDefaults(sel.value);
+  var szRow=e.querySelector('.lt-acc-fo-row');
+  if(szRow) szRow.style.display=d.noRender?'none':'';
+  if(!d.noRender){
+    var wEl=e.querySelector('.lt-acc-fo-w'), hEl=e.querySelector('.lt-acc-fo-h');
+    if(wEl&&d.w) wEl.value=d.w;
+    if(hEl&&d.h) hEl.value=d.h;
+  }
+  updateLTAccSize(e); rc();
+}
+// ── Fit-based accessory quantity ─────────────────────────────────────────────
+// The qty dropdown offers as many as physically fit on the chosen wall
+// (~1' clearance per opening), instead of a hardcoded 1–3.
+function ltAccItemWidth(ae){
+  var t=(ae.querySelector('.lt-acc-type')||{}).value||'rollup';
+  if(t==='rollup'){var sz=((ae.querySelector('.lt-acc-size')||{}).value||'9x8').split('x');return parseFloat(sz[0])||9;}
+  if(t==='wtd') return 3;
+  if(t==='win') return 2.5;
+  return parseFloat((ae.querySelector('.lt-acc-fo-w')||{}).value)||10;
+}
+function ltAccWallLen(ae){
+  var lte=ae.closest('.lte'); if(!lte) return 0;
+  var loc=(ae.querySelector('.lt-acc-loc')||{}).value||'outer';
+  if(loc==='outer') return parseFloat((lte.querySelector('.ltl2')||{}).value)||0;
+  return getLTDims(lte).w;
+}
+function refreshLTAccQty(ae){
+  var qEl=ae.querySelector('.lt-acc-qty'); if(!qEl) return;
+  var iw=ltAccItemWidth(ae), wl=ltAccWallLen(ae);
+  var max=(iw>0&&wl>0)?Math.max(1,Math.floor(wl/(iw+1))):3;
+  max=Math.min(max,24); // sanity ceiling
+  var cur=parseInt(qEl.value)||1;
+  var html=''; for(var i=1;i<=max;i++) html+='<option value="'+i+'">'+i+'</option>';
+  qEl.innerHTML=html;
+  qEl.value=String(Math.min(cur,max));
+}
+
 function addLTAcc(entry){
   var list=entry.querySelector('.lt-acc-list');
   var d=document.createElement('div');
@@ -5335,9 +5403,11 @@ function addLTAcc(entry){
     '<select class="lt-acc-size" onchange="updLTAccRudSize(this);rc()"></select></div>'+
     '<div class="row lt-acc-color-row"'+(MFR().rudColors?'':' style="display:none"')+'><label>Door Color</label>'+
     '<select class="lt-acc-color" onchange="rc()">'+rudColorOptionsHTML()+'</select></div>'+
+    '<div class="row lt-acc-fo-type-row" style="display:none"><label>Opening Type</label>'+
+    '<select class="lt-acc-fo-type" onchange="updLTAccFoType(this)">'+ltFoTypeOptionsHTML()+'</select></div>'+
     '<div class="row lt-acc-fo-row" style="display:none"><label>Frame-Out Size (W &times; H ft)</label>'+
     '<div style="display:flex;gap:6px;width:100%">'+
-    '<input type="number" class="lt-acc-fo-w" min="1" max="20" step="0.5" value="10" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%" placeholder="W">'+
+    '<input type="number" class="lt-acc-fo-w" min="1" max="20" step="0.5" value="10" oninput="refreshLTAccQty(this.closest(\'.lt-acc-e\'));rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%" placeholder="W">'+
     '<input type="number" class="lt-acc-fo-h" min="1" max="16" step="0.5" value="10" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%" placeholder="H">'+
     '</div></div>'+
     '<div class="row lt-acc-rud-ch-row" style="display:none"><label>Chain Hoist</label>'+
@@ -5393,6 +5463,8 @@ function updLTAccType(sel){
   e.querySelector('.lt-acc-wtd-row').style.display=sel.value==='wtd'?'':'none';
   e.querySelector('.lt-acc-win-row').style.display=sel.value==='win'?'':'none';
   var foRow=e.querySelector('.lt-acc-fo-row'); if(foRow) foRow.style.display=sel.value==='frameout'?'':'none';
+  var ftRow=e.querySelector('.lt-acc-fo-type-row'); if(ftRow) ftRow.style.display=sel.value==='frameout'?'':'none';
+  if(sel.value==='frameout'){ var ftSel=e.querySelector('.lt-acc-fo-type'); if(ftSel) updLTAccFoType(ftSel); }
   updateLTAccSize(e);
   if(isRollup) refreshLTAccChSl(e);
   rc();
@@ -7077,7 +7149,7 @@ function collectQuoteData(){
     d.accs=[];
     el.querySelectorAll('.lt-acc-e').forEach(function(ae){
       var a={};
-      ['lt-acc-type','lt-acc-size','lt-acc-color','lt-acc-fo-w','lt-acc-fo-h','lt-acc-ch','lt-acc-sl','lt-acc-wtd-hi','lt-acc-win-hi','lt-acc-qty','lt-acc-loc','lt-acc-pos'].forEach(function(cls){
+      ['lt-acc-type','lt-acc-fo-type','lt-acc-size','lt-acc-color','lt-acc-fo-w','lt-acc-fo-h','lt-acc-ch','lt-acc-sl','lt-acc-wtd-hi','lt-acc-win-hi','lt-acc-qty','lt-acc-loc','lt-acc-pos'].forEach(function(cls){
         var f=ae.querySelector('.'+cls); if(f) a[cls]=f.value;
       });
       a.offs=Array.prototype.map.call(ae.querySelectorAll('.lt-acc-off'),function(i){return i.value;});
@@ -7326,12 +7398,19 @@ function restoreQuoteData(data){
       addLTAcc(el);
       var aes=el.querySelectorAll('.lt-acc-e'); var ae=aes[aes.length-1];
       var tEl=ae.querySelector('.lt-acc-type'); if(tEl&&a['lt-acc-type']!==undefined){ tEl.value=a['lt-acc-type']; updLTAccType(tEl); }
+      // Framed-opening subtype + W/H BEFORE qty: the fit-based qty list is
+      // computed from the opening width, so restore the real width first or a
+      // saved qty could get clamped against the 10' default.
+      var ftEl=ae.querySelector('.lt-acc-fo-type'); if(ftEl&&a['lt-acc-fo-type']!==undefined) ftEl.value=a['lt-acc-fo-type'];
+      ['lt-acc-fo-w','lt-acc-fo-h'].forEach(function(cls){
+        var f=ae.querySelector('.'+cls); if(f&&a[cls]!==undefined) f.value=a[cls];
+      });
       var locEl=ae.querySelector('.lt-acc-loc'); if(locEl&&a['lt-acc-loc']!==undefined) locEl.value=a['lt-acc-loc'];
+      updateLTAccSize(ae); // rebuilds size list + fit-based qty for the restored wall/size
       var qEl=ae.querySelector('.lt-acc-qty'); if(qEl&&a['lt-acc-qty']!==undefined) qEl.value=a['lt-acc-qty'];
-      updateLTAccSize(ae);
       var szEl=ae.querySelector('.lt-acc-size'); if(szEl&&a['lt-acc-size']!==undefined) szEl.value=a['lt-acc-size'];
       refreshLTAccChSl(ae); rebuildLTAccOffsets(ae);
-      ['lt-acc-color','lt-acc-fo-w','lt-acc-fo-h','lt-acc-ch','lt-acc-sl','lt-acc-wtd-hi','lt-acc-win-hi'].forEach(function(cls){
+      ['lt-acc-color','lt-acc-ch','lt-acc-sl','lt-acc-wtd-hi','lt-acc-win-hi'].forEach(function(cls){
         var f=ae.querySelector('.'+cls); if(f&&a[cls]!==undefined) f.value=a[cls];
       });
       var pEl=ae.querySelector('.lt-acc-pos'); if(pEl&&a['lt-acc-pos']!==undefined){ pEl.value=a['lt-acc-pos']; updLTAccPos(pEl); }
@@ -7765,8 +7844,12 @@ async function printQuote(){
         else if(atype==='frameout'){
           var afoW2=parseFloat(ae.querySelector('.lt-acc-fo-w')&&ae.querySelector('.lt-acc-fo-w').value)||10;
           var afoH2=parseFloat(ae.querySelector('.lt-acc-fo-h')&&ae.querySelector('.lt-acc-fo-h').value)||10;
-          var afp=ltFrameoutPrice(afoW2, aloc);
-          if(afp) rows+=row('  Lean-To: '+afoW2+'x'+afoH2+"' Framed Opening ("+alocLabel+')',aqty,afp,afp*aqty);
+          var afoKey2=(ae.querySelector('.lt-acc-fo-type')||{}).value||'';
+          var afp=(afoKey2&&AC_PRICES&&AC_PRICES[afoKey2])||0;
+          if(!afp) afp=ltFrameoutPrice(afoW2, aloc);
+          var afoLbl=afoKey2?afoKey2.replace('Framed Opening — ',''):(afoW2+'x'+afoH2+"' opening");
+          var afoSz=(ltFoDefaults(afoKey2).noRender)?'':' '+afoW2+'x'+afoH2+"'";
+          if(afp) rows+=row('  Lean-To: Framed Opening — '+afoLbl+afoSz+' ('+alocLabel+')',aqty,afp,afp*aqty);
         }
       });
       // Per-lean-to End Connection Fee (skip for free-standing)
@@ -9878,6 +9961,7 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
           if(acc.type==='rollup'){var sz=(acc.size||'9x8').split('x');faceAccItems.push({type:'rollup',w:parseFloat(sz[0])||9,h:parseFloat(sz[1])||8,color:acc.color});}
           else if(acc.type==='wtd'){faceAccItems.push({type:'wtd',w:3,h:6.67});}
           else if(acc.type==='win'){faceAccItems.push({type:'win',w:2.5,h:2.5});}
+          else if(acc.type==='frameout'&&(acc.foType||'').indexOf('45')<0){faceAccItems.push({type:'frameout',w:acc.w||10,h:acc.h||10,sill:acc.sill||0});}
         }
       });
       if(faceAccItems.length){
@@ -9910,6 +9994,13 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
             s+='<line x1="'+(ix+iw/2)+'" y1="'+wiy+'" x2="'+(ix+iw/2)+'" y2="'+(wiy+wh)+'" stroke="'+tC+'" stroke-width="1.2"/>';
             s+='<line x1="'+ix+'" y1="'+(wiy+wh/2)+'" x2="'+(ix+iw)+'" y2="'+(wiy+wh/2)+'" stroke="'+tC+'" stroke-width="1.2"/>';
             s+='<rect x="'+(ix-1)+'" y="'+(wiy-1)+'" width="'+(iw+2)+'" height="'+(wh+2)+'" fill="none" stroke="'+tC+'" stroke-width="2.2"/>';
+          } else if(item.type==='frameout'){
+            // Framed opening (open cut). Window-type frame-outs carry a sill and
+            // sit at window height; door/garage types sit on the floor.
+            var fh=Math.min(item.h*sc,maxH), fy=oy-(item.sill||0)*sc-fh;
+            if(fy<yOuter+3) fy=yOuter+3;
+            s+='<rect x="'+ix+'" y="'+fy+'" width="'+iw+'" height="'+fh+'" fill="#2d2b27" opacity="0.82"/>';
+            s+='<rect x="'+(ix-1.5)+'" y="'+(fy-1.5)+'" width="'+(iw+3)+'" height="'+(fh+3)+'" fill="none" stroke="'+tC+'" stroke-width="2"/>';
           }
         }
         if(posMode==='offset'){
@@ -10585,6 +10676,13 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
           s+='<line x1="'+ix+'" y1="'+(wiy+wh/2)+'" x2="'+(ix+iw)+'" y2="'+(wiy+wh/2)+'" stroke="'+tC+'" stroke-width="1.2"/>';
           s+='<rect x="'+(ix-1)+'" y="'+(wiy-1)+'" width="'+(iw+2)+'" height="'+(wh+2)+'" fill="none" stroke="'+tC+'" stroke-width="2.2"/>';
           topY=wiy-1;
+        } else if(item.type==='frameout'){
+          // Framed opening (open cut). Window-type frame-outs carry a sill.
+          var fh=Math.min(item.h*sc,owMaxH), fy=oy-(item.sill||0)*sc-fh;
+          if(fy<oy-eltH+3) fy=oy-eltH+3;
+          s+='<rect x="'+ix+'" y="'+fy+'" width="'+iw+'" height="'+fh+'" fill="#2d2b27" opacity="0.82"/>';
+          s+='<rect x="'+(ix-1.5)+'" y="'+(fy-1.5)+'" width="'+(iw+3)+'" height="'+(fh+3)+'" fill="none" stroke="'+tC+'" stroke-width="2"/>';
+          topY=fy-1.5;
         }
         // Truss collision → red HEADER REQ'D bracket
         var hit=false;
@@ -10609,6 +10707,7 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
           if(acc.type==='rollup'){var sz=(acc.size||'9x8').split('x');entryItems.push({type:'rollup',w:parseFloat(sz[0])||9,h:parseFloat(sz[1])||8,color:acc.color});}
           else if(acc.type==='wtd'){entryItems.push({type:'wtd',w:3,h:6.67});}
           else if(acc.type==='win'){entryItems.push({type:'win',w:2.5,h:2.5});}
+          else if(acc.type==='frameout'&&(acc.foType||'').indexOf('45')<0){entryItems.push({type:'frameout',w:acc.w||10,h:acc.h||10,sill:acc.sill||0});}
         }
         if(!entryItems.length) return;
         var ePos=acc.pos||'auto';
@@ -10731,6 +10830,12 @@ function collectLTsForViews(){
       }
       else if(atype==='wtd'){var _wtdv=ae.querySelector('.lt-acc-wtd-hi')&&ae.querySelector('.lt-acc-wtd-hi').value;acc.hi=(_wtdv&&_wtdv!=='std');}
       else if(atype==='win'){var _winv=ae.querySelector('.lt-acc-win-hi')&&ae.querySelector('.lt-acc-win-hi').value;acc.hi=(_winv&&_winv!=='std');}
+      else if(atype==='frameout'){
+        acc.foType=(ae.querySelector('.lt-acc-fo-type')||{}).value||'';
+        acc.w=parseFloat(ae.querySelector('.lt-acc-fo-w')&&ae.querySelector('.lt-acc-fo-w').value)||10;
+        acc.h=parseFloat(ae.querySelector('.lt-acc-fo-h')&&ae.querySelector('.lt-acc-fo-h').value)||10;
+        acc.sill=(acc.foType.indexOf('Window')>=0)?4.16667:0; // window frame-outs sit at sill height
+      }
       ltAcc.push(acc);
     });
     var ltObj={w:lw,h:lh,pitch:pn,front:ltW.front,back:ltW.back,side:ltW.side,cont:isCont2,accessories:ltAcc};

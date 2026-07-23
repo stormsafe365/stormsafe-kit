@@ -450,7 +450,9 @@ function readLeanTos(win: Window & { document: Document }): Array<{
       const oType = t === 'wtd' ? 'walkDoor' : t === 'win' ? 'window' : t === 'frameout' ? 'frameOut' : 'rollUpDoor';
       const locStr = strVal(ae, '.lt-acc-loc');
       const wall = ['outer', 'front', 'back'].includes(locStr) ? locStr : 'outer';
-      const qty = Math.max(1, Math.min(3, parseInt(strVal(ae, '.lt-acc-qty'), 10) || 1));
+      // Qty is fit-based in the program now (as many as fit the wall) — mirror
+      // its sanity ceiling instead of the old hardcoded 3.
+      const qty = Math.max(1, Math.min(24, parseInt(strVal(ae, '.lt-acc-qty'), 10) || 1));
       const pos = strVal(ae, '.lt-acc-pos') || 'auto';
       let w = 9, h = 8, sill = 0;
       let accColor: string | undefined;
@@ -465,10 +467,14 @@ function readLeanTos(win: Window & { document: Document }): Array<{
       } else if (oType === 'window') {
         w = 2.5; h = 2.5; sill = 4.16667; // window sill 4'-2"
       } else {
-        // frameOut — custom W×H from the entry; a real cut you can see through.
+        // frameOut — typed now (same list as Section 10). W×H from the entry;
+        // a real cut you can see through. Window-type frame-outs sit at the
+        // standard 4'2" sill; the 45° angle cut is a charge, not an opening.
+        const foType = strVal(ae, '.lt-acc-fo-type') || '';
+        if (foType.includes('45')) return;
         w = parseFloat(strVal(ae, '.lt-acc-fo-w')) || 10;
         h = parseFloat(strVal(ae, '.lt-acc-fo-h')) || 10;
-        sill = 0;
+        sill = foType.includes('Window') ? 4.16667 : 0;
       }
       // Wall the opening sits on determines the run length it's positioned along.
       const wallLen = wall === 'outer' ? lengthFt : widthFt;

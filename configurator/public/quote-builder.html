@@ -4584,6 +4584,12 @@ var VERT_SIDE = {
   // 16' tall
   high:   {20:600, 25:720, 30:840, 35:960, 40:1080}
 };
+// Verified anchors BEYOND the 40' column (Sensei): interpolated to, then
+// edge-rate extrapolated past. high 60' = $1,680 (30x60x16 vertical, 2026-07-23
+// — the 35→40 chart rate under-priced long sides by $120 at 60').
+var VERT_SIDE_EXT = {
+  high: [[60,1680]]
+};
 // Per-end upcharge for gable ends — keyed by width
 // Widths 12-24 from sheet 1, widths 26-30 from sheet 2
 var VERT_END={}; // populated by initMfrPricing()
@@ -4594,7 +4600,14 @@ function vertSideUpcharge(h, l){
   var lk;
   if(l<=20) lk=20; else if(l<=25) lk=25; else if(l<=30) lk=30; else if(l<=35) lk=35; else if(l<=40) lk=40;
   else {
-    // Extrapolate: rate per ft from 35→40 columns
+    // Beyond the 40' column: pass through any verified longer anchors
+    // (VERT_SIDE_EXT), then edge-rate extrapolate. Falls back to the old
+    // 35→40 chart rate when a bucket has no verified anchors.
+    var ext=(typeof VERT_SIDE_EXT!=='undefined')?VERT_SIDE_EXT[bucket]:null;
+    if(ext&&ext.length){
+      var pts=[[40,row[40]]].concat(ext);
+      return Math.round(_ltsInterp(pts, l));
+    }
     var rate = (row[40]-row[35])/5;
     return Math.round(row[40] + rate*(l-40));
   }
@@ -5166,6 +5179,21 @@ var LTS_ENDS = {        // per (width, height): BOTH fully-enclosed gable ends
   12: {10:2100,12:2530,14:3110}
 };
 var LTS_CONN = [[40,400],[60,700],[80,800],[100,1100]]; // per eave connection
+// Panel-orientation factors for the lean-to's SHEETED parts (ends + side wall).
+// The LTS_ENDS / LTS_SIDE anchors were measured on VERTICAL-panel builds; the
+// lean-to always sheets in the MAIN building's orientation, and horizontal is
+// cheaper. Factors measured on a 30x60x16 + 12x60x12 lean (2026-07-23):
+// ends 2,530→2,230 · side 1,900→1,240. Exact at that point; proportional
+// elsewhere. Size + height lines are structure — orientation-independent.
+var LTS_ENDS_HFACTOR = 2230/2530;
+var LTS_SIDE_HFACTOR = 1240/1900;
+// Effective panel orientation of the whole build: wide-span is always vertical;
+// standard buildings follow the Wall Style dropdown.
+function ltPanelsHorizontal(){
+  var bt=G('btype')?G('btype').value:'';
+  if(bt==='widespan') return false;
+  return (G('ws')?G('ws').value:'Vertical')!=='Vertical';
+}
 
 function _ltsInterp(pts, x){
   if(!pts||!pts.length) return 0;
@@ -5271,9 +5299,14 @@ function ltUnit(el){
     // Exact at every measured Sensei point; interpolated between them.
     bp=Math.round(ltsSize(w,l)*100)/100;
     heightAdj=(h>6)?Math.round(_ltsByHeight(LTS_HEIGHT,h,l,6)*100)/100:0;
-    var endPairS=ltsEndsPair(w,h)||0;
+    // Sheeted parts follow the MAIN building's panel orientation (horizontal
+    // sheets cheaper than the vertical-panel anchors).
+    var _hzF=ltPanelsHorizontal();
+    var endPairS=(ltsEndsPair(w,h)||0)*(_hzF?LTS_ENDS_HFACTOR:1);
     var endP=function(v){ return v==='closed'?Math.round(endPairS/2):(v==='gable'?112.5:0); };
-    var sideP=(ltWalls2.side==='closed')?Math.round(_ltsByHeight(LTS_SIDE,h,l,0)):(LT_SIDE_P[ltWalls2.side]||0);
+    var sideP=(ltWalls2.side==='closed')
+      ? Math.round(_ltsByHeight(LTS_SIDE,h,l,0)*(_hzF?LTS_SIDE_HFACTOR:1))
+      : (LT_SIDE_P[ltWalls2.side]||0);
     encAdj=endP(ltWalls2.front)+endP(ltWalls2.back)+sideP;
   } else if(ACTIVE_MFR==='CCI' && !isFree){
     // Legacy dealer-handbook split method — widths the Sensei tables don't

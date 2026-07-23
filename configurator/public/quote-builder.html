@@ -5220,6 +5220,16 @@ function gLT(){
         var asl=parseInt(ae.querySelector('.lt-acc-sl')&&ae.querySelector('.lt-acc-sl').value)||0;
         var sealDw=parseInt((asz||'').split('x')[0])||0;
         accAdj+=asl*Math.round(sealDw*(window._seal||9.85));
+        // Eave header — ALWAYS required for a roll-up on the outer wall of an
+        // eave-attached lean-to: framing runs every 4'/5' OC and the smallest
+        // roll-up is 6' wide, so it can't miss a truss. Same width-bucketed
+        // chart as main-building eave-side roll-ups.
+        var _hLts=(el.querySelector('.lts')||{}).value||'';
+        var _hLoc=(ae.querySelector('.lt-acc-loc')||{}).value||'outer';
+        if((_hLts==='Left Eave'||_hLts==='Right Eave')&&_hLoc==='outer'){
+          var _hDw=parseInt((asz||'').split('x')[0])||0;
+          accAdj+=eaveHeaderCost(_hDw, parseInt(G('bw').value)||0)*aqty;
+        }
       } else if(atype==='wtd'){
         var ahi=ae.querySelector('.lt-acc-wtd-hi')?ae.querySelector('.lt-acc-wtd-hi').value:'std';
         accAdj+=aqty*(MFR().wtdPrices[ahi]||window._wtd_std||300);
@@ -5237,6 +5247,16 @@ function gLT(){
         var afoUnit=(afoKey&&AC_PRICES&&AC_PRICES[afoKey])||0;
         if(!afoUnit) afoUnit=ltFrameoutPrice(afoW, afoLoc);
         accAdj+=aqty*afoUnit;
+      }
+      // Side frames (wtd / win / frameout on the outer wall of an eave-attached
+      // lean-to; auto-set by the truss check, same rate as the main building).
+      if(atype!=='rollup'){
+        var _sfLts=(el.querySelector('.lts')||{}).value||'';
+        var _sfLoc=(ae.querySelector('.lt-acc-loc')||{}).value||'outer';
+        var _sfSel3=ae.querySelector('.lt-acc-sf');
+        if(_sfSel3&&(_sfLts==='Left Eave'||_sfLts==='Right Eave')&&_sfLoc==='outer'){
+          accAdj+=(parseInt(_sfSel3.value)||0)*(window._sf_dw||150);
+        }
       }
     });
     t+=u.total+accAdj;
@@ -5281,6 +5301,19 @@ function updateLTAccSize(accEntry){
   var lte=accEntry.closest('.lte'); if(!lte) return;
   var dims=getLTDims(lte);
   refreshLTAccQty(accEntry); // qty offering tracks what fits on the chosen wall
+  // Side Frame(s) dropdown: only for wtd/win/frameout (not the 45° charge) on
+  // the OUTER wall of an EAVE-attached lean-to — the wall that frames at OC.
+  var _sfRow=accEntry.querySelector('.lt-acc-sf-row');
+  if(_sfRow){
+    var _t=(accEntry.querySelector('.lt-acc-type')||{}).value||'rollup';
+    var _lts=(lte.querySelector('.lts')||{}).value||'';
+    var _eaveLT=(_lts==='Left Eave'||_lts==='Right Eave');
+    var _loc=(accEntry.querySelector('.lt-acc-loc')||{}).value||'outer';
+    var _is45=_t==='frameout'&&((((accEntry.querySelector('.lt-acc-fo-type')||{}).value)||'').indexOf('45')>=0);
+    var _showSf=_eaveLT&&_loc==='outer'&&_t!=='rollup'&&!_is45;
+    _sfRow.style.display=_showSf?'':'none';
+    if(!_showSf){ var _sfSel=accEntry.querySelector('.lt-acc-sf'); if(_sfSel) _sfSel.value='0'; }
+  }
   var typeEl=accEntry.querySelector('.lt-acc-type');
   var locEl=accEntry.querySelector('.lt-acc-loc');
   if(!typeEl||!locEl) return;
@@ -5440,6 +5473,13 @@ function addLTAcc(entry){
     '<option value="outer">Outer Side Wall</option>'+
     '<option value="front">Front Gable End</option>'+
     '<option value="back">Back Gable End</option>'+
+    '</select></div>'+
+    // Side frames: outer wall of an eave-attached lean-to frames at the same
+    // 4'/5' OC as the building — walk doors / windows / frame-outs landing on a
+    // truss need one (auto-set). Roll-ups get the eave header automatically.
+    '<div class="row lt-acc-sf-row" style="display:none"><label>Side Frame(s)</label>'+
+    '<select class="lt-acc-sf" onchange="rc()">'+
+    '<option value="0">None</option><option value="1">1 (+$150)</option>'+
     '</select></div>'+
     '<div class="row"><label>Position</label>'+
     '<select class="lt-acc-pos" onchange="updLTAccPos(this);rc()">'+
@@ -5783,6 +5823,12 @@ function gAC(){
     var unitP=AC_PRICES[comp]!==undefined?AC_PRICES[comp]:0;
     if(comp==='Custom — see notes' || comp.indexOf('(Custom Size)')>=0) unitP=parseFloat(el.querySelector('.acp').value)||0;
     t+=unitP*qty;
+    // Side frames — eave-side framed openings that land on a truss (auto-set
+    // by the truss check, same rate as walk doors / windows).
+    if(comp.indexOf('Framed Opening')===0){
+      var _locEl=el.querySelector('.fo-loc'), _sfEl=el.querySelector('.fo-sf');
+      if(_locEl&&_sfEl&&isEaveSide(_locEl.value)) t+=(parseInt(_sfEl.value)||0)*(window._sf_dw||150);
+    }
   });
   return t;
 }
@@ -5814,9 +5860,15 @@ function aAC(){
     '<div class="row fo-sill-row hidden"><label>Sill Height (ft)</label>'+
     '<input type="number" class="fo-sill" value="4.17" min="0" max="30" step="0.25" oninput="rc()" title="Bottom of the window opening off the ground — standard 4&#39;2&#34; (4.17 ft)" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
     '<div class="row fo-loc-row hidden"><label>Wall Location</label>'+
-    '<select class="fo-loc" onchange="refreshPosLabels(this.closest(\'.ace\'));rc()">'+
+    '<select class="fo-loc" onchange="refreshPosLabels(this.closest(\'.ace\'));foSfVis(this.closest(\'.ace\'));rc()">'+
     '<option>Front Gable End</option><option>Back Gable End</option>'+
     '<option>Left Eave Side</option><option>Right Eave Side</option>'+
+    '</select></div>'+
+    // Eave-side framed openings need side frames when they land on a truss —
+    // auto-set by the truss check (same as walk doors / windows).
+    '<div class="row fo-sf-row hidden"><label>Side Frame(s)</label>'+
+    '<select class="fo-sf" onchange="rc()">'+
+    '<option value="0">None</option><option value="1">1 (+$150)</option>'+
     '</select></div>'+
     // Display-only: how this framed opening's size shows on the Dimensioned Layout
     // & Spacing sheet. No onchange / no rc() — never affects pricing or the model.
@@ -5839,6 +5891,7 @@ function updACPrice(sel){
   var _duRow=entry.querySelector('.fo-dispunit-row'); if(_duRow) _duRow.classList.toggle('hidden', !isFO);
   // Adjustable sill only makes sense for WINDOW framed openings.
   var _slRow=entry.querySelector('.fo-sill-row'); if(_slRow) _slRow.classList.toggle('hidden', !(isFO && sel.value.indexOf('Window')>=0));
+  foSfVis(entry);
   if(isFO){
     var qty = parseInt(entry.querySelector('.acq').value)||1;
     updatePosSection(entry, qty, 'Opening');
@@ -5862,6 +5915,17 @@ function foCustomFeet(el){
 function foSillFt(el){
   var s=parseFloat((el.querySelector('.fo-sill')||{}).value);
   return (isFinite(s)&&s>=0)?s:4.16667;
+}
+// Show the Side Frame(s) dropdown only for framed openings on an EAVE side —
+// that's where the wall framing runs every 4'/5' OC and an opening can land on
+// a truss (same rule as walk doors / windows).
+function foSfVis(entry){
+  var r=entry.querySelector('.fo-sf-row'); if(!r) return;
+  var comp=(entry.querySelector('.act')||{}).value||'';
+  var locEl=entry.querySelector('.fo-loc');
+  var show=comp.indexOf('Framed Opening')===0 && locEl && isEaveSide(locEl.value);
+  r.classList.toggle('hidden',!show);
+  if(!show){ var sf=entry.querySelector('.fo-sf'); if(sf) sf.value='0'; }
 }
 // Update the width/height labels + input constraints to match the chosen unit.
 // Does NOT touch the entered numbers (used on init/restore).
@@ -7166,7 +7230,7 @@ function collectQuoteData(){
     d.accs=[];
     el.querySelectorAll('.lt-acc-e').forEach(function(ae){
       var a={};
-      ['lt-acc-type','lt-acc-fo-type','lt-acc-size','lt-acc-color','lt-acc-fo-w','lt-acc-fo-h','lt-acc-fo-sill','lt-acc-ch','lt-acc-sl','lt-acc-wtd-hi','lt-acc-win-hi','lt-acc-qty','lt-acc-loc','lt-acc-pos'].forEach(function(cls){
+      ['lt-acc-type','lt-acc-fo-type','lt-acc-size','lt-acc-color','lt-acc-fo-w','lt-acc-fo-h','lt-acc-fo-sill','lt-acc-sf','lt-acc-ch','lt-acc-sl','lt-acc-wtd-hi','lt-acc-win-hi','lt-acc-qty','lt-acc-loc','lt-acc-pos'].forEach(function(cls){
         var f=ae.querySelector('.'+cls); if(f) a[cls]=f.value;
       });
       a.offs=Array.prototype.map.call(ae.querySelectorAll('.lt-acc-off'),function(i){return i.value;});
@@ -7181,7 +7245,7 @@ function collectQuoteData(){
     var d = {};
     // fo-loc = the wall a framed opening sits on; was missing, so loads reverted
     // every framed opening to the first wall (Front Gable End).
-    ['act','acq','acp','fo-cw','fo-ch','fo-unit','fo-disp-unit','fo-sill','fo-loc'].forEach(function(cls){
+    ['act','acq','acp','fo-cw','fo-ch','fo-unit','fo-disp-unit','fo-sill','fo-sf','fo-loc'].forEach(function(cls){
       var f=el.querySelector('.'+cls); if(f) d[cls]=f.value;
     });
     // Position rows (placement along the wall) — same as doors/windows/roll-ups.
@@ -7856,6 +7920,13 @@ async function printQuote(){
           // Header seal add-on
           var asl=parseInt(ae.querySelector('.lt-acc-sl')&&ae.querySelector('.lt-acc-sl').value)||0;
           if(asl>0){var sw=parseInt(asz.split('x')[0])||0;var su=Math.round(sw*(window._seal||9.85));rows+=row('    Lean-To: Brush Seal — Tops & Sides ('+sw+"' wide)",asl,su,asl*su);}
+          // Eave header — always required on the outer wall of an eave-attached lean-to
+          var _qhLts=(el.querySelector('.lts')||{}).value||'';
+          if((_qhLts==='Left Eave'||_qhLts==='Right Eave')&&aloc==='outer'){
+            var _qhDw=parseInt((asz||'').split('x')[0])||0;
+            var _qhP=eaveHeaderCost(_qhDw, parseInt(G('bw').value)||0);
+            if(_qhP) rows+=row('    Lean-To: Eave Header ('+_qhDw+"' door)",aqty,_qhP,_qhP*aqty);
+          }
         }
         else if(atype==='wtd'){var ahi=ae.querySelector('.lt-acc-wtd-hi')?ae.querySelector('.lt-acc-wtd-hi').value:'std';var ap=MFR().wtdPrices[ahi]||window._wtd_std||300;var wtdLbl=MFR().wtdTypes.find(function(t){return t.v===ahi;})||{label:ahi};rows+=row('  Lean-To: Walk-Through Door ('+wtdLbl.label+') ('+alocLabel+')',aqty,ap,ap*aqty);}
         else if(atype==='win'){var ahi=ae.querySelector('.lt-acc-win-hi')?ae.querySelector('.lt-acc-win-hi').value:'std';var ap=MFR().winPrices[ahi]||window._win_std||200;var winLbl=MFR().winTypes.find(function(t){return t.v===ahi;})||{label:ahi};rows+=row('  Lean-To: Window ('+winLbl.label+') ('+alocLabel+')',aqty,ap,ap*aqty);}
@@ -7868,6 +7939,13 @@ async function printQuote(){
           var afoLbl=afoKey2?afoKey2.replace('Framed Opening — ',''):(afoW2+'x'+afoH2+"' opening");
           var afoSz=(ltFoDefaults(afoKey2).noRender)?'':' '+afoW2+'x'+afoH2+"'";
           if(afp) rows+=row('  Lean-To: Framed Opening — '+afoLbl+afoSz+' ('+alocLabel+')',aqty,afp,afp*aqty);
+        }
+        // Side frames (wtd / win / frameout on the outer wall, truss auto-set)
+        if(atype!=='rollup'){
+          var _qsLts=(el.querySelector('.lts')||{}).value||'';
+          var _qsSf=ae.querySelector('.lt-acc-sf');
+          var _qsN=(_qsSf&&(_qsLts==='Left Eave'||_qsLts==='Right Eave')&&aloc==='outer')?(parseInt(_qsSf.value)||0):0;
+          if(_qsN>0){var _qsP=window._sf_dw||150;rows+=row('    Lean-To: Side Frame',_qsN,_qsP,_qsN*_qsP);}
         }
       });
       // Per-lean-to End Connection Fee (skip for free-standing)
@@ -7901,6 +7979,12 @@ async function printQuote(){
       if(foLocEl && foLocEl.value) compLabel += ' — ' + foLocEl.value;
     }
     if(unitP||comp==='Custom — see notes'||comp.indexOf('(Custom Size)')>=0) rows+=row(compLabel,qty,unitP||null,unitP*qty);
+    // Side frames for eave-side framed openings (truss auto-set)
+    if(comp.indexOf('Framed Opening')===0){
+      var _sfL=el.querySelector('.fo-loc'), _sfE=el.querySelector('.fo-sf');
+      var _sfN=(_sfL&&_sfE&&isEaveSide(_sfL.value))?(parseInt(_sfE.value)||0):0;
+      if(_sfN>0){var _sfP=window._sf_dw||150;rows+=row('    Side Frame',_sfN,_sfP,_sfN*_sfP);}
+    }
   });
   // 1' Overhang (CCI only)
   if(overhangPQ>0){
@@ -8761,6 +8845,12 @@ async function printContract(){
       if(foLocEl && foLocEl.value) compLabel+=' \u2014 '+foLocEl.value;
     }
     if(unitP||isCustomNote||isCustomSize) row(compLabel,qty,unitP||null,unitP*qty);
+    // Side frames for eave-side framed openings (truss auto-set)
+    if(comp.indexOf('Framed Opening')===0){
+      var _sfL2=el.querySelector('.fo-loc'), _sfE2=el.querySelector('.fo-sf');
+      var _sfN2=(_sfL2&&_sfE2&&isEaveSide(_sfL2.value))?(parseInt(_sfE2.value)||0):0;
+      if(_sfN2>0){var _sfP2=window._sf_dw||150;row('  Side Frame',_sfN2,_sfP2,_sfN2*_sfP2);}
+    }
   });
   if(insulPr){
     var iSel=G('insul-sel');
@@ -11608,30 +11698,49 @@ function runTrussChecks(){
     if(nsfEl) autoSetSfByTruss(nsfEl, hitCount, qty);
   });
 
-  // Framed openings
-  document.querySelectorAll('.fo-entry').forEach(function(el){
+  // Framed openings (Section 10 .ace entries) on eave sides — auto-set the
+  // Side Frame(s) dropdown per truss hit, same as walk doors / windows. (The
+  // old check targeted a '.fo-entry' class that never existed — dead code.)
+  document.querySelectorAll('.ace').forEach(function(el){
+    var comp = (el.querySelector('.act')||{}).value||'';
+    if(comp.indexOf('Framed Opening') !== 0) return;
     var loc = el.querySelector('.fo-loc');
-    if(!loc || !isEaveSide(loc.value)) {
+    var locRow = el.querySelector('.fo-loc-row');
+    var sfEl = el.querySelector('.fo-sf');
+    if(!loc || !locRow || locRow.classList.contains('hidden') || !isEaveSide(loc.value)){
       setTrussState(el, false, []);
+      if(sfEl) sfEl.value='0';
       return;
     }
-    var szEl = el.querySelector('.fo-sz');
-    var itemW = 4;
-    if(szEl){var sz = szEl.value.split('x'); itemW = parseFloat(sz[0]) || 4;}
-    var distFromFront = null;
-    var posRow = el.querySelector('.pos-section .pos-row');
-    if(posRow){
-      var inp = posRow.querySelector('input[type=number]');
-      var sideBtn = posRow.querySelector('.pos-toggle button.active');
-      var sideVal = sideBtn ? sideBtn.dataset.side : 'left';
-      var rawPos = inp ? parseFloat(inp.value) : NaN;
-      if(!isNaN(rawPos) && inp && inp.value!==''){
-        distFromFront = (sideVal==='left') ? rawPos : (L - rawPos - itemW);
+    // Same width derivation the elevation collectors use
+    var itemW = 2.5;
+    if(comp.indexOf('(Custom Size)')>=0){ itemW = foCustomFeet(el).w; }
+    else if(comp.indexOf('Garage Door')>=0 || comp.indexOf('Side Opening')>=0){ var _wm=comp.match(/(\d+)' Wide/); itemW=_wm?parseInt(_wm[1]):10; }
+    else if(comp.indexOf('Double Door')>=0){ itemW=6; }
+    else if(comp.indexOf('Walk-Through')>=0){ itemW=3; }
+    var qty = parseInt((el.querySelector('.acq')||{}).value)||1;
+    var posRows = el.querySelectorAll('.pos-section .pos-row');
+    var hitCount = 0, allHits = [];
+    for(var i=0;i<qty;i++){
+      var distFromFront = null, prow = posRows[i];
+      if(prow){
+        var inp = prow.querySelector('input[type=number]');
+        var sideBtn = prow.querySelector('.pos-toggle button.active');
+        var sideVal = sideBtn ? sideBtn.dataset.side : 'left';
+        var rawPos = inp ? parseFloat(inp.value) : NaN;
+        if(!isNaN(rawPos) && inp && inp.value!==''){
+          distFromFront = (sideVal==='left') ? rawPos : (L - rawPos - itemW);
+        }
       }
+      if(distFromFront===null){
+        var sp = (L - qty * itemW) / (qty + 1);
+        distFromFront = sp * (i + 1) + itemW * i;
+      }
+      var hits = checkTrussHitFromFront(distFromFront, itemW, L);
+      if(hits.length > 0){ hitCount++; allHits = allHits.concat(hits); }
     }
-    if(distFromFront === null) distFromFront = (L - itemW) / 2;
-    var hits = checkTrussHitFromFront(distFromFront, itemW, L);
-    setTrussState(el, hits.length > 0, hits);
+    setTrussState(el, hitCount > 0, allHits);
+    if(sfEl) autoSetSfByTruss(sfEl, hitCount, qty);
   });
 
   // Lean-to outer-wall accessories (same OC as main building applies along length L)
@@ -11661,6 +11770,10 @@ function runTrussChecks(){
         itemW = 3;
       } else if(atype==='win'){
         itemW = 2.5;
+      } else if(atype==='frameout'){
+        var _ft2=(ae.querySelector('.lt-acc-fo-type')||{}).value||'';
+        if(_ft2.indexOf('45')>=0){ setTrussState(ae, false, []); return; } // charge, not an opening
+        itemW = parseFloat((ae.querySelector('.lt-acc-fo-w')||{}).value)||10;
       } else {
         setTrussState(ae, false, []);
         return;
@@ -11696,12 +11809,16 @@ function runTrussChecks(){
           x += itemW + gap;
         }
       }
-      var anyHit = false, allHits = [];
+      var anyHit = false, allHits = [], hitCount = 0;
       positions.forEach(function(itemX){
         var hits = checkTrussHit(itemX, itemW, L);
-        if(hits.length>0){ anyHit = true; allHits = allHits.concat(hits); }
+        if(hits.length>0){ anyHit = true; hitCount++; allHits = allHits.concat(hits); }
       });
       setTrussState(ae, anyHit, allHits);
+      // Auto-set the Side Frame(s) dropdown (wtd/win/frameout; roll-ups get the
+      // eave header automatically instead).
+      var _sfSel2 = ae.querySelector('.lt-acc-sf');
+      if(_sfSel2 && atype!=='rollup') autoSetSfByTruss(_sfSel2, hitCount, aqty);
     });
   });
 

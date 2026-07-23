@@ -5587,6 +5587,23 @@ function getLTWalls(el){
     frontP:(LT_END_P[fv]||0), backP:(LT_END_P[bv]||0), sideP:(LT_SIDE_P[sv]||0)
   };
 }
+// Sync the Sides & Ends UI (button highlight, custom-wall rows, accessories
+// section) to the entry's stored .lt-wm value. Used on quote RESTORE: setting
+// the hidden field alone left the buttons showing "Open" and hid the restored
+// accessories, so a reopened enclosed lean-to looked open/empty in the form
+// (pricing + 3D were correct — they read the hidden field).
+function applyLTWM(entry){
+  var val=(entry.querySelector('.lt-wm')||{}).value||'open';
+  var order={open:0,enclosed:1,custom:2};
+  var btns=entry.querySelectorAll('.lt-wm-btn');
+  btns.forEach(function(b){ b.style.background='#0d1820'; b.style.color='#7a9bb5'; b.style.borderColor='#2d4a6a'; });
+  var pick=btns[order[val]!==undefined?order[val]:0];
+  if(pick){ pick.style.background='#1C3557'; pick.style.color='#e8f0f8'; pick.style.borderColor='#1fcec4'; }
+  var cr=entry.querySelector('.lt-custom-rows');
+  if(cr) cr.style.display=(val==='custom')?'block':'none';
+  var accSec=entry.querySelector('.lt-acc-section');
+  if(accSec) accSec.style.display=(val==='open')?'none':'block';
+}
 function ltWMClick(span,val){
   var entry=span.closest('.lte');
   entry.querySelectorAll('.lt-wm-btn').forEach(function(b){
@@ -7472,6 +7489,9 @@ function restoreQuoteData(data){
     });
     // Trigger type change to show/hide correct rows
     if(d['lt-type']) ltTypeChange(el);
+    // Sync the Sides & Ends buttons + accessories-section visibility to the
+    // restored enclosure — an enclosed lean-to must not reopen looking "Open".
+    applyLTWM(el);
     // Restore lean-to accessories (doors / windows / frame-outs) with positions.
     // Order matters: set type + wall + qty FIRST so the size/chain/seal/offset
     // option lists are rebuilt before we set the saved values.

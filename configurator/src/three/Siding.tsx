@@ -24,9 +24,12 @@ export interface LocalRect {
 
 /**
  * Partition a rectangular wall (centered, `width`×`height`) into the solid
- * strips left AFTER cutting out the hole rects — full-height columns in the
- * gaps, plus above/below strips at each hole. Assumes holes don't overlap along
- * the wall (u) axis (openings on a wall don't normally overlap).
+ * strips left AFTER cutting out the hole rects. Column sweep: split the wall at
+ * every hole edge, then within each column subtract the vertical ranges of the
+ * holes covering it. Handles STACKED / overlapping openings (e.g. a window
+ * frame-out directly above a doorway frame-out) — the old sweep assumed holes
+ * never overlapped along the wall axis and left a strip of paneling across the
+ * upper opening. Non-overlapping layouts produce the same strips as before.
  */
 export function stripsAround(width: number, height: number, holes: LocalRect[]): LocalRect[] {
   const umin = -width / 2;
@@ -34,27 +37,33 @@ export function stripsAround(width: number, height: number, holes: LocalRect[]):
   const vmin = -height / 2;
   const vmax = height / 2;
   const hs = holes
-    .map((h) => ({ uMin: h.u - h.w / 2, uMax: h.u + h.w / 2, vMin: h.v - h.h / 2, vMax: h.v + h.h / 2 }))
-    .filter((h) => h.uMax > umin + 0.01 && h.uMin < umax - 0.01)
-    .sort((a, b) => a.uMin - b.uMin);
+    .map((h) => ({
+      uMin: Math.max(umin, h.u - h.w / 2),
+      uMax: Math.min(umax, h.u + h.w / 2),
+      vMin: Math.max(vmin, h.v - h.h / 2),
+      vMax: Math.min(vmax, h.v + h.h / 2),
+    }))
+    .filter((h) => h.uMax > umin + 0.01 && h.uMin < umax - 0.01);
 
   const out: LocalRect[] = [];
   const add = (u0: number, u1: number, v0: number, v1: number) => {
     if (u1 - u0 > 0.02 && v1 - v0 > 0.02) out.push({ u: (u0 + u1) / 2, v: (v0 + v1) / 2, w: u1 - u0, h: v1 - v0 });
   };
 
-  let cursor = umin;
-  for (const h of hs) {
-    const hu0 = Math.max(umin, h.uMin);
-    const hu1 = Math.min(umax, h.uMax);
-    const hv0 = Math.max(vmin, h.vMin);
-    const hv1 = Math.min(vmax, h.vMax);
-    if (hu0 > cursor) add(cursor, hu0, vmin, vmax); // full-height column before the hole
-    add(hu0, hu1, hv1, vmax); // strip above the hole
-    add(hu0, hu1, vmin, hv0); // strip below the hole
-    cursor = Math.max(cursor, hu1);
+  const cuts = Array.from(new Set([umin, umax, ...hs.flatMap((h) => [h.uMin, h.uMax])])).sort((a, b) => a - b);
+  for (let i = 0; i < cuts.length - 1; i++) {
+    const u0 = cuts[i];
+    const u1 = cuts[i + 1];
+    if (u1 - u0 <= 0.02) continue;
+    const mid = (u0 + u1) / 2;
+    const cover = hs.filter((h) => h.uMin <= mid && h.uMax >= mid).sort((a, b) => a.vMin - b.vMin);
+    let v = vmin;
+    for (const h of cover) {
+      if (h.vMin > v) add(u0, u1, v, h.vMin);
+      v = Math.max(v, h.vMax);
+    }
+    if (v < vmax) add(u0, u1, v, vmax);
   }
-  if (cursor < umax) add(cursor, umax, vmin, vmax);
   return out;
 }
 

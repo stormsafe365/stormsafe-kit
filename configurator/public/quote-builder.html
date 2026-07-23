@@ -4426,10 +4426,30 @@ function getTrussInfo(){
   var count=Math.floor(l/spacing)+1;
   return {spacing:spacing, count:count};
 }
-function gConnectionFees(){
+// Connection fee for ONE lean-to. SINGLE SOURCE OF TRUTH — the pricing engine
+// (gConnectionFees) and the printed quote rows both call this. They used to
+// carry duplicate copies of the formula, which silently drifted apart (the
+// quote printed the old wide-span rate while the engine used the new one).
+// `attachedSide` = .lts value, `connLen` = the lean-to length running along the
+// attached wall (same for eave or gable connections).
+function connFeeFor(attachedSide, connLen){
   var bw=parseInt(G('bw').value)||0;
-  var bt=G('btype').value;
+  var bt=G('btype')?G('btype').value:'';
   var isWS=(bw>=32||bt==='widespan');
+  var isGable=(attachedSide==='Front Gable'||attachedSide==='Back Gable');
+  if(isWS){
+    // Wide-span connection — calibrated against Sensei 2026-07: a 100'
+    // connection on a 40x100x20 widespan = $1,100 ($40 per 4ft past 20').
+    return 300+Math.ceil(Math.max(0,connLen-20)/4)*40;
+  }
+  if(isGable){
+    // Gable-end connection: higher base ($700) — matches CCI Sensei (e.g., 30' gable connection = $750)
+    return 700+Math.ceil(Math.max(0,connLen-21)/5)*25;
+  }
+  // Eave side connection: CCI = flat fee (eaveConnFlat); CA = $100 + $25/5' past 21'
+  return (typeof MFR==='function'&&MFR().eaveConnFlat)?MFR().eaveConnFlat:(100+Math.ceil(Math.max(0,connLen-21)/5)*25);
+}
+function gConnectionFees(){
   var total=0;
   document.querySelectorAll('.lte').forEach(function(el){
     var lw=parseInt(el.querySelector('.ltw').value)||0;
@@ -4438,22 +4458,7 @@ function gConnectionFees(){
     var typeEl=el.querySelector('.lt-type');
     if(typeEl&&typeEl.value==='freestanding') return; // free-standing doesn't connect to main building
     if(!lw||!ll) return;
-    // Connection length is ALWAYS the lean-to length (ll) — that's the dimension that
-    // runs ALONG the attached wall, regardless of whether the wall is an eave or gable.
-    var connLen=ll;
-    var isGable=(ls==='Front Gable'||ls==='Back Gable');
-    if(isWS){
-      // Wide-span eave connection — recalibrated against Sensei 2026-07:
-      // a 100' connection on a 40x100x20 widespan = $1,100 ($40/4ft past 20',
-      // was $25/4ft → $800). Spot-check other lengths against Sensei when seen.
-      total+=300+Math.ceil(Math.max(0,connLen-20)/4)*40;
-    } else if(isGable){
-      // Gable-end connection: higher base ($700) — matches CCI Sensei (e.g., 30' gable connection = $750)
-      total+=700+Math.ceil(Math.max(0,connLen-21)/5)*25;
-    } else {
-      // Eave side connection: CCI = flat fee (eaveConnFlat); CA = $100 + $25/5' past 21'
-      total+=(typeof MFR==='function'&&MFR().eaveConnFlat)?MFR().eaveConnFlat:(100+Math.ceil(Math.max(0,connLen-21)/5)*25);
-    }
+    total+=connFeeFor(ls, ll);
   });
   return total;
 }
@@ -7687,6 +7692,11 @@ async function printQuote(){
   var wci2=0; for(var wi3=0;wi3<WAIN_COLS2.length;wi3++){if(WAIN_COLS2[wi3]<=lv)wci2=wi3;else break;}
   var wainP=(G('wain').value==='yes'&&wallsVert)?WAIN_VALS2[wci2]:0;
   var leanToPr=gLT(), addCompPr=gAC(), insulPr=gInsul();
+  // Lean-to connection fees — printed as their own rows below AND part of the
+  // Building Amount. (They were missing from the printed subtotal while the
+  // on-screen price included them, so a quote with lean-tos under-billed by
+  // the whole connection fee.)
+  var connFeePr=gConnectionFees();
   var anchorLegsQ=gAnchorLegs(), anchorPr=gAnchors();
   // Overhang for PDF
   var overhangPQ=0;
@@ -7709,7 +7719,7 @@ async function printQuote(){
   var tax=parseFloat(G('tax').value)||0;
   var agEx=(G('agx')&&G('agx').value==='yes');
   var fastenerPQ=(G('fastener-add')&&G('fastener-add').checked&&!fastenerFreeP)?150:0;
-  var sub=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+leanToPr+addCompPr+insulPr+fastenerPQ+overhangPQ+sidePanelPQ+anchorPr;
+  var sub=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+leanToPr+connFeePr+addCompPr+insulPr+fastenerPQ+overhangPQ+sidePanelPQ+anchorPr;
   if(INPUT_MODE) sub=manualSubtotal();
 
   // Build plans HTML now that sub is computed (CCI Site Specific = 5% of retail)
@@ -7979,14 +7989,8 @@ async function printQuote(){
       });
       // Per-lean-to End Connection Fee (skip for free-standing)
       if(!ltIsFree){
-        var _bwQ=parseInt(G('bw').value)||0;
-        var _btQ=G('btype').value;
-        var _isWSQ=(_bwQ>=32||_btQ==='widespan');
         var _isGableQ=(ls==='Front Gable'||ls==='Back Gable');
-        var _connFeeQ=0;
-        if(_isWSQ){ _connFeeQ=300+Math.ceil(Math.max(0,ll-20)/4)*25; }
-        else if(_isGableQ){ _connFeeQ=700+Math.ceil(Math.max(0,ll-21)/5)*25; }
-        else { _connFeeQ=(typeof MFR==='function'&&MFR().eaveConnFlat)?MFR().eaveConnFlat:(100+Math.ceil(Math.max(0,ll-21)/5)*25); }
+        var _connFeeQ=connFeeFor(ls, ll); // shared with gConnectionFees — no duplicate formula
         if(_connFeeQ>0){
           var _connLblQ=_isGableQ?'Lean-To: End Connection Fee ('+ls+', '+ll+"')":'Lean-To: Connection Fee ('+ls+', '+ll+"')";
           rows+=row('  '+_connLblQ,null,null,_connFeeQ);
@@ -8613,6 +8617,11 @@ async function printContract(){
   var wci2=0; for(var wi3=0;wi3<WAIN_COLS2.length;wi3++){if(WAIN_COLS2[wi3]<=lv)wci2=wi3;else break;}
   var wainP=(G('wain').value==='yes'&&wallsVert)?WAIN_VALS2[wci2]:0;
   var leanToPr=gLT(), addCompPr=gAC(), insulPr=gInsul();
+  // Lean-to connection fees — printed as their own rows below AND part of the
+  // Building Amount. (They were missing from the printed subtotal while the
+  // on-screen price included them, so a quote with lean-tos under-billed by
+  // the whole connection fee.)
+  var connFeePr=gConnectionFees();
   var anchorLegsQ=gAnchorLegs(), anchorPr=gAnchors();
   var overhangPQ=0;
   var ohSelP=G('overhang-sel');
@@ -8633,7 +8642,7 @@ async function printContract(){
   var tax=parseFloat(G('tax').value)||0;
   var agEx=(G('agx')&&G('agx').value==='yes');
   var fastenerPQ=(G('fastener-add')&&G('fastener-add').checked&&!fastenerFreeP)?150:0;
-  var sub=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+leanToPr+addCompPr+insulPr+fastenerPQ+overhangPQ+sidePanelPQ+anchorPr;
+  var sub=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+leanToPr+connFeePr+addCompPr+insulPr+fastenerPQ+overhangPQ+sidePanelPQ+anchorPr;
   if(INPUT_MODE) sub=manualSubtotal();
 
   // ── Engineered Plans + Permit Service (both invoiced separately by engineering firm) ──

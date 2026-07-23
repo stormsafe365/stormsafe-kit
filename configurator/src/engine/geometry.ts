@@ -771,11 +771,13 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         const rafter1_3_Y = connH + (lh - connH) * (1 / 3);
         members.push(member('brace', [xOuter!, lh, z], [rafter1_3_X, rafter1_3_Y, z]));
 
-        // Connect to adjacent trusses with LONGITUDINAL base rails (along the length)
+        // Connect to adjacent trusses with a LONGITUDINAL base rail (along the length).
+        // OUTER (low-leg) wall only: an attached lean-to is a roof extension that
+        // SHARES the main building's wall on the inner side — there is no second
+        // wall there, so no lean-to base rail (it was drawing a phantom rail
+        // across floor-level framed openings in the shared wall).
         if (i > 0) {
           const zPrev = uniqueZ[i - 1];
-          // Base rails running front-to-back at ground level
-          members.push(member('baseRail', [xInner!, 0, zPrev], [xInner!, 0, z])); // at inner wall
           members.push(member('baseRail', [xOuter!, 0, zPrev], [xOuter!, 0, z])); // at outer edge
         }
       }
@@ -824,11 +826,11 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         const rafter1_3_Z = zInner! + (zOuter! - zInner!) * (1 / 3);
         members.push(member('brace', [x, lh, zOuter!], [x, rafter1_3_Y, rafter1_3_Z]));
 
-        // Connect to adjacent trusses with LONGITUDINAL base rails (left to right)
+        // Connect to adjacent trusses with a LONGITUDINAL base rail (left to right).
+        // OUTER wall only — the inner side shares the main building's gable wall
+        // (see the eave-attached note above: no phantom rail on a shared wall).
         if (i > 0) {
           const xPrev = uniqueX[i - 1];
-          // Base rails running left-to-right at ground level
-          members.push(member('baseRail', [xPrev, 0, zInner!], [x, 0, zInner!])); // at inner wall
           members.push(member('baseRail', [xPrev, 0, zOuter!], [x, 0, zOuter!])); // at outer edge
         }
       }

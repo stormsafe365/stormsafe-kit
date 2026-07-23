@@ -3282,7 +3282,8 @@ var MANUFACTURERS = {
       14:[3298,3660,4023,4385,4748,5110,5473,5835,6198,6560,6923,7285],
       16:[4588,5100,5613,6125,6638,7150,7663,8175,8688,9200,9713,10225],
       18:[5568,6180,6793,7405,8018,8630,9243,9855,10468,11080,11693,12305],
-      20:[6535,7260,7985,8710,9435,10160,10885,11610,12335,13060,13785,14510]
+      // 100' × 20' verified against Sensei (40x100x20): $14,520 both sides.
+      20:[6535,7260,7985,8710,9435,10160,10885,11610,12335,13060,13785,14520]
     },
     // ── Additional components / framed opening list ───────────────────────────
     acPrices: {
@@ -4442,7 +4443,10 @@ function gConnectionFees(){
     var connLen=ll;
     var isGable=(ls==='Front Gable'||ls==='Back Gable');
     if(isWS){
-      total+=300+Math.ceil(Math.max(0,connLen-20)/4)*25;
+      // Wide-span eave connection — recalibrated against Sensei 2026-07:
+      // a 100' connection on a 40x100x20 widespan = $1,100 ($40/4ft past 20',
+      // was $25/4ft → $800). Spot-check other lengths against Sensei when seen.
+      total+=300+Math.ceil(Math.max(0,connLen-20)/4)*40;
     } else if(isGable){
       // Gable-end connection: higher base ($700) — matches CCI Sensei (e.g., 30' gable connection = $750)
       total+=700+Math.ceil(Math.max(0,connLen-21)/5)*25;
@@ -4469,8 +4473,13 @@ function ecLookup(w,h){
   // Odd widths round UP to next even (CA/CCI only build even widths in wide-span)
   var wk = w>=32 ? (w%2===0?w:(w+1)) : eBkt(w);
   wk = Math.min(Math.max(wk,12),60);
-  var hk = Math.min(h,16);
-  return (EC[wk]||EC[30])[hk]||0;
+  // Height: use the chart's real 18'/20' columns. (Was capped at 16, which
+  // under-priced end closures on 18'-20' tall buildings — e.g. 40x100x20 ends
+  // charged $3,955 instead of $4,315, $720 under Sensei for the pair.)
+  var ecRow=(EC[wk]||EC[30]);
+  var hk=Math.min(h,20);
+  while(hk<20 && ecRow[hk]===undefined) hk++; // missing odd heights round UP
+  return ecRow[hk]||0;
 }
 function scLookup(h,l,w){
   var w2=w||parseInt(G('bw').value)||0;

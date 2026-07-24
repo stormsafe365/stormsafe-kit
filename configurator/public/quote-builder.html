@@ -3157,9 +3157,6 @@ var MANUFACTURERS = {
       '16x6':2200,'16x7':2300,'16x8':2300,'16x9':2400,'16x10':2400,'16x11':2500,'16x12':2500,'16x13':2600,'16x14':2600,'16x15':2700,'16x16':2700
     },
     rudPreferChain: true,
-    // CCI charges a FLAT side-connection fee for eave-attached lean-tos
-    // (Sensei: 'Side Connection Fees' $400). Gable connections keep the formula.
-    eaveConnFlat: 400,
     chain: 325, seal: 12.00,
     freeThresh: 10000, fastenerAlwaysFree: true,
     // ── Side Panel pricing (carport/GCH open sections) ───────────────────────
@@ -4438,11 +4435,12 @@ function connFeeFor(attachedSide, connLen){
   var isWS=(bw>=32||bt==='widespan');
   var isGable=(attachedSide==='Front Gable'||attachedSide==='Back Gable');
   if(ACTIVE_MFR==='CCI' && !isGable){
-    // CCI eave connection — Sensei-verified per-length chart (2026-07-23):
-    // 40'→$400 · 60'→$700 · 80'→$800 · 100'→$1,100. $400 floor (matches the
-    // old flat-$400 observation at 40' on a standard main); edge-rate
-    // extrapolation past 100'.
-    return Math.max(400, Math.round(_ltsInterp(LTS_CONN, connLen)));
+    // CCI eave connection — per lean, by lean length. Manufacturer-corrected
+    // 2026-07-24: two 60' leans → $600 total ($300 each, check-marked by
+    // CCI), two 100' leans → Sensei's $2,200 struck to $1,950 ($975 each).
+    // $300 floor, edge-rate extrapolation past 100'. (Sensei's own chart —
+    // 40'→$400 · 60'→$700 · 80'→$800 — over-charged and was dropped.)
+    return Math.max(300, Math.round(_ltsInterp(LTS_CONN, connLen)));
   }
   if(isGable){
     // Gable-end connection: higher base ($700) — matches CCI Sensei (e.g., 30' gable connection = $750)
@@ -5150,43 +5148,35 @@ function ltBasePrice(w,l){
   // Lean-to base price: $7.00/sqft (derived from CA/CCI lean-to pricing)
   return Math.round(w * l * 7.00);
 }
-// ── Sensei-verified CCI lean-to pricing (calibrated 2026-07-23) ─────────────
-// Anchor tables measured directly in Sensei on a 40x100x20 widespan main
-// (screenshots: Pictures/lean-to pricing check + the original QTE-000262
-// 10x40x10 case, which lands exactly on these curves). Linear interpolation
-// between anchors, edge-rate extrapolation beyond. Structure confirmed from
-// the data: ENDS depend on width+height only; SIDE WALL and HEIGHT adder are
-// width-independent. Configs outside table coverage fall back to the legacy
-// split method in ltUnit.
-var LTS_SIZE = {        // lean width → [[length, $], …]
-  10: [[40,2647.5],[60,3995],[100,6592.5]],
-  12: [[40,4295],[60,6390],[80,8590],[100,10785]]
-};
-var LTS_HEIGHT = {      // low-leg height → curve (or shape-scaled off h12)
-  10: [[40,407.5],[100,1032.5]],
-  12: [[40,720],[60,1140],[80,1440],[100,1865]],
-  14: {shape:12, at:[100,3100]},
-  16: {shape:12, at:[60,2880]}
-};
-var LTS_SIDE = {        // closed outer side wall (width-independent)
-  10: [[40,752.5],[100,2547.5]],
-  12: [[40,1280],[60,1900],[80,2560],[100,3100]],
-  14: {shape:12, at:[100,3605]},
-  16: {shape:12, at:[60,2545]}
-};
-var LTS_ENDS = {        // per (width, height): BOTH fully-enclosed gable ends
-  10: {14:2225,16:2375},
-  12: {10:2100,12:2530,14:3110}
-};
-var LTS_CONN = [[40,400],[60,700],[80,800],[100,1100]]; // per eave connection
-// Panel-orientation factors for the lean-to's SHEETED parts (ends + side wall).
-// The LTS_ENDS / LTS_SIDE anchors were measured on VERTICAL-panel builds; the
-// lean-to always sheets in the MAIN building's orientation, and horizontal is
-// cheaper. Factors measured on a 30x60x16 + 12x60x12 lean (2026-07-23):
-// ends 2,530→2,230 · side 1,900→1,240. Exact at that point; proportional
-// elsewhere. Size + height lines are structure — orientation-independent.
-var LTS_ENDS_HFACTOR = 2230/2530;
-var LTS_SIDE_HFACTOR = 1240/1900;
+// ── CCI lean-to pricing — dealer-handbook method, manufacturer-corrected ─────
+// Recalibrated 2026-07-24 against CCI's marked-up corrections of two Sensei
+// quotes (12x60x13 barn + two 12x60 continuous leans; 40x100x20 widespan +
+// two 12x100x12 step-down leans). Sensei's lean components were inflated and
+// then papered over with a "Manufacturer Discount" line; CCI's reviewer
+// re-priced every line from the dealer charts. The handbook method (a W-wide
+// attached lean = HALF of a 2W-wide standard building) reproduces every
+// corrected line from charts we already carry:
+//   size   = half the 2W base chart, same roof-style chart + length
+//            combinations as a real building ......... 12x60 → $4,295 exact
+//   height = half the 2W leg-height chart over the SAME length sections
+//            .......................... 10'/60' → $490 · 12'/100' → $1,195
+//   ends   = ecLookup(2W, legH) per PAIR, + VERT_END[2W] when panels are
+//            vertical ........ 24w/10' H → $1,435 · 24w/12' V+360 → $2,150
+//   side   = raw SC chart at (legH, L/2) + VERT_SIDE at the same column
+//            when vertical ...... 10'/60' H → $1,085 · 12'/60' V → $1,900
+// Continuous-roof and step-down leans price IDENTICALLY (one of each in the
+// corrected quotes, same formulas throughout).
+// On a commercial/widespan main the lean itself must be 170-certified and
+// prices off CCI's certified chart — the reviewer wrote "170 14g" beside the
+// corrected size ($7,692.50 = half-chart $7,142.50 + $550 on a 12x100).
+// Single verified point → $5.50/ft of lean length, pending CCI's certified
+// chart pages.
+var CCI_LT_CERT_RATE = 5.5;   // $/ft of lean length, commercial mains only
+// Side-connection fee PER LEAN, by lean length. CCI corrections: two 60'
+// leans → $600 total ($300 each, check-marked), two 100' leans → Sensei's
+// $2,200 struck to $1,950 ($975 each). $300 floor, edge-rate extrapolation
+// past 100'. (Replaces the Sensei-measured chart 40→400 … 100→1,100.)
+var LTS_CONN = [[60,300],[100,975]];
 // Effective panel orientation of the whole build: wide-span is always vertical;
 // standard buildings follow the Wall Style dropdown.
 function ltPanelsHorizontal(){
@@ -5211,61 +5201,31 @@ function _ltsInterp(pts, x){
   var n=pts.length, rN=(pts[n-1][1]-pts[n-2][1])/(pts[n-1][0]-pts[n-2][0]);
   return pts[n-1][1]+rN*(x-pts[n-1][0]);
 }
-// Resolve a height-keyed curve: a plain anchor array, or {shape, at} which
-// reuses another height's curve SHAPE scaled through its own measured point.
-function _ltsCurve(curves, key, L){
-  var c=curves[key];
-  if(!c) return null;
-  if(Object.prototype.toString.call(c)==='[object Array]') return _ltsInterp(c,L);
-  var base=curves[c.shape];
-  var ref=_ltsInterp(base,c.at[0]);
-  return ref>0 ? _ltsInterp(base,L)*(c.at[1]/ref) : 0;
-}
-// Value at (height, length): interpolate between the two nearest height curves.
-// Below the lowest curve, scale toward zero at h=hZero (adders vanish there).
-function _ltsByHeight(curves, h, L, hZero){
-  var hs=Object.keys(curves).map(Number).sort(function(a,b){return a-b;});
-  if(h<=hs[0]){
-    var v0=_ltsCurve(curves,hs[0],L);
-    if(hZero===undefined) return v0;
-    if(h<=hZero) return 0;
-    return v0*(h-hZero)/(hs[0]-hZero);
-  }
-  for(var i=1;i<hs.length;i++){
-    if(h<=hs[i]){
-      var lo=_ltsCurve(curves,hs[i-1],L), hi=_ltsCurve(curves,hs[i],L);
-      var t=(h-hs[i-1])/(hs[i]-hs[i-1]);
-      return lo+t*(hi-lo);
+// Closed outer side wall of a CCI attached lean: raw SC chart value at
+// (legH, L/2) — the length column is HALF the lean length, rounded UP to the
+// next chart column — plus the VERT_SIDE per-side upcharge at the same column
+// when panels are vertical. Exact at every verified point: 10'/60' horizontal
+// $1,085 (CCI) · 12'/60' horizontal $1,240 (Sensei) · 12'/60' vertical $1,900
+// (Sensei). Past the 40' column (leans over 80'), grow at the CCI-verified
+// rate: the corrected 12x100 vertical side ($3,100 = $2,560 + 10' × $54)
+// fixes $54/ft per $2,560 of 40'-column value, scaled proportionally for
+// other heights.
+function cciLtSideClosed(h,l,vertical){
+  var hk=Math.min(16,Math.max(6,Math.ceil(h||6)));
+  while(hk<16 && !SC[hk]) hk++;
+  var scRow=SC[hk]||SC[16];
+  var vb=h<=10?'low':(h<=15?'mid':'high');
+  var vsRow=VERT_SIDE[vb];
+  var colLen=l/2;
+  var SC_COLS=[20,25,30,35,40];
+  for(var i=0;i<SC_COLS.length;i++){
+    if(SC_COLS[i]>=colLen){
+      var c=SC_COLS[i];
+      return Math.round((scRow[c]||0)+(vertical?(vsRow[c]||0):0));
     }
   }
-  var last=_ltsCurve(curves,hs[hs.length-1],L);
-  var prev=_ltsCurve(curves,hs[hs.length-2],L);
-  var rate=(last-prev)/(hs[hs.length-1]-hs[hs.length-2]);
-  return last+rate*(h-hs[hs.length-1]); // above top curve: edge-rate extrapolation
-}
-function ltsSize(w,l){
-  var ws=Object.keys(LTS_SIZE).map(Number).sort(function(a,b){return a-b;});
-  if(w<ws[0]||w>ws[ws.length-1]) return null; // outside coverage → legacy
-  if(LTS_SIZE[w]) return _ltsInterp(LTS_SIZE[w],l);
-  var lo=_ltsInterp(LTS_SIZE[ws[0]],l), hi=_ltsInterp(LTS_SIZE[ws[ws.length-1]],l);
-  return lo+(hi-lo)*(w-ws[0])/(ws[ws.length-1]-ws[0]);
-}
-function ltsEndsPair(w,h){
-  var ws=Object.keys(LTS_ENDS).map(Number).sort(function(a,b){return a-b;});
-  if(w<ws[0]||w>ws[ws.length-1]) return null;
-  function rowVal(row,hh){
-    var hs=Object.keys(row).map(Number).sort(function(a,b){return a-b;});
-    if(hs.length===1) return row[hs[0]];
-    if(hh<=hs[0]){var r=(row[hs[1]]-row[hs[0]])/(hs[1]-hs[0]);return Math.max(0,row[hs[0]]-r*(hs[0]-hh));}
-    for(var i=1;i<hs.length;i++){
-      if(hh<=hs[i]){var t=(hh-hs[i-1])/(hs[i]-hs[i-1]);return row[hs[i-1]]+t*(row[hs[i]]-row[hs[i-1]]);}
-    }
-    var n=hs.length,rN=(row[hs[n-1]]-row[hs[n-2]])/(hs[n-1]-hs[n-2]);
-    return row[hs[n-1]]+rN*(hh-hs[n-1]);
-  }
-  if(LTS_ENDS[w]) return rowVal(LTS_ENDS[w],h);
-  var lo=rowVal(LTS_ENDS[ws[0]],h), hi=rowVal(LTS_ENDS[ws[ws.length-1]],h);
-  return lo+(hi-lo)*(w-ws[0])/(ws[ws.length-1]-ws[0]);
+  var base40=(scRow[40]||0)+(vertical?(vsRow[40]||0):0);
+  return Math.round(base40+(colLen-40)*54*(base40/2560));
 }
 
 // ── Per-lean-to unit price (base + height + walls; NOT accessories) ─────────
@@ -5273,14 +5233,9 @@ function ltsEndsPair(w,h){
 // quote rows, so the printed lines always sum to the Building Amount.
 //
 // CA / free-standing: original model (ltBasePrice + CA SH/2 + flat wall adders).
-// CCI attached leans: dealer handbook Barns split method, calibrated against
-// Sensei QTE-000262 (10x40x10 lean on a 30x40x14 vertical main):
-//   base   = HALF of the standard chart at (2W+2)-wide x L  -> $2,647.50 (ok)
-//   height = HALF of the main-width leg chart at the lean height -> $407.50 (ok)
-//   side closed = sides chart at (leanH, L, 2W)             -> $753 ~= 752.50 (ok)
-//   certified-gable end = $112.50 each ($225/pair)          (ok)
-//   closed end = HALF of ecLookup(2W, leanH) each (handbook ends-split)
-//   partial side panels keep the flat LT_SIDE_P adders.
+// CCI attached leans: dealer-handbook half-of-2W method, recalibrated
+// 2026-07-24 to CCI's manufacturer-corrected quotes — see the block comment
+// above CCI_LT_CERT_RATE for the formulas and the verified points.
 function ltUnit(el){
   var w=parseInt(el.querySelector('.ltw').value)||0;
   var l=parseInt(el.querySelector('.ltl2').value)||0;
@@ -5294,52 +5249,52 @@ function ltUnit(el){
   if(!w||!l) return {w:w,l:l,h:h,isFree:isFree,bp:0,heightAdj:0,encAdj:0,total:0};
   var ltWalls2=getLTWalls(el);
   var bp, heightAdj=0, encAdj;
-  if(ACTIVE_MFR==='CCI' && !isFree && ltsSize(w,l)!==null){
-    // ── Sensei-verified model (widths 10–12; LTS_* anchor tables above). ──
-    // Exact at every measured Sensei point; interpolated between them.
-    bp=Math.round(ltsSize(w,l)*100)/100;
-    heightAdj=(h>6)?Math.round(_ltsByHeight(LTS_HEIGHT,h,l,6)*100)/100:0;
-    // Sheeted parts follow the MAIN building's panel orientation (horizontal
-    // sheets cheaper than the vertical-panel anchors).
-    var _hzF=ltPanelsHorizontal();
-    var endPairS=(ltsEndsPair(w,h)||0)*(_hzF?LTS_ENDS_HFACTOR:1);
-    var endP=function(v){ return v==='closed'?Math.round(endPairS/2):(v==='gable'?112.5:0); };
-    var sideP=(ltWalls2.side==='closed')
-      ? Math.round(_ltsByHeight(LTS_SIDE,h,l,0)*(_hzF?LTS_SIDE_HFACTOR:1))
-      : (LT_SIDE_P[ltWalls2.side]||0);
-    encAdj=endP(ltWalls2.front)+endP(ltWalls2.back)+sideP;
-  } else if(ACTIVE_MFR==='CCI' && !isFree){
-    // Legacy dealer-handbook split method — widths the Sensei tables don't
-    // cover yet. Known to drift low at long lengths; verify vs Sensei.
-    var vw=2*w+2; if(vw%2) vw++;
+  if(ACTIVE_MFR==='CCI' && !isFree){
+    // ── CCI dealer-handbook method (manufacturer-corrected 2026-07-24):
+    // a W-wide attached lean prices as HALF of a (2W)-wide standard building.
+    // Verified line-for-line against CCI's corrected 12x60-continuous and
+    // 12x100-step-down quotes; continuous and step-down price identically.
+    var vw=2*w; if(vw%2) vw++;
     var T=(G('rs')&&G('rs').value==='Regular')?PR:((G('rs')&&G('rs').value==='Boxed Eave')?PB:PV);
     var wi=WIDTHS.indexOf(vw);
+    // Length sections: one standard tier through 51', else the dealer
+    // combination (same rule as a real 2W-wide building).
+    var secs=[];
+    if(l<=51){ secs=[nearestStd(l)]; }
+    else if(MFR().standardCombinations){
+      var combos=MFR().standardCombinations, ks=Object.keys(combos).map(Number).sort(function(a,b){return a-b;});
+      for(var ci3=0;ci3<ks.length;ci3++){ if(ks[ci3]>=l){ secs=combos[ks[ci3]]; break; } }
+      if(!secs.length) secs=combos[ks[ks.length-1]];
+    }
     bp=0;
-    if(wi>=0){
-      if(l<=51){ bp=((T[nearestStd(l)]||[])[wi]||0)/2; }
-      else if(MFR().standardCombinations){
-        var combos=MFR().standardCombinations, ks=Object.keys(combos).map(Number).sort(function(a,b){return a-b;}), tk=null;
-        for(var ci3=0;ci3<ks.length;ci3++){ if(ks[ci3]>=l){ tk=ks[ci3]; break; } }
-        if(tk){ var pts=combos[tk], sm=0; for(var pj=0;pj<pts.length;pj++) sm+=(T[pts[pj]]||[])[wi]||0; bp=sm/2; }
-      }
-    }
+    if(wi>=0){ for(var sj=0;sj<secs.length;sj++) bp+=((T[secs[sj]]||[])[wi]||0); bp=bp/2; }
+    // Commercial / widespan main → the lean itself must be 170-certified and
+    // prices off CCI's certified chart ("170 14g" on the corrected quote):
+    // +$5.50/ft, single-point anchor (12x100 → +$550) pending CCI's
+    // certified-chart pages.
+    var _mwC=parseInt(G('bw').value)||0, _btC=G('btype')?G('btype').value:'';
+    if(_mwC>=32||_btC==='widespan') bp+=CCI_LT_CERT_RATE*l;
     bp=Math.round(bp*100)/100;
+    // Height: half of the (2W)-wide leg-height chart over the SAME length
+    // sections (10'/60' → $490 and 12'/100' → $1,195, both exact).
     if(h>6){
-      var mw=parseInt(G('bw').value)||0; if(mw%2) mw++;
-      var huT3=(mw<=24?HU_N:(mw<=30?HU_M:HU));
+      var huT3=(vw<=24?HU_N:(vw<=30?HU_M:HU));
       var hk3=h<=16?h:(h<=18?18:20);
-      var li3=LENGTHS.indexOf(nearestStd(Math.min(l,40)));
-      var huFull=(li3>=0)?((huT3[hk3]||huT3[16]||[])[li3]||0):0;
-      if(l>40 && huFull){
-        var hu21=(huT3[hk3]||huT3[16]||[])[LENGTHS.indexOf(21)]||0;
-        var hu41=(huT3[hk3]||huT3[16]||[])[LENGTHS.indexOf(41)]||0;
-        huFull=Math.round(hu41+(hu41-hu21)/20*(l-40));
-      }
-      heightAdj=Math.round(huFull/2*100)/100;
+      var huRow=huT3[hk3]||huT3[16]||[];
+      var huSum=0;
+      for(var hj=0;hj<secs.length;hj++){ var hli=LENGTHS.indexOf(secs[hj]); huSum+=(hli>=0?(huRow[hli]||0):0); }
+      heightAdj=Math.round(huSum/2*100)/100;
     }
-    var endPL=function(v){ return v==='closed'?Math.round(ecLookup(vw,h)/2):(v==='gable'?112.5:0); };
-    var sidePL=(ltWalls2.side==='closed')?scLookup(h,l,2*w):(LT_SIDE_P[ltWalls2.side]||0);
-    encAdj=endPL(ltWalls2.front)+endPL(ltWalls2.back)+sidePL;
+    // Walls — sheeted parts follow the MAIN building's panel orientation.
+    // Ends: pair = ecLookup(2W, legH) + VERT_END[2W] when vertical; each
+    // closed end is half the pair ($1,435 H and $2,150 V pairs, both exact).
+    var _hzF=ltPanelsHorizontal();
+    var endPairS=ecLookup(vw,h)+(_hzF?0:vertEndUpcharge(vw));
+    var endP=function(v){ return v==='closed'?Math.round(endPairS/2):(v==='gable'?112.5:0); };
+    var sideP=(ltWalls2.side==='closed')
+      ? cciLtSideClosed(h,l,!_hzF)
+      : (LT_SIDE_P[ltWalls2.side]||0);
+    encAdj=endP(ltWalls2.front)+endP(ltWalls2.back)+sideP;
   } else {
     bp=ltBasePrice(w,l);
     if(h>6){
@@ -5405,15 +5360,9 @@ function gLT(){
         accAdj+=aqty*(MFR().winPrices[ahi]||window._win_std||200);
       } else if(atype==='frameout'){
         // Typed framed opening — same price as the Section 10 chart for the
-        // active manufacturer. Zero-priced customs (Custom Garage Door / Custom
-        // Walk-Through / Custom Frame Out) fall back to the width-based
-        // lean-to frame-out chart, matching how they're quoted by hand.
-        var afoW=parseFloat(ae.querySelector('.lt-acc-fo-w')&&ae.querySelector('.lt-acc-fo-w').value)||10;
+        // active manufacturer (shared helper with the printed quote rows).
         var afoLoc=ae.querySelector('.lt-acc-loc')?ae.querySelector('.lt-acc-loc').value:'outer';
-        var afoKey=(ae.querySelector('.lt-acc-fo-type')||{}).value||'';
-        var afoUnit=(afoKey&&AC_PRICES&&AC_PRICES[afoKey])||0;
-        if(!afoUnit) afoUnit=ltFrameoutPrice(afoW, afoLoc);
-        accAdj+=aqty*afoUnit;
+        accAdj+=aqty*ltAccFoUnitPrice(ae, afoLoc);
       }
       // Side frames (wtd / win / frameout on the outer wall of an eave-attached
       // lean-to; auto-set by the truss check, same rate as the main building).
@@ -6037,9 +5986,9 @@ function aAC(){
       '<div class="row"><label>Measurement Unit</label>'+
       '<select class="fo-unit" onchange="foUnitChange(this)" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"><option value="ft">Feet</option><option value="in">Inches</option></select></div>'+
       '<div class="row fo-cw-row"><label class="fo-cw-label">Opening Width (ft)</label>'+
-      '<input type="number" class="fo-cw" placeholder="10" min="1" max="24" step="0.5" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
+      '<input type="number" class="fo-cw" placeholder="10" min="1" max="24" step="0.5" oninput="foAutoCustomWinPrice(this.closest(\'.ace\'));rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
       '<div class="row fo-ch-row"><label class="fo-ch-label">Opening Height (ft)</label>'+
-      '<input type="number" class="fo-ch" placeholder="8" min="1" max="16" step="0.5" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
+      '<input type="number" class="fo-ch" placeholder="8" min="1" max="16" step="0.5" oninput="foAutoCustomWinPrice(this.closest(\'.ace\'));rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
     '</div>'+
     '<div class="row fo-sill-row hidden"><label>Sill Height (ft)</label>'+
     '<input type="number" class="fo-sill" value="4.17" min="0" max="30" step="0.25" oninput="rc()" title="Bottom of the window opening off the ground — standard 4&#39;2&#34; (4.17 ft)" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
@@ -6076,6 +6025,7 @@ function updACPrice(sel){
   // Adjustable sill only makes sense for WINDOW framed openings.
   var _slRow=entry.querySelector('.fo-sill-row'); if(_slRow) _slRow.classList.toggle('hidden', !(isFO && sel.value.indexOf('Window')>=0));
   foSfVis(entry);
+  foAutoCustomWinPrice(entry);
   if(isFO){
     var qty = parseInt(entry.querySelector('.acq').value)||1;
     updatePosSection(entry, qty, 'Opening');
@@ -6092,6 +6042,41 @@ function foCustomFeet(el){
   var cw=parseFloat((el.querySelector('.fo-cw')||{}).value);
   var ch=parseFloat((el.querySelector('.fo-ch')||{}).value);
   return { w:(cw>0?cw*k:10), h:(ch>0?ch*k:8) };
+}
+// CCI custom WINDOW frame-outs price by size (manufacturer-corrected quotes,
+// 2026-07-24): up to 36"x36" → $75 (30x30 and 36x36 both confirmed at $75/ea),
+// anything larger in EITHER dimension → $150 (48x48 corrected 175→150; 60x72
+// and 24x72 confirmed/corrected to $150). Returns the rule price in dollars.
+function cciCustomWinPrice(wFt,hFt){
+  return (wFt<=3 && hFt<=3) ? 75 : 150;
+}
+// Unit price for a typed lean-to framed opening. SINGLE SOURCE — the pricing
+// engine (gLT) and the printed quote rows both call this. Section 10 chart
+// price for the chosen type; CCI custom WINDOWS price by size via
+// cciCustomWinPrice; other zero-priced customs (Custom Garage Door / Custom
+// Walk-Through / Custom Frame Out) fall back to the width-based lean-to
+// frame-out chart, matching how they're quoted by hand.
+function ltAccFoUnitPrice(ae, aloc){
+  var w=parseFloat(ae.querySelector('.lt-acc-fo-w')&&ae.querySelector('.lt-acc-fo-w').value)||10;
+  var h=parseFloat(ae.querySelector('.lt-acc-fo-h')&&ae.querySelector('.lt-acc-fo-h').value)||8;
+  var key=(ae.querySelector('.lt-acc-fo-type')||{}).value||'';
+  if(ACTIVE_MFR==='CCI' && key.indexOf('Window (Custom Size)')>=0) return cciCustomWinPrice(w,h);
+  var u=(key&&AC_PRICES&&AC_PRICES[key])||0;
+  if(!u) u=ltFrameoutPrice(w, aloc);
+  return u;
+}
+// Auto-fill the Custom Price box for a CCI custom-size WINDOW frame-out when
+// the size changes. Only overwrites the box when it's empty or still holding
+// a rule value (75/150) — a hand-entered price is left alone.
+function foAutoCustomWinPrice(entry){
+  if(ACTIVE_MFR!=='CCI'||!entry) return;
+  var comp=(entry.querySelector('.act')||{}).value||'';
+  if(comp.indexOf('Window (Custom Size)')<0) return;
+  var acp=entry.querySelector('.acp'); if(!acp) return;
+  var s=foCustomFeet(entry);
+  var rule=cciCustomWinPrice(s.w,s.h);
+  var cur=parseFloat(acp.value);
+  if(!acp.value || cur===75 || cur===150) acp.value=rule;
 }
 // Sill height (ft) for a WINDOW framed opening — the entry's adjustable Sill
 // Height input (some jobs need windows higher than standard), falling back to
@@ -6132,6 +6117,7 @@ function foUnitChange(sel){
     if(!isNaN(v)) inp.value = inIn ? Math.round(v*12*100)/100 : Math.round((v/12)*100)/100;
   });
   foApplyUnit(entry);
+  foAutoCustomWinPrice(entry);
   rc();
 }
 function setAddDiscType(type){
@@ -8126,8 +8112,7 @@ async function printQuote(){
           var afoW2=parseFloat(ae.querySelector('.lt-acc-fo-w')&&ae.querySelector('.lt-acc-fo-w').value)||10;
           var afoH2=parseFloat(ae.querySelector('.lt-acc-fo-h')&&ae.querySelector('.lt-acc-fo-h').value)||10;
           var afoKey2=(ae.querySelector('.lt-acc-fo-type')||{}).value||'';
-          var afp=(afoKey2&&AC_PRICES&&AC_PRICES[afoKey2])||0;
-          if(!afp) afp=ltFrameoutPrice(afoW2, aloc);
+          var afp=ltAccFoUnitPrice(ae, aloc);
           var afoLbl=afoKey2?afoKey2.replace('Framed Opening — ',''):(afoW2+'x'+afoH2+"' opening");
           var afoSz=(ltFoDefaults(afoKey2).noRender)?'':' '+afoW2+'x'+afoH2+"'";
           if(afp) rows+=row('  Lean-To: Framed Opening — '+afoLbl+afoSz+' ('+alocLabel+')',aqty,afp,afp*aqty);

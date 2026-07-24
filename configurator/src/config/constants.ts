@@ -46,7 +46,9 @@ export const DEFAULT_CONFIG: BuildingConfig = {
   roofPitch: 3,
   roofOverhangFt: 0.5, // 6" standard overhang
   // Defaults mirror the real StormSafe quote palette.
-  colors: { roof: 'WXA0090L', walls: 'WXA0095L', trim: 'WXB107L', wainscot: 'WXA0090L' },
+  // Preset (colors-TBD) combo per Jenna 2026-07-24: roof Galvalume, walls
+  // Light Gray, trim Black — matches the quote program's TBD render defaults.
+  colors: { roof: 'GALVALUME', walls: 'WXA0095L', trim: 'WXA0107L', wainscot: 'WXA0090L' },
   wainscot: { enabled: false, heightFt: 3 },
   eavePanelFt: { left: 0, right: 0 },
   // Default = fully enclosed (garage). Type presets overwrite this.

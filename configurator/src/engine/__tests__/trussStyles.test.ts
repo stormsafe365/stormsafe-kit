@@ -8,66 +8,86 @@ const build = (over: Partial<typeof DEFAULT_CONFIG>) =>
 
 const legCount = (s: ReturnType<typeof deriveStructure>) => s.members.filter((m) => m.kind === 'leg').length;
 
+// Ladder rungs: short HORIZONTAL braces spanning the column depth INBOARD
+// (along X) near the left eave — the ladder lives in the truss plane, not
+// flat along the wall.
 const ladderRungs = (s: ReturnType<typeof deriveStructure>) => {
   const halfW = s.width / 2;
   return s.members.filter(
     (m) =>
       m.kind === 'brace' &&
       Math.abs(m.start[1] - m.end[1]) < 0.01 && // horizontal
-      Math.abs(m.start[0] - -halfW) < 0.01 &&
-      Math.abs(m.end[0] - -halfW) < 0.01 && // both ends at the eave X
-      Math.abs(m.start[2] - m.end[2]) > 0.1, // spans the ladder gap in Z
+      Math.abs(m.start[2] - m.end[2]) < 0.01 && // in one bent plane (same Z)
+      Math.abs(m.start[0] - m.end[0]) > 0.5 && // spans the column depth in X
+      Math.min(Math.abs(m.start[0]), Math.abs(m.end[0])) > halfW - 2.5, // at the eave column
   );
 };
 
-/**
- * TEMP — truss styling (double posts / ladder legs) is disabled in geometry.ts
- * via SINGLE_TRUSS_ONLY, so every bent renders as a single post per side at any
- * size. When that flag is flipped back to false, restore the size-based
- * expectations: DOUBLE (W>31 or H 14/15) → 4 legs/bent, LADDER (H>=16) → 4
- * legs/bent + rungs, and double trusses double the eave base rails.
- */
-describe('truss/leg styles — single-post only (SINGLE_TRUSS_ONLY)', () => {
+describe('truss/leg styles — single, double (W>31 / H 14-15), ladder (H>=16)', () => {
   it('small build → 2 legs per bent (one post each side)', () => {
     const s = build({ width: 24, length: 30, legHeight: 12 });
     expect(legCount(s)).toBe(s.frameCount * 2);
   });
 
-  it('wide build (W>31) still renders single posts → 2 legs per bent', () => {
+  it('wide build (W>31) → DOUBLE legs: 4 posts per bent', () => {
     const s = build({ width: 40, length: 40, legHeight: 12 });
-    expect(legCount(s)).toBe(s.frameCount * 2);
+    expect(legCount(s)).toBe(s.frameCount * 4);
   });
 
-  it('height 14 still renders single posts → 2 legs per bent', () => {
+  it('height 14 → DOUBLE legs: 4 posts per bent', () => {
     const s = build({ width: 24, length: 30, legHeight: 14 });
-    expect(legCount(s)).toBe(s.frameCount * 2);
+    expect(legCount(s)).toBe(s.frameCount * 4);
   });
 
-  it('tall build (H>=16) renders single posts with NO ladder rungs', () => {
+  it('tall build (H>=16) → LADDER legs: 4 chords per bent + rungs', () => {
     const s = build({ width: 24, length: 30, legHeight: 18 });
-    expect(legCount(s)).toBe(s.frameCount * 2);
-    expect(ladderRungs(s).length).toBe(0);
+    expect(legCount(s)).toBe(s.frameCount * 4);
+    expect(ladderRungs(s).length).toBeGreaterThan(0);
   });
 
-  it('tall AND wide → still single posts, no rungs', () => {
+  it('tall AND wide → ladder wins: 4 chords per bent + rungs', () => {
     const s = build({ width: 40, length: 40, legHeight: 18 });
-    expect(legCount(s)).toBe(s.frameCount * 2);
-    expect(ladderRungs(s).length).toBe(0);
+    expect(legCount(s)).toBe(s.frameCount * 4);
+    expect(ladderRungs(s).length).toBeGreaterThan(0);
   });
 
-  it('the frame stays within the building width (never wider than the roof)', () => {
-    const s = build({ width: 40, length: 40, legHeight: 12 });
-    const halfW = s.width / 2;
-    for (const m of s.members) {
-      expect(Math.abs(m.start[0])).toBeLessThanOrEqual(halfW + 0.01);
-      expect(Math.abs(m.end[0])).toBeLessThanOrEqual(halfW + 0.01);
+  it('inner chords stay INBOARD — the frame never grows wider than the roof', () => {
+    for (const legHeight of [12, 14, 18]) {
+      const s = build({ width: 40, length: 40, legHeight });
+      const halfW = s.width / 2;
+      for (const m of s.members) {
+        expect(Math.abs(m.start[0])).toBeLessThanOrEqual(halfW + 0.01);
+        expect(Math.abs(m.end[0])).toBeLessThanOrEqual(halfW + 0.01);
+      }
     }
   });
 
-  it('a wide build keeps single (un-doubled) eave base rails', () => {
-    // single base rail per eave run: all eave rails sit exactly on the wall
-    // plane (|x| == halfW), none inset inboard.
+  it('ladder rungs run inboard, not along the wall (regression: flat-ladder bug)', () => {
+    const s = build({ width: 24, length: 30, legHeight: 18 });
+    const halfW = s.width / 2;
+    const wallPlaneRungs = s.members.filter(
+      (m) =>
+        m.kind === 'brace' &&
+        Math.abs(m.start[1] - m.end[1]) < 0.01 &&
+        Math.abs(m.start[2] - m.end[2]) > 0.1 && // runs along the wall (Z)
+        Math.abs(Math.abs(m.start[0]) - halfW) < 0.01 &&
+        Math.abs(Math.abs(m.end[0]) - halfW) < 0.01,
+    );
+    expect(wallPlaneRungs.length).toBe(0);
+  });
+
+  it('double legs double the eave base rails (inner rail under the inner post)', () => {
     const s = build({ width: 40, length: 40, legHeight: 12 });
+    const halfW = s.width / 2;
+    const eaveRails = s.members.filter((m) => m.kind === 'baseRail' && m.start[0] === m.end[0]);
+    const onWall = eaveRails.filter((m) => Math.abs(Math.abs(m.start[0]) - halfW) < 0.01);
+    const inset = eaveRails.filter((m) => Math.abs(Math.abs(m.start[0]) - halfW) >= 0.01);
+    expect(onWall.length).toBeGreaterThan(0);
+    expect(inset.length).toBeGreaterThan(0);
+  });
+
+  it('single-leg builds keep single eave base rails', () => {
+    const s = build({ width: 24, length: 30, legHeight: 12 });
     const halfW = s.width / 2;
     const eaveRails = s.members.filter((m) => m.kind === 'baseRail' && m.start[0] === m.end[0]);
     expect(eaveRails.length).toBeGreaterThan(0);

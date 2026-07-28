@@ -477,66 +477,73 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
 
   // --- Frame bents: legs + gable rafters + knee braces + peak collar tie ---
   // The roof member is the simple single rafter ("bow"). Leg style varies:
-  //   • DOUBLE post + double base rail  when W > 31 (or H 14/15)
-  //   • LADDER leg (two posts + rungs)  when H >= 16
-  // TEMP: render every bent as a SINGLE post for now (per request — the
-  // double/ladder styling is visually wrong). Flip SINGLE_TRUSS_ONLY to false to
-  // restore the real double/ladder styles.
-  const SINGLE_TRUSS_ONLY = true;
-  const doublePost = !SINGLE_TRUSS_ONLY && (W > 31 || H === 14 || H === 15);
-  const ladderLeg = !SINGLE_TRUSS_ONLY && H >= 16;
-  const LADDER_W = Math.min(0.9, Math.max(0.5, H * 0.05)); // ladder/double post spacing along the wall
+  //   • DOUBLE leg   when W > 31 (or H 14/15) — a second post welded just
+  //     INBOARD of the first (toward the interior, along X), tops meeting the
+  //     rafter underside.
+  //   • LADDER leg   when H >= 16 — a deep two-chord column IN THE TRUSS
+  //     PLANE: outer chord at the wall, inner chord ~a foot and a half
+  //     inboard, horizontal rungs between them every ~3'. (The first attempt
+  //     split the posts ALONG the wall (Z), which laid the ladder flat against
+  //     the sheeting and read as two skinny posts — the depth must run
+  //     inboard, like the real welded column.)
+  const doublePost = W > 31 || H === 14 || H === 15;
+  const ladderLeg = H >= 16;
+  const LADDER_D = Math.min(2, Math.max(1.3, H * 0.09)); // ladder column depth (inboard, X)
+  const DOUBLE_D = 0.4;                                  // doubled-post gap (inboard, X)
 
   const braceLen = Math.min(3, H * 0.45);
   const tBrace = rafterLength > 0 ? Math.min(0.5, braceLen / rafterLength) : 0;
   const pbx = Math.min(3, halfW * 0.5); // peak collar tie half-span from the ridge
   const pby = H + rise * (1 - pbx / halfW);
 
-  // Column(s) at eave side `sx`, plane `z`: single post, DOUBLE post (two posts
-  // a short distance apart along the wall), or LADDER leg (two posts + rungs).
+  // Column(s) at eave side `sx`, plane `z`. The inner chord/post rises past H
+  // to meet the rafter underside (the roof climbs toward the ridge).
   const pushLeg = (sx: number, z: number) => {
+    const inb = sx < 0 ? 1 : -1; // toward the building interior along X
     if (ladderLeg) {
-      const z1 = z - LADDER_W / 2;
-      const z2 = z + LADDER_W / 2;
-      members.push(member('leg', [sx, 0, z1], [sx, H, z1]));
-      members.push(member('leg', [sx, 0, z2], [sx, H, z2]));
-      const rungs = Math.max(2, Math.round(H / 4)); // ~every 4'
-      // Ladder rungs are short horizontal bars at the wall plane; drop any that
-      // land inside an eave opening so they don't show as dashes across a framed
-      // opening (the column clip only handles vertical/diagonal members).
-      const rungHoles = sx < 0 ? leftHoles : rightHoles;
-      for (let i = 0; i <= rungs; i++) {
+      const xIn = sx + inb * LADDER_D;
+      const yIn = H + rise * (LADDER_D / halfW);
+      members.push(member('leg', [sx, 0, z], [sx, H, z]));
+      members.push(member('leg', [xIn, 0, z], [xIn, yIn, z]));
+      const rungs = Math.max(3, Math.round(H / 3)); // ~every 3'
+      for (let i = 1; i < rungs; i++) {
         const y = (H * i) / rungs;
-        if (rungHoles.some((hh) => z >= hh.lo - 0.01 && z <= hh.hi + 0.01 && y >= hh.sill - 0.01 && y <= hh.top + 0.01)) continue;
-        members.push(member('brace', [sx, y, z1], [sx, y, z2])); // ladder rung
+        members.push(member('brace', [sx, y, z], [sx + inb * LADDER_D, y, z]));
       }
     } else if (doublePost) {
-      members.push(member('leg', [sx, 0, z - LADDER_W / 2], [sx, H, z - LADDER_W / 2]));
-      members.push(member('leg', [sx, 0, z + LADDER_W / 2], [sx, H, z + LADDER_W / 2]));
+      const xIn = sx + inb * DOUBLE_D;
+      const yIn = H + rise * (DOUBLE_D / halfW);
+      members.push(member('leg', [sx, 0, z], [sx, H, z]));
+      members.push(member('leg', [xIn, 0, z], [xIn, yIn, z]));
     } else {
       members.push(member('leg', [sx, 0, z], [sx, H, z]));
     }
   };
 
   // One bent: columns + two gable rafters + knee braces + a peak collar tie.
+  // Ladder bents skip the knee brace — the deep column IS the reinforcement,
+  // and a diagonal across the ladder reads as clutter.
   const pushBent = (z: number) => {
     pushLeg(-halfW, z);
     pushLeg(halfW, z);
     members.push(member('rafter', [-halfW, H, z], [0, peakHeight, z]));
     members.push(member('rafter', [halfW, H, z], [0, peakHeight, z]));
-    for (const sx of [-halfW, halfW]) {
-      members.push(member('brace', [sx, H - braceLen, z], [sx * (1 - tBrace), H + rise * tBrace, z]));
+    if (!ladderLeg) {
+      for (const sx of [-halfW, halfW]) {
+        members.push(member('brace', [sx, H - braceLen, z], [sx * (1 - tBrace), H + rise * tBrace, z]));
+      }
     }
     members.push(member('brace', [-pbx, pby, z], [pbx, pby, z]));
   };
 
   for (const z of framePositionsZ) pushBent(z);
 
-  // --- Base rails (DOUBLED when double trusses are required) ---
+  // --- Base rails (DOUBLED for double/ladder legs) ---
   // Eave (side) rails run the full length on both sides, CUT where a floor-level
   // door (sill ≈ 0) crosses them — a garage door has no rail across its threshold.
-  // `inset` adds a second rail just inboard when the build needs double base rails.
-  const railInsets = doublePost ? [0, 0.5] : [0];
+  // `inset` adds a second rail inboard, aligned under the inner chord/post so
+  // the doubled column lands on it ("Ladder Legs Baserail").
+  const railInsets = ladderLeg ? [0, LADDER_D] : doublePost ? [0, DOUBLE_D] : [0];
   for (const inset of railInsets) {
     for (const [s, e] of subtractSpans(-halfL, halfL, gapsAtHeight(leftHoles, 0)))
       members.push(member('baseRail', [-halfW + inset, 0, s], [-halfW + inset, 0, e]));

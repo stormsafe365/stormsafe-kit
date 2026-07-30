@@ -214,10 +214,15 @@ function clipFrameAtEaveOpenings(members: Member[], openings: Opening[], halfW: 
   for (const m of members) {
     const clippable = m.kind === 'leg' || m.kind === 'brace';
     const constZ = Math.abs(m.start[2] - m.end[2]) < 0.01;
-    // A foot of the member must sit on an eave wall plane (|x| ≈ halfW) — this
-    // excludes the ridge-level peak collar braces (which span the middle in X).
+    // A foot of the member must sit on or just inboard of an eave wall plane.
+    // The band covers the DEEP-COLUMN inset too: double legs put a second post
+    // 0.4' inboard and ladder legs (H>=16) up to 2' inboard — those inner
+    // chords stood visible through framed openings when the band was a tight
+    // 0.1' (regression: "trusses showing inside the opening again"). 2.25'
+    // still excludes the peak collar tie (ends ≥ 3' further inboard on every
+    // buildable width).
     const atEaveWall =
-      Math.abs(Math.abs(m.start[0]) - halfW) < 0.1 || Math.abs(Math.abs(m.end[0]) - halfW) < 0.1;
+      Math.abs(m.start[0]) > halfW - 2.25 || Math.abs(m.end[0]) > halfW - 2.25;
     if (clippable && constZ && atEaveWall) {
       const side = (Math.abs(m.start[0]) > Math.abs(m.end[0]) ? m.start[0] : m.end[0]) < 0 ? 'left' : 'right';
       const z = m.start[2];

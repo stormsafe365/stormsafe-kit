@@ -64,24 +64,67 @@ export function CaptureHook() {
         gl.setSize(CAP_W, CAP_H, false); // false = don't touch CSS size; only the buffer changes
         camera.aspect = CAP_W / CAP_H;
         camera.updateProjectionMatrix();
+
+        // Exact-fit framing: collect the building's world-space geometry corners
+        // (skipping the ground grid / flat shadow planes), then after each preset
+        // is applied, project them and recenter + re-distance the camera until the
+        // whole building fills the frame with a safe margin. Guarantees no view is
+        // ever clipped, for any building size or proportion.
+        const pts: THREE.Vector3[] = [];
+        scene.traverse((ob) => {
+          const m = ob as THREE.Mesh;
+          if (!m.isMesh || !m.geometry) return;
+          if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+          const b = m.geometry.boundingBox;
+          if (!b || !isFinite(b.min.x) || !isFinite(b.max.x)) return;
+          m.updateWorldMatrix(true, false);
+          const corners: THREE.Vector3[] = [];
+          for (const X of [b.min.x, b.max.x])
+            for (const Y of [b.min.y, b.max.y])
+              for (const Z of [b.min.z, b.max.z])
+                corners.push(new THREE.Vector3(X, Y, Z).applyMatrix4(m.matrixWorld));
+          let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity, mnz = Infinity, mxz = -Infinity;
+          for (const p of corners) {
+            mnx = Math.min(mnx, p.x); mxx = Math.max(mxx, p.x);
+            mny = Math.min(mny, p.y); mxy = Math.max(mxy, p.y);
+            mnz = Math.min(mnz, p.z); mxz = Math.max(mxz, p.z);
+          }
+          if (mxx - mnx > 150 || mxz - mnz > 150) return; // ground grid / env
+          if (mxy - mny < 0.2 && Math.abs(mny) < 0.5) return; // flat ground shadow planes
+          pts.push(...corners);
+        });
+        const ctlTarget = (controls as unknown as { target?: THREE.Vector3 } | null)?.target;
+        const fitExact = () => {
+          if (!pts.length || !ctlTarget) return;
+          for (let k = 0; k < 4; k++) {
+            camera.updateMatrixWorld();
+            let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+            for (const p of pts) {
+              const q = p.clone().project(camera);
+              mnx = Math.min(mnx, q.x); mxx = Math.max(mxx, q.x);
+              mny = Math.min(mny, q.y); mxy = Math.max(mxy, q.y);
+            }
+            // recenter: pan camera + target so the building is centered in frame
+            const dist = camera.position.distanceTo(ctlTarget);
+            const vh = 2 * dist * Math.tan((camera.fov * Math.PI) / 360);
+            const vw = vh * camera.aspect;
+            const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar(((mnx + mxx) / 2) * (vw / 2));
+            const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1).multiplyScalar(((mny + mxy) / 2) * (vh / 2));
+            camera.position.add(right).add(up);
+            ctlTarget.add(right).add(up);
+            // re-distance: scale so the larger NDC extent lands on the margin
+            const need = Math.max((mxx - mnx) / 2 / 0.86, (mxy - mny) / 2 / 0.84);
+            const dir = camera.position.clone().sub(ctlTarget).normalize();
+            camera.position.copy(ctlTarget.clone().add(dir.multiplyScalar(Math.max(dist * need, 3))));
+            camera.lookAt(ctlTarget);
+            camera.updateMatrixWorld();
+          }
+        };
+
         for (const v of views) {
           if (setView) setView(v);
           else goToView(v);
-          // The 3/4 iso view sits closer than the straight-on elevations and its
-          // near corner can graze the frame edge — dolly out a touch for print.
-          if (v === 'iso') {
-            const tgt = (controls as unknown as { target?: THREE.Vector3 } | null)?.target;
-            if (tgt) {
-              camera.position.sub(tgt).multiplyScalar(1.18).add(tgt);
-              // Aim slightly lower so the building rides up off the bottom edge
-              // (the iso fit leaves all its slack above the roofline otherwise).
-              const dist = camera.position.distanceTo(tgt);
-              const drop = 2 * dist * Math.tan((camera.fov * Math.PI) / 360) * 0.06;
-              camera.position.y -= drop;
-              tgt.y -= drop; // restored by the final setView('iso') below
-              camera.updateMatrixWorld();
-            }
-          }
+          fitExact();
           await sleep(140); // a couple frames for R3F to render the new camera
           gl.render(scene, camera); // guarantee the freshest frame is in the buffer
           out[v] = gl.domElement.toDataURL('image/png');

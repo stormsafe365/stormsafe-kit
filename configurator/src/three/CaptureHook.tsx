@@ -44,23 +44,44 @@ export function CaptureHook() {
       camera.updateProjectionMatrix();
       if (controls) controls.maxDistance = 100000;
 
-      // Render the snapshots at high resolution so the building views are sharp
-      // in the printed quote/contract PDF (the interactive view runs at the
-      // device pixel ratio, which is too low once the image is placed on paper).
-      // Bump the renderer's backing buffer to ~3× the CSS size for the capture,
-      // then restore so the live view is untouched.
+      // Render the snapshots at a FIXED landscape size (not the live pane's
+      // shape) so the printed quote gets a full-width image with the building
+      // filling the frame — the live pane is often a narrow column, which used
+      // to produce a tall skinny capture with dead space on the page. The
+      // camera aspect is overridden to match so the fit math frames the
+      // building for the capture frame, then everything is restored.
       const canvas = gl.domElement;
       const cssW = canvas.clientWidth || canvas.width;
       const cssH = canvas.clientHeight || canvas.height;
       const savedPR = gl.getPixelRatio();
-      const CAPTURE_PR = 3;
+      const savedAspect = camera.aspect;
+      const CAP_W = 1600; // 16:10 landscape, ×2 pixel ratio = 3200×2000 buffer
+      const CAP_H = 1000;
+      const CAPTURE_PR = 2;
 
       try {
         gl.setPixelRatio(CAPTURE_PR);
-        gl.setSize(cssW, cssH, false); // false = don't touch CSS size; only the buffer grows
+        gl.setSize(CAP_W, CAP_H, false); // false = don't touch CSS size; only the buffer changes
+        camera.aspect = CAP_W / CAP_H;
+        camera.updateProjectionMatrix();
         for (const v of views) {
           if (setView) setView(v);
           else goToView(v);
+          // The 3/4 iso view sits closer than the straight-on elevations and its
+          // near corner can graze the frame edge — dolly out a touch for print.
+          if (v === 'iso') {
+            const tgt = (controls as unknown as { target?: THREE.Vector3 } | null)?.target;
+            if (tgt) {
+              camera.position.sub(tgt).multiplyScalar(1.18).add(tgt);
+              // Aim slightly lower so the building rides up off the bottom edge
+              // (the iso fit leaves all its slack above the roofline otherwise).
+              const dist = camera.position.distanceTo(tgt);
+              const drop = 2 * dist * Math.tan((camera.fov * Math.PI) / 360) * 0.06;
+              camera.position.y -= drop;
+              tgt.y -= drop; // restored by the final setView('iso') below
+              camera.updateMatrixWorld();
+            }
+          }
           await sleep(140); // a couple frames for R3F to render the new camera
           gl.render(scene, camera); // guarantee the freshest frame is in the buffer
           out[v] = gl.domElement.toDataURL('image/png');
@@ -70,6 +91,7 @@ export function CaptureHook() {
         gl.setSize(cssW, cssH, false);
         scene.fog = savedFog;
         camera.far = savedFar;
+        camera.aspect = savedAspect;
         camera.updateProjectionMatrix();
         if (controls && savedMax != null) controls.maxDistance = savedMax;
         if (setView) setView('iso');

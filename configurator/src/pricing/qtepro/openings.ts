@@ -95,7 +95,7 @@ export function gWTD(config: PricingConfig, mfr: MfrConfig): { wtd: number; sf: 
   let sf = 0;
   for (const wd of config.walkDoors || []) {
     const qty = wd.qty || 0;
-    t += qty * (mfr.wtdPrices[wd.type] ?? mfr.wtd_std ?? 300);
+    t += qty * (mfr.wtdPrices[wd.type] ?? mfr.wtd_std ?? 400);
     sf += wd.sideFrameSqFt || 0;
   }
   return { wtd: t, sf: sf * SF_DW };

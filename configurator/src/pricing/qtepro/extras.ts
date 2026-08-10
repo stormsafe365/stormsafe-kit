@@ -169,7 +169,7 @@ export function gLT(config: PricingConfig, mfr: MfrConfig): number {
         const sealDw = parseInt((asz || '').split('x')[0], 10) || 0;
         accAdj += (ae.headerSealQty || 0) * Math.round(sealDw * (mfr.seal || 9.85));
       } else if (atype === 'wtd') {
-        accAdj += aqty * (mfr.wtdPrices[ae.wtdType || 'std'] ?? mfr.wtd_std ?? 300);
+        accAdj += aqty * (mfr.wtdPrices[ae.wtdType || 'std'] ?? mfr.wtd_std ?? 400);
       } else if (atype === 'win') {
         accAdj += aqty * (mfr.winPrices[ae.winType || 'std'] ?? mfr.win_std ?? 200);
       }

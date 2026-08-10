@@ -125,6 +125,29 @@ export function CaptureHook() {
           if (setView) setView(v);
           else goToView(v);
           fitExact();
+          // Adapt the frame to the view's actual content shape (clamped per view
+          // type) so a long eave gets a wide frame and a gable a squarer one —
+          // the PNG is then mostly building, not background. The PDF layout reads
+          // the frame aspect from out[view+'Ar'] to size its box to match.
+          if (pts.length) {
+            camera.updateMatrixWorld();
+            let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+            for (const p of pts) {
+              const q = p.clone().project(camera);
+              mnx = Math.min(mnx, q.x); mxx = Math.max(mxx, q.x);
+              mny = Math.min(mny, q.y); mxy = Math.max(mxy, q.y);
+            }
+            const cvs = gl.domElement;
+            const contentAr = ((mxx - mnx) * cvs.width) / (Math.max(mxy - mny, 1e-6) * cvs.height);
+            const lo = v === 'iso' ? 1.45 : v === 'front' || v === 'back' ? 1.0 : 1.4;
+            const hi = v === 'iso' ? 1.9 : v === 'front' || v === 'back' ? 2.4 : 3.0;
+            const ar = Math.min(hi, Math.max(lo, contentAr));
+            gl.setSize(CAP_W, Math.round(CAP_W / ar), false);
+            camera.aspect = ar;
+            camera.updateProjectionMatrix();
+            fitExact();
+            out[v + 'Ar'] = String(Math.round(ar * 1000) / 1000);
+          }
           await sleep(140); // a couple frames for R3F to render the new camera
           gl.render(scene, camera); // guarantee the freshest frame is in the buffer
           out[v] = gl.domElement.toDataURL('image/png');

@@ -228,7 +228,7 @@ export function priceBuilding(input: PricingConfig, mfr: MfrConfig): PricedQuote
 
   const sheetingFree = preSheetSub >= freeThresh && config.buildingType !== 'widespan';
   const sheetingUpgrade =
-    !sheetingFree && config.sheetingUpgrade && config.buildingType !== 'widespan' ? Math.round(base * 0.1) : 0;
+    !sheetingFree && config.sheetingUpgrade && config.buildingType !== 'widespan' ? preSheetSub * 0.1 : 0;
 
   const subPreFastener = preSheetSub + sheetingUpgrade;
   const fastenerFree = !!mfr.fastenerAlwaysFree || subPreFastener >= freeThresh;

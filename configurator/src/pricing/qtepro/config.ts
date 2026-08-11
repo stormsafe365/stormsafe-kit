@@ -34,6 +34,8 @@ export interface RollUpDoor {
   chainHoistQty?: number;
   /** Header-seal qty (billed as rate × door-width-ft). */
   headerSealQty?: number;
+  /** Automatic opener qty — CCI only, $1,100 per door. */
+  openerQty?: number;
   /** 45° angle cut (+$85/door). */
   angle45?: boolean;
   /** CCI color upgrade key (matches mfr.rudColors[].v). */

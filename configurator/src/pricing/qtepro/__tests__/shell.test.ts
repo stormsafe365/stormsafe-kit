@@ -104,6 +104,14 @@ describe('gRUD (roll-up doors)', () => {
     const c = cfg({ width: 24, rollUpDoors: [{ type: 'standard', size: '10x10', qty: 1, location: 'Left Eave Side' }] });
     expect(gRUD(c, CA)).toBe(1050 + 200); // + eaveHeaderCost(10,24)
   });
+  it('automatic opener: $1,100/door on CCI only', () => {
+    const doors = [{ type: 'standard' as const, size: '10x10', qty: 2, location: 'Front End', openerQty: 2 }];
+    const base = gRUD(cfg({ rollUpDoors: doors.map((d) => ({ ...d, openerQty: 0 })) }), CCI);
+    expect(gRUD(cfg({ rollUpDoors: doors }), CCI)).toBe(base + 2 * 1100);
+    // CA never bills the opener even if the flag sneaks in
+    const caBase = gRUD(cfg({ rollUpDoors: doors.map((d) => ({ ...d, openerQty: 0 })) }), CA);
+    expect(gRUD(cfg({ rollUpDoors: doors }), CA)).toBe(caBase);
+  });
 });
 
 describe('gWTD / gWIN (walk doors & windows)', () => {

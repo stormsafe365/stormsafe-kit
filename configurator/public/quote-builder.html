@@ -4750,6 +4750,10 @@ function gRUD(){
     var sealQty=sealEl?parseInt(sealEl.value)||0:0;
     var sealDw=parseInt((sz||'').split('x')[0])||0;
     t+=sealQty*Math.round(sealDw*(window._seal||9.85));
+    // Automatic opener — CCI only, $1,100 per door
+    var opnEl=el.querySelector('.rop');
+    var opnQty=opnEl?parseInt(opnEl.value)||0:0;
+    if(ACTIVE_MFR==='CCI'&&opnQty) t+=opnQty*(window._opener||1100);
     // 45° angle cut: $85 per door
     var r45El=el.querySelector('.r45');
     if(r45El && r45El.value==='yes') t+=85*qty;
@@ -6272,6 +6276,11 @@ function aRUD(){
     '<select class="rsl" onchange="rc()">'+
     '<option value="0">None</option><option value="1">1</option>'+
     '</select></div>'+
+    // Automatic opener \u2014 CCI only, $1,100 per roll-up door
+    '<div class="row rop-row"'+(ACTIVE_MFR==='CCI'?'':' style="display:none"')+'><label>Automatic Opener</label>'+
+    '<select class="rop" onchange="rc()">'+
+    '<option value="0">None</option><option value="1">1 (+$1,100)</option>'+
+    '</select></div>'+
     '<div class="row"><label>45\u00B0 Angle Cut</label>'+
     '<select class="r45" onchange="rc()">'+
     '<option value="no">No</option>'+
@@ -6530,6 +6539,19 @@ function syncQtyOpts(qtyEl){
       chEl.appendChild(o);
     }
     chEl.value=Math.min(curCh,qty)||0;
+  }
+  // Update automatic opener options (CCI, $1,100/door)
+  var opEl=entry.querySelector('.rop');
+  if(opEl){
+    var curOp=parseInt(opEl.value)||0;
+    var opUnit=window._opener||1100;
+    opEl.innerHTML='<option value="0">None</option>';
+    for(var i=1;i<=qty;i++){
+      var o=document.createElement('option');
+      o.value=i; o.textContent=i+' (+$'+(i*opUnit).toLocaleString()+')';
+      opEl.appendChild(o);
+    }
+    opEl.value=Math.min(curOp,qty)||0;
   }
   // Update header seal options using door width x rate
   var slEl=entry.querySelector('.rsl');
@@ -6978,7 +7000,7 @@ function collectQuoteData(){
   data.doors = [];
   document.querySelectorAll('.re.entry').forEach(function(el){
     var d = {};
-    ['rloc','rdtype','rsz','rqt','rch','rsl','r45','rco'].forEach(function(cls){
+    ['rloc','rdtype','rsz','rqt','rch','rsl','rop','r45','rco'].forEach(function(cls){
       var f=el.querySelector('.'+cls); if(f) d[cls]=f.value;
     });
     // Position inputs
@@ -7187,6 +7209,7 @@ function restoreQuoteData(data){
     // Set chain hoist and header seal values (chkRE already handled row visibility)
     var chEl=el.querySelector('.rch'); if(chEl&&d.rch!==undefined) chEl.value=d.rch;
     var slEl=el.querySelector('.rsl'); if(slEl&&d.rsl!==undefined) slEl.value=d.rsl;
+    var opEl2=el.querySelector('.rop'); if(opEl2&&d.rop!==undefined) opEl2.value=d.rop;
     var r45El=el.querySelector('.r45'); if(r45El&&d.r45!==undefined) r45El.value=d.r45;
     var rcoEl=el.querySelector('.rco'); if(rcoEl&&d.rco!==undefined) rcoEl.value=d.rco;
     var qty=parseInt(d.rqt)||1;
@@ -7596,6 +7619,10 @@ async function printQuote(){
     var slEl=el.querySelector('.rsl');
     if(slEl&&parseInt(slEl.value)>0){
       var sq=parseInt(slEl.value); var sdw=parseInt((sz||'').split('x')[0])||0; var sp=Math.round(sdw*(window._seal||9.85)); rows+=row('Brush Seal (Tops & Sides)',sq,sp,sq*sp);
+    }
+    var opnPEl=el.querySelector('.rop');
+    if(ACTIVE_MFR==='CCI'&&opnPEl&&parseInt(opnPEl.value)>0){
+      var oq=parseInt(opnPEl.value); var op=window._opener||1100; rows+=row('Automatic Door Opener',oq,op,oq*op);
     }
     var r45El=el.querySelector('.r45');
     if(r45El&&r45El.value==='yes'){ rows+=row('45\u00B0 Angle Cut',qty,85,85*qty); }
@@ -8033,23 +8060,36 @@ function threeDPageHTML(imgs){
       (src?'<div style="width:100%;aspect-ratio:'+aspect+';overflow:hidden;background:#08121d"><img src="'+src+'" style="width:100%;height:100%;object-fit:cover;display:block"></div>':'')+
     '</div>';
   }
+  // Card sized to the image's own aspect (capture writes imgs[view+'Ar']) so
+  // the photo IS the card — no letterbox bands. Height-capped so the two pages
+  // always fit; a capped card narrows and centers instead of banding inside.
+  function _arOf(k,fb){ var a=parseFloat(imgs[k+'Ar']); return (a&&isFinite(a)&&a>0)?a:fb; }
+  function _vcard(src,label,ar,capH,maxW){
+    var w=Math.min(maxW,Math.round(capH*ar));
+    return '<div style="width:'+w+'px;max-width:100%;margin:14px auto 0;background:#111d28;border-radius:6px;overflow:hidden;border:1px solid #243c50;page-break-inside:avoid;break-inside:avoid">'+
+      (label?'<div style="background:#1C2E3F;color:#fff;font-size:10pt;font-weight:800;letter-spacing:2px;text-align:center;padding:6px">'+label+'</div>':'')+
+      '<div style="width:100%;aspect-ratio:'+ar+';background:#08121d">'+
+        (src?'<img src="'+src+'" style="width:100%;height:100%;object-fit:cover;display:block">':'')+
+      '</div>'+
+    '</div>';
+  }
+  var _gAr=Math.min(2.4,Math.max(1,parseFloat(gAsp)||1.3));
+  var _eAr=Math.min(3,Math.max(1.4,parseFloat(eAsp)||1.8));
   var pg1 = page(
     hdr('3D Building Rendering')+
-    '<div style="background:#111d28;border-radius:6px;overflow:hidden;border:1px solid #243c50;page-break-inside:avoid;break-inside:avoid">'+
-      '<img src="'+imgs.iso+'" style="display:block;margin:0 auto;max-width:100%;max-height:760px;width:auto;height:auto;background:#08121d">'+
-    '</div>'+caption
+    _vcard(imgs.iso,null,_arOf('iso',1.6),450,762)+
+    _vcard(imgs.left,'RIGHT EAVE SIDE',_arOf('left',_eAr),400,762)+
+    caption
   );
   var pg2 = page(
     hdr('Elevation Views')+
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
-      cell(imgs.front,'FRONT',gAsp)+cell(imgs.back,'BACK',gAsp)+
+      '<div>'+_vcard(imgs.front,'FRONT',_arOf('front',_gAr),320,374)+'</div>'+
+      '<div>'+_vcard(imgs.back,'BACK',_arOf('back',_gAr),320,374)+'</div>'+
     '</div>'+
-    // The capture keyed 'right'/'left' is swapped vs the program's eave naming
-    // (Left Eave Side maps to the +X wall), so a "Left Eave Side" component lands
-    // in imgs.right. Pair each label with the correct image: RIGHT EAVE ← imgs.left,
-    // LEFT EAVE ← imgs.right. (Live view + ISO are already correct; only these were.)
-    '<div style="margin-top:14px">'+cell(imgs.left,'RIGHT EAVE',eAsp)+'</div>'+
-    '<div style="margin-top:14px">'+cell(imgs.right,'LEFT EAVE',eAsp)+'</div>'+
+    // Capture 'right'/'left' keys are swapped vs the program's eave naming:
+    // RIGHT EAVE = imgs.left (shown on page 1), LEFT EAVE = imgs.right.
+    _vcard(imgs.right,'LEFT EAVE SIDE',_arOf('right',_eAr),400,762)+
     caption
   );
   return pg1 + pg2;
@@ -8518,6 +8558,8 @@ async function printContract(){
     if(_showHoist){ var hq=parseInt(hoistEl.value); var cp=window._chain||325; row('Chain Hoist',hq,cp,hq*cp); }
     var slEl=el.querySelector('.rsl');
     if(slEl&&parseInt(slEl.value)>0){ var sq=parseInt(slEl.value); var sdw=parseInt((sz||'').split('x')[0])||0; var sp=Math.round(sdw*(window._seal||9.85)); row('Brush Seal (Tops & Sides)',sq,sp,sq*sp); }
+    var opnPEl2=el.querySelector('.rop');
+    if(ACTIVE_MFR==='CCI'&&opnPEl2&&parseInt(opnPEl2.value)>0){ var oq2=parseInt(opnPEl2.value); var op2=window._opener||1100; row('Automatic Door Opener',oq2,op2,oq2*op2); }
     var r45El=el.querySelector('.r45');
     if(r45El&&r45El.value==='yes'){ row('45\u00B0 Angle Cut',qty,85,85*qty); }
     var rcoEl=el.querySelector('.rco');
@@ -10943,6 +10985,7 @@ function renderAllPricingTables(){
       {label:'Window — Standard 30×30', key:'win-std', get:function(){return 200;}, set:function(v){window._win_std=v;}},
       {label:'Window — Hi-Impact 30×30', key:'win-hi', get:function(){return window._win_hi||MFR().win_hi;}, set:function(v){window._win_hi=v;}},
       {label:'Chain Hoist Add-On (per door)', key:'chain', get:function(){return 325;}, set:function(v){window._chain=v;}},
+      {label:'Automatic Opener (per roll-up door, CCI)', key:'opener', get:function(){return window._opener||1100;}, set:function(v){window._opener=v;}},
       {label:'Brush Seal rate ($/ft of door width)', key:'seal', get:function(){return window._seal||9.85;}, set:function(v){window._seal=v;}},
       {label:'Side Frame — with Roll-Up Door (per opening)', key:'sf-rud', get:function(){return window._sf_rud||325;}, set:function(v){window._sf_rud=v;}},
       {label:'Side Frame — without Roll-Up Door (per opening)', key:'sf-dw', get:function(){return window._sf_dw||425;}, set:function(v){window._sf_dw=v;}},
@@ -10991,6 +11034,7 @@ function updateMiscPrice(inp){
   else if(key==='win-std') window._win_std=val;
   else if(key==='win-hi') window._win_hi=val;
   else if(key==='chain') window._chain=val;
+  else if(key==='opener') window._opener=val;
   else if(key==='seal') window._seal=val;
   else if(key==='sf-rud') window._sf_rud=val;
   else if(key==='sf-dw') window._sf_dw=val;

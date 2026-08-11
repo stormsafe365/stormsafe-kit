@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getMfr } from '../manufacturers';
 import { eaveHeaderCost, ecLookup, scLookup } from '../closures';
 import { gLeg, gWalls, gConnectionFees } from '../shell';
-import { gRUD, gWTD, gWIN } from '../openings';
+import { gRUD, gWTD, gWIN, getDoorPrice, doorHasChainIncluded } from '../openings';
 import type { PricingConfig } from '../config';
 
 const CA = getMfr('CA');
@@ -96,13 +96,25 @@ describe('gConnectionFees (lean-to attachment)', () => {
 });
 
 describe('gRUD (roll-up doors)', () => {
-  it('standard 10×10 on an end = base price only', () => {
+  it('CA 10×10 on an end = July 15 certified price', () => {
     const c = cfg({ rollUpDoors: [{ type: 'standard', size: '10x10', qty: 1, location: 'Front End' }] });
-    expect(gRUD(c, CA)).toBe(1050); // RDP_STD['10x10']
+    expect(gRUD(c, CA)).toBe(1395); // CA.certRud['10x10'] overrides RDP_STD's 1050
   });
   it('same door on an eave side adds the structural header', () => {
     const c = cfg({ width: 24, rollUpDoors: [{ type: 'standard', size: '10x10', qty: 1, location: 'Left Eave Side' }] });
-    expect(gRUD(c, CA)).toBe(1050 + 200); // + eaveHeaderCost(10,24)
+    expect(gRUD(c, CA)).toBe(1395 + 200); // + eaveHeaderCost(10,24)
+  });
+  it('CA certified sheet: 12x12 includes the hoist, 10x10 does not; CCI untouched', () => {
+    expect(getDoorPrice('rollup', '12x12', CA)).toBe(1995);
+    expect(doorHasChainIncluded('rollup', '12x12', CA)).toBe(true);
+    expect(doorHasChainIncluded('rollup', '10x10', CA)).toBe(false);
+    // hoist add-on billable below 12x12, suppressed at 12x12+
+    const below = cfg({ rollUpDoors: [{ type: 'rollup', size: '10x10', qty: 1, location: 'Front End', chainHoistQty: 1 }] });
+    expect(gRUD(below, CA)).toBe(1395 + 325);
+    const incl = cfg({ rollUpDoors: [{ type: 'rollup', size: '12x12', qty: 1, location: 'Front End', chainHoistQty: 1 }] });
+    expect(gRUD(incl, CA)).toBe(1995);
+    // CCI has no certified table — shared chart resolution unchanged
+    expect(getDoorPrice('standard', '10x10', CCI)).toBe(1050);
   });
   it('automatic opener: $1,100/door on CCI only', () => {
     const doors = [{ type: 'standard' as const, size: '10x10', qty: 2, location: 'Front End', openerQty: 2 }];

@@ -2696,28 +2696,32 @@ var MANUFACTURERS = {
     ],
     // ── Roll-up door color palette (CA) — its OWN palette, separate from the
     // building colors above (unlike CCI, whose door colors match its building
-    // chart). CA prices color as a PERCENTAGE of the door's listed price:
-    // +25% for any color, +30% for black. White is the standard finish at $0.
-    // The % rides on the price shown in the size dropdown (which includes the
-    // chain hoist on ★ sizes where it's built in) but NEVER on the separate
-    // +$325 chain hoist add-on line. Hexes sampled from CA's door screenshots.
+    // chart). July 15, 2026 sheet: color is a FLAT $100 per door (was a
+    // 25–30% of-door-price upcharge). White is the standard finish at $0.
+    // Hexes sampled from CA's door screenshots.
     rudColors: [
       {v:'white',           label:'White (standard)',  hex:'#F2F1EA', price:0},
-      {v:'black',           label:'Black',             hex:'#15171A', pct:30},
-      {v:'bronze',          label:'Bronze',            hex:'#71685E', pct:25},
-      {v:'cedarRed',        label:'Cedar Red',         hex:'#84433A', pct:25},
-      {v:'continentalBrown',label:'Continental Brown', hex:'#54231C', pct:25},
-      {v:'desertSand',      label:'Desert Sand',       hex:'#A98F6C', pct:25},
-      {v:'desertTan',       label:'Desert Tan',        hex:'#D1C9AD', pct:25},
-      {v:'forestGreen',     label:'Forest Green',      hex:'#11492B', pct:25},
-      {v:'lightStone',      label:'Light Stone',       hex:'#C2BFAD', pct:25},
-      {v:'sandstone',       label:'Sandstone',         hex:'#B8B0A1', pct:25},
-      {v:'satinWhite',      label:'Satin White',       hex:'#CDD2CD', pct:25},
-      {v:'silhouetteGray',  label:'Silhouette Gray',   hex:'#85857D', pct:25}
+      {v:'black',           label:'Black',             hex:'#15171A', price:100},
+      {v:'bronze',          label:'Bronze',            hex:'#71685E', price:100},
+      {v:'cedarRed',        label:'Cedar Red',         hex:'#84433A', price:100},
+      {v:'continentalBrown',label:'Continental Brown', hex:'#54231C', price:100},
+      {v:'desertSand',      label:'Desert Sand',       hex:'#A98F6C', price:100},
+      {v:'desertTan',       label:'Desert Tan',        hex:'#D1C9AD', price:100},
+      {v:'forestGreen',     label:'Forest Green',      hex:'#11492B', price:100},
+      {v:'lightStone',      label:'Light Stone',       hex:'#C2BFAD', price:100},
+      {v:'sandstone',       label:'Sandstone',         hex:'#B8B0A1', price:100},
+      {v:'satinWhite',      label:'Satin White',       hex:'#CDD2CD', price:100},
+      {v:'silhouetteGray',  label:'Silhouette Gray',   hex:'#85857D', price:100}
     ],
+    // ── July 15, 2026 certified price sheet (CA memo): one certified price per
+    // size; 12x12 and up include the chain hoist; smaller sizes take the +$325
+    // add-on. This table REPLACES the shared STD/CHAIN tables for CA garage
+    // doors (hi-impact keeps its own chart).
+    certRud: {'6x6':1095,'8x8':1095,'9x8':1295,'10x8':1395,'10x10':1395,'12x12':1995,'14x14':2595,'16x16':2995},
+    certHoist: {'12x12':true,'14x14':true,'16x16':true},
     // ── Scalar pricing ───────────────────────────────────────────────────────
-    wtd_std: 400, wtd_hi: 600,
-    win_std: 200, win_hi: 590,
+    wtd_std: 395, wtd_hi: 600,
+    win_std: 200, win_hi: 395,
     chain: 325, seal: 9.85,
     freeThresh: 10000, fastenerAlwaysFree: false,
     // ── Side Panel pricing (carport/GCH open sections) ───────────────────────
@@ -2852,16 +2856,16 @@ var MANUFACTURERS = {
     // only the 22-wide figure is confirmed.
     halfGablePrice: 1015,
     // ── Walk-Through Door types ───────────────────────────────────────────────
-    wtdPrices: {std:400, hi:600},
+    wtdPrices: {std:395, hi:600},
     wtdTypes: [
-      {v:'std',    label:'Standard (36×80)'},
+      {v:'std',    label:'Certified 36×80 (FL)'},
       {v:'hi',     label:'Hi-Impact'},
     ],
     // ── Window types (value, label, fw=width-in, fh=height-in) ───────────────
-    winPrices: {std:200, hi:590},
+    winPrices: {std:200, hi:395},
     winTypes: [
-      {v:'std', label:'Standard 30×30',    fw:30, fh:30},
-      {v:'hi',  label:'Hi-Impact 30×30',   fw:30, fh:30},
+      {v:'std', label:'Standard 30×30',              fw:30, fh:30},
+      {v:'hi',  label:'High-Impact 30×30 (FL code)', fw:30, fh:30},
     ],
   },
   CCI: {
@@ -4644,6 +4648,11 @@ function rudPriceAdj(type, size, price){
 }
 function getDoorPrice(type, size){
   var p=0;
+  // CA July 15, 2026 certified sheet: one certified price per size REPLACES the
+  // shared STD/CHAIN tables (hi-impact keeps its own chart).
+  var _cert=(typeof MFR==='function' && MFR().certRud)||null;
+  var _certClean=size && size.charAt(0)==='*' ? size.substring(1) : size;
+  if(type!=='hiimpact' && _cert && _cert[_certClean]!=null) return _cert[_certClean];
   if(type==='standard') p=RDP_STD[size]||0;
   else if(type==='chain') p=RDP_CHAIN[size]||RDP_CHAIN['*'+size]||0;
   else if(type==='hiimpact') p=RDP_HI[size]||RDP_HI['*'+size]||0;
@@ -4671,8 +4680,11 @@ function cciCertHoistIncluded(size){
   return h>=13;               // 6'/8'/9'/10' wide — 13'-16'
 }
 function doorHasChainIncluded(type, size){
-  if(type==='chain') return true;            // legacy explicit chain type
   if(type==='hiimpact') return true;         // hi-impact doors always include hoist
+  // CA certified sheet: hoist included only on the flagged sizes (12x12+)
+  var _cert=(typeof MFR==='function' && MFR().certRud)||null;
+  if(_cert && _cert[size]!=null) return !!((MFR().certHoist||{})[size]);
+  if(type==='chain') return true;            // legacy explicit chain type
   if(type==='rollup'){
     // CCI (rudPreferChain): the merged tier sells the CERTIFIED door; only the
     // chart's auto-hoisted sizes include one (cciCertHoistIncluded) — the rest
@@ -6359,7 +6371,14 @@ function updateRUDSizes(dtypeEl){
     chRow.style.display=''; slRow.style.display='';
     var sizeMap = {};   // dedupe map: size → {price, chainIncluded, lift}
     var preferChain = (typeof MFR==='function' && !!MFR().rudPreferChain);
-    if(preferChain){
+    var certT = (typeof MFR==='function' && MFR().certRud)||null;
+    if(certT){
+      // CA July 15, 2026 certified sheet — the menu is EXACTLY these sizes.
+      Object.keys(certT).forEach(function(k){
+        if(!fits(k)) return;
+        sizeMap[k] = {price: certT[k], chainIncluded: !!((MFR().certHoist||{})[k]), lift: false};
+      });
+    } else if(preferChain){
       // CCI: the merged tier IS the certified chart; only the auto-hoisted
       // sizes (cciCertHoistIncluded) carry the ★ / included flag — the rest are
       // hoist-optional. Any size missing falls back to the uncertified chart.

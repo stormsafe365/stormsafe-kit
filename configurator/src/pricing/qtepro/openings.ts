@@ -16,8 +16,12 @@ const { RDP_STD, RDP_CHAIN, RDP_HI, HI_LIFT_WIDTHS, HI_LIFT_HEIGHTS } = SHARED;
 /** Side-frame area rate, $/sqft (builder `window._sf_dw`, constant 425). */
 const SF_DW = 425;
 
-/** Unit price for a roll-up door (type, size). Builder `getDoorPrice` line 4086. */
-export function getDoorPrice(type: RollUpType, size: string): number {
+/** Unit price for a roll-up door (type, size). Builder `getDoorPrice` line 4086.
+ *  Pass `mfr` so a manufacturer certified sheet (CA July 15, 2026 `certRud`)
+ *  can override the shared tables; hi-impact keeps its own chart. */
+export function getDoorPrice(type: RollUpType, size: string, mfr?: MfrConfig): number {
+  const clean = size && size.charAt(0) === '*' ? size.substring(1) : size;
+  if (type !== 'hiimpact' && mfr?.certRud && mfr.certRud[clean] != null) return mfr.certRud[clean];
   if (type === 'standard') return RDP_STD[size] || 0;
   if (type === 'chain') return RDP_CHAIN[size] || RDP_CHAIN['*' + size] || 0;
   if (type === 'hiimpact') return RDP_HI[size] || RDP_HI['*' + size] || 0;
@@ -29,9 +33,11 @@ export function getDoorPrice(type: RollUpType, size: string): number {
 }
 
 /** Does this (type,size) already include a chain hoist? Builder line 4101. */
-export function doorHasChainIncluded(type: RollUpType, size: string): boolean {
-  if (type === 'chain') return true;
+export function doorHasChainIncluded(type: RollUpType, size: string, mfr?: MfrConfig): boolean {
   if (type === 'hiimpact') return true;
+  // CA certified sheet: hoist included only on the flagged sizes (12x12+).
+  if (mfr?.certRud && mfr.certRud[size] != null) return !!mfr.certHoist?.[size];
+  if (type === 'chain') return true;
   if (type === 'rollup') {
     if (RDP_STD[size]) return false;
     return !!(RDP_CHAIN[size] || RDP_CHAIN['*' + size]);
@@ -64,10 +70,10 @@ export function gRUD(config: PricingConfig, mfr: MfrConfig): number {
     const qty = d.qty || 0;
     const ea = d.location === 'Left Eave Side' || d.location === 'Right Eave Side';
 
-    t += getDoorPrice(dtype, sz) * qty;
+    t += getDoorPrice(dtype, sz, mfr) * qty;
 
     // Chain-hoist add-on — only for sizes that don't already include one.
-    if (dtype === 'standard' || (dtype === 'rollup' && !doorHasChainIncluded(dtype, sz))) {
+    if (dtype === 'standard' || (dtype === 'rollup' && !doorHasChainIncluded(dtype, sz, mfr))) {
       t += (d.chainHoistQty || 0) * (mfr.chain || 325);
     }
     // Header seal: rate × door-width-ft.

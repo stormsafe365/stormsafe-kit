@@ -119,6 +119,11 @@ export interface MfrConfig {
   wtdPrices: Record<string, number>;
   winPrices: Record<string, number>;
   acPrices: Record<string, number>;
+  /** CA July 15, 2026 certified sheet: per-size certified garage-door price
+   *  that REPLACES the shared STD/CHAIN tables (hi-impact keeps its chart). */
+  certRud?: Record<string, number>;
+  /** Sizes whose certified price includes the chain hoist (12x12 and up). */
+  certHoist?: Record<string, boolean>;
   rudColors?: RudColor[];
   colors: BuildingColor[];
 

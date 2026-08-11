@@ -73,6 +73,8 @@ export function gRUD(config: PricingConfig, mfr: MfrConfig): number {
     // Header seal: rate × door-width-ft.
     const sealDw = parseInt((sz || '').split('x')[0], 10) || 0;
     t += (d.headerSealQty || 0) * Math.round(sealDw * (mfr.seal || 9.85));
+    // Automatic opener — CCI only, $1,100 per door.
+    if (mfr.key === 'CCI') t += (d.openerQty || 0) * 1100;
     // 45° angle cut: $85/door.
     if (d.angle45) t += 85 * qty;
     // CCI color upgrade.

@@ -104,16 +104,16 @@ describe('priceBuilding — money math (rc composition)', () => {
     expect(q.splitPayment).toBeNull();
   });
 
-  it('base < $10k → sheeting upgrade (+10% base), lap siding (+10%), billable fasteners (CA)', () => {
+  it('base < $10k → sheeting upgrade (+10% of pre-sheeting subtotal), lap siding (+10%), billable fasteners (CA)', () => {
     const q = priceBuilding(
       cfg({ baseOverride: 5000, lapSiding: true, sheetingUpgrade: true, fastenerAdd: true }),
       CA,
     );
-    // preSheet = base 5000 + lap 500 = 5500; +sheet 500 + fasteners 150 = 6150
+    // preSheet = base 5000 + lap 500 = 5500; +sheet 10% of preSheet 550 + fasteners 150 = 6200
     expect(q.lineItems.lapSiding).toBe(500);
-    expect(q.lineItems.sheetingUpgrade).toBe(500);
+    expect(q.lineItems.sheetingUpgrade).toBe(550);
     expect(q.lineItems.fasteners).toBe(150);
-    expect(q.subtotal).toBe(6150);
+    expect(q.subtotal).toBe(6200);
     expect(q.sheetingFree).toBe(false);
     expect(q.fastenerFree).toBe(false);
   });

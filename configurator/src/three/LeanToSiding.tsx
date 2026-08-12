@@ -200,7 +200,9 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
 }
 
 // ── Wall-setting resolution ────────────────────────────────────────────────
-type GableVal = 'open' | 'gable' | 'closed';
+type GableVal = 'open' | 'halfEnd' | 'gable' | 'q1' | 'q2' | 'q3' | 'closed';
+/** Roof-down band coverage for the fractional end closures. */
+const GABLE_BAND_FRAC: Partial<Record<GableVal, number>> = { q1: 0.25, q2: 0.5, q3: 0.75 };
 type SideVal = string; // open | closed | q1 | q2 | q3 | 1panel | 2panel | 3panel
 
 function resolveWalls(lt: LeanToStructure): { side: SideVal; front: GableVal; back: GableVal } {
@@ -926,67 +928,62 @@ function LeanToOpeningGuides({ geo, lt, opening }: { geo: SurfaceSet; lt: LeanTo
 }
 
 // Gable end in the X-Y plane at constant Z (eave-attached).
-function gableXY(v: GableVal, innerX: number, outerX: number, lh: number, connH: number, z: number): Pt[] {
+// End-face outline in LOCAL (across, y) coords for a given closure value —
+// shared by both attachment orientations, mapped to world by gableXY/gableZY.
+//   closed  → full right trapezoid (tall inner side at the building)
+//   gable   → triangle above the low-eave line
+//   halfEnd → inner (tall) vertical half, floor to roof
+//   q1/q2/q3 → band hanging from the roof, bottom edge at the matching
+//              fraction of each side's height (sheeted area = exact fraction)
+function gableOutline(v: GableVal, inner: number, outer: number, lh: number, connH: number): UV[] {
   if (v === 'gable') {
-    // Triangle ABOVE the eave line only.
     return [
-      [innerX, lh, z],
-      [outerX, lh, z],
-      [innerX, connH, z],
+      [inner, lh],
+      [outer, lh],
+      [inner, connH],
+    ];
+  }
+  if (v === 'halfEnd') {
+    const mid = (inner + outer) / 2;
+    const topMid = (connH + lh) / 2;
+    return [
+      [inner, 0],
+      [mid, 0],
+      [mid, topMid],
+      [inner, connH],
+    ];
+  }
+  const f = GABLE_BAND_FRAC[v];
+  if (f) {
+    return [
+      [inner, (1 - f) * connH],
+      [outer, (1 - f) * lh],
+      [outer, lh],
+      [inner, connH],
     ];
   }
   // Full trapezoid (closed).
   return [
-    [innerX, 0, z],
-    [outerX, 0, z],
-    [outerX, lh, z],
-    [innerX, connH, z],
+    [inner, 0],
+    [outer, 0],
+    [outer, lh],
+    [inner, connH],
   ];
 }
+
+function gableXY(v: GableVal, innerX: number, outerX: number, lh: number, connH: number, z: number): Pt[] {
+  return gableOutline(v, innerX, outerX, lh, connH).map(([a, y]) => [a, y, z] as Pt);
+}
 function gableXYUV(v: GableVal, innerX: number, outerX: number, lh: number, connH: number): UV[] {
-  if (v === 'gable')
-    return [
-      [innerX, lh],
-      [outerX, lh],
-      [innerX, connH],
-    ];
-  return [
-    [innerX, 0],
-    [outerX, 0],
-    [outerX, lh],
-    [innerX, connH],
-  ];
+  return gableOutline(v, innerX, outerX, lh, connH);
 }
 
 // Gable end in the Z-Y plane at constant X (gable-attached).
 function gableZY(v: GableVal, innerZ: number, outerZ: number, lh: number, connH: number, x: number): Pt[] {
-  if (v === 'gable') {
-    return [
-      [x, lh, innerZ],
-      [x, lh, outerZ],
-      [x, connH, innerZ],
-    ];
-  }
-  return [
-    [x, 0, innerZ],
-    [x, 0, outerZ],
-    [x, lh, outerZ],
-    [x, connH, innerZ],
-  ];
+  return gableOutline(v, innerZ, outerZ, lh, connH).map(([a, y]) => [x, y, a] as Pt);
 }
 function gableZYUV(v: GableVal, innerZ: number, outerZ: number, lh: number, connH: number): UV[] {
-  if (v === 'gable')
-    return [
-      [innerZ, lh],
-      [outerZ, lh],
-      [innerZ, connH],
-    ];
-  return [
-    [innerZ, 0],
-    [outerZ, 0],
-    [outerZ, lh],
-    [innerZ, connH],
-  ];
+  return gableOutline(v, innerZ, outerZ, lh, connH);
 }
 
 // ── Math helpers ───────────────────────────────────────────────────────────

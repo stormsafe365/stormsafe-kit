@@ -5479,7 +5479,10 @@ function ltUnit(el){
     // closed end is half the pair ($1,435 H and $2,150 V pairs, both exact).
     var _hzF=ltPanelsHorizontal();
     var endPairS=ecLookup(vw,h)+(_hzF?0:vertEndUpcharge(vw));
-    var endP=function(v){ return v==='closed'?Math.round(endPairS/2):(v==='gable'?112.5:0); };
+    // Partial ends price as fractions of the chart-derived closed end
+    // (1/4=25%, 1/2=50%, 3/4=75%, Half End=50%); Gable Only keeps its flat rate.
+    var LT_END_FRAC={closed:1, q3:0.75, q2:0.5, halfEnd:0.5, q1:0.25};
+    var endP=function(v){ return v==='gable'?112.5:Math.round(endPairS/2*(LT_END_FRAC[v]||0)); };
     var sideP=(ltWalls2.side==='closed')
       ? cciLtSideClosed(h,l,!_hzF)
       : (LT_SIDE_P[ltWalls2.side]||0);
@@ -5899,8 +5902,10 @@ function rebuildLTAccOffsets(e){
   container.innerHTML=html;
 }
 // Lean-to wall status helper — reads new Open/Enclosed/Custom mode
-// Pricing for lean-to wall options (per option, placeholder — verify with CA)
-var LT_END_P  = {open:0, gable:150, closed:200};
+// Pricing for lean-to wall options (per option, placeholder — verify with CA).
+// halfEnd/q1/q2/q3 are FRACTIONS of the closed-end price (50/25/50/75%) —
+// keep them proportional to `closed` if/when it gets recalibrated.
+var LT_END_P  = {open:0, gable:150, halfEnd:100, q1:50, q2:100, q3:150, closed:200};
 var LT_SIDE_P = {open:0,'1panel':100,'2panel':200,'3panel':300,q1:175,q2:350,q3:525,closed:700};
 function getLTWalls(el){
   var wmEl=el.querySelector('.lt-wm');
@@ -6106,13 +6111,21 @@ function aLT(){
     '<div class="row"><label>Front Gable</label>'+
     '<select class="lt-wall-front" onchange="rc()">'+
     '<option value="open">Open</option>'+
+    '<option value="halfEnd">Half End</option>'+
     '<option value="gable">Gable Only</option>'+
+    '<option value="q1">1/4 Closed</option>'+
+    '<option value="q2">1/2 Closed</option>'+
+    '<option value="q3">3/4 Closed</option>'+
     '<option value="closed">Closed</option>'+
     '</select></div>'+
     '<div class="row"><label>Back Gable</label>'+
     '<select class="lt-wall-back" onchange="rc()">'+
     '<option value="open">Open</option>'+
+    '<option value="halfEnd">Half End</option>'+
     '<option value="gable">Gable Only</option>'+
+    '<option value="q1">1/4 Closed</option>'+
+    '<option value="q2">1/2 Closed</option>'+
+    '<option value="q3">3/4 Closed</option>'+
     '<option value="closed">Closed</option>'+
     '</select></div>'+
     '<div class="row"><label>Side Wall</label>'+
@@ -10505,9 +10518,28 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
     if(side==='left')  trapPts=x0+','+oy+' '+x0+','+yOuter+' '+x1+','+yInner+' '+x1+','+oy;
     else               trapPts=x0+','+oy+' '+x0+','+yInner+' '+x1+','+yOuter+' '+x1+','+oy;
 
-    var ltEndVal=lt.endClosedForView||'open';  // 'open','gable','closed' or true/false
+    var ltEndVal=lt.endClosedForView||'open';  // 'open','halfEnd','gable','q1','q2','q3','closed' or true/false
     var ltEndClosed=(ltEndVal===true||ltEndVal==='closed');
     var ltGableOnly=(ltEndVal==='gable');
+    // Partial closures: roof-down band (q1/q2/q3 = 1/4, 1/2, 3/4 of each
+    // height) or the inner vertical half (halfEnd) — mirrors the 3D model.
+    var ltBandFrac=(ltEndVal==='q1')?0.25:(ltEndVal==='q2')?0.5:(ltEndVal==='q3')?0.75:0;
+    var ltHalfEnd=(ltEndVal==='halfEnd');
+    if(ltBandFrac>0){
+      var yBotO=oy-(1-ltBandFrac)*ltH_px, yBotI=oy-(1-ltBandFrac)*connH;
+      var bandPts=(side==='left')
+        ? x0+','+yBotO+' '+x0+','+yOuter+' '+x1+','+yInner+' '+x1+','+yBotI
+        : x0+','+yBotI+' '+x0+','+yInner+' '+x1+','+yOuter+' '+x1+','+yBotO;
+      s+='<polygon points="'+bandPts+'" fill="'+wC+'"/>';
+      s+='<polygon points="'+bandPts+'" fill="none" stroke="'+vtC+'" stroke-width="1" opacity="0.5"/>';
+    } else if(ltHalfEnd){
+      var midX=(x0+x1)/2, yMid=(yInner+yOuter)/2;
+      var halfPts=(side==='left')
+        ? midX+','+oy+' '+midX+','+yMid+' '+x1+','+yInner+' '+x1+','+oy
+        : x0+','+oy+' '+x0+','+yInner+' '+midX+','+yMid+' '+midX+','+oy;
+      s+='<polygon points="'+halfPts+'" fill="'+wC+'"/>';
+      s+='<polygon points="'+halfPts+'" fill="none" stroke="'+vtC+'" stroke-width="1" opacity="0.5"/>';
+    }
     if(ltEndClosed){
       // Closed end: fill trapezoid with wall color + siding lines
       s+='<polygon points="'+trapPts+'" fill="'+wC+'"/>';
@@ -10535,8 +10567,8 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
       // Only the outer corner post + sloped roof line (drawn below) define the structure
     }
 
-    // ROOF — open end gets a single slope line; closed gets a solid filled band
-    if(ltEndClosed || ltGableOnly){
+    // ROOF — open end gets a single slope line; closed/partial gets a solid filled band
+    if(ltEndClosed || ltGableOnly || ltBandFrac>0 || ltHalfEnd){
       // Solid roof band (closed or gable-only end) — no fascia, roof band shows roof edge cleanly
       var rfPts;
       if(side==='left')  rfPts=x0+','+yOuter+' '+x1+','+yInner+' '+x1+','+(yInner-rfOvhg)+' '+x0+','+(yOuter-rfOvhg);

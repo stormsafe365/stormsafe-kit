@@ -104,8 +104,9 @@ function ltBasePrice(w: number, l: number): number {
   return Math.round(w * l * 7.0);
 }
 
-// Lean-to wall option prices (builder lines 4714–4715).
-const LT_END_P: Record<string, number> = { open: 0, gable: 150, closed: 200 };
+// Lean-to wall option prices (builder lines 4714–4715). halfEnd/q1/q2/q3 are
+// fractions of the closed-end price (50/25/50/75%) — keep proportional.
+const LT_END_P: Record<string, number> = { open: 0, gable: 150, halfEnd: 100, q1: 50, q2: 100, q3: 150, closed: 200 };
 const LT_SIDE_P: Record<string, number> = {
   open: 0,
   '1panel': 100,

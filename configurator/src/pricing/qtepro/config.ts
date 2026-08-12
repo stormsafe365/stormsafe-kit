@@ -77,7 +77,7 @@ export interface LeanToAccessory {
 }
 
 export type LtWallMode = 'open' | 'enclosed' | 'custom';
-export type LtEndWall = 'open' | 'gable' | 'closed';
+export type LtEndWall = 'open' | 'halfEnd' | 'gable' | 'q1' | 'q2' | 'q3' | 'closed';
 export type LtSideWall = 'open' | '1panel' | '2panel' | '3panel' | 'q1' | 'q2' | 'q3' | 'closed';
 
 export interface LeanTo {

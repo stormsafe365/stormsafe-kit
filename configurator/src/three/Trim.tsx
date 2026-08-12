@@ -38,10 +38,13 @@ export function Trim({ structure, color, wainscot, openings }: TrimProps) {
     () => new THREE.MeshStandardMaterial({ color, metalness: 0.0, roughness: 0.52, envMapIntensity: 0.25 }),
     [color],
   );
-  // Dark cut-edge of the roof panel (the rib-ends visible at the drip/rake).
-  const darkMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#2c3036', metalness: 0.35, roughness: 0.55 }),
-    [],
+  // Cut-edge of the roof panel (the rib-ends visible at the drip/rake).
+  // Follows the selected trim color (the default trim swatch is Black, so it
+  // still reads dark out of the box); keeps a more metallic finish than the
+  // fascia so the folded edge reads as its own piece.
+  const edgeMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color, metalness: 0.35, roughness: 0.55 }),
+    [color],
   );
 
   const Box = ({
@@ -138,7 +141,7 @@ export function Trim({ structure, color, wainscot, openings }: TrimProps) {
         return (
           <group key={`eave${sx}`}>
             <Box pos={[sx * (eaveX - tuck), dripY - fasciaH / 2 + 0.02, 0]} size={[0.035, fasciaH, 2 * gz]} />
-            <Box pos={[sx * eaveX, dripY - 0.025, 0]} size={[0.028, 0.07, 2 * gz]} m={darkMat} />
+            <Box pos={[sx * eaveX, dripY - 0.025, 0]} size={[0.028, 0.07, 2 * gz]} m={edgeMat} />
           </group>
         );
       })}
@@ -179,13 +182,13 @@ export function Trim({ structure, color, wainscot, openings }: TrimProps) {
               <boxGeometry args={[len, 0.24, 0.045]} />
             </mesh>,
           );
-          // dark drip/rib-edge along the roof's overhanging gable edge
+          // drip/rib-edge along the roof's overhanging gable edge (trim color)
           boards.push(
             <mesh
               key={`rkd${i}_${sx}`}
               position={[(ax + bx) / 2 + px * 0.01, (ay + by) / 2 + py * 0.01, z]}
               rotation={[0, 0, ang]}
-              material={darkMat}
+              material={edgeMat}
             >
               <boxGeometry args={[len, 0.06, 0.028]} />
             </mesh>,

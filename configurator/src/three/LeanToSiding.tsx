@@ -53,14 +53,17 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
   const wallDir: RibDirection = wallOrientation === 'Vertical' ? 'vertical' : 'horizontal';
   const roofDir: RibDirection = roofOrientation === 'Vertical' ? 'vertical' : 'horizontal';
 
-  // Trim materials — painted dielectric (white) + dark cut-edge drip strip.
+  // Trim materials — painted dielectric face + cut-edge drip strip. The drip
+  // edge follows the selected trim color too (default trim is Black, so it
+  // still reads dark out of the box), with a more metallic finish so the
+  // folded edge reads as its own piece.
   const trimMat = useMemo(
     () => new THREE.MeshStandardMaterial({ color: trimColor, metalness: 0.0, roughness: 0.52, envMapIntensity: 0.25 }),
     [trimColor],
   );
-  const darkMat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#2c3036', metalness: 0.35, roughness: 0.55 }),
-    [],
+  const edgeMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: trimColor, metalness: 0.35, roughness: 0.55 }),
+    [trimColor],
   );
 
   const tex = useMemo(
@@ -123,7 +126,7 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
 
             {/* Eave fascia + rake trim following the roof overhang */}
             {geo.trim.map((b, i) => (
-              <mesh key={`trim-${i}`} position={b.pos} rotation={b.rot ?? [0, 0, 0]} material={b.dark ? darkMat : trimMat} castShadow receiveShadow>
+              <mesh key={`trim-${i}`} position={b.pos} rotation={b.rot ?? [0, 0, 0]} material={b.dark ? edgeMat : trimMat} castShadow receiveShadow>
                 <boxGeometry args={b.size} />
               </mesh>
             ))}

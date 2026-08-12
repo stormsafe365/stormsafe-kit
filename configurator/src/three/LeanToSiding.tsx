@@ -945,12 +945,18 @@ function gableOutline(v: GableVal, inner: number, outer: number, lh: number, con
   }
   if (v === 'halfEnd') {
     const mid = (inner + outer) / 2;
-    const topMid = (connH + lh) / 2;
+    // Half End (per Sensei): the OUTER (low) half is sheeted floor-to-roof and
+    // the tall inner half stays open as a drive-in next to the building, with
+    // a header band above the opening (from the low-eave line to the roof).
+    // Vertex order starts at the concave corner so PolyPanel's fan
+    // triangulation stays inside the outline.
     return [
-      [inner, 0],
+      [mid, lh],
       [mid, 0],
-      [mid, topMid],
+      [outer, 0],
+      [outer, lh],
       [inner, connH],
+      [inner, lh],
     ];
   }
   const f = GABLE_BAND_FRAC[v];

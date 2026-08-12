@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { getMfr } from '../manufacturers';
 import { eaveHeaderCost, ecLookup, scLookup } from '../closures';
 import { gLeg, gWalls, gConnectionFees } from '../shell';
-import { gRUD, gWTD, gWIN, getDoorPrice, doorHasChainIncluded } from '../openings';
+import { gRUD, gWTD, gWIN, getDoorPrice, doorHasChainIncluded, doorNeedsLift } from '../openings';
 import type { PricingConfig } from '../config';
 
 const CA = getMfr('CA');
@@ -70,10 +70,14 @@ describe('gWalls (gables + sides + GCH)', () => {
     // 2×ecLookup(20,8)=1880  +  2×(scLookup(8,30,20))=930  = 2810
     expect(gWalls(c, CA)).toBe(2810);
   });
-  it('Gable Only is a flat charge, not a full end close', () => {
-    const c = cfg({ frontGable: 'Gable Only' });
-    expect(gWalls(c, CA)).toBe(CA.gableOnlyPrice);
-    expect(gWalls(c, CA)).toBeLessThan(ecLookup(20, 8, CA));
+  it('Gable Only: CA July 15, 2026 = $225 ≤24w / $300 26w+, vertical adds $50/$85', () => {
+    expect(gWalls(cfg({ frontGable: 'Gable Only' }), CA)).toBe(225); // 20w horizontal
+    expect(gWalls(cfg({ frontGable: 'Gable Only', wallStyle: 'Vertical' }), CA)).toBe(275);
+    expect(gWalls(cfg({ width: 26, frontGable: 'Gable Only' }), CA)).toBe(300);
+    expect(gWalls(cfg({ width: 26, frontGable: 'Gable Only', wallStyle: 'Vertical' }), CA)).toBe(385);
+    expect(gWalls(cfg({ frontGable: 'Gable Only' }), CA)).toBeLessThan(ecLookup(20, 8, CA));
+    // CCI keeps its flat price
+    expect(gWalls(cfg({ frontGable: 'Gable Only' }), CCI)).toBe(CCI.gableOnlyPrice);
   });
   it('GCH always adds the internal divider end wall', () => {
     const open = cfg({ buildingType: 'gch', gchEnclosedLength: 0 });
@@ -96,24 +100,36 @@ describe('gConnectionFees (lean-to attachment)', () => {
 });
 
 describe('gRUD (roll-up doors)', () => {
-  it('CA 10×10 on an end = July 15 certified price', () => {
-    const c = cfg({ rollUpDoors: [{ type: 'standard', size: '10x10', qty: 1, location: 'Front End' }] });
-    expect(gRUD(c, CA)).toBe(1395); // CA.certRud['10x10'] overrides RDP_STD's 1050
+  it('CA Master Price Book catalog: line prices resolve per size', () => {
+    expect(getDoorPrice('m750', '10x10', CA)).toBe(1250);
+    expect(getDoorPrice('m3652', '10x10', CA)).toBe(1650);
+    expect(getDoorPrice('m3652', '18x14', CA)).toBe(2675);
+    expect(getDoorPrice('m3100', '20x14', CA)).toBe(3600);
+    expect(getDoorPrice('m3100im', '20x18', CA)).toBe(4250);
+    // legacy types fall back to the shared tables
+    expect(getDoorPrice('standard', '10x10', CA)).toBe(1050);
   });
-  it('same door on an eave side adds the structural header', () => {
-    const c = cfg({ width: 24, rollUpDoors: [{ type: 'standard', size: '10x10', qty: 1, location: 'Left Eave Side' }] });
-    expect(gRUD(c, CA)).toBe(1395 + 200); // + eaveHeaderCost(10,24)
+  it('catalog door on an eave side adds the structural header', () => {
+    const c = cfg({ width: 24, rollUpDoors: [{ type: 'm3652', size: '10x10', qty: 1, location: 'Left Eave Side' }] });
+    expect(gRUD(c, CA)).toBe(1650 + 200); // + eaveHeaderCost(10,24)
   });
-  it('CA certified sheet: 12x12 includes the hoist, 10x10 does not; CCI untouched', () => {
-    expect(getDoorPrice('rollup', '12x12', CA)).toBe(1995);
-    expect(doorHasChainIncluded('rollup', '12x12', CA)).toBe(true);
-    expect(doorHasChainIncluded('rollup', '10x10', CA)).toBe(false);
-    // hoist add-on billable below 12x12, suppressed at 12x12+
-    const below = cfg({ rollUpDoors: [{ type: 'rollup', size: '10x10', qty: 1, location: 'Front End', chainHoistQty: 1 }] });
-    expect(gRUD(below, CA)).toBe(1395 + 325);
-    const incl = cfg({ rollUpDoors: [{ type: 'rollup', size: '12x12', qty: 1, location: 'Front End', chainHoistQty: 1 }] });
-    expect(gRUD(incl, CA)).toBe(1995);
-    // CCI has no certified table — shared chart resolution unchanged
+  it('catalog hoist rules: m750 none · m3652 small-add · m3100 included', () => {
+    expect(doorHasChainIncluded('m750', '10x10', CA)).toBe(false);
+    expect(doorHasChainIncluded('m3652', '10x10', CA)).toBe(false);
+    expect(doorHasChainIncluded('m3652', '12x10', CA)).toBe(true);
+    expect(doorHasChainIncluded('m3100', '8x8', CA)).toBe(true);
+    // billable only on m3652 at/below 10x10; ignored where none/included
+    const add = cfg({ rollUpDoors: [{ type: 'm3652', size: '10x10', qty: 1, location: 'Front End', chainHoistQty: 1 }] });
+    expect(gRUD(add, CA)).toBe(1650 + 325);
+    const incl = cfg({ rollUpDoors: [{ type: 'm3652', size: '12x12', qty: 1, location: 'Front End', chainHoistQty: 1 }] });
+    expect(gRUD(incl, CA)).toBe(1950);
+    const none = cfg({ rollUpDoors: [{ type: 'm750', size: '10x10', qty: 1, location: 'Front End', chainHoistQty: 1 }] });
+    expect(gRUD(none, CA)).toBe(1250);
+    // lift rule: 14'+ tall or 16'+ wide
+    expect(doorNeedsLift('m3100', '8x14', CA)).toBe(true);
+    expect(doorNeedsLift('m3652', '16x10', CA)).toBe(true);
+    expect(doorNeedsLift('m3652', '12x12', CA)).toBe(false);
+    // CCI untouched — shared chart resolution unchanged
     expect(getDoorPrice('standard', '10x10', CCI)).toBe(1050);
   });
   it('automatic opener: $1,100/door on CCI only', () => {

@@ -86,7 +86,15 @@ function framingUpgradeCost(config: PricingConfig): number {
     return GA12V[gci];
   }
   const GA12S = [20, 25, 30, 35, 40];
-  const GA12SV = w <= 24 ? [360, 480, 600, 720, 840] : [410, 530, 650, 770, 890];
+  // CA July 15, 2026 sheet: 12-24 wide has two 12GA rates — "12GA 5'OC" vs
+  // "170MPH 12GA 4'OC" (which replaces the separate 4'OC charge; see
+  // ocUpgradeCost). 26-30 wide is 4'OC standard with a single rate.
+  const GA12SV =
+    w <= 24
+      ? config.ocSpacing === '4oc'
+        ? [360, 480, 600, 720, 840]
+        : [210, 240, 270, 300, 330]
+      : [410, 530, 650, 770, 890];
   let gcis = 0;
   for (let gis = 0; gis < GA12S.length; gis++) {
     if (GA12S[gis] <= l) gcis = gis;
@@ -102,6 +110,8 @@ function framingUpgradeCost(config: PricingConfig): number {
 /** 4'OC spacing upgrade (≤24' wide, non-widespan). Builder rc() line 5181. */
 function ocUpgradeCost(config: PricingConfig): number {
   if (config.ocSpacing !== '4oc') return 0;
+  // 12GA + 4'OC bills the combined "170MPH 12GA 4'OC" rate in framingUpgradeCost.
+  if (config.framingGauge === '12') return 0;
   const w = config.width || 0;
   const l = config.length || 0;
   if (!(w <= 24 && config.buildingType !== 'widespan')) return 0;

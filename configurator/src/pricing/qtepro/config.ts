@@ -14,8 +14,9 @@ export type GableState = 'Closed' | 'Open' | 'Gable Only' | 'Half Closed';
 export type EaveState = 'Closed' | 'Open';
 export type OcSpacing = '5oc' | '4oc';
 
-/** Roll-up door type. `rollup` = merged STD/CHAIN by size; others explicit. */
-export type RollUpType = 'standard' | 'chain' | 'hiimpact' | 'rollup';
+/** Roll-up door type. `rollup` = merged STD/CHAIN by size; others explicit.
+ *  CA Master Price Book 7/16/26 catalog lines: m750 / m3652 / m3100 / m3100im. */
+export type RollUpType = 'standard' | 'chain' | 'hiimpact' | 'rollup' | 'm750' | 'm3652' | 'm3100' | 'm3100im';
 /** Where a door/window sits — eave-side locations trigger the structural header. */
 export type Location =
   | 'Front End'

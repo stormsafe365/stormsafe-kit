@@ -119,11 +119,11 @@ export interface MfrConfig {
   wtdPrices: Record<string, number>;
   winPrices: Record<string, number>;
   acPrices: Record<string, number>;
-  /** CA July 15, 2026 certified sheet: per-size certified garage-door price
-   *  that REPLACES the shared STD/CHAIN tables (hi-impact keeps its chart). */
-  certRud?: Record<string, number>;
-  /** Sizes whose certified price includes the chain hoist (12x12 and up). */
-  certHoist?: Record<string, boolean>;
+  /** CA Master Price Book 7/16/26: four-line roll-up door catalog keyed by
+   *  line id (m750/m3652/m3100/m3100im). Replaces the shared STD/CHAIN/HI
+   *  tables for CA. hoist: 'none' (not offered) · 'small-add' (+$325 at
+   *  10x10 and below, included above) · 'incl' (always included). */
+  rudCatalog?: Record<string, { label: string; hoist: 'none' | 'small-add' | 'incl'; prices: Record<string, number> }>;
   rudColors?: RudColor[];
   colors: BuildingColor[];
 

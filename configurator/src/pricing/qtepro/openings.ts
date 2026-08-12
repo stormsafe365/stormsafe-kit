@@ -20,8 +20,8 @@ const SF_DW = 425;
  *  Pass `mfr` so a manufacturer certified sheet (CA July 15, 2026 `certRud`)
  *  can override the shared tables; hi-impact keeps its own chart. */
 export function getDoorPrice(type: RollUpType, size: string, mfr?: MfrConfig): number {
-  const clean = size && size.charAt(0) === '*' ? size.substring(1) : size;
-  if (type !== 'hiimpact' && mfr?.certRud && mfr.certRud[clean] != null) return mfr.certRud[clean];
+  // CA Master Price Book 7/16/26: four-line door catalog.
+  if (mfr?.rudCatalog && mfr.rudCatalog[type]) return mfr.rudCatalog[type].prices[size] || 0;
   if (type === 'standard') return RDP_STD[size] || 0;
   if (type === 'chain') return RDP_CHAIN[size] || RDP_CHAIN['*' + size] || 0;
   if (type === 'hiimpact') return RDP_HI[size] || RDP_HI['*' + size] || 0;
@@ -34,9 +34,15 @@ export function getDoorPrice(type: RollUpType, size: string, mfr?: MfrConfig): n
 
 /** Does this (type,size) already include a chain hoist? Builder line 4101. */
 export function doorHasChainIncluded(type: RollUpType, size: string, mfr?: MfrConfig): boolean {
+  // CA catalog: m750 none · m3652 included above 10x10 · m3100/m3100im always.
+  const line = mfr?.rudCatalog?.[type];
+  if (line) {
+    if (line.hoist === 'incl') return true;
+    if (line.hoist === 'none') return false;
+    const [w, h] = (size || '').split('x').map((n) => parseInt(n, 10) || 0);
+    return w > 10 || h > 10;
+  }
   if (type === 'hiimpact') return true;
-  // CA certified sheet: hoist included only on the flagged sizes (12x12+).
-  if (mfr?.certRud && mfr.certRud[size] != null) return !!mfr.certHoist?.[size];
   if (type === 'chain') return true;
   if (type === 'rollup') {
     if (RDP_STD[size]) return false;
@@ -46,7 +52,12 @@ export function doorHasChainIncluded(type: RollUpType, size: string, mfr?: MfrCo
 }
 
 /** Does this (type,size) need a lift on site? Builder `doorNeedsLift` line 4138. */
-export function doorNeedsLift(type: RollUpType, size: string): boolean {
+export function doorNeedsLift(type: RollUpType, size: string, mfr?: MfrConfig): boolean {
+  // CA Master Price Book: Genie lift at 14'+ tall or 16'+ wide (any line).
+  if (mfr?.rudCatalog?.[type]) {
+    const [w, h] = (size || '').split('x').map((n) => parseInt(n, 10) || 0);
+    return h >= 14 || w >= 16;
+  }
   if (type === 'standard') return false;
   if (type === 'chain') return !!RDP_CHAIN['*' + size];
   if (type === 'rollup') {
@@ -72,8 +83,12 @@ export function gRUD(config: PricingConfig, mfr: MfrConfig): number {
 
     t += getDoorPrice(dtype, sz, mfr) * qty;
 
-    // Chain-hoist add-on — only for sizes that don't already include one.
-    if (dtype === 'standard' || (dtype === 'rollup' && !doorHasChainIncluded(dtype, sz, mfr))) {
+    // Chain-hoist add-on — only where a hoist is offered and not already included.
+    const catLine = mfr.rudCatalog?.[dtype];
+    const hoistAddable = catLine
+      ? catLine.hoist === 'small-add' && !doorHasChainIncluded(dtype, sz, mfr)
+      : dtype === 'standard' || (dtype === 'rollup' && !doorHasChainIncluded(dtype, sz, mfr));
+    if (hoistAddable) {
       t += (d.chainHoistQty || 0) * (mfr.chain || 325);
     }
     // Header seal: rate × door-width-ft.

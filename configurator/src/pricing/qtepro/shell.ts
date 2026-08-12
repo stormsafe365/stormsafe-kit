@@ -256,7 +256,12 @@ export function gWalls(config: PricingConfig, mfr: MfrConfig): number {
 
   let t = 0;
   const { frontGable: fgv, backGable: bgv, rightEave: rev, leftEave: lev } = config;
-  const gablP = mfr.gableOnlyPrice || 300;
+  // CA July 15, 2026 sheet: gable-only is $225 (≤24' wide) / $300 (26'+),
+  // plus $50/$85 when the walls are Vertical. CCI keeps its flat price.
+  const gablP =
+    mfr.key === 'CA'
+      ? (w <= 24 ? 225 : 300) + (config.wallStyle === 'Vertical' ? (w <= 24 ? 50 : 85) : 0)
+      : mfr.gableOnlyPrice || 300;
   const halfP = mfr.halfGablePrice || 0;
 
   // Gables (front + back).

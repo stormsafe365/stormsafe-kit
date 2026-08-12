@@ -87,7 +87,8 @@ export function ecLookup(w: number, h: number, mfr: MfrConfig): number {
   // Widths 12–30 use bucketed width; 32–60 use actual even width (odd → next even).
   let wk = w >= 32 ? (w % 2 === 0 ? w : w + 1) : eBkt(w);
   wk = Math.min(Math.max(wk, 12), 60);
-  const hk = Math.min(h, 16);
+  // Standard widths price ends to 16' tall; wide-span (32+) charts go to 20'.
+  const hk = Math.min(h, w >= 32 ? 20 : 16);
   return (EC[wk] || EC[30])[hk] || 0;
 }
 

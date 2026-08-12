@@ -70,11 +70,10 @@ describe('gWalls (gables + sides + GCH)', () => {
     // 2×ecLookup(20,8)=1880  +  2×(scLookup(8,30,20))=930  = 2810
     expect(gWalls(c, CA)).toBe(2810);
   });
-  it('Gable Only: CA July 15, 2026 = $225 ≤24w / $300 26w+, vertical adds $50/$85', () => {
-    expect(gWalls(cfg({ frontGable: 'Gable Only' }), CA)).toBe(225); // 20w horizontal
-    expect(gWalls(cfg({ frontGable: 'Gable Only', wallStyle: 'Vertical' }), CA)).toBe(275);
+  it('Gable Only: Master Price Book = $225 ≤24w / $300 26w+, flat (no vertical adder)', () => {
+    expect(gWalls(cfg({ frontGable: 'Gable Only' }), CA)).toBe(225); // 20w
+    expect(gWalls(cfg({ frontGable: 'Gable Only', wallStyle: 'Vertical' }), CA)).toBe(225);
     expect(gWalls(cfg({ width: 26, frontGable: 'Gable Only' }), CA)).toBe(300);
-    expect(gWalls(cfg({ width: 26, frontGable: 'Gable Only', wallStyle: 'Vertical' }), CA)).toBe(385);
     expect(gWalls(cfg({ frontGable: 'Gable Only' }), CA)).toBeLessThan(ecLookup(20, 8, CA));
     // CCI keeps its flat price
     expect(gWalls(cfg({ frontGable: 'Gable Only' }), CCI)).toBe(CCI.gableOnlyPrice);

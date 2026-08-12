@@ -76,8 +76,10 @@ function framingUpgradeCost(config: PricingConfig): number {
   const w = config.width || 0;
   const l = config.length || 0;
   if (config.buildingType === 'widespan') {
-    const GA12C = [20, 24, 28, 32, 36, 40, 44, 48, 52];
-    const GA12V = [840, 960, 1080, 1200, 1320, 1440, 1560, 1680, 1800];
+    // Master Price Book 7/16/26 §4H: 360…840 through 40', then 44' 1560 ·
+    // 48' 1680 · 52' 1800.
+    const GA12C = [20, 25, 30, 35, 40, 44, 48, 52];
+    const GA12V = [360, 480, 600, 720, 840, 1560, 1680, 1800];
     let gci = 0;
     for (let gi = 0; gi < GA12C.length; gi++) {
       if (GA12C[gi] <= l) gci = gi;
@@ -86,15 +88,9 @@ function framingUpgradeCost(config: PricingConfig): number {
     return GA12V[gci];
   }
   const GA12S = [20, 25, 30, 35, 40];
-  // CA July 15, 2026 sheet: 12-24 wide has two 12GA rates — "12GA 5'OC" vs
-  // "170MPH 12GA 4'OC" (which replaces the separate 4'OC charge; see
-  // ocUpgradeCost). 26-30 wide is 4'OC standard with a single rate.
-  const GA12SV =
-    w <= 24
-      ? config.ocSpacing === '4oc'
-        ? [360, 480, 600, 720, 840]
-        : [210, 240, 270, 300, 330]
-      : [410, 530, 650, 770, 890];
+  // Master Price Book 7/16/26 §4H: 12GA is 210-330 (12-24 wide) or 360-840
+  // (26-30 wide) — one series each, no separate 4'OC rate.
+  const GA12SV = w <= 24 ? [210, 240, 270, 300, 330] : [360, 480, 600, 720, 840];
   let gcis = 0;
   for (let gis = 0; gis < GA12S.length; gis++) {
     if (GA12S[gis] <= l) gcis = gis;
@@ -108,9 +104,11 @@ function framingUpgradeCost(config: PricingConfig): number {
 }
 
 /** 4'OC spacing upgrade (≤24' wide, non-widespan). Builder rc() line 5181. */
-function ocUpgradeCost(config: PricingConfig): number {
+function ocUpgradeCost(config: PricingConfig, mfr?: MfrConfig): number {
   if (config.ocSpacing !== '4oc') return 0;
-  // 12GA + 4'OC bills the combined "170MPH 12GA 4'OC" rate in framingUpgradeCost.
+  // Master Price Book 7/16/26 has no separate 4'OC option charge for CA.
+  if (mfr?.key === 'CA') return 0;
+  // 12GA + 4'OC bills the combined rate in framingUpgradeCost.
   if (config.framingGauge === '12') return 0;
   const w = config.width || 0;
   const l = config.length || 0;
@@ -221,7 +219,7 @@ export function priceBuilding(input: PricingConfig, mfr: MfrConfig): PricedQuote
   const sf = wd.sf + wn.sf; // gRUD never contributes side-frame
   const lapSiding = config.lapSiding ? Math.round(base * 0.1) : 0;
   const framingUpgrade = framingUpgradeCost(config);
-  const ocUpgrade = ocUpgradeCost(config);
+  const ocUpgrade = ocUpgradeCost(config, mfr);
   const pitchUpgrade = pitchUpgradeCost(mfr, base, w, l, config.pitch || 'standard');
   const wainscot = wainscotCost(mfr, config, w, l);
   const leanTos = gLT(config, mfr);
@@ -236,7 +234,9 @@ export function priceBuilding(input: PricingConfig, mfr: MfrConfig): PricedQuote
     base + leg + framingUpgrade + ocUpgrade + pitchUpgrade + walls + vertWallUpgrade + gableLTrim + rud + wtd + win + sf +
     lapSiding + wainscot + leanTos + connectionFees + additionalComponents + insulation + overhang + sidePanels;
 
-  const sheetingFree = preSheetSub >= freeThresh && config.buildingType !== 'widespan';
+  // CA 8/10/2026 policy: 26GA is ALWAYS a 10% upgrade — no free threshold.
+  // CCI keeps its Sensei-verified free-at-$10k behavior.
+  const sheetingFree = mfr.key !== 'CA' && preSheetSub >= freeThresh && config.buildingType !== 'widespan';
   const sheetingUpgrade =
     !sheetingFree && config.sheetingUpgrade && config.buildingType !== 'widespan' ? preSheetSub * 0.1 : 0;
 

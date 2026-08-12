@@ -88,8 +88,8 @@ describe('planCost (invoiced separately)', () => {
 });
 
 describe('priceBuilding — money math (rc composition)', () => {
-  it('base ≥ $10k → free sheeting + free fasteners; discount/tax/deposit/balance', () => {
-    const q = priceBuilding(cfg({ baseOverride: 10000, discountPct: 10, taxRatePct: 7, depositPct: 17 }), CA);
+  it('CCI ≥ $10k → free sheeting + free fasteners; discount/tax/deposit/balance', () => {
+    const q = priceBuilding(cfg({ baseOverride: 10000, discountPct: 10, taxRatePct: 7, depositPct: 17 }), CCI);
     expect(q.lineItems.base).toBe(10000);
     expect(q.subtotal).toBe(10000);
     expect(q.sheetingFree).toBe(true);
@@ -102,6 +102,13 @@ describe('priceBuilding — money math (rc composition)', () => {
     expect(q.deposit).toBe(1530);
     expect(q.balance).toBe(8100); // total − grossDeposit
     expect(q.splitPayment).toBeNull();
+  });
+
+  it('CA 8/10/2026: 26GA is never free — 10% of subtotal even at $10k+', () => {
+    const q = priceBuilding(cfg({ baseOverride: 12000, sheetingUpgrade: true }), CA);
+    expect(q.sheetingFree).toBe(false);
+    expect(q.lineItems.sheetingUpgrade).toBe(1200); // 10% of 12,000 subtotal
+    expect(q.subtotal).toBe(13200);
   });
 
   it('base < $10k → sheeting upgrade (+10% subtotal), lap siding (+10% base), billable fasteners (CA)', () => {

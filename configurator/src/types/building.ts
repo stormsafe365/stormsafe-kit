@@ -92,6 +92,11 @@ export interface LeanTo {
   widthFt: number;
   /** Length of the lean-to (ft) — runs along the attachment wall. */
   lengthFt: number;
+  /** Where the lean-to starts along the attachment wall (ft from the wall's
+   *  start — building front for eave sides, left edge for gable ends). Only
+   *  meaningful when lengthFt is shorter than the wall; clamped so the
+   *  lean-to never runs past the wall. */
+  offsetFt?: number;
   /** Height of the low post (ft) — the short side. */
   lowLegHeightFt: number;
   /** Height of the tall post (ft) — the high side (only for sloped roofs). */

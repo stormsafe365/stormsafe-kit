@@ -14,9 +14,11 @@ export type GableState = 'Closed' | 'Open' | 'Gable Only' | 'Half Closed';
 export type EaveState = 'Closed' | 'Open';
 export type OcSpacing = '5oc' | '4oc';
 
-/** Roll-up door type. `rollup` = merged STD/CHAIN by size; others explicit.
- *  CA Master Price Book 7/16/26 catalog lines: m750 / m3652 / m3100 / m3100im. */
-export type RollUpType = 'standard' | 'chain' | 'hiimpact' | 'rollup' | 'm750' | 'm3652' | 'm3100' | 'm3100im';
+/** Roll-up door type. For CA the Master Price Book catalog reuses the familiar
+ *  keys — rollup = Certified (M3652), noncert = Non-Certified (M750),
+ *  hiimpact = Impact Rated (M3100 IM). CCI keeps the legacy shared-table keys.
+ *  (Old m750/m3652/m3100/m3100im keys kept for saved-quote compatibility.) */
+export type RollUpType = 'standard' | 'chain' | 'hiimpact' | 'rollup' | 'noncert' | 'm750' | 'm3652' | 'm3100' | 'm3100im';
 /** Where a door/window sits — eave-side locations trigger the structural header. */
 export type Location =
   | 'Front End'

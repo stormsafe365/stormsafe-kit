@@ -733,14 +733,24 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
 
     if (lt.type !== 'attached') continue;
     const side = lt.attachedSide || 'Left Eave';
+    const isEave = side === 'Left Eave' || side === 'Right Eave';
+
+    // Span along the attachment wall: length clamped to the wall, shifted by
+    // the user-chosen start offset (ft from the building front for eave sides,
+    // from the left edge for gable ends).
+    const wallLen = isEave ? L : W;
+    const runLen = Math.min(ll, wallLen);
+    const runOff = Math.max(0, Math.min(lt.offsetFt ?? 0, wallLen - runLen));
+    const spanA = (isEave ? -halfL : -halfW) + runOff;
+    const spanB = spanA + runLen;
 
     // Filter main building truss positions that fall within the lean-to span
     const ltPositions = framePositionsZ.filter((z) => {
-      if (side === 'Left Eave' || side === 'Right Eave') {
-        return z >= -halfL && z <= Math.min(-halfL + ll, halfL);
+      if (isEave) {
+        return z >= spanA && z <= spanB;
       } else {
-        // Front/Back: use X positions from -W/2 to W/2
-        return true;
+        // Front/Back: use X positions within the lean-to's run
+        return z >= spanA && z <= spanB;
       }
     });
 
@@ -756,8 +766,8 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     // ===== EAVE-ATTACHED (Left or Right) =====
     if (side === 'Left Eave' || side === 'Right Eave') {
       // Ensure we have front and back trusses, plus intermediates
-      const zFront = -halfL;
-      const zBack = Math.min(-halfL + ll, halfL);
+      const zFront = spanA;
+      const zBack = spanB;
       const allZ = [zFront, ...ltPositions.filter(z => z > zFront && z < zBack), zBack];
       const uniqueZ = Array.from(new Set(allZ)).sort((a, b) => a - b);
 
@@ -812,8 +822,8 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     // ===== GABLE-ATTACHED (Front or Back) =====
     else if (side === 'Front Gable' || side === 'Back Gable') {
       // Ensure we have left and right trusses, plus intermediates
-      const xLeft = -halfW;
-      const xRight = halfW;
+      const xLeft = spanA;
+      const xRight = spanB;
       const allX = [xLeft, ...framePositionsZ.filter(x => x > xLeft && x < xRight), xRight];
       const uniqueX = Array.from(new Set(allX)).sort((a, b) => a - b);
 
@@ -868,8 +878,8 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
 
     if (side === 'Left Eave' || side === 'Right Eave') {
       // Eave-attached: use Z range
-      const zFront = -halfL;
-      const zBack = Math.min(-halfL + ll, halfL);
+      const zFront = spanA;
+      const zBack = spanB;
       // Post positions along the run (same set the frame loop builds), as offsets
       // from spanStart so they line up with an opening's offsetFt.
       const postZ = Array.from(
@@ -894,8 +904,8 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       });
     } else {
       // Gable-attached: use X range
-      const xLeft = -halfW;
-      const xRight = halfW;
+      const xLeft = spanA;
+      const xRight = spanB;
       const postX = Array.from(
         new Set([xLeft, ...framePositionsZ.filter((x) => x > xLeft && x < xRight), xRight]),
       ).sort((a, b) => a - b);
@@ -943,18 +953,26 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     const zInner = side === 'Front Gable' ? -halfL : side === 'Back Gable' ? halfL : null;
     const zOuter = side === 'Front Gable' ? -halfL - lw : side === 'Back Gable' ? halfL + lw : null;
 
+    // Same span math as the frame loop above — honor the placement offset.
+    const isEave2 = side === 'Left Eave' || side === 'Right Eave';
+    const wallLen2 = isEave2 ? L : W;
+    const runLen2 = Math.min(ll, wallLen2);
+    const runOff2 = Math.max(0, Math.min(lt.offsetFt ?? 0, wallLen2 - runLen2));
+    const spanA2 = (isEave2 ? -halfL : -halfW) + runOff2;
+    const spanB2 = spanA2 + runLen2;
+
     // Get the frame positions that fall within this lean-to span
     const ltPositions = framePositionsZ.filter((z) => {
-      if (side === 'Left Eave' || side === 'Right Eave') {
-        return z >= -halfL && z <= Math.min(-halfL + ll, halfL);
+      if (isEave2) {
+        return z >= spanA2 && z <= spanB2;
       }
       return true;
     });
 
     // EAVE-ATTACHED: Add corner braces
     if ((side === 'Left Eave' || side === 'Right Eave') && xInner !== null && xOuter !== null) {
-      const zFront = -halfL;
-      const zBack = Math.min(-halfL + ll, halfL);
+      const zFront = spanA2;
+      const zBack = spanB2;
       const allZ = [zFront, ...ltPositions.filter((z) => z > zFront && z < zBack), zBack];
       const uniqueZ = Array.from(new Set(allZ)).sort((a, b) => a - b);
 
@@ -966,8 +984,8 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
 
     // GABLE-ATTACHED: Add corner braces
     if ((side === 'Front Gable' || side === 'Back Gable') && zInner !== null && zOuter !== null) {
-      const xLeft = -halfW;
-      const xRight = halfW;
+      const xLeft = spanA2;
+      const xRight = spanB2;
       const allX = [xLeft, ...framePositionsZ.filter((x) => x > xLeft && x < xRight), xRight];
       const uniqueX = Array.from(new Set(allX)).sort((a, b) => a - b);
 

@@ -371,6 +371,7 @@ function writeBackLeanToOpening(win: BuilderWindow, id: string | null) {
  *   - `.lt-side` = attached side (Left Eave, Right Eave, Front Gable, Back Gable)
  *   - `.ltw` = width (ft)
  *   - `.ltl2` = length (ft)
+ *   - `.ltoff` = placement offset (ft from the wall's start; partial-length only)
  *   - `.lth` = low leg height (ft, for attached)
  *   - `.lt-tall-h` = tall leg height (ft, for attached slope)
  *   - `.ltp` = roof pitch (e.g., "2:12", "3:12")
@@ -381,6 +382,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
   attachedSide?: 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable';
   widthFt: number;
   lengthFt: number;
+  offsetFt?: number;
   lowLegHeightFt: number;
   tallLegHeightFt?: number;
   roofPitch: string;
@@ -393,6 +395,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     attachedSide?: 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable';
     widthFt: number;
     lengthFt: number;
+    offsetFt?: number;
     lowLegHeightFt: number;
     tallLegHeightFt?: number;
     roofPitch: string;
@@ -426,6 +429,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
 
     const widthFt = numVal(el, '.ltw');
     const lengthFt = numVal(el, '.ltl2');
+    const offsetFt = numVal(el, '.ltoff', 0);
     const lowHeightFt = numVal(el, '.lth', 8);
     const tallHeightFt = numVal(el, '.lt-tall-h', 10);
     const roofPitchStr = strVal(el, '.ltp') || '2:12';
@@ -503,6 +507,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
       attachedSide: type === 'attached' ? attachedSide : undefined,
       widthFt,
       lengthFt,
+      offsetFt: type === 'attached' ? offsetFt : undefined,
       lowLegHeightFt: lowHeightFt,
       tallLegHeightFt: type === 'attached' ? tallHeightFt : undefined,
       roofPitch: roofPitchStr,
@@ -713,6 +718,7 @@ function syncFromBuilder(win: BuilderWindow) {
         attachedSide: lt.attachedSide,
         widthFt: lt.widthFt,
         lengthFt: lt.lengthFt,
+        offsetFt: lt.offsetFt,
         lowLegHeightFt: lt.lowLegHeightFt,
         tallLegHeightFt: lt.tallLegHeightFt,
         roofPitch: lt.roofPitch,

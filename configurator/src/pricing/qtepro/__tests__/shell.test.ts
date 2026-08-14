@@ -57,6 +57,14 @@ describe('gLeg (leg/eave-height upcharge)', () => {
   it('CCI 100×200×20 widespan ≈ $62,740 (verified vs Sensei)', () => {
     expect(gLeg(cfg({ width: 100, length: 200, height: 20, buildingType: 'widespan' }), CCI)).toBe(62740);
   });
+  it('CCI tall legs (17\'+) on standard widths use the SH chart by length', () => {
+    // CCI kickback on the Tejada 30x40x20 order: correct charge is $7,190
+    expect(gLeg(cfg({ width: 30, length: 40, height: 20 }), CCI)).toBe(7190);
+    expect(gLeg(cfg({ width: 30, length: 40, height: 18 }), CCI)).toBe(5760);
+    // ≤16' keeps the Sensei-verified huM grid; CA is untouched at any height
+    expect(gLeg(cfg({ width: 30, length: 40, height: 16 }), CCI)).toBe(3840);
+    expect(gLeg(cfg({ width: 30, length: 40, height: 20 }), CA)).toBe(4817);
+  });
   it('standard path is wired to huN (12–24W)', () => {
     const got = gLeg(cfg({ width: 12, length: 21, height: 10 }), CA);
     expect(got).toBe(CA.huN[10][0]); // LENGTHS index 0 = tier 21

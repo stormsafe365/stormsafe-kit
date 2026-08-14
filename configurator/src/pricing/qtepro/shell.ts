@@ -45,7 +45,11 @@ export function gLeg(config: PricingConfig, mfr: MfrConfig): number {
   const hk = h <= 10 ? 10 : h <= 12 ? 12 : h <= 14 ? 14 : h <= 16 ? 16 : h <= 18 ? 18 : 20;
 
   // Wide span (32–60ft+): SH table; EXT_SH for l > shExtThresh.
-  if (w >= 32) {
+  // CCI tall legs (17'-20') on STANDARD widths also price from the SH chart
+  // (indexed by length): the huN/huM 17-20 rows were extrapolations, not CCI
+  // book data — CCI kicked back a 30x40x20 at the grid's $4,896; their correct
+  // charge $7,190 = SH[20][40'] exactly (verified 8/14/26). ≤16' keeps the grids.
+  if (w >= 32 || (mfr.key === 'CCI' && h >= 17)) {
     if (l > mfr.shExtThresh) {
       const extRow = EXT_SH[hk] || EXT_SH[16] || [];
       let bestI = extRow.length - 1;

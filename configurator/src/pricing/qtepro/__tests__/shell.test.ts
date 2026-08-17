@@ -111,6 +111,7 @@ describe('gRUD (roll-up doors)', () => {
     expect(getDoorPrice('noncert', '10x10', CA)).toBe(1250); // M750
     expect(getDoorPrice('rollup', '10x10', CA)).toBe(1650); // M3652 certified
     expect(getDoorPrice('rollup', '18x14', CA)).toBe(2675);
+    expect(getDoorPrice('rollup', '18x16', CA)).toBe(4520); // gable-end tall door, owner-confirmed 8/17/26
     expect(getDoorPrice('hiimpact', '20x18', CA)).toBe(4250); // M3100 IM
     // legacy standard type falls back to the shared tables
     expect(getDoorPrice('standard', '10x10', CA)).toBe(1050);

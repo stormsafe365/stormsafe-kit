@@ -94,8 +94,14 @@ export function gRUD(config: PricingConfig, mfr: MfrConfig): number {
     // Header seal: rate × door-width-ft.
     const sealDw = parseInt((sz || '').split('x')[0], 10) || 0;
     t += (d.headerSealQty || 0) * Math.round(sealDw * (mfr.seal || 9.85));
-    // Automatic opener — CCI only, $1,100 per door.
-    if (mfr.key === 'CCI') t += (d.openerQty || 0) * 1100;
+    // Automatic opener — CCI only: $1,100/door, $1,200 for 12'+ doors (either
+    // dimension ≥12; owner 8/17/26 — resolves CCI's corrected Tejada 16x16
+    // bundle exactly: 2700 + seal 192 + opener 1200 + black 100 = 4192).
+    if (mfr.key === 'CCI') {
+      const odw = parseFloat((sz || '').split('x')[0]) || 0;
+      const odh = parseFloat((sz || '').split('x')[1]) || 0;
+      t += (d.openerQty || 0) * (odw >= 12 || odh >= 12 ? 1200 : 1100);
+    }
     // 45° angle cut: $85/door.
     if (d.angle45) t += 85 * qty;
     // CCI color upgrade.

@@ -153,10 +153,14 @@ describe('gRUD (roll-up doors)', () => {
     expect(getDoorPrice('standard', '10x10', CCI)).toBe(1050);
     expect(getDoorPrice('rollup', '10x10', CCI)).toBe(1050);
   });
-  it('automatic opener: $1,100/door on CCI only', () => {
+  it('automatic opener: CCI only — $1,100/door, $1,200 for 12\'+ doors', () => {
     const doors = [{ type: 'standard' as const, size: '10x10', qty: 2, location: 'Front End', openerQty: 2 }];
     const base = gRUD(cfg({ rollUpDoors: doors.map((d) => ({ ...d, openerQty: 0 })) }), CCI);
     expect(gRUD(cfg({ rollUpDoors: doors }), CCI)).toBe(base + 2 * 1100);
+    // 12'+ (either dimension) bills the $1,200 tier — CCI corrected Tejada 16x16
+    const big = [{ type: 'chain' as const, size: '16x16', qty: 1, location: 'Front End', openerQty: 1 }];
+    const bigBase = gRUD(cfg({ rollUpDoors: big.map((d) => ({ ...d, openerQty: 0 })) }), CCI);
+    expect(gRUD(cfg({ rollUpDoors: big }), CCI)).toBe(bigBase + 1200);
     // CA never bills the opener even if the flag sneaks in
     const caBase = gRUD(cfg({ rollUpDoors: doors.map((d) => ({ ...d, openerQty: 0 })) }), CA);
     expect(gRUD(cfg({ rollUpDoors: doors }), CA)).toBe(caBase);

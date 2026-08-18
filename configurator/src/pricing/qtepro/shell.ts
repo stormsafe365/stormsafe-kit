@@ -230,6 +230,9 @@ export function gVertUpgrade(config: PricingConfig, mfr: MfrConfig): number {
   // vertical orientation is included, NOT an upcharge. (Also avoids extrapolating
   // the 12'–30' VERT_END/VERT_SIDE tables off their range.)
   if ((config.width || 0) >= 32) return 0;
+  // CCI TALL (17'+): commercial-brochure closure pricing is orientation-blind —
+  // CCI 8/17/26: "If they want horizontal siding, the price remains the same."
+  if (mfr.key === 'CCI' && (config.height || 6) >= 17) return 0;
   if (config.wallStyle !== 'Vertical') return 0;
   let w = config.width || 0;
   const h = config.height || 6;

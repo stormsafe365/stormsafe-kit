@@ -161,6 +161,17 @@ function wainscotCost(mfr: MfrConfig, config: PricingConfig, w: number, l: numbe
     if (bucket.cols[i] <= l) wci = i;
     else break;
   }
+  // CCI TALL (17'+): commercial wainscot = $12.50/lf of CLOSED wall. CCI
+  // corrected Tejada 30x40x20 fully-enclosed wainscot to $1,750 = 140 lf ×
+  // $12.50 exactly (8/17/26). PROVISIONAL single-point rate.
+  if (mfr.key === 'CCI' && (config.height || 6) >= 17) {
+    let lf = 0;
+    if (config.frontGable === 'Closed') lf += w;
+    if (config.backGable === 'Closed') lf += w;
+    if (config.rightEave === 'Closed') lf += l;
+    if (config.leftEave === 'Closed') lf += l;
+    if (lf > 0) return Math.round(12.5 * lf);
+  }
   return bucket.vals[wci];
 }
 

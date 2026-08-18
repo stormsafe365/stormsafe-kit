@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getMfr } from '../manufacturers';
 import { eaveHeaderCost, ecLookup, scLookup } from '../closures';
-import { gLeg, gWalls, gConnectionFees } from '../shell';
+import { gLeg, gWalls, gConnectionFees, gVertUpgrade } from '../shell';
 import { gRUD, gWTD, gWIN, getDoorPrice, doorHasChainIncluded, doorNeedsLift } from '../openings';
 import type { PricingConfig } from '../config';
 
@@ -47,6 +47,19 @@ describe('closure lookups', () => {
   });
   it('scLookup CA 20W 8H 20L per side = $330 (SC[8][20]/2)', () => {
     expect(scLookup(8, 20, 20, CA)).toBe(330);
+  });
+  it("CCI tall (17'+) closures price from the commercial charts (Tejada 8/17/26 corrections)", () => {
+    expect(ecLookup(30, 20, CCI)).toBe(3835); // = EC[32][20]; ends pair $7,670
+    expect(scLookup(20, 40, 30, CCI)).toBe(2905); // = BSC[20][40']/2; sides pair $5,810
+    // no vertical-wall upcharge at 17'+ ("horizontal siding, the price remains the same")
+    const tall = cfg({
+      width: 30, length: 40, height: 20, wallStyle: 'Vertical',
+      frontGable: 'Closed', backGable: 'Closed', rightEave: 'Closed', leftEave: 'Closed',
+    });
+    expect(gVertUpgrade(tall, CCI)).toBe(0);
+    // ≤16' keeps the Sensei-verified standard charts; CA untouched
+    expect(ecLookup(30, 16, CCI)).toBe(2930);
+    expect(gVertUpgrade({ ...tall, height: 16 }, CCI)).toBeGreaterThan(0);
   });
 });
 

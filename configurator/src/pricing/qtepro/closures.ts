@@ -85,11 +85,17 @@ export function ecLookup(w: number, h: number, mfr: MfrConfig): number {
     return 0;
   }
   // Widths 12–30 use bucketed width; 32–60 use actual even width (odd → next even).
-  let wk = w >= 32 ? (w % 2 === 0 ? w : w + 1) : eBkt(w);
+  // CCI TALL (17'+): ends close from the COMMERCIAL brochure — the chart's
+  // minimum 32' column for standard widths (CCI corrected the Tejada 30x40x20:
+  // ends pair $7,670 = 2 × EC[32][20] exactly, 8/17/26 email).
+  const cciTall = mfr.key === 'CCI' && h >= 17;
+  let wk = w >= 32 ? (w % 2 === 0 ? w : w + 1) : cciTall ? 32 : eBkt(w);
   wk = Math.min(Math.max(wk, 12), 60);
-  // Standard widths price ends to 16' tall; wide-span (32+) charts go to 20'.
-  const hk = Math.min(h, w >= 32 ? 20 : 16);
-  return (EC[wk] || EC[30])[hk] || 0;
+  // Standard widths price ends to 16' tall; wide-span (32+)/CCI-tall charts go to 20'.
+  let hk = Math.min(h, w >= 32 || cciTall ? 20 : 16);
+  const ecRow = EC[wk] || EC[30];
+  while (hk < 20 && ecRow[hk] === undefined) hk++; // missing odd heights round UP
+  return ecRow[hk] || 0;
 }
 
 // Wide-span both-sides side-close table (embedded in scLookup, builder line 3901).
@@ -125,7 +131,10 @@ export function scLookup(h: number, l: number, w: number, mfr: MfrConfig): numbe
   const hk = h <= 8 ? 8 : h <= 10 ? 10 : h <= 12 ? 12 : h <= 14 ? 14 : h <= 16 ? 16 : h <= 18 ? 18 : 20;
 
   // Wide span (32–60ft): BSC table, per-side (BSC/2).
-  if (w2 >= 32) {
+  // CCI TALL (17'+) on standard widths: sides also close from the COMMERCIAL
+  // chart, indexed by LENGTH — CCI corrected Tejada 30x40x20 sides pair to
+  // $5,810 = BSC[20][40'] exactly (8/17/26).
+  if (w2 >= 32 || (mfr.key === 'CCI' && h >= 17)) {
     if (l > mfr.shExtThresh) {
       const ebRow = mfr.extBsc[hk] || mfr.extBsc[16] || [];
       let ebI = ebRow.length - 1;

@@ -216,7 +216,7 @@ function clipFrameAtEaveOpenings(members: Member[], openings: Opening[], halfW: 
     const constZ = Math.abs(m.start[2] - m.end[2]) < 0.01;
     // A foot of the member must sit on or just inboard of an eave wall plane.
     // The band covers the DEEP-COLUMN inset too: double legs put a second post
-    // 0.4' inboard and ladder legs (H>=16) up to 2' inboard — those inner
+    // 0.4' inboard and ladder legs (H>=17) up to 2' inboard — those inner
     // chords stood visible through framed openings when the band was a tight
     // 0.1' (regression: "trusses showing inside the opening again"). 2.25'
     // still excludes the peak collar tie (ends ≥ 3' further inboard on every
@@ -482,17 +482,17 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
 
   // --- Frame bents: legs + gable rafters + knee braces + peak collar tie ---
   // The roof member is the simple single rafter ("bow"). Leg style varies:
-  //   • DOUBLE leg   when W > 31 (or H 14/15) — a second post welded just
+  //   • DOUBLE leg   when W > 31 (or H 14-16) — a second post welded just
   //     INBOARD of the first (toward the interior, along X), tops meeting the
-  //     rafter underside.
-  //   • LADDER leg   when H >= 16 — a deep two-chord column IN THE TRUSS
+  //     rafter underside. 16' legs are STANDARD DOUBLE legs, not ladder.
+  //   • LADDER leg   when H >= 17 — a deep two-chord column IN THE TRUSS
   //     PLANE: outer chord at the wall, inner chord ~a foot and a half
   //     inboard, horizontal rungs between them every ~3'. (The first attempt
   //     split the posts ALONG the wall (Z), which laid the ladder flat against
   //     the sheeting and read as two skinny posts — the depth must run
   //     inboard, like the real welded column.)
-  const doublePost = W > 31 || H === 14 || H === 15;
-  const ladderLeg = H >= 16;
+  const doublePost = W > 31 || (H >= 14 && H <= 16);
+  const ladderLeg = H >= 17;
   const LADDER_D = Math.min(2, Math.max(1.3, H * 0.09)); // ladder column depth (inboard, X)
   const DOUBLE_D = 0.4;                                  // doubled-post gap (inboard, X)
 

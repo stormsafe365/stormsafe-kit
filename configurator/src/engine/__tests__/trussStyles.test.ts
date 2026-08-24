@@ -23,7 +23,7 @@ const ladderRungs = (s: ReturnType<typeof deriveStructure>) => {
   );
 };
 
-describe('truss/leg styles — single, double (W>31 / H 14-15), ladder (H>=16)', () => {
+describe('truss/leg styles — single, double (W>31 / H 14-16), ladder (H>=17)', () => {
   it('small build → 2 legs per bent (one post each side)', () => {
     const s = build({ width: 24, length: 30, legHeight: 12 });
     expect(legCount(s)).toBe(s.frameCount * 2);
@@ -39,7 +39,13 @@ describe('truss/leg styles — single, double (W>31 / H 14-15), ladder (H>=16)',
     expect(legCount(s)).toBe(s.frameCount * 4);
   });
 
-  it('tall build (H>=16) → LADDER legs: 4 chords per bent + rungs', () => {
+  it('height 16 → standard DOUBLE legs, NOT ladder: 4 posts per bent, no rungs', () => {
+    const s = build({ width: 30, length: 50, legHeight: 16 });
+    expect(legCount(s)).toBe(s.frameCount * 4);
+    expect(ladderRungs(s).length).toBe(0);
+  });
+
+  it('tall build (H>=17) → LADDER legs: 4 chords per bent + rungs', () => {
     const s = build({ width: 24, length: 30, legHeight: 18 });
     expect(legCount(s)).toBe(s.frameCount * 4);
     expect(ladderRungs(s).length).toBeGreaterThan(0);

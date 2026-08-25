@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { PrintPanelKey } from '@/config/colors';
 
 export type RibDirection = 'vertical' | 'horizontal';
 
@@ -93,6 +94,102 @@ export function createDoorTexture(style: DoorStyle, dark: boolean): THREE.Canvas
   return tex;
 }
 
+/** Deterministic PRNG so print patterns render identically every frame/build. */
+function seededRand(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+}
+
+/**
+ * Paint one tiling module of a CCI print-panel pattern (memo 3/9/26) onto the
+ * sheet canvas — wood planks, running-bond brick, or ashlar stone. Drawn
+ * world-upright (planks vertical, brick/stone courses horizontal) and built
+ * from spans that sum to the module size, so RepeatWrapping tiles cleanly.
+ * The rib pass draws OVER this, keeping the printed sheet reading as formed
+ * steel — which is what the real product is.
+ */
+function drawPrintPattern(ctx: CanvasRenderingContext2D, size: number, print: PrintPanelKey): void {
+  const rnd = seededRand({ blackwood: 11, richwood: 23, rusticbrick: 37, stonewall: 53 }[print]);
+
+  if (print === 'blackwood' || print === 'richwood') {
+    const dark = print === 'blackwood';
+    const base = dark ? '#45433e' : '#b2a488';
+    const tones = dark ? ['#4b4943', '#403e39', '#514f48', '#3a3834'] : ['#b8ab8e', '#a89a7c', '#c0b498', '#9e9075'];
+    const grainDark = dark ? 'rgba(20,18,14,0.35)' : 'rgba(92,70,45,0.28)';
+    const grainLight = dark ? 'rgba(255,255,255,0.06)' : 'rgba(255,250,235,0.14)';
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, size, size);
+    const planks = 6;
+    const pw = size / planks;
+    for (let p = 0; p < planks; p++) {
+      ctx.fillStyle = tones[Math.floor(rnd() * tones.length)];
+      ctx.fillRect(p * pw, 0, pw, size);
+      // Long wavy grain streaks, full height so the module tiles vertically.
+      const streaks = 5 + Math.floor(rnd() * 4);
+      for (let g = 0; g < streaks; g++) {
+        const x = p * pw + 2 + rnd() * (pw - 4);
+        const amp = 1 + rnd() * 2.5;
+        const wob = 0.5 + rnd() * 1.2;
+        ctx.strokeStyle = rnd() < 0.7 ? grainDark : grainLight;
+        ctx.lineWidth = 0.6 + rnd() * 1.4;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.bezierCurveTo(x + amp * wob, size * 0.33, x - amp * wob, size * 0.66, x, size);
+        ctx.stroke();
+      }
+      // Plank joint shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      ctx.fillRect(p * pw, 0, 1.5, size);
+    }
+  } else if (print === 'rusticbrick') {
+    ctx.fillStyle = '#c6bfae'; // mortar
+    ctx.fillRect(0, 0, size, size);
+    const rows = 8;
+    const bh = size / rows;
+    const bw = size / 4;
+    const tones = ['#74553f', '#815f46', '#6b4e39', '#8a684c', '#79573b'];
+    for (let r = 0; r < rows; r++) {
+      const off = r % 2 ? -bw / 2 : 0;
+      for (let c = -1; c < 5; c++) {
+        const x = c * bw + off;
+        ctx.fillStyle = tones[Math.floor(rnd() * tones.length)];
+        ctx.fillRect(x + 2.5, r * bh + 2.5, bw - 5, bh - 5);
+        // weathered speckle
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        for (let d = 0; d < 4; d++) ctx.fillRect(x + 4 + rnd() * (bw - 12), r * bh + 4 + rnd() * (bh - 10), 2 + rnd() * 5, 1 + rnd() * 2);
+      }
+    }
+  } else {
+    // stonewall — ashlar courses of varied-width gray stones
+    ctx.fillStyle = '#77776f'; // mortar
+    ctx.fillRect(0, 0, size, size);
+    const rows = 4;
+    const rh = size / rows;
+    const tones = ['#a3a49d', '#b1b2ab', '#8f918a', '#9a9c94', '#a9aaa2'];
+    for (let r = 0; r < rows; r++) {
+      // 3–4 stones whose widths sum to the module so the row tiles horizontally.
+      const n = 3 + (Math.floor(rnd() * 2) % 2);
+      const raw = Array.from({ length: n }, () => 0.6 + rnd());
+      const total = raw.reduce((a, b) => a + b, 0);
+      let x = 0;
+      for (let i = 0; i < n; i++) {
+        const w = (raw[i] / total) * size;
+        ctx.fillStyle = tones[Math.floor(rnd() * tones.length)];
+        ctx.fillRect(x + 3, r * rh + 3, w - 6, rh - 6);
+        // top-edge light + bottom shadow give the block relief
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.fillRect(x + 3, r * rh + 3, w - 6, 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.16)';
+        ctx.fillRect(x + 3, (r + 1) * rh - 5, w - 6, 2);
+        x += w;
+      }
+    }
+  }
+}
+
 /**
  * Procedurally drawn AG/R-panel steel sheeting (one 3' module, tiled).
  *
@@ -102,11 +199,15 @@ export function createDoorTexture(style: DoorStyle, dark: boolean): THREE.Canvas
  * reads as formed steel paneling, not rippled plastic/vinyl. No seam.
  * `direction`: 'horizontal' = horizontal ribs; 'vertical' = vertical ribs/roof.
  *
+ * `print` (CCI wainscot only): paint that print-panel pattern under the ribs
+ * instead of the flat base color.
+ *
  * Caller sets repeat so one tile = 3 ft (see Siding).
  */
 export function createCorrugatedTexture(
   baseColor: string,
   direction: RibDirection,
+  print?: PrintPanelKey,
 ): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } {
   const size = 512; // 3 ft module
   const horizontal = direction === 'horizontal';
@@ -118,6 +219,7 @@ export function createCorrugatedTexture(
     const ctx = canvas.getContext('2d')!;
     ctx.fillStyle = mode === 'color' ? baseColor : '#808080';
     ctx.fillRect(0, 0, size, size);
+    if (mode === 'color' && print) drawPrintPattern(ctx, size, print);
 
     // Crisp lines drawn across the sheet (perpendicular to the rib axis).
     const line = (pos: number, thick: number, style: string) => {

@@ -3,7 +3,7 @@ import { useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SHEET_OUTSET, COMPONENT_OUTSET, type LeanToStructure, type Vec3 } from '@/engine/geometry';
 import type { BuildingColors, LeanToOpening, OpeningType, PanelOrientation, Wainscot } from '@/types/building';
-import { swatchHex, isMetallic } from '@/config/colors';
+import { swatchHex, isMetallic, printPanelKey } from '@/config/colors';
 import { TRUSS_CLEARANCE_FT } from '@/config/constants';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
@@ -71,7 +71,7 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
       roof: createCorrugatedTexture(swatchHex(colors.roof), roofDir),
       underRoof: createCorrugatedTexture(swatchHex('GALVALUME'), roofDir),
       walls: createCorrugatedTexture(swatchHex(colors.walls), wallDir),
-      wainscot: createCorrugatedTexture(swatchHex(colors.wainscot), wallDir),
+      wainscot: createCorrugatedTexture(swatchHex(colors.wainscot), wallDir, printPanelKey(colors.wainscot) ?? undefined),
     }),
     [colors.roof, colors.walls, colors.wainscot, wallDir, roofDir],
   );

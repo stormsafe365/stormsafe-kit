@@ -36,8 +36,32 @@ const BY_CODE: Record<string, ColorSwatch> = Object.fromEntries(
   COLOR_SWATCHES.map((s) => [s.code, s]),
 );
 
+/**
+ * CCI print-panel wainscot (CCI "New Product" memo 3/9/26) — wood/brick/stone
+ * printed steel, wainscot-only. The pricing program marks its four print
+ * options with data-code="PRINT-<KEY>", which the bridge forwards as the
+ * wainscot color code. `hex` is the representative tone (mirrors the program's
+ * option value); the 3D renders a drawn pattern, not the flat hex.
+ */
+export type PrintPanelKey = 'blackwood' | 'richwood' | 'rusticbrick' | 'stonewall';
+export const PRINT_PANELS: Record<PrintPanelKey, { name: string; hex: string }> = {
+  blackwood: { name: 'Black Wood Print', hex: '#46443F' },
+  richwood: { name: 'Rich Wood Print', hex: '#B0A183' },
+  rusticbrick: { name: 'Rustic Brick Print', hex: '#7A6046' },
+  stonewall: { name: 'Stone Wall Print', hex: '#A8A69E' },
+};
+
+/** 'PRINT-BLACKWOOD' → 'blackwood'; null for every non-print color code. */
+export function printPanelKey(code: string): PrintPanelKey | null {
+  const m = /^PRINT-([A-Z]+)$/.exec(String(code || ''));
+  const k = m ? m[1].toLowerCase() : '';
+  return k in PRINT_PANELS ? (k as PrintPanelKey) : null;
+}
+
 export function swatch(code: string): ColorSwatch {
   if (BY_CODE[code]) return BY_CODE[code];
+  const pk = printPanelKey(code);
+  if (pk) return { code, name: PRINT_PANELS[pk].name, hex: PRINT_PANELS[pk].hex };
   // Tolerate a raw hex (e.g. a color forwarded straight from the pricing
   // program for a manufacturer palette we don't have a code for). Galvalume
   // can't be detected from a bare hex, so it renders non-metallic — acceptable.

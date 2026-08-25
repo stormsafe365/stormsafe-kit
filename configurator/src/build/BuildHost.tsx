@@ -659,14 +659,19 @@ function syncFromBuilder(win: BuilderWindow) {
 
   // ── Colors (roof / wall / trim / wainscot) → 3D ──
   // Program selects: cr=roof, cw=wall, ct=trim, cwn=wainscot. Each option's
-  // .value is the on-screen hex and its text is "Name (CODE)". Prefer the CODE
-  // (so Galvalume reads metallic); fall back to the raw hex. 'TBD' = leave as-is.
+  // .value is the on-screen hex and its text is "Name (CODE)". A data-code
+  // attribute wins outright (CCI print-panel wainscot options carry
+  // data-code="PRINT-<KEY>" → the 3D draws the printed texture); else prefer
+  // the text CODE (so Galvalume reads metallic); fall back to the raw hex.
+  // 'TBD' = leave as-is.
   const colorOf = (id: string): string | null => {
     const el = G(id) as HTMLSelectElement | null;
     if (!el) return null;
     const v = String(el.value || '');
     if (!v || v === 'TBD') return null;
     const opt = el.options ? el.options[el.selectedIndex] : null;
+    const ds = opt ? (opt as HTMLOptionElement).getAttribute('data-code') : null;
+    if (ds) return ds;
     const m = opt && opt.textContent ? opt.textContent.match(/\(([^)]+)\)\s*$/) : null;
     return m ? m[1] : v;
   };

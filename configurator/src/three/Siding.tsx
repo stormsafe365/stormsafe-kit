@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import * as THREE from 'three';
 import { ROOF_LIFT, SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
 import type { BuildingColors, Opening, PanelOrientation, Wainscot, WallSide } from '@/types/building';
-import { swatchHex, isMetallic } from '@/config/colors';
+import { swatchHex, isMetallic, printPanelKey } from '@/config/colors';
 import { createCorrugatedTexture, type RibDirection } from './textures';
 
 interface SidingProps {
@@ -103,7 +103,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
       // regardless of the chosen top-side roof color.
       underRoof: createCorrugatedTexture(swatchHex('GALVALUME'), roofDir),
       walls: createCorrugatedTexture(swatchHex(colors.walls), wallDir),
-      wainscot: createCorrugatedTexture(swatchHex(colors.wainscot), wallDir),
+      wainscot: createCorrugatedTexture(swatchHex(colors.wainscot), wallDir, printPanelKey(colors.wainscot) ?? undefined),
     }),
     [colors.roof, colors.walls, colors.wainscot, wallDir, roofDir],
   );

@@ -605,14 +605,20 @@ function syncFromBuilder(win: BuilderWindow) {
     if (m) return Math.min(parseInt(m[1], 10) * 3 + (m[2] ? 1.5 : 0), h);
     return 0;
   };
+  // NOTE the swap: the program's Left/Right (viewed from the FRONT) render on
+  // the opposite internal X-side — program "Right" is the internal 'left'
+  // (-X) wall and vice versa, exactly like SIDE_MAP for openings and the
+  // wle/wre wall overrides below. This feed previously mapped straight
+  // through, so carport/GCH side panels drew on the mirrored side (user
+  // report 2026-08-25).
   let leftFt = 0;
   let rightFt = 0;
   if (bt === 'gch') {
-    leftFt = closureFeet(val('gch-left'));
-    rightFt = closureFeet(val('gch-right'));
+    leftFt = closureFeet(val('gch-right'));
+    rightFt = closureFeet(val('gch-left'));
   } else if (bt === 'carport') {
-    leftFt = closureFeet(val('sp-left'));
-    rightFt = closureFeet(val('sp-right'));
+    leftFt = closureFeet(val('sp-right'));
+    rightFt = closureFeet(val('sp-left'));
   }
   if (leftFt !== st.eavePanelFt.left || rightFt !== st.eavePanelFt.right) {
     st.setEavePanels({ left: leftFt, right: rightFt });

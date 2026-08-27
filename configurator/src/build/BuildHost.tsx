@@ -199,7 +199,10 @@ function readOpenings(
     push(el, lv(el, '.wloc'), qv(el, '.wqt', 1), 3, 6.67, 'wtd');
   });
   win.document.querySelectorAll('.ne').forEach((el) => {
-    push(el, lv(el, '.nloc'), qv(el, '.nqt', 1), 2.5, 2.5, 'win', 4.16667); // window sill 4'-2"
+    // Adjustable per-row sill (.nsill, CA & CCI) — standard 4'2" when blank.
+    const sillRaw = parseFloat((el.querySelector('.nsill') as HTMLInputElement | null)?.value ?? '');
+    const sill = Number.isFinite(sillRaw) && sillRaw >= 0 ? sillRaw : 4.16667;
+    push(el, lv(el, '.nloc'), qv(el, '.nqt', 1), 2.5, 2.5, 'win', sill);
   });
 
   // Framed openings (in "Additional Components" / .ace): only entries whose

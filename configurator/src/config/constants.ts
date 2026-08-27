@@ -45,6 +45,7 @@ export const DEFAULT_CONFIG: BuildingConfig = {
   roofOrientation: 'Vertical',
   roofPitch: 3,
   roofOverhangFt: 0.5, // 6" standard overhang
+  monoDropFt: 0, // 0 = gabled; >0 = free-standing single-slope drop (tall −X → low +X)
   // Defaults mirror the real StormSafe quote palette.
   // Preset (colors-TBD) combo per Jenna 2026-07-24: roof Galvalume, walls
   // Light Gray, trim Black — matches the quote program's TBD render defaults.

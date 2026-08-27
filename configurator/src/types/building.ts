@@ -207,6 +207,13 @@ export interface BuildingConfig {
   roofPitch: number;
   /** Roof overhang past the wall plane on all sides (ft). 0.5 = 6", 1 = 12". */
   roofOverhangFt: number;
+  /**
+   * Free-standing single-slope (CCI fslean): total roof drop (ft) from the tall
+   * internal-LEFT (-X) eave down to the low (+X) eave. 0 = normal gabled
+   * building. When set, `legHeight` is the TALL side; the low side is
+   * legHeight − monoDropFt and the ridge sits at the tall eave.
+   */
+  monoDropFt?: number;
 
   colors: BuildingColors;
   wainscot: Wainscot;

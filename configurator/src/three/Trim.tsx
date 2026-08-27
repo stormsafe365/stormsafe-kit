@@ -23,14 +23,21 @@ export function Trim({ structure, color, wainscot, openings }: TrimProps) {
   const halfW = W / 2;
   const halfL = L / 2;
   const out = SHEET_OUTSET; // sheeting outer face
-  const eaveDrop = oh * (rise / Math.max(halfW, 0.001)); // eave edge drops with overhang
+  // Free-standing single-slope: one roof plane, tall (−X) eave → low (+X) eave.
+  const mono = structure.monoDropFt > 0.01;
+  const runW = mono ? W : halfW; // horizontal run of one roof slope
+  const eaveDrop = oh * (rise / Math.max(runW, 0.001)); // eave edge drops with overhang
   const eaveX = halfW + oh; // roof drip edge (horizontal)
   const eaveY = H - eaveDrop;
   const gz = halfL + oh; // gable roof edge
   // The roof is nudged out along its normal (ROOF_LIFT); its real drip-edge sits
   // this much HIGHER than eaveY. The eave trim top must reach it or a slot opens.
-  const rafterLen = Math.sqrt(halfW * halfW + rise * rise);
-  const roofLiftY = (halfW / Math.max(rafterLen, 0.001)) * ROOF_LIFT;
+  const rafterLen = Math.sqrt(runW * runW + rise * rise);
+  const roofLiftY = (runW / Math.max(rafterLen, 0.001)) * ROOF_LIFT;
+  /** Roof drip-edge height per eave side (−1 = tall side on a mono-slope). */
+  const eaveYFor = (sx: -1 | 1): number => (mono ? (sx < 0 ? peakHeight + eaveDrop : H - eaveDrop) : eaveY);
+  /** Wall/corner height per eave side (tall −X side reaches the peak on mono). */
+  const cornerHFor = (sx: -1 | 1): number => (mono && sx < 0 ? peakHeight : H);
 
   // Painted trim = dielectric. Low metalness + low env so it shows its true
   // (usually white) color brightly instead of mirroring the dark background.
@@ -79,6 +86,7 @@ export function Trim({ structure, color, wainscot, openings }: TrimProps) {
         sx < 0
           ? enclosure.sideOpen.left || enclosure.sideBandFt.left > 0
           : enclosure.sideOpen.right || enclosure.sideBandFt.right > 0;
+      const cH = cornerHFor(sx); // mono-slope: tall −X corners run to the peak
       for (const z of [-halfL, halfL] as const) {
         if (!within(z)) continue;
         const sz = z < 0 ? -1 : 1;
@@ -86,17 +94,17 @@ export function Trim({ structure, color, wainscot, openings }: TrimProps) {
           (z === -halfL && enclosure.front === 'closed') || (z === halfL && enclosure.back === 'closed');
         // face on the side wall
         if (!sideIsOpen)
-          corners.push(<Box key={`cs${k++}`} pos={[sx * (halfW + out + tt / 2), H / 2, sz * (halfL - f / 2)]} size={[tt, H, f]} />);
+          corners.push(<Box key={`cs${k++}`} pos={[sx * (halfW + out + tt / 2), cH / 2, sz * (halfL - f / 2)]} size={[tt, cH, f]} />);
         // face on the end wall
         if (endClosed)
-          corners.push(<Box key={`ce${k++}`} pos={[sx * (halfW - f / 2), H / 2, sz * (halfL + out + tt / 2)]} size={[f, H, tt]} />);
+          corners.push(<Box key={`ce${k++}`} pos={[sx * (halfW - f / 2), cH / 2, sz * (halfL + out + tt / 2)]} size={[f, cH, tt]} />);
         // beveled fold across the corner notch (caps the side sheeting edge)
         if (!sideIsOpen)
           corners.push(
             <Box
               key={`cb${k++}`}
-              pos={[sx * (halfW + out / 2), H / 2, sz * (halfL + out / 2)]}
-              size={[out * 1.5, H, tt]}
+              pos={[sx * (halfW + out / 2), cH / 2, sz * (halfL + out / 2)]}
+              size={[out * 1.5, cH, tt]}
               rotY={Math.atan2(-sz, -sx)}
             />,
           );
@@ -126,22 +134,25 @@ export function Trim({ structure, color, wainscot, openings }: TrimProps) {
     }
   }
 
-  const dripY = eaveY + roofLiftY; // roof lower (drip) edge
   const fasciaH = 0.32; // ~3.8" clean fascia face
   return (
     <group>
-      {/* Ridge cap — extends to the gable overhang */}
-      <SteelMember start={[0, peakHeight + 0.05, -gz]} end={[0, peakHeight + 0.05, gz]} size={0.16} color={color} metalness={0.1} roughness={0.5} />
+      {/* Ridge cap — extends to the gable overhang (a mono-slope has no ridge;
+          its tall edge gets an eave fascia like the low one) */}
+      {!mono && (
+        <SteelMember start={[0, peakHeight + 0.05, -gz]} end={[0, peakHeight + 0.05, gz]} size={0.16} color={color} metalness={0.1} roughness={0.5} />
+      )}
 
       {/* Eave fascia — the white board is TUCKED UNDER the roof (recessed inboard
           by `tuck`) so the roof panel edge HANGS OVER it, with the dark folded
           drip/rib-end edge at the overhanging lip. Matches IdeaRoom's overhang. */}
       {([-1, 1] as const).map((sx) => {
         const tuck = 0.11; // roof overhangs the fascia by ~1.3"
+        const dY = eaveYFor(sx) + roofLiftY; // per-side drip (mono tall vs low eave)
         return (
           <group key={`eave${sx}`}>
-            <Box pos={[sx * (eaveX - tuck), dripY - fasciaH / 2 + 0.02, 0]} size={[0.035, fasciaH, 2 * gz]} />
-            <Box pos={[sx * eaveX, dripY - 0.025, 0]} size={[0.028, 0.07, 2 * gz]} m={edgeMat} />
+            <Box pos={[sx * (eaveX - tuck), dY - fasciaH / 2 + 0.02, 0]} size={[0.035, fasciaH, 2 * gz]} />
+            <Box pos={[sx * eaveX, dY - 0.025, 0]} size={[0.028, 0.07, 2 * gz]} m={edgeMat} />
           </group>
         );
       })}
@@ -153,11 +164,15 @@ export function Trim({ structure, color, wainscot, openings }: TrimProps) {
         const boards: JSX.Element[] = [];
         const tuck = 0.11; // rake tucked inboard so the roof gable edge overhangs it
         const zRake = z - Math.sign(z) * tuck;
-        for (const sx of [-1, 1] as const) {
-          const ax = sx * eaveX;
-          const ay = eaveY;
-          const bx = 0;
-          const by = peakHeight + 0.02;
+        // Mono-slope: ONE rake board per end, tall drip edge → low drip edge.
+        const segs: Array<{ ax: number; ay: number; bx: number; by: number; key: number }> = mono
+          ? [{ ax: -eaveX, ay: eaveYFor(-1) + 0.02, bx: eaveX, by: eaveYFor(1) + 0.02, key: 0 }]
+          : [
+              { ax: -eaveX, ay: eaveY, bx: 0, by: peakHeight + 0.02, key: -1 },
+              { ax: eaveX, ay: eaveY, bx: 0, by: peakHeight + 0.02, key: 1 },
+            ];
+        for (const seg of segs) {
+          const { ax, ay, bx, by, key: sx } = seg;
           const dx = bx - ax;
           const dy = by - ay;
           const len = Math.hypot(dx, dy);

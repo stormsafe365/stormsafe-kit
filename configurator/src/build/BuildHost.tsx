@@ -34,6 +34,8 @@ const TYPE_MAP: Record<string, BuildingType> = {
   gch: 'utility',
   standard: 'garage',
   widespan: 'garage',
+  // Free-standing single-slope: garage family (per-wall overrides) + monoDropFt.
+  fslean: 'garage',
 };
 
 /**
@@ -563,6 +565,13 @@ function syncFromBuilder(win: BuilderWindow) {
   const mapped = TYPE_MAP[bt];
   if (mapped && mapped !== st.buildingType) st.setBuildingType(mapped);
 
+  // Free-standing single-slope: bh is the TALL side; low = tall − round(W×pitch/12).
+  // The program's tall side is the internal LEFT (−X) eave in the 3D.
+  const isFs = bt === 'fslean';
+  const fsPitch = isFs ? (val('fs-pitch') === '3' ? 3 : 2) : 0;
+  const fsDrop = isFs && w ? Math.min(Math.max(0, Math.round((w * fsPitch) / 12)), Math.max(0, h - 1)) : 0;
+  if (fsDrop !== (st.monoDropFt ?? 0)) st.setMonoDrop(fsDrop);
+
   const panel = ws === 'Vertical' ? 'Vertical' : 'Horizontal';
   if (ws && panel !== st.panelOrientation) st.setPanelOrientation(panel);
 
@@ -642,14 +651,46 @@ function syncFromBuilder(win: BuilderWindow) {
     const ft = closureFeet(v);
     return ft > 0 ? ft : undefined;
   };
-  const ov: WallOverrides = {
-    front: isGarage ? (endMap(fg) ?? 'closed') : bt === 'carport' ? endMap(fg) : undefined,
-    back: isGarage ? (endMap(bg) ?? 'closed') : bt === 'carport' ? endMap(bg) : undefined,
-    leftOpen: isGarage && val('wre') === 'Open',
-    rightOpen: isGarage && val('wle') === 'Open',
-    leftBandFt: isGarage ? sideBand(val('wre')) : undefined,
-    rightBandFt: isGarage ? sideBand(val('wle')) : undefined,
+  // Free-standing single-slope walls come from the fs-section selects, not the
+  // standard Wall Options rows (the program parks those Open for fslean).
+  // Tall side (fs-wt) = internal LEFT (−X); low side (fs-wl2) = internal RIGHT.
+  const fsEnd = (v: string): EndSheeting => {
+    if (v === 'open') return 'open';
+    if (v === 'gable' || v === 'extgable') return 'gableOnly';
+    if (v === 'quarter' || v === 'half') return 'halfClosed';
+    return 'closed'; // threequarter / closed
   };
+  const fsSideBand = (v: string, wallH: number): { open: boolean; band?: number } => {
+    if (v === 'open') return { open: true };
+    if (v === 'quarter') return { open: false, band: wallH * 0.25 };
+    if (v === 'half') return { open: false, band: wallH * 0.5 };
+    if (v === 'threequarter') return { open: false, band: wallH * 0.75 };
+    return { open: false }; // closed = full sheeting
+  };
+  const ov: WallOverrides = (() => {
+    if (isFs) {
+      const mode = val('fs-walls-mode') || 'open';
+      const pick = (id: string) => (mode === 'enclosed' ? 'closed' : mode === 'open' ? 'open' : val(id) || 'closed');
+      const tall = fsSideBand(pick('fs-wt'), h);
+      const low = fsSideBand(pick('fs-wl2'), Math.max(1, h - fsDrop));
+      return {
+        front: fsEnd(pick('fs-wf')),
+        back: fsEnd(pick('fs-wb')),
+        leftOpen: tall.open,
+        rightOpen: low.open,
+        leftBandFt: tall.band,
+        rightBandFt: low.band,
+      };
+    }
+    return {
+      front: isGarage ? (endMap(fg) ?? 'closed') : bt === 'carport' ? endMap(fg) : undefined,
+      back: isGarage ? (endMap(bg) ?? 'closed') : bt === 'carport' ? endMap(bg) : undefined,
+      leftOpen: isGarage && val('wre') === 'Open',
+      rightOpen: isGarage && val('wle') === 'Open',
+      leftBandFt: isGarage ? sideBand(val('wre')) : undefined,
+      rightBandFt: isGarage ? sideBand(val('wle')) : undefined,
+    };
+  })();
   const curOv = st.wallOverrides;
   if (
     curOv.front !== ov.front ||
@@ -750,6 +791,7 @@ export default function BuildHost() {
   const length = useBuildingStore((s) => s.length);
   const legHeight = useBuildingStore((s) => s.legHeight);
   const buildingType = useBuildingStore((s) => s.buildingType);
+  const monoDropFt = useBuildingStore((s) => s.monoDropFt ?? 0);
 
   useEffect(() => {
     // Start a fresh quote with a BARE building — strip the demo openings.
@@ -855,10 +897,10 @@ export default function BuildHost() {
         <div style={{ flex: 1 }} />
         <div style={{ fontSize: 12.5, color: '#94a3b8', fontVariantNumeric: 'tabular-nums' }}>
           <span style={{ color: '#e2e8f0', fontWeight: 600 }}>
-            {fmt(width)} × {fmt(length)} × {fmt(legHeight)}
+            {fmt(width)} × {fmt(length)} × {monoDropFt > 0 ? `${fmt(legHeight)}/${fmt(legHeight - monoDropFt)}` : fmt(legHeight)}
           </span>
           <span style={{ margin: '0 8px', color: '#1e2d42' }}>|</span>
-          {TYPE_LABEL[buildingType]}
+          {monoDropFt > 0 ? 'Free-Standing Lean-To (Single Slope)' : TYPE_LABEL[buildingType]}
         </div>
       </header>
 

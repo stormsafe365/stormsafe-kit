@@ -97,6 +97,10 @@ export interface StructureModel {
   peakHeight: number;
   rise: number;
   rafterLength: number;
+  /** Free-standing single-slope drop (ft): 0 = gabled. When >0, `legHeight` is
+   *  the LOW (+X) eave, `peakHeight` the tall (−X) eave, and the roof is ONE
+   *  plane between them (`rise` = the drop, `rafterLength` spans full width). */
+  monoDropFt: number;
   roofOverhangFt: number;
   frameCount: number;
   framePositionsZ: number[];
@@ -423,13 +427,24 @@ function endTrussLines(W: number): TrussLine[] {
 
 export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   const { config, legSpacing, requiresHatChannels } = resolved;
-  const { width: W, length: L, legHeight: H, roofPitch, buildingType, enclosedLengthFt, openEnd, openEndGableSheeting, eavePanelFt } = config;
+  const { width: W, length: L, legHeight: H0, roofPitch, buildingType, enclosedLengthFt, openEnd, openEndGableSheeting, eavePanelFt } = config;
 
   const halfW = W / 2;
   const halfL = L / 2;
-  const rise = halfW * (roofPitch / 12);
+  // Free-standing single-slope: the ridge sits AT the tall (-X) eave. The
+  // pipeline's `H` becomes the LOW (+X) eave and `peakHeight` the tall side, so
+  // peakHeight = H + rise holds for both roof shapes and the end-wall "gable"
+  // formulas (0.5·W·rise) remain exact (right triangle instead of isosceles).
+  const monoDropFt = Math.min(Math.max(0, config.monoDropFt ?? 0), Math.max(0, H0 - 1));
+  const mono = monoDropFt > 0.01;
+  const tallH = H0;
+  const H = mono ? H0 - monoDropFt : H0;
+  const rise = mono ? monoDropFt : halfW * (roofPitch / 12);
   const peakHeight = H + rise;
-  const rafterLength = Math.hypot(halfW, rise);
+  const rafterLength = mono ? Math.hypot(W, rise) : Math.hypot(halfW, rise);
+  /** Roofline height at X — gabled: peak at 0; mono: linear tall(−halfW) → low(+halfW). */
+  const roofYAt = (x: number): number =>
+    mono ? tallH - rise * ((x + halfW) / W) : peakHeight - Math.abs(x) * (rise / halfW);
 
   // Frames sit at EXACT on-center intervals from the front gable (with end
   // frames at both walls and a possibly-short last bay) — NOT evenly
@@ -505,23 +520,24 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   // to meet the rafter underside (the roof climbs toward the ridge).
   const pushLeg = (sx: number, z: number) => {
     const inb = sx < 0 ? 1 : -1; // toward the building interior along X
+    const topY = roofYAt(sx); // gabled: H both sides; mono: tall on −X, low on +X
     if (ladderLeg) {
       const xIn = sx + inb * LADDER_D;
-      const yIn = H + rise * (LADDER_D / halfW);
-      members.push(member('leg', [sx, 0, z], [sx, H, z]));
+      const yIn = roofYAt(xIn);
+      members.push(member('leg', [sx, 0, z], [sx, topY, z]));
       members.push(member('leg', [xIn, 0, z], [xIn, yIn, z]));
-      const rungs = Math.max(3, Math.round(H / 3)); // ~every 3'
+      const rungs = Math.max(3, Math.round(topY / 3)); // ~every 3'
       for (let i = 1; i < rungs; i++) {
-        const y = (H * i) / rungs;
+        const y = (topY * i) / rungs;
         members.push(member('brace', [sx, y, z], [sx + inb * LADDER_D, y, z]));
       }
     } else if (doublePost) {
       const xIn = sx + inb * DOUBLE_D;
-      const yIn = H + rise * (DOUBLE_D / halfW);
-      members.push(member('leg', [sx, 0, z], [sx, H, z]));
+      const yIn = roofYAt(xIn);
+      members.push(member('leg', [sx, 0, z], [sx, topY, z]));
       members.push(member('leg', [xIn, 0, z], [xIn, yIn, z]));
     } else {
-      members.push(member('leg', [sx, 0, z], [sx, H, z]));
+      members.push(member('leg', [sx, 0, z], [sx, topY, z]));
     }
   };
 
@@ -531,6 +547,18 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   const pushBent = (z: number) => {
     pushLeg(-halfW, z);
     pushLeg(halfW, z);
+    if (mono) {
+      // Single-slope bent: one rafter across, tall (−X) eave → low (+X) eave.
+      members.push(member('rafter', [-halfW, tallH, z], [halfW, H, z]));
+      if (!ladderLeg) {
+        for (const sx of [-halfW, halfW]) {
+          const dir = sx < 0 ? 1 : -1; // brace tip runs inboard along the rafter
+          const tipX = sx + dir * Math.min(braceLen, halfW);
+          members.push(member('brace', [sx, roofYAt(sx) - braceLen, z], [tipX, roofYAt(tipX), z]));
+        }
+      }
+      return; // no peak collar tie on a mono-slope bent
+    }
     members.push(member('rafter', [-halfW, H, z], [0, peakHeight, z]));
     members.push(member('rafter', [halfW, H, z], [0, peakHeight, z]));
     if (!ladderLeg) {
@@ -573,15 +601,16 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       return [center - o.width / 2, center + o.width / 2] as [number, number];
     });
   for (const [s, e] of subtractSpans(-halfL, halfL, ridgeGaps)) {
-    members.push(member('ridge', [0, peakHeight, s], [0, peakHeight, e]));
+    // Mono-slope: the "ridge" strut runs along the TALL eave edge.
+    members.push(member('ridge', [mono ? -halfW : 0, peakHeight, s], [mono ? -halfW : 0, peakHeight, e]));
   }
 
   // --- Roof purlins (clipped at openings) ---
   const runs = purlinRunsPerSlope(rafterLength);
   for (let i = 1; i < runs; i++) {
     const t = i / runs;
-    const yL = H + rise * t;
-    const xL = -halfW + halfW * t;
+    const yL = mono ? tallH - rise * t : H + rise * t;
+    const xL = mono ? -halfW + W * t : -halfW + halfW * t;
     const xR = halfW - halfW * t;
 
     // Clip purlins at opening locations along the Z-axis (length)
@@ -593,31 +622,39 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         return [center - o.width / 2, center + o.width / 2] as [number, number];
       });
 
-    // Generate purlin segments
+    // Generate purlin segments (mono-slope has ONE plane — no mirrored run)
     for (const [s, e] of subtractSpans(-halfL, halfL, zGaps)) {
       members.push(member('purlin', [xL, yL, s], [xL, yL, e]));
-      members.push(member('purlin', [xR, yL, s], [xR, yL, e]));
+      if (!mono) members.push(member('purlin', [xR, yL, s], [xR, yL, e]));
     }
   }
 
   // --- Wall girts: horizontal members the sheeting screws to, on every framed
   // wall at ~4 ft vertical spacing (eave walls run along Z, end walls along X). ---
+  // Mono-slope: the tall (−X) side wall is `tallH` high — its girt ladder runs
+  // the full tall wall while the low side (and the end-wall rows) use `H`.
+  const wallHFor = (sd: 'left' | 'right'): number => (mono && sd === 'left' ? tallH : H);
+  for (const sd of ['left', 'right'] as const) {
+    if (!enclosure.sideZ) break;
+    const wallH = wallHFor(sd);
+    const rowsS = Math.max(1, Math.floor((wallH - 1) / 4));
+    const { start, end } = enclosure.sideZ;
+    for (let i = 1; i <= rowsS; i++) {
+      const y = (wallH * i) / (rowsS + 1);
+      // A partially-closed side (eave-down band) only has girts within the
+      // band — the open framing below gets none.
+      const within =
+        !enclosure.sideOpen[sd] && (enclosure.sideBandFt[sd] <= 0 || y >= wallH - enclosure.sideBandFt[sd] - 0.01);
+      if (!within) continue;
+      const holes = sd === 'left' ? leftHoles : rightHoles;
+      const wx = sd === 'left' ? -halfW : halfW;
+      for (const [s, e] of subtractSpans(start, end, gapsAtHeight(holes, y)))
+        members.push(member('girt', [wx, y, s], [wx, y, e]));
+    }
+  }
   const girtRows = Math.max(1, Math.floor((H - 1) / 4));
   for (let i = 1; i <= girtRows; i++) {
     const y = (H * i) / (girtRows + 1);
-    if (enclosure.sideZ) {
-      const { start, end } = enclosure.sideZ;
-      // A partially-closed side (eave-down band) only has girts within the
-      // band — the open framing below gets none.
-      const within = (sd: 'left' | 'right') =>
-        !enclosure.sideOpen[sd] && (enclosure.sideBandFt[sd] <= 0 || y >= H - enclosure.sideBandFt[sd] - 0.01);
-      if (within('left'))
-        for (const [s, e] of subtractSpans(start, end, gapsAtHeight(leftHoles, y)))
-          members.push(member('girt', [-halfW, y, s], [-halfW, y, e]));
-      if (within('right'))
-        for (const [s, e] of subtractSpans(start, end, gapsAtHeight(rightHoles, y)))
-          members.push(member('girt', [halfW, y, s], [halfW, y, e]));
-    }
     if (enclosure.front === 'closed')
       for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(frontHoles, y)))
         members.push(member('girt', [s, y, -halfL], [e, y, -halfL]));
@@ -628,18 +665,20 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
 
   // --- Hat channels on sheeted side walls (vertical sheeting only) ---
   if (requiresHatChannels && enclosure.sideZ) {
-    const rows = hatRows(H);
     const { start, end } = enclosure.sideZ;
-    for (let i = 1; i <= rows; i++) {
-      const y = (H * i) / (rows + 1);
-      const within = (sd: 'left' | 'right') =>
-        !enclosure.sideOpen[sd] && (enclosure.sideBandFt[sd] <= 0 || y >= H - enclosure.sideBandFt[sd] - 0.01);
-      if (within('left'))
-        for (const [s, e] of subtractSpans(start, end, gapsAtHeight(leftHoles, y)))
-          members.push(member('hatChannel', [-halfW, y, s], [-halfW, y, e]));
-      if (within('right'))
-        for (const [s, e] of subtractSpans(start, end, gapsAtHeight(rightHoles, y)))
-          members.push(member('hatChannel', [halfW, y, s], [halfW, y, e]));
+    for (const sd of ['left', 'right'] as const) {
+      const wallH = wallHFor(sd);
+      const rows = hatRows(wallH);
+      for (let i = 1; i <= rows; i++) {
+        const y = (wallH * i) / (rows + 1);
+        const within =
+          !enclosure.sideOpen[sd] && (enclosure.sideBandFt[sd] <= 0 || y >= wallH - enclosure.sideBandFt[sd] - 0.01);
+        if (!within) continue;
+        const holes = sd === 'left' ? leftHoles : rightHoles;
+        const wx = sd === 'left' ? -halfW : halfW;
+        for (const [s, e] of subtractSpans(start, end, gapsAtHeight(holes, y)))
+          members.push(member('hatChannel', [wx, y, s], [wx, y, e]));
+      }
     }
   }
 
@@ -647,7 +686,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   const gableTriangle = 0.5 * W * rise;
   const sideSpan = enclosure.sideZ ? enclosure.sideZ.end - enclosure.sideZ.start : 0;
   const sideSheetH = (sd: 'left' | 'right') =>
-    enclosure.sideOpen[sd] ? 0 : enclosure.sideBandFt[sd] > 0 ? Math.min(enclosure.sideBandFt[sd], H) : H;
+    enclosure.sideOpen[sd] ? 0 : enclosure.sideBandFt[sd] > 0 ? Math.min(enclosure.sideBandFt[sd], wallHFor(sd)) : wallHFor(sd);
   const sideWallArea = enclosure.sideZ ? (sideSheetH('left') + sideSheetH('right')) * sideSpan : 0;
   const endArea = (mode: EndSheeting) =>
     mode === 'closed'
@@ -671,8 +710,8 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       available: !!enclosure.sideZ,
       isEndWall: false,
       spanFt: round(L),
-      eaveHeightFt: H,
-      peakHeightFt: H,
+      eaveHeightFt: mono ? round(tallH) : H,
+      peakHeightFt: mono ? round(tallH) : H,
       trussLines: sideTruss,
     },
     right: {
@@ -1003,6 +1042,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     peakHeight,
     rise,
     rafterLength,
+    monoDropFt: mono ? monoDropFt : 0,
     roofOverhangFt: config.roofOverhangFt,
     frameCount,
     framePositionsZ,

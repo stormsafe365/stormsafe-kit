@@ -199,6 +199,17 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
   const roofCL: [number, number, number] = [-halfW / 2 + nL.x - (vL.x * slopeExt) / 2, (H + peakHeight) / 2 + nL.y - (vL.y * slopeExt) / 2, 0];
   const roofCR: [number, number, number] = [halfW / 2 + nR.x - (vR.x * slopeExt) / 2, (H + peakHeight) / 2 + nR.y - (vR.y * slopeExt) / 2, 0];
 
+  // Free-standing single-slope: ONE roof plane, tall (−X) eave → low (+X) eave.
+  // legHeight is the LOW eave, peakHeight the tall one (see StructureModel).
+  const mono = structure.monoDropFt > 0.01;
+  const monoN = new THREE.Vector3(rise, W, 0).normalize().multiplyScalar(ROOF_LIFT); // plane normal (up)
+  const monoV: [number, number, number] = [-W, rise, 0]; // up-slope direction (low → tall)
+  const monoExt = oh * (rafterLength / Math.max(W, 0.001)); // per-eave overhang along the slope
+  const monoH = rafterLength + 2 * monoExt;
+  const monoC: [number, number, number] = [monoN.x, (H + peakHeight) / 2 + monoN.y, 0];
+  /** Full sheeted height of an eave side wall (tall −X side reaches the peak). */
+  const sideWallH = (sd: 'left' | 'right'): number => (mono && sd === 'left' ? peakHeight : H);
+
   const side = enclosure.sideZ;
   const sideSpan = side ? side.end - side.start : 0;
   const sideMidZ = side ? (side.start + side.end) / 2 : 0;
@@ -231,10 +242,19 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           TOP panel plus a bare-galvalume UNDER panel sitting a hair below it, so
           the top reads the chosen color and the underside is always galvalume
           (the offset means whichever face you view, the right panel is nearest).*/}
-      <BasisPanel center={roofCL} uVec={[0, 0, 1]} vVec={[halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.roof, roofLen, roofH, roofDir, roofMetal, true)} />
-      <BasisPanel center={roofCR} uVec={[0, 0, 1]} vVec={[-halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.roof, roofLen, roofH, roofDir, roofMetal, true)} />
-      <BasisPanel center={[roofCL[0], roofCL[1] - ROOF_UNDER_GAP, roofCL[2]]} uVec={[0, 0, 1]} vVec={[halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.underRoof, roofLen, roofH, roofDir, true, true)} />
-      <BasisPanel center={[roofCR[0], roofCR[1] - ROOF_UNDER_GAP, roofCR[2]]} uVec={[0, 0, 1]} vVec={[-halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.underRoof, roofLen, roofH, roofDir, true, true)} />
+      {mono ? (
+        <>
+          <BasisPanel center={monoC} uVec={[0, 0, 1]} vVec={monoV} w={roofLen} h={monoH} material={planeMat(tex.roof, roofLen, monoH, roofDir, roofMetal, true)} />
+          <BasisPanel center={[monoC[0], monoC[1] - ROOF_UNDER_GAP, monoC[2]]} uVec={[0, 0, 1]} vVec={monoV} w={roofLen} h={monoH} material={planeMat(tex.underRoof, roofLen, monoH, roofDir, true, true)} />
+        </>
+      ) : (
+        <>
+          <BasisPanel center={roofCL} uVec={[0, 0, 1]} vVec={[halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.roof, roofLen, roofH, roofDir, roofMetal, true)} />
+          <BasisPanel center={roofCR} uVec={[0, 0, 1]} vVec={[-halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.roof, roofLen, roofH, roofDir, roofMetal, true)} />
+          <BasisPanel center={[roofCL[0], roofCL[1] - ROOF_UNDER_GAP, roofCL[2]]} uVec={[0, 0, 1]} vVec={[halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.underRoof, roofLen, roofH, roofDir, true, true)} />
+          <BasisPanel center={[roofCR[0], roofCR[1] - ROOF_UNDER_GAP, roofCR[2]]} uVec={[0, 0, 1]} vVec={[-halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.underRoof, roofLen, roofH, roofDir, true, true)} />
+        </>
+      )}
 
       {/* Side walls (cut around openings so frame-outs/doors are real holes) + wainscot */}
       {side &&
@@ -245,10 +265,11 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           if (enclosure.sideOpen[sd]) return null; // program "Eave Side: Open"
           // Partial closure ("1 Panel / 2 Panels / ¼ Closed…"): the band hangs
           // from the eave DOWN; the wall below stays open. Full closed = band
-          // spanning the whole height.
+          // spanning the whole height. (Mono-slope tall side reaches the peak.)
+          const wallH = sideWallH(sd);
           const band = enclosure.sideBandFt[sd];
-          const bandH = band > 0 ? Math.min(band, H) : H;
-          const yBot = H - bandH;
+          const bandH = band > 0 ? Math.min(band, wallH) : wallH;
+          const yBot = wallH - bandH;
           const holes = openings
             .filter((o) => o.side === sd && (band <= 0 || o.sillHeight + o.height > yBot + 0.01))
             .map((o) => ({ u: -halfL + o.offset - sideMidZ, v: o.sillHeight + o.height / 2 - (yBot + bandH / 2), w: o.width, h: o.height }));
@@ -373,6 +394,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           W={W}
           H={H}
           peak={peakHeight}
+          apexX={mono ? -halfW : 0}
           mode={enclosure.front}
           holes={gableHoles('front', H)}
           wallStripMat={(w, h, au, av) => planeMat(tex.walls, w, h, wallDir, wallMetal, false, au, av)}
@@ -389,6 +411,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           W={W}
           H={H}
           peak={peakHeight}
+          apexX={mono ? -halfW : 0}
           mode={enclosure.back}
           holes={gableHoles('back', H)}
           wallStripMat={(w, h, au, av) => planeMat(tex.walls, w, h, wallDir, wallMetal, false, au, av)}
@@ -424,6 +447,7 @@ function EndWall({
   W,
   H,
   peak,
+  apexX = 0,
   mode,
   holes,
   wallStripMat,
@@ -437,6 +461,8 @@ function EndWall({
   W: number;
   H: number;
   peak: number;
+  /** X of the roof peak — 0 for a gable; −W/2 for a single-slope end wall. */
+  apexX?: number;
   mode: 'closed' | 'gableOnly' | 'open' | 'halfClosed';
   /** Openings on this wall (centered local coords) to cut from the rect 0..H. */
   holes: LocalRect[];
@@ -490,7 +516,7 @@ function EndWall({
           ));
         })()}
       {/* Gable triangle above the eave is never crossed by an opening → keep solid. */}
-      <GableTriangle z={z} halfW={W / 2} H={H} peak={peak} material={gableMat} />
+      <GableTriangle z={z} halfW={W / 2} H={H} peak={peak} apexX={apexX} material={gableMat} />
       {wH > 0 &&
         stripsAround(W, wH, wainHoles).map((st, i) => (
           <mesh
@@ -512,22 +538,25 @@ function GableTriangle({
   halfW,
   H,
   peak,
+  apexX = 0,
   material,
 }: {
   z: number;
   halfW: number;
   H: number;
   peak: number;
+  /** X of the roof peak — 0 for a gable; −halfW for a single-slope (tall −X eave). */
+  apexX?: number;
   material: THREE.Material;
 }) {
   const geometry = useMemo(() => {
     const shape = new THREE.Shape();
     shape.moveTo(-halfW, H);
     shape.lineTo(halfW, H);
-    shape.lineTo(0, peak);
+    shape.lineTo(apexX, peak);
     shape.closePath();
     return new THREE.ShapeGeometry(shape);
-  }, [halfW, H, peak]);
+  }, [halfW, H, peak, apexX]);
   return <mesh position={[0, 0, z]} geometry={geometry} material={material} castShadow receiveShadow />;
 }
 

@@ -48,6 +48,7 @@ function selectConfig(s: ReturnType<typeof useBuildingStore.getState>): Building
     roofOrientation: s.roofOrientation,
     roofPitch: s.roofPitch,
     roofOverhangFt: s.roofOverhangFt,
+    monoDropFt: s.monoDropFt ?? 0,
     colors: s.colors,
     wainscot: s.wainscot,
     eavePanelFt: s.eavePanelFt,

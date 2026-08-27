@@ -47,6 +47,8 @@ export interface BuildingStore extends BuildingConfig {
   setRoofOrientation: (o: PanelOrientation) => void;
   setRoofPitch: (rise: number) => void;
   setRoofOverhang: (ft: number) => void;
+  /** Free-standing single-slope drop (ft, tall −X eave → low +X eave); 0 = gabled. */
+  setMonoDrop: (ft: number) => void;
   setColor: (target: keyof BuildingConfig['colors'], code: string) => void;
   setWainscotEnabled: (on: boolean) => void;
   setWainscotHeight: (ft: number) => void;
@@ -131,6 +133,7 @@ export const useBuildingStore = create<BuildingStore>((set) => ({
   setRoofOrientation: (o) => set(() => ({ roofOrientation: o })),
   setRoofPitch: (rise) => set(() => ({ roofPitch: Math.min(6, Math.max(0, Math.round(rise))) })),
   setRoofOverhang: (ft) => set(() => ({ roofOverhangFt: ft === 1 ? 1 : 0.5 })),
+  setMonoDrop: (ft) => set(() => ({ monoDropFt: Math.max(0, ft) })),
 
   setColor: (target, code) => set((s) => ({ colors: { ...s.colors, [target]: code } })),
   setWainscotEnabled: (on) => set((s) => ({ wainscot: { ...s.wainscot, enabled: on } })),

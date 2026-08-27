@@ -1,0 +1,12 @@
+{"product":"Free Standing Lean-tos (CCI, FL, Sensei 2.0, 2026-08-25)",
+"widthRow_L40_H11":{"6":3795,"8":3795,"10":3795,"12":3795,"14":4095,"16":5295,"18":6995,"20":7095,"22":7295,"24":7495},
+"lengthRow_W14_H11":{"20":1995,"25":2495,"30":3095,"35":3595,"40":4095,"45":4490,"50":4990,"55":5590,"60":6190,"70":7190,"80":8190,"100":10285},
+"crossBase":{"24x60":11390},
+"heightTiers_L40":{"10":815,"11":1555,"12":1555,"13":2765,"14":2765,"15":4235,"16":4235,"18":5280,"20":7190},
+"hAdjH11_byLength":{"20":865,"40":1555,"60":2420,"80":3110,"100":3970},
+"heightSeparabilityCheck":{"H13_L60_observed":4300,"H13_L60_predicted":4303},
+"cert170_byLength":{"20":300,"40":400,"60":700,"80":800,"100":1100},
+"cert150":0,"uncertified":0,"pitch312":0,"aframeStyle":0,
+"ga12_at_14x40":440,
+"depositPct":17,
+"freestandingBuildings":{"14x40x11_fullyEnclosed":10855,"14x40x11_open":6950,"note":"same base/height/cert as lean; enclosure needs clean re-run"}}

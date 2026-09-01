@@ -506,8 +506,12 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   //     split the posts ALONG the wall (Z), which laid the ladder flat against
   //     the sheeting and read as two skinny posts — the depth must run
   //     inboard, like the real welded column.)
-  const doublePost = W > 31 || (H >= 14 && H <= 16);
-  const ladderLeg = H >= 17;
+  // Ladder legs are a WIDE-building feature — Master Price Book 7/16/26 footnote:
+  // 32'-51' wide = standard double legs, 52'-60' = standard ladder legs (any
+  // height). Sensei renders CCI 30x96x18 with plain double legs (owner screenshot
+  // 8/31/26). Narrow tall buildings (14'+) get double posts.
+  const doublePost = (W > 31 && W < 52) || H >= 14;
+  const ladderLeg = W >= 52;
   const LADDER_D = Math.min(2, Math.max(1.3, H * 0.09)); // ladder column depth (inboard, X)
   const DOUBLE_D = 0.4;                                  // doubled-post gap (inboard, X)
 

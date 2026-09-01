@@ -45,16 +45,22 @@ describe('truss/leg styles — single, double (W>31 / H 14-16), ladder (H>=17)',
     expect(ladderRungs(s).length).toBe(0);
   });
 
-  it('tall build (H>=17) → LADDER legs: 4 chords per bent + rungs', () => {
+  it('tall NARROW build (18h, 24w) → DOUBLE legs, not ladder (Sensei renders double)', () => {
     const s = build({ width: 24, length: 30, legHeight: 18 });
+    expect(legCount(s)).toBe(s.frameCount * 4);
+    expect(ladderRungs(s).length).toBe(0);
+  });
+
+  it('52ft+ wide → LADDER legs at any height (book footnote): chords + rungs', () => {
+    const s = build({ width: 56, length: 60, legHeight: 12 });
     expect(legCount(s)).toBe(s.frameCount * 4);
     expect(ladderRungs(s).length).toBeGreaterThan(0);
   });
 
-  it('tall AND wide → ladder wins: 4 chords per bent + rungs', () => {
+  it('40w x 18h (32-51ft class) → DOUBLE legs, not ladder', () => {
     const s = build({ width: 40, length: 40, legHeight: 18 });
     expect(legCount(s)).toBe(s.frameCount * 4);
-    expect(ladderRungs(s).length).toBeGreaterThan(0);
+    expect(ladderRungs(s).length).toBe(0);
   });
 
   it('inner chords stay INBOARD — the frame never grows wider than the roof', () => {

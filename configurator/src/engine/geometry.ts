@@ -224,9 +224,12 @@ function clipFrameAtEaveOpenings(members: Member[], openings: Opening[], halfW: 
     // chords stood visible through framed openings when the band was a tight
     // 0.1' (regression: "trusses showing inside the opening again"). 2.25'
     // still excludes the peak collar tie (ends ≥ 3' further inboard on every
-    // buildable width).
-    const atEaveWall =
-      Math.abs(m.start[0]) > halfW - 2.25 || Math.abs(m.end[0]) > halfW - 2.25;
+    // buildable width). The band is also bounded at the wall plane on the
+    // OUTSIDE: an attached lean-to puts posts BEYOND the wall (|x| = halfW +
+    // leanWidth), and the unbounded band let main-wall openings erase them
+    // (regression: "legs on the lean-to are not showing").
+    const maxAbsX = Math.max(Math.abs(m.start[0]), Math.abs(m.end[0]));
+    const atEaveWall = maxAbsX > halfW - 2.25 && maxAbsX < halfW + 0.1;
     if (clippable && constZ && atEaveWall) {
       const side = (Math.abs(m.start[0]) > Math.abs(m.end[0]) ? m.start[0] : m.end[0]) < 0 ? 'left' : 'right';
       const z = m.start[2];

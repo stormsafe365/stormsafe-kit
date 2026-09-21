@@ -124,6 +124,25 @@ export function CaptureHook() {
         for (const v of views) {
           if (setView) setView(v);
           else goToView(v);
+          // Start from a guaranteed-OUTSIDE distance before fitting: with a
+          // lean-to (or any attached structure) the preset can leave corner
+          // points BEHIND the camera, and points behind a camera project to
+          // garbage NDC values that corrupt fitExact's recenter/re-distance —
+          // gable views came out shifted and cut off. Backing the camera to
+          // 2.5× the content's bounding radius keeps every point in front, so
+          // the iterative fit always converges.
+          if (pts.length && ctlTarget) {
+            const c = new THREE.Vector3();
+            for (const p of pts) c.add(p);
+            c.divideScalar(pts.length);
+            let r = 0;
+            for (const p of pts) r = Math.max(r, p.distanceTo(c));
+            const dir = camera.position.clone().sub(ctlTarget).normalize();
+            ctlTarget.copy(c);
+            camera.position.copy(c.clone().add(dir.multiplyScalar(Math.max(r * 2.5, 10))));
+            camera.lookAt(ctlTarget);
+            camera.updateMatrixWorld();
+          }
           fitExact();
           // Adapt the frame to the view's actual content shape (clamped per view
           // type) so a long eave gets a wide frame and a gable a squarer one —

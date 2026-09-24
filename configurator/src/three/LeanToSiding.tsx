@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SHEET_OUTSET, COMPONENT_OUTSET, type LeanToStructure, type Vec3 } from '@/engine/geometry';
+import { rendersLeanToFixture } from '@/engine/leanToFixtures';
 import type { BuildingColors, LeanToOpening, OpeningType, PanelOrientation, Wainscot } from '@/types/building';
 import { swatchHex, isMetallic, printPanelKey } from '@/config/colors';
 import { TRUSS_CLEARANCE_FT } from '@/config/constants';
@@ -178,17 +179,14 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
                 </mesh>
               ))}
 
-            {/* Door / window / roll-up fixtures on every sheeted wall (matches
-                the main-building fixture exactly via the shared component).
-                Outer-wall fixtures also render on PARTIAL (eave-down) closures
-                — the band cuts around them, so the fixture must be there. */}
+            {/* Door / window / roll-up / frame-out fixtures (matches the
+                main-building fixture exactly via the shared component). The
+                visibility rule is `rendersLeanToFixture` — named and unit
+                tested, because inlining it here is what let frame-outs on an
+                OPEN wall vanish (the opening cut pulls the post either way, so
+                suppressing the frame left an empty bay). */}
             {lt.openings
-              .filter(
-                (o) =>
-                  (o.wall === 'outer' && side !== 'open') ||
-                  (o.wall === 'front' && front === 'closed') ||
-                  (o.wall === 'back' && back === 'closed'),
-              )
+              .filter((o) => rendersLeanToFixture(o, walls))
               .map((o) => (
                 <DraggableLeanToOpening key={`of-${o.id}`} geo={geo} lt={lt} opening={o} trimColor={trimColor} />
               ))}

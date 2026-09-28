@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveBuilding } from '@/engine/ruleEngine';
 import { deriveStructure } from '@/engine/geometry';
 import { DEFAULT_CONFIG } from '@/config/constants';
-import { ENHANCED_LOOK, siteFootprint, siteRects, wallDirectIrradiance, wallHemiIrradiance } from '../enhanced/look';
+import { ENHANCED_LOOK, siteFootprint, siteRects, wallDirectLuminance, wallHemiIrradiance } from '../enhanced/look';
 
 // Render-upgrade Phase 3: the ENHANCED scene rig + site. Owner override
 // (2026-09-28): go easy on lighting & shadows — even, readable walls, no cast
@@ -94,21 +94,35 @@ describe('enhanced lighting stays gentle and even (owner override)', () => {
     right: [1, 0, 0],
   };
 
-  it('every wall gets the same strong hemisphere base; key + fill never dominate it', () => {
+  it('all four walls get the same key + fill light (dark paints included)', () => {
+    // ACES' toe roughly doubles a lighting difference on dark paints (the lab
+    // azimuths gave 1.46x linear -> 23.6% luma spread on Barn Red), so the
+    // direct light must be BALANCED, not just gentle. Luminance-weighted by the
+    // light colors; hemisphere + environment are azimuth-symmetric.
+    const direct = Object.values(walls).map((n) => wallDirectLuminance(n));
+    expect(Math.min(...direct)).toBeGreaterThan(0); // every wall gets some rib-highlight light
+    expect(Math.max(...direct) / Math.min(...direct)).toBeLessThan(1.01);
     const base = wallHemiIrradiance();
-    const direct = Object.values(walls).map((n) => wallDirectIrradiance(n));
-    // Linear irradiance, environment excluded (it is azimuth-symmetric and only
-    // narrows the spread). Measured rendered-luma spread at these values: 7.6%
-    // (A_CA, Light Stone walls, PDF capture). A harsh sun would blow this.
     const lit = direct.map((d) => base + d);
-    expect(Math.max(...lit) / Math.min(...lit)).toBeLessThan(1.45);
-    expect(Math.max(...direct)).toBeLessThan(base);
+    expect(Math.max(...lit) / Math.min(...lit)).toBeLessThan(1.005);
   });
 
-  it('the fill is weaker than the key, and both keep the lab directions', () => {
-    expect(ENHANCED_LOOK.fill.intensity).toBeLessThan(ENHANCED_LOOK.key.intensity);
-    expect(ENHANCED_LOOK.key.position).toEqual([34, 50, -26]);
-    expect(ENHANCED_LOOK.fill.position).toEqual([-36, 22, 24]);
+  it('key + fill stay gentle next to the even hemisphere base', () => {
+    const base = wallHemiIrradiance();
+    for (const n of Object.values(walls)) expect(wallDirectLuminance(n)).toBeLessThan(base);
+  });
+
+  it('the fill is weaker than the key; both on the 45-degree diagonals at the lab elevations', () => {
+    const { key, fill } = ENHANCED_LOOK;
+    expect(fill.intensity).toBeLessThan(key.intensity);
+    const elev = (p: readonly number[]) => (Math.atan2(p[1], Math.hypot(p[0], p[2])) * 180) / Math.PI;
+    // key front-right (+X, -Z), fill back-left (-X, +Z), each exactly diagonal.
+    expect(key.position[0]).toBeGreaterThan(0);
+    expect(key.position[0]).toBe(-key.position[2]);
+    expect(fill.position[0]).toBeLessThan(0);
+    expect(fill.position[0]).toBe(-fill.position[2]);
+    expect(Math.abs(elev(key.position) - elev([34, 50, -26]))).toBeLessThan(1); // lab sun ~49 deg
+    expect(Math.abs(elev(fill.position) - elev([-36, 22, 24]))).toBeLessThan(1); // lab fill ~27 deg
   });
 
   it('contact shading stays very soft (alpha <= 0.25)', () => {
@@ -140,6 +154,21 @@ describe('enhanced rig wiring', () => {
     expect(viewport).toMatch(/fov: 38/);
     expect(viewport).toMatch(/import \{ EnhancedSceneRig \}/);
     expect(viewport).not.toMatch(/const EnhancedSceneRig = ClassicSceneRig/);
+  });
+
+  it("classic ContactShadows stays mounted across Look switches (drei never frees its render targets)", () => {
+    // Hidden + paused while enhanced, never conditionally mounted.
+    expect(viewport).toMatch(/<ContactShadows[\s\S]*?visible=\{active\}[\s\S]*?frames=\{active \? Infinity : 0\}/);
+    expect(viewport).not.toMatch(/&&\s*\(?\s*<ContactShadows/);
+    expect(viewport).toMatch(/<ClassicGround active=\{!enhanced\} \/>/);
+  });
+
+  it('a Look round trip restores the exact classic camera pose unless the camera moved', () => {
+    const rig3 = src('../CameraRig.tsx');
+    expect(rig3).toMatch(/camera\.position\.copy\(back\.pos\)/);
+    expect(rig3).toMatch(/controls\.target\.copy\(back\.target\)/);
+    // orbit/zoom start, a preset command and an instant view set all drop it
+    expect((rig3.match(/lookReturn\.current = null/g) || []).length).toBeGreaterThanOrEqual(3);
   });
 
   it('the site is capture-ignored, mounted outside ShellGroup and only while enhanced', () => {

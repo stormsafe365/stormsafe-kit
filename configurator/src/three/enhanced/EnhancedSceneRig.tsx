@@ -17,9 +17,11 @@ const FILL_COLOR = linearColor(ENHANCED_LOOK.fill.color);
  * - Background + far-only fog: one clean light blue-gray; the unlit ground
  *   (EnhancedSite, mounted by BuildingModel) fades into it at the horizon.
  * - Lights: a strong, azimuth-independent hemisphere base so every wall stays
- *   bright, ONE gentle key (lab sun direction) and a gentle opposite fill whose
- *   only job is a soft highlight on the rib normal maps. NO light casts
- *   shadows (the renderer's shadow map therefore never renders anything).
+ *   bright, ONE gentle key (lab sun color + elevation, front-right diagonal)
+ *   and a gentle opposite fill (back-left diagonal) whose job is a soft
+ *   highlight on the rib normal maps. The fill is balanced against the key so
+ *   all four walls of one paint render the same, dark paints included (see
+ *   look.ts). NO light casts shadows (the shadow map never renders anything).
  * - Environment: a low-intensity PMREM sky dome (no sun disc) for a subtle
  *   metallic sheen.
  * - Renderer / camera: ACES filmic at ENHANCED_LOOK.exposure,

@@ -14,10 +14,25 @@ import type { StructureModel } from '@/engine/geometry';
  * Light colors are the lab's hexes fed as LINEAR values (r134 had no color
  * management), so they keep the lab's mild tint instead of the stronger one an
  * sRGB->linear decode would give. Intensities are r169 physical units (no
- * legacy x PI), balanced so the four walls of one paint color render within
- * ~15% of each other. Measured in the PDF capture (A_CA, Light Stone walls,
- * mean sRGB luma of wall pixels): front 183.1 / back 173.2 / left 177.3 /
- * right 187.4 -> 7.6% spread (classic: 151.5 on all four).
+ * legacy x PI).
+ *
+ * WALL BALANCE: every wall must read the same for the SAME paint, dark paints
+ * included (ACES' toe roughly doubles a lighting difference on Black / Burgundy
+ * / Barn Red, so "gentle" alone is not enough — the first Phase-3 key/fill,
+ * lab azimuths, measured 7.6% on Light Stone but 23.6% on Barn Red). So the key
+ * and fill sit on the two 45-degree diagonals (key front-right, fill back-left,
+ * the lab's sun / fill ELEVATIONS kept): the key lights front + right equally,
+ * the fill lights back + left equally, and the fill's intensity is set so its
+ * luminance on back/left equals the key's on front/right (wallDirectLuminance;
+ * guarded by enhancedLook.test.ts). Measured on the PDF capture of A_CA (mean
+ * Rec.709 luma of the wall pixels, front / back / left / right, max/min):
+ *   Light Stone 181.3 / 181.1 / 181.1 / 180.6  0.4%
+ *   Light Gray  162.9 / 162.9 / 162.8 / 162.7  0.1%
+ *   Barn Red     49.4 /  48.9 /  48.9 /  49.1  1.0%
+ *   Black        16.4 /  16.1 /  16.1 /  16.3  2.0%
+ *   Burgundy     27.0 /  26.7 /  26.6 /  26.9  1.4%
+ * (classic, same method: Light Stone 151.5, Barn Red 27.1, Black 3.1.)
+ * The roof still catches more of the key than the walls, which keeps the form.
  */
 
 /** A lab hex taken as raw linear RGB (what three r134 did with `new Color(hex)`). */
@@ -26,9 +41,9 @@ export const linearColor = (hex: number) => new THREE.Color().setHex(hex, THREE.
 export const ENHANCED_LOOK = {
   /**
    * ACES filmic exposure (R3F's default tone mapping; classic runs at 1).
-   * 1.3 lands painted walls near their swatch brightness (Light Stone ~177-187
-   * luma vs swatch 186) without clipping Bright White / Galvalume roofs
-   * (~216 / ~189) and keeps Charcoal (~87-93) and Burgundy (~25-28) readable.
+   * 1.3 lands painted walls near their swatch brightness (Light Stone ~181
+   * luma vs swatch 186, Bright White ~203) without clipping light roofs, and
+   * keeps Charcoal (~92) and Burgundy (~27) readable (classic: 63 / 10).
    */
   exposure: 1.3,
   /** Vertical FOV (deg) — straight architectural lines. Classic keeps the Canvas' 38. */
@@ -45,10 +60,19 @@ export const ENHANCED_LOOK = {
 
   /** Strong, even sky/ground base: azimuth-independent, so every wall reads bright. */
   hemi: { sky: 0xdfe9f4, ground: 0x9c9d95, intensity: 1.1 },
-  /** ONE gentle key (lab sun direction), no shadows. */
-  key: { color: 0xfff1dc, intensity: 1.3, position: [34, 50, -26] as [number, number, number] },
-  /** Gentle opposite fill: a soft highlight for the rib normal maps, never a second sun. */
-  fill: { color: 0xdfe8f2, intensity: 0.5, position: [-36, 22, 24] as [number, number, number] },
+  /**
+   * ONE gentle key, no shadows: the lab sun's color and elevation (~49 deg,
+   * lab (34,50,-26)) on the front-right 45-degree diagonal, so the front and
+   * right walls get exactly the same share.
+   */
+  key: { color: 0xfff1dc, intensity: 1.0, position: [30, 50, -30] as [number, number, number] },
+  /**
+   * Gentle opposite fill: the lab fill's color and elevation (~27 deg, lab
+   * (-36,22,24)) on the back-left diagonal. Its job is a soft highlight for the
+   * rib normal maps, and its intensity (weaker than the key) is the one that
+   * gives the back / left walls the key's front / right wall luminance.
+   */
+  fill: { color: 0xdfe8f2, intensity: 0.766, position: [-30, 22, 30] as [number, number, number] },
 
   /**
    * PMREM sky-dome environment (lab buildEnvironment, WITHOUT its sun disc so
@@ -115,26 +139,30 @@ export function siteFootprint(s: SiteInput): Footprint {
   };
 }
 
+/** Rec.709 luminance of a lab hex taken as linear RGB (how the rig feeds light colors). */
+const lightLuminance = (hex: number) => {
+  const c = linearColor(hex);
+  return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+};
+
 /**
- * Direct (key + fill) irradiance on a vertical wall with outward normal `n`,
- * in the same units as the hemisphere term. Pure: used by the wall-balance
- * guard test to keep the key/fill gentle relative to the even base.
+ * Direct (key + fill) diffuse irradiance on a surface with outward normal `n`,
+ * luminance-weighted by each light's color, in the same units as the
+ * hemisphere term. Pure: used by the wall-balance guard test (the four walls
+ * must get the same value) and to keep the key/fill gentle vs the even base.
  */
-export function wallDirectIrradiance(n: [number, number, number]): number {
-  const dirTerm = (pos: readonly number[], intensity: number) => {
+export function wallDirectLuminance(n: readonly [number, number, number]): number {
+  const dirTerm = (pos: readonly number[], intensity: number, color: number) => {
     const len = Math.hypot(pos[0], pos[1], pos[2]);
     const ndl = (n[0] * pos[0] + n[1] * pos[1] + n[2] * pos[2]) / len;
-    return intensity * Math.max(0, ndl);
+    return intensity * lightLuminance(color) * Math.max(0, ndl);
   };
-  return dirTerm(ENHANCED_LOOK.key.position, ENHANCED_LOOK.key.intensity) + dirTerm(ENHANCED_LOOK.fill.position, ENHANCED_LOOK.fill.intensity);
+  const { key, fill } = ENHANCED_LOOK;
+  return dirTerm(key.position, key.intensity, key.color) + dirTerm(fill.position, fill.intensity, fill.color);
 }
 
 /** Hemisphere irradiance on a vertical wall (dotNL = 0 -> 50/50 sky/ground mix), luminance-weighted. */
 export function wallHemiIrradiance(): number {
   const { sky, ground, intensity } = ENHANCED_LOOK.hemi;
-  const lum = (hex: number) => {
-    const c = linearColor(hex);
-    return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
-  };
-  return intensity * 0.5 * (lum(sky) + lum(ground));
+  return intensity * 0.5 * (lightLuminance(sky) + lightLuminance(ground));
 }

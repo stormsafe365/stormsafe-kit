@@ -31,6 +31,19 @@ export function CameraRig() {
 
   const goalPos = useRef<THREE.Vector3 | null>(null);
   const goalLook = useRef<THREE.Vector3 | null>(null);
+  // Look round trip: the exact classic camera pose (and any in-flight goal)
+  // saved when the Look switches classic -> enhanced. Switching back restores
+  // it verbatim, so the live classic view lands exactly where it was instead of
+  // a refit lerp that stops within 0.06 ft on the far side. Dropped as soon as
+  // anything else moves the camera (orbit/zoom, a preset, an instant view set,
+  // a size change); the ordinary refit then applies.
+  const lookReturn = useRef<{
+    pos: THREE.Vector3;
+    target: THREE.Vector3;
+    goalPos: THREE.Vector3 | null;
+    goalLook: THREE.Vector3 | null;
+    initialized: boolean;
+  } | null>(null);
 
   /** Distance from `center` needed to fit a span (W×H) given the FOV/aspect. */
   const fitDistance = (spanW: number, spanH: number) => {
@@ -100,6 +113,7 @@ export function CameraRig() {
   // Fire a preset whenever the command nonce changes.
   useEffect(() => {
     if (!cmd) return;
+    lookReturn.current = null;
     const { pos, look } = computePreset(cmd.preset);
     goalPos.current = pos;
     goalLook.current = look;
@@ -111,17 +125,49 @@ export function CameraRig() {
   const prevKey = useRef('');
   const initialized = useRef(false);
   useEffect(() => {
-    const key = `${W}x${L}x${top.toFixed(2)}|${renderStyle}`;
+    const sizeKey = `${W}x${L}x${top.toFixed(2)}`;
+    const key = `${sizeKey}|${renderStyle}`;
+    const changed = !!prevKey.current && prevKey.current !== key;
 
+    // Look-only switch (same size). Classic never switches, so for the classic
+    // look `back` is always null and lookReturn stays null: the branches below
+    // are exactly the original first-load / size-change logic.
+    const lookOnly = changed && prevKey.current.split('|')[0] === sizeKey;
+    const back = lookOnly && renderStyle === 'classic' ? lookReturn.current : null;
+    if (changed) {
+      // classic -> enhanced: save the exact classic camera state (taken before
+      // any refit below); any other change drops it.
+      lookReturn.current =
+        lookOnly && renderStyle === 'enhanced' && controls
+          ? {
+              pos: camera.position.clone(),
+              target: controls.target.clone(),
+              goalPos: goalPos.current ? goalPos.current.clone() : null,
+              goalLook: goalLook.current ? goalLook.current.clone() : null,
+              initialized: initialized.current,
+            }
+          : null;
+    }
+
+    // enhanced -> classic with nothing moved in between: put the classic
+    // camera state back verbatim (pose, in-flight goal, first-frame flag).
+    if (back && controls) {
+      camera.position.copy(back.pos);
+      controls.target.copy(back.target);
+      controls.update();
+      goalPos.current = back.goalPos;
+      goalLook.current = back.goalLook;
+      initialized.current = back.initialized;
+    }
     // On first load, auto-frame with 'iso' preset
-    if (!initialized.current && controls) {
+    else if (!initialized.current && controls) {
       initialized.current = true;
       const { pos, look } = computePreset('iso');
       goalPos.current = pos;
       goalLook.current = look;
     }
     // On size change, auto-frame with current orbit direction
-    else if (prevKey.current && prevKey.current !== key && controls) {
+    else if (changed && controls) {
       const center = new THREE.Vector3(0, top * 0.45, 0);
       const dir = camera.position.clone().sub(controls.target).normalize();
       const d = fitDistance(Math.max(W, L), top) + Math.max(W, L) * 0.25;
@@ -151,6 +197,7 @@ export function CameraRig() {
       const { pos, look } = computePreset(preset);
       goalPos.current = null; // cancel any in-flight animation
       goalLook.current = null;
+      lookReturn.current = null; // the camera moved: no Look round-trip restore
       camera.position.copy(pos);
       controls.target.copy(look);
       controls.update();
@@ -168,6 +215,7 @@ export function CameraRig() {
     const cancel = () => {
       goalPos.current = null;
       goalLook.current = null;
+      lookReturn.current = null;
     };
     controls.addEventListener('start', cancel);
     return () => controls.removeEventListener('start', cancel);

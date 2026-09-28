@@ -297,6 +297,7 @@ function DraggableOpening({
       if (!dragRef.current) return;
       moved = Math.max(moved, Math.hypot(ev.clientX - sx, ev.clientY - sy));
       if (moved < 5) return; // not a drag yet — a click stays a click (opens/closes)
+      if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
       const rect = gl.domElement.getBoundingClientRect();
       const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
       const ny = -((ev.clientY - rect.top) / rect.height) * 2 + 1;

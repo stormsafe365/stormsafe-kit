@@ -27,6 +27,12 @@ interface EditorStore {
   selectedLeanToOpeningId: string | null;
   /** True while an opening is being dragged (2D or 3D) — pauses orbit controls. */
   dragging: boolean;
+  /**
+   * True once the current press has actually MOVED (>= 5px). BuildHost only
+   * writes a position back to the pricing program after a real drag — a plain
+   * click (select / open a door) must never change the quote.
+   */
+  dragMoved: boolean;
 
   /** Presentation mode for the shell (Phase 2). */
   viewMode: ViewMode;
@@ -48,6 +54,7 @@ interface EditorStore {
   selectOpening: (id: string | null) => void;
   selectLeanToOpening: (id: string | null) => void;
   setDragging: (on: boolean) => void;
+  setDragMoved: (on: boolean) => void;
   setViewMode: (mode: ViewMode) => void;
   setCutawayWall: (wall: WallSide | null) => void;
   /** Fire a camera move to a named preset. */
@@ -63,6 +70,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   selectedOpeningId: null,
   selectedLeanToOpeningId: null,
   dragging: false,
+  dragMoved: false,
   viewMode: 'exterior',
   cutawayWall: null,
   cameraCmd: null,
@@ -77,7 +85,9 @@ export const useEditorStore = create<EditorStore>((set) => ({
   setActiveWall: (wall) => set({ activeWall: wall }),
   selectOpening: (id) => set({ selectedOpeningId: id }),
   selectLeanToOpening: (id) => set({ selectedLeanToOpeningId: id }),
-  setDragging: (on) => set({ dragging: on }),
+  // A new press starts un-moved; release keeps dragMoved so the write-back can read it.
+  setDragging: (on) => set(on ? { dragging: true, dragMoved: false } : { dragging: false }),
+  setDragMoved: (on) => set({ dragMoved: on }),
   setViewMode: (mode) =>
     set((s) => ({
       viewMode: mode,

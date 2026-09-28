@@ -806,8 +806,15 @@ function DraggableLeanToOpening({
     if (controls) controls.enabled = false; // pause orbit during the drag
 
     const oid = opening.id;
+    const sx = e.nativeEvent.clientX, sy = e.nativeEvent.clientY;
+    let moved = 0;
     const move = (ev: PointerEvent) => {
       if (!dragRef.current) return;
+      // Same click-vs-drag rule as the main building: under 5px is a click, which
+      // must NOT move the part or write a position back (that could reprice).
+      moved = Math.max(moved, Math.hypot(ev.clientX - sx, ev.clientY - sy));
+      if (moved < 5) return;
+      if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
       const rect = gl.domElement.getBoundingClientRect();
       const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
       const ny = -((ev.clientY - rect.top) / rect.height) * 2 + 1;

@@ -866,7 +866,9 @@ export default function BuildHost() {
       // Two-way: when a 3D drag ends, write the new position back into the program.
       if (!unsubDrag) {
         unsubDrag = useEditorStore.subscribe((s, prev) => {
-          if (prev.dragging && !s.dragging) {
+          // Only after a REAL drag (moved >= 5px). A plain click used to write the
+          // 3D position back too, which could flip a lean-to side-frame charge.
+          if (prev.dragging && !s.dragging && prev.dragMoved) {
             // Whichever id matches its map writes back; the other no-ops.
             writeBackDrag(win, prev.selectedOpeningId ?? s.selectedOpeningId);
             writeBackLeanToOpening(win, prev.selectedLeanToOpeningId ?? s.selectedLeanToOpeningId);

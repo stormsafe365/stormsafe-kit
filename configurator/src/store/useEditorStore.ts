@@ -37,6 +37,10 @@ interface EditorStore {
    * preset whenever `nonce` changes (nonce lets the same preset re-fire).
    */
   cameraCmd: { preset: CameraPreset; nonce: number } | null;
+  /** "Spacing" overlay: every component's size + all gaps / heights on every wall. */
+  showSpacing: boolean;
+  /** Components the user clicked OPEN (door swings, roll-up rolls, window slides). */
+  openIds: Record<string, boolean>;
 
   openEditor: (wall?: WallSide) => void;
   closeEditor: () => void;
@@ -48,6 +52,9 @@ interface EditorStore {
   setCutawayWall: (wall: WallSide | null) => void;
   /** Fire a camera move to a named preset. */
   goToView: (preset: CameraPreset) => void;
+  setShowSpacing: (on: boolean) => void;
+  toggleOpen: (id: string) => void;
+  closeAllOpenings: () => void;
 }
 
 export const useEditorStore = create<EditorStore>((set) => ({
@@ -59,6 +66,8 @@ export const useEditorStore = create<EditorStore>((set) => ({
   viewMode: 'exterior',
   cutawayWall: null,
   cameraCmd: null,
+  showSpacing: false,
+  openIds: {},
 
   openEditor: (wall) => set((s) => ({ editorOpen: true, activeWall: wall ?? s.activeWall })),
   closeEditor: () => set({ editorOpen: false, dragging: false }),
@@ -81,4 +90,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   setCutawayWall: (wall) => set({ cutawayWall: wall }),
   goToView: (preset) =>
     set((s) => ({ cameraCmd: { preset, nonce: (s.cameraCmd?.nonce ?? 0) + 1 } })),
+  setShowSpacing: (on) => set({ showSpacing: on }),
+  toggleOpen: (id) => set((s) => ({ openIds: { ...s.openIds, [id]: !s.openIds[id] } })),
+  closeAllOpenings: () => set({ openIds: {} }),
 }));

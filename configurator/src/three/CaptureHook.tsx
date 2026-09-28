@@ -36,6 +36,15 @@ export function CaptureHook() {
 
       // Capture wants the WHOLE building, crisp — temporarily remove the limits
       // that exist for nice interactive orbiting.
+      // Quote/contract renderings must show the building CLOSED and clean: hide
+      // the Spacing overlay and shut any doors/windows the rep clicked open,
+      // then let the close animations settle before the first snapshot.
+      const ed = useEditorStore.getState();
+      const savedSpacing = ed.showSpacing;
+      const savedOpen = ed.openIds;
+      const hadOpen = Object.values(savedOpen).some(Boolean);
+      if (savedSpacing) ed.setShowSpacing(false);
+      if (hadOpen) { ed.closeAllOpenings(); await sleep(900); }
       const savedFog = scene.fog;
       const savedFar = camera.far;
       const savedMax = controls ? controls.maxDistance : null;
@@ -182,6 +191,7 @@ export function CaptureHook() {
         if (setView) setView('iso');
         else goToView('iso');
         gl.render(scene, camera); // repaint the live view at the restored resolution
+        if (savedSpacing) useEditorStore.getState().setShowSpacing(true);
       }
       return out;
     };

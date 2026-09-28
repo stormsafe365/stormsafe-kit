@@ -1,5 +1,5 @@
-import { useMemo, useRef } from 'react';
-import { useThree, type ThreeEvent } from '@react-three/fiber';
+import { useMemo, useRef, useState } from 'react';
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Opening, OpeningType, WallSide } from '@/types/building';
@@ -60,13 +60,15 @@ export function Openings({ openings, structure, trimColor, wallColor }: Openings
   // guard: a partition opening needs an actual partition (GCH split) to exist.
   const visible = openings.filter((o) => o.side !== 'partition' || structure.enclosure.partitionZ !== null);
   const selectedId = useEditorStore((s) => s.selectedOpeningId);
+  const showSpacing = useEditorStore((s) => s.showSpacing);
   const sel = visible.find((o) => o.id === selectedId);
   return (
     <group>
       {visible.map((o) => (
         <DraggableOpening key={o.id} opening={o} structure={structure} trimColor={trimColor} wallColor={wallColor} />
       ))}
-      {sel && (
+      {showSpacing && <SpacingOverlay openings={visible} structure={structure} />}
+      {sel && !showSpacing && (
         <OpeningDimensions
           opening={sel}
           structure={structure}
@@ -96,6 +98,30 @@ function DraggableOpening({
   const raycaster = useThree((s) => s.raycaster);
   const controls = useThree((s) => s.controls) as { enabled: boolean } | null;
   const dragRef = useRef(false);
+
+  // Click-to-open animation (Sensei-style): walk door swings open on its
+  // hinges, roll-up/garage door rolls up, window's lower sash slides up. A
+  // CLICK toggles it; a real drag (moved > 5px) still just slides the part.
+  const isOpen = useEditorStore((s) => !!s.openIds[opening.id]);
+  const toggleOpen = useEditorStore((s) => s.toggleOpen);
+  const openT = useRef(0);
+  const swingRef = useRef<THREE.Group>(null);
+  const rollRef = useRef<THREE.Group>(null);
+  const sashRef = useRef<THREE.Group>(null);
+  useFrame((_, dt) => {
+    const target = isOpen ? 1 : 0;
+    if (Math.abs(openT.current - target) < 0.001) return;
+    openT.current += (target - openT.current) * Math.min(1, dt * 4);
+    if (Math.abs(openT.current - target) < 0.002) openT.current = target;
+    const t = openT.current;
+    if (swingRef.current) swingRef.current.rotation.y = -t * 1.6; // ~92° outward
+    if (rollRef.current) {
+      const k = 0.9 * t; // roll up to ~10% showing at the header
+      rollRef.current.scale.y = 1 - k;
+      rollRef.current.position.y = (opening.height * k) / 2; // keep the top edge fixed
+    }
+    if (sashRef.current) sashRef.current.position.y = t * (opening.height / 2) * 0.9;
+  });
 
   const wall = structure.walls[opening.side];
   const selected = selectedOpeningId === opening.id;
@@ -268,8 +294,12 @@ function DraggableOpening({
     const oid = opening.id;
     const oside = opening.side;
     const ow = opening.width;
+    const sx = e.nativeEvent.clientX, sy = e.nativeEvent.clientY;
+    let moved = 0;
     const move = (ev: PointerEvent) => {
       if (!dragRef.current) return;
+      moved = Math.max(moved, Math.hypot(ev.clientX - sx, ev.clientY - sy));
+      if (moved < 5) return; // not a drag yet — a click stays a click (opens/closes)
       const rect = gl.domElement.getBoundingClientRect();
       const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
       const ny = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
@@ -282,6 +312,7 @@ function DraggableOpening({
     const up = () => {
       dragRef.current = false;
       if (controls) controls.enabled = true;
+      if (moved < 5 && opening.type !== 'frameOut') toggleOpen(oid);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       // Keep `dragging` true through this pointerup so the canvas's
@@ -333,11 +364,43 @@ function DraggableOpening({
         {/* Panel — flush slab (door) or recessed glazing (window) — grab + drag.
             45° cut roll-up uses the chamfered extrusion instead of a box. */}
         {cutGeo ? (
-          <mesh position={[0, 0, panelZ]} geometry={cutGeo} material={panelMat} castShadow onPointerDown={onDown} />
+          <group ref={rollRef}>
+            <mesh position={[0, 0, panelZ]} geometry={cutGeo} material={panelMat} castShadow onPointerDown={onDown} />
+            <RollUpRail w={w} h={h} panelDepth={panelDepth} color={opening.color} />
+          </group>
+        ) : isWalk ? (
+          // Hinge pivot on the left jamb so the slab SWINGS open (click to toggle).
+          <group position={[-w / 2, 0, 0]}>
+            <group ref={swingRef}>
+              <group position={[w / 2, 0, 0]}>
+                <mesh position={[0, 0, panelZ]} material={panelMat} castShadow onPointerDown={onDown}>
+                  <boxGeometry args={[w, h, panelDepth]} />
+                </mesh>
+                <WalkDoorHardware w={w} h={h} panelDepth={panelDepth} />
+              </group>
+            </group>
+          </group>
+        ) : isGlass ? (
+          // Double-hung: fixed upper sash + a lower sash that slides up when opened.
+          <>
+            <mesh position={[0, h / 4, panelZ]} material={panelMat} onPointerDown={onDown}>
+              <boxGeometry args={[w, h / 2, panelDepth]} />
+            </mesh>
+            <group ref={sashRef}>
+              <mesh position={[0, -h / 4, panelZ + 0.03]} material={panelMat} onPointerDown={onDown}>
+                <boxGeometry args={[w, h / 2, panelDepth]} />
+              </mesh>
+              {/* meeting rail rides on top of the lower sash */}
+              <TrimBar pos={[0, 0, trimDepth / 2 - 0.01]} size={[w + 0.02, 0.11, 0.05]} color={tc} />
+            </group>
+          </>
         ) : (
-          <mesh position={[0, 0, panelZ]} material={panelMat} castShadow={!isFrameOut} onPointerDown={onDown}>
-            <boxGeometry args={[w, h, panelDepth]} />
-          </mesh>
+          <group ref={isSlat ? rollRef : undefined}>
+            <mesh position={[0, 0, panelZ]} material={panelMat} castShadow={!isFrameOut} onPointerDown={onDown}>
+              <boxGeometry args={[w, h, panelDepth]} />
+            </mesh>
+            {opening.type === 'rollUpDoor' && <RollUpRail w={w} h={h} panelDepth={panelDepth} color={opening.color} />}
+          </group>
         )}
         {selected && (
           <mesh position={[0, 0, trimDepth / 2 + 0.02]}>
@@ -350,8 +413,7 @@ function DraggableOpening({
             splits the recessed glass top/bottom, with a sill below. */}
         {isGlass && (
           <group>
-            {/* horizontal meeting rail across the middle */}
-            <TrimBar pos={[0, 0, trimDepth / 2 - 0.01]} size={[w + 0.02, 0.11, 0.05]} color={tc} />
+            {/* (meeting rail now rides on the sliding lower sash, above) */}
             {/* thin sash frame just inside the jambs for depth */}
             <TrimBar pos={[0, h / 2 - 0.03, trimDepth / 2 - 0.02]} size={[w, 0.06, 0.04]} color={tc} />
             <TrimBar pos={[0, -h / 2 + 0.03, trimDepth / 2 - 0.02]} size={[w, 0.06, 0.04]} color={tc} />
@@ -363,45 +425,8 @@ function DraggableOpening({
           </group>
         )}
 
-        {/* Walk door — round knob (latch side), 3 hinges (other side), kick seam */}
-        {opening.type === 'walkDoor' && (
-          <group>
-            {/* knob: round backplate + ball, ~36" up, proud of the slab */}
-            <group position={[w / 2 - 0.2, -h / 2 + 3.0, panelDepth / 2]}>
-              <mesh position={[0, 0, 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-                <cylinderGeometry args={[0.07, 0.07, 0.03, 18]} />
-                <meshStandardMaterial color="#6b7077" metalness={0.85} roughness={0.28} />
-              </mesh>
-              <mesh position={[0, 0, 0.1]} castShadow>
-                <sphereGeometry args={[0.06, 18, 14]} />
-                <meshStandardMaterial color="#8b9097" metalness={0.9} roughness={0.22} />
-              </mesh>
-            </group>
-            {/* hinges on the opposite (jamb) side */}
-            {[h / 2 - 0.6, 0, -h / 2 + 0.6].map((hy, i) => (
-              <mesh key={`hinge${i}`} position={[-w / 2 + 0.05, hy, panelDepth / 2 - 0.005]} castShadow>
-                <boxGeometry args={[0.05, 0.22, 0.04]} />
-                <meshStandardMaterial color="#9aa0a7" metalness={0.7} roughness={0.4} />
-              </mesh>
-            ))}
-          </group>
-        )}
-
-        {/* Roll-up door — heavier bottom rail + center lift handle */}
-        {opening.type === 'rollUpDoor' && (
-          <group>
-            <mesh position={[0, -h / 2 + 0.11, panelDepth / 2 + 0.005]} castShadow>
-              <boxGeometry args={[w, 0.2, panelDepth + 0.02]} />
-              {/* Bottom rail matches the door color (a colored roll-up should be
-                  ALL that color); default light gray for a standard white door. */}
-              <meshStandardMaterial color={opening.color || '#dfe2e7'} metalness={0.3} roughness={0.5} />
-            </mesh>
-            <mesh position={[0, -h / 2 + 0.42, panelDepth / 2 + 0.04]} castShadow>
-              <boxGeometry args={[0.5, 0.07, 0.05]} />
-              <meshStandardMaterial color="#8a9099" metalness={0.6} roughness={0.4} />
-            </mesh>
-          </group>
-        )}
+        {/* Walk-door hardware + roll-up rail live INSIDE the moving panel groups
+            above (WalkDoorHardware / RollUpRail) so they travel with the slab. */}
 
         {/* Components are added / duplicated / removed in the pricing program
             (the source of truth that also prices them); the 3D only positions
@@ -444,6 +469,46 @@ function TrimBar({
       <boxGeometry args={size} />
       <meshStandardMaterial color={color} metalness={0.08} roughness={0.5} envMapIntensity={0.3} />
     </mesh>
+  );
+}
+
+/** Walk door: round knob (latch side, ~36" up) + 3 hinges (jamb side). */
+function WalkDoorHardware({ w, h, panelDepth }: { w: number; h: number; panelDepth: number }) {
+  return (
+    <group>
+      <group position={[w / 2 - 0.2, -h / 2 + 3.0, panelDepth / 2]}>
+        <mesh position={[0, 0, 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.07, 0.07, 0.03, 18]} />
+          <meshStandardMaterial color="#6b7077" metalness={0.85} roughness={0.28} />
+        </mesh>
+        <mesh position={[0, 0, 0.1]} castShadow>
+          <sphereGeometry args={[0.06, 18, 14]} />
+          <meshStandardMaterial color="#8b9097" metalness={0.9} roughness={0.22} />
+        </mesh>
+      </group>
+      {[h / 2 - 0.6, 0, -h / 2 + 0.6].map((hy, i) => (
+        <mesh key={`hinge${i}`} position={[-w / 2 + 0.05, hy, panelDepth / 2 - 0.005]} castShadow>
+          <boxGeometry args={[0.05, 0.22, 0.04]} />
+          <meshStandardMaterial color="#9aa0a7" metalness={0.7} roughness={0.4} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Roll-up door: heavier bottom rail (door-colored) + center lift handle. */
+function RollUpRail({ w, h, panelDepth, color }: { w: number; h: number; panelDepth: number; color?: string }) {
+  return (
+    <group>
+      <mesh position={[0, -h / 2 + 0.11, panelDepth / 2 + 0.005]} castShadow>
+        <boxGeometry args={[w, 0.2, panelDepth + 0.02]} />
+        <meshStandardMaterial color={color || '#dfe2e7'} metalness={0.3} roughness={0.5} />
+      </mesh>
+      <mesh position={[0, -h / 2 + 0.42, panelDepth / 2 + 0.04]} castShadow>
+        <boxGeometry args={[0.5, 0.07, 0.05]} />
+        <meshStandardMaterial color="#8a9099" metalness={0.6} roughness={0.4} />
+      </mesh>
+    </group>
   );
 }
 
@@ -529,6 +594,107 @@ function OpeningDimensions({
       <Measure a={pt(L - 0.05, sill)} b={pt(L - 0.05, top)} mid={pt(L - 0.05, (sill + top) / 2)} label={ftIn(h)} vertical danger={hit} />
 
       {hit && <Chip3D at={pt(offset, Math.min(eave - 0.1, top + 0.9))} label="⚠ on truss" danger />}
+    </group>
+  );
+}
+
+const SPACING_SIDES: WallSide[] = ['front', 'back', 'left', 'right'];
+
+/** Size chip text: walk doors + windows in inches (36"x80"), big doors in ft. */
+function sizeLabel(o: Opening): string {
+  if (o.type === 'walkDoor' || o.type === 'window') return `${Math.round(o.width * 12)}"x${Math.round(o.height * 12)}"`;
+  return `${ftIn(o.width)}x${ftIn(o.height)}`;
+}
+
+/**
+ * "Spacing" overlay: on every wall FACING the camera, every component's size
+ * plus the full spacing chain (corner → component → component → corner),
+ * sill heights, wall height, overall width and (gables) peak height — all at
+ * once, unlike Sensei which only shows spacing for the clicked component.
+ * Back-facing walls are skipped so an iso view isn't a wall of labels.
+ */
+function SpacingOverlay({ openings, structure }: { openings: Opening[]; structure: StructureModel }) {
+  const camera = useThree((s) => s.camera);
+  const [facing, setFacing] = useState('');
+  useFrame(() => {
+    const f = SPACING_SIDES.filter((side) => {
+      const wall = structure.walls[side];
+      if (!wall) return false;
+      const c = openingWorldTransform(side, wall.spanFt / 2, wall.eaveHeightFt / 2, structure).pos;
+      const o = pushOut(c, side, 1);
+      const dot =
+        (camera.position.x - c[0]) * (o[0] - c[0]) +
+        (camera.position.y - c[1]) * (o[1] - c[1]) +
+        (camera.position.z - c[2]) * (o[2] - c[2]);
+      return dot > 0;
+    }).join(',');
+    if (f !== facing) setFacing(f);
+  });
+  return (
+    <group>
+      {facing
+        .split(',')
+        .filter(Boolean)
+        .map((side) => (
+          <WallSpacing key={side} side={side as WallSide} openings={openings.filter((o) => o.side === side)} structure={structure} />
+        ))}
+    </group>
+  );
+}
+
+function WallSpacing({ side, openings, structure }: { side: WallSide; openings: Opening[]; structure: StructureModel }) {
+  const wall = structure.walls[side];
+  const span = wall.spanFt;
+  const eave = wall.eaveHeightFt;
+  const peak = wall.peakHeightFt;
+  const gable = peak > eave + 0.1;
+  const items = [...openings].sort((a, b) => a.offset - b.offset);
+  const pt = (along: number, y: number): Vec3 => pushOut(openingWorldTransform(side, along, y, structure).pos, side, 0.22);
+
+  // Spacing chain: every corner/edge stop; label each GAP (openings get a size chip instead).
+  const r3 = (v: number) => Math.round(v * 1000) / 1000;
+  const stops = Array.from(
+    new Set([0, span, ...items.flatMap((o) => [r3(o.offset - o.width / 2), r3(o.offset + o.width / 2)])]),
+  ).sort((a, b) => a - b);
+  const isOpening = (a: number, b: number) =>
+    items.some((o) => Math.abs(o.offset - o.width / 2 - a) < 0.02 && Math.abs(o.offset + o.width / 2 - b) < 0.02);
+  const gaps: Array<[number, number]> = [];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const a = stops[i], b = stops[i + 1];
+    if (b - a > 0.05 && !isOpening(a, b)) gaps.push([a, b]);
+  }
+  const gapY = Math.min(1.3, eave * 0.25);
+  const allY = 0.3;
+
+  return (
+    <group>
+      {gaps.map(([a, b], i) => (
+        <Measure key={`g${i}`} a={pt(a, gapY)} b={pt(b, gapY)} mid={pt((a + b) / 2, gapY)} label={ftIn(b - a)} />
+      ))}
+      {items.map((o) => {
+        const top = o.sillHeight + o.height;
+        const chipY = gable ? top + 0.6 : Math.min(eave - 0.35, top + 0.6);
+        const L = o.offset - o.width / 2;
+        return (
+          <group key={o.id}>
+            <Chip3D at={pt(o.offset, chipY)} label={sizeLabel(o)} />
+            {o.sillHeight > 0.1 && (
+              <Measure
+                a={pt(L - 0.2, 0)}
+                b={pt(L - 0.2, o.sillHeight)}
+                mid={pt(L - 0.2, o.sillHeight / 2)}
+                label={`sill ${ftIn(o.sillHeight)}`}
+                vertical
+              />
+            )}
+          </group>
+        );
+      })}
+      <Measure a={pt(0, allY)} b={pt(span, allY)} mid={pt(span / 2, allY)} label={`${ftIn(span)}W`} />
+      <Measure a={pt(0.35, 0)} b={pt(0.35, eave)} mid={pt(0.35, eave * 0.6)} label={`${ftIn(eave)}H`} vertical />
+      {gable && (
+        <Measure a={pt(span / 2, eave)} b={pt(span / 2, peak)} mid={pt(span / 2, (eave + peak) / 2)} label={`${ftIn(peak)}H`} vertical />
+      )}
     </group>
   );
 }

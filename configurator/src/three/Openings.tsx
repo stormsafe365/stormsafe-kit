@@ -9,20 +9,17 @@ import { TRUSS_CLEARANCE_FT } from '@/config/constants';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures';
+import { CLICK_DRAG_THRESHOLD_PX, swingAngle, walkDoorHingeX, walkDoorKnobX } from './openingAnim';
+import { ftIn, roofLengthLabel } from './dimLabels';
+
+// Re-exported: LeanToSiding and others import ftIn from here.
+export { ftIn };
 
 interface OpeningsProps {
   openings: Opening[];
   structure: StructureModel;
   trimColor: string;
   wallColor: string;
-}
-
-/** Feet (decimal) → feet-inches string, e.g. 4.75 → 4'9". */
-export function ftIn(ft: number): string {
-  const totalIn = Math.round(ft * 12);
-  const f = Math.floor(totalIn / 12);
-  const i = totalIn % 12;
-  return i ? `${f}'${i}"` : `${f}'`;
 }
 
 const PANEL_COLOR: Record<OpeningType, string> = {
@@ -101,7 +98,7 @@ function DraggableOpening({
 
   // Click-to-open animation (Sensei-style): walk door swings open on its
   // hinges, roll-up/garage door rolls up, window's lower sash slides up. A
-  // CLICK toggles it; a real drag (moved > 5px) still just slides the part.
+  // CLICK toggles it; a real drag (CLICK_DRAG_THRESHOLD_PX = 5px or more) still just slides the part.
   const isOpen = useEditorStore((s) => !!s.openIds[opening.id]);
   const toggleOpen = useEditorStore((s) => s.toggleOpen);
   const openT = useRef(0);
@@ -114,7 +111,7 @@ function DraggableOpening({
     openT.current += (target - openT.current) * Math.min(1, dt * 4);
     if (Math.abs(openT.current - target) < 0.002) openT.current = target;
     const t = openT.current;
-    if (swingRef.current) swingRef.current.rotation.y = (opening.impact ? -1 : 1) * t * 1.6; // hi-impact swings OUT, standard swings IN (hinge left, knob right)
+    if (swingRef.current) swingRef.current.rotation.y = swingAngle(opening.impact, t); // hi-impact swings OUT, standard swings IN (hinge left, knob right)
     if (rollRef.current) {
       const k = 0.9 * t; // roll up to ~10% showing at the header
       rollRef.current.scale.y = 1 - k;
@@ -296,7 +293,7 @@ function DraggableOpening({
     const move = (ev: PointerEvent) => {
       if (!dragRef.current) return;
       moved = Math.max(moved, Math.hypot(ev.clientX - sx, ev.clientY - sy));
-      if (moved < 5) return; // not a drag yet — a click stays a click (opens/closes)
+      if (moved < CLICK_DRAG_THRESHOLD_PX) return; // not a drag yet — a click stays a click (opens/closes)
       if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
       const rect = gl.domElement.getBoundingClientRect();
       const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
@@ -310,7 +307,7 @@ function DraggableOpening({
     const up = () => {
       dragRef.current = false;
       if (controls) controls.enabled = true;
-      if (moved < 5 && opening.type !== 'frameOut') toggleOpen(oid);
+      if (moved < CLICK_DRAG_THRESHOLD_PX && opening.type !== 'frameOut') toggleOpen(oid);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       // Keep `dragging` true through this pointerup so the canvas's
@@ -368,7 +365,7 @@ function DraggableOpening({
           </group>
         ) : isWalk ? (
           // Hinge pivot on the left jamb so the slab SWINGS open (click to toggle).
-          <group position={[-w / 2, 0, 0]}>
+          <group position={[walkDoorHingeX(w), 0, 0]}>
             <group ref={swingRef}>
               <group position={[w / 2, 0, 0]}>
                 <mesh position={[0, 0, panelZ]} material={panelMat} castShadow onPointerDown={onDown}>
@@ -468,7 +465,7 @@ function TrimBar({
 function WalkDoorHardware({ w, h, panelDepth }: { w: number; h: number; panelDepth: number }) {
   return (
     <group>
-      <group position={[w / 2 - 0.2, -h / 2 + 3.0, panelDepth / 2]}>
+      <group position={[walkDoorKnobX(w), -h / 2 + 3.0, panelDepth / 2]}>
         <mesh position={[0, 0, 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow>
           <cylinderGeometry args={[0.07, 0.07, 0.03, 18]} />
           <meshStandardMaterial color="#6b7077" metalness={0.85} roughness={0.28} />
@@ -691,7 +688,7 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
           a={pt(-oh, eave + 0.45)}
           b={pt(span + oh, eave + 0.45)}
           mid={pt(span / 2, eave + 0.45)}
-          label={`${ftIn(span + 2 * oh)} roof`}
+          label={roofLengthLabel(span, oh)}
         />
       )}
       {gable && (

@@ -23,7 +23,10 @@ const ladderRungs = (s: ReturnType<typeof deriveStructure>) => {
   );
 };
 
-describe('truss/leg styles — single, double (W>31 / H 14-16), ladder (H>=17)', () => {
+// Current rule (geometry.ts deriveStructure, same as the program's badges):
+// LADDER when W >= 52 (any height); DOUBLE when W is 32-51 or H >= 14; else
+// SINGLE. Older comments that say "ladder at H >= 17" are stale.
+describe('truss/leg styles — single, double (W 32-51 or H>=14), ladder (W>=52)', () => {
   it('small build → 2 legs per bent (one post each side)', () => {
     const s = build({ width: 24, length: 30, legHeight: 12 });
     expect(legCount(s)).toBe(s.frameCount * 2);
@@ -74,7 +77,9 @@ describe('truss/leg styles — single, double (W>31 / H 14-16), ladder (H>=17)',
     }
   });
 
-  it('ladder rungs run inboard, not along the wall (regression: flat-ladder bug)', () => {
+  // 24w x 18h is a DOUBLE-leg build (no rungs at all), so this only checks
+  // that nothing lies flat along the wall. The 56w test below is a real ladder.
+  it('tall double-leg build (24w x 18h): nothing lies flat along the wall (regression: flat-ladder bug)', () => {
     const s = build({ width: 24, length: 30, legHeight: 18 });
     const halfW = s.width / 2;
     const wallPlaneRungs = s.members.filter(
@@ -82,6 +87,21 @@ describe('truss/leg styles — single, double (W>31 / H 14-16), ladder (H>=17)',
         m.kind === 'brace' &&
         Math.abs(m.start[1] - m.end[1]) < 0.01 &&
         Math.abs(m.start[2] - m.end[2]) > 0.1 && // runs along the wall (Z)
+        Math.abs(Math.abs(m.start[0]) - halfW) < 0.01 &&
+        Math.abs(Math.abs(m.end[0]) - halfW) < 0.01,
+    );
+    expect(wallPlaneRungs.length).toBe(0);
+  });
+
+  it('real ladder build (56w x 12h): rungs exist, run inboard, and none lie flat along the wall', () => {
+    const s = build({ width: 56, length: 60, legHeight: 12 });
+    const halfW = s.width / 2;
+    expect(ladderRungs(s).length).toBeGreaterThan(0);
+    const wallPlaneRungs = s.members.filter(
+      (m) =>
+        m.kind === 'brace' &&
+        Math.abs(m.start[1] - m.end[1]) < 0.01 &&
+        Math.abs(m.start[2] - m.end[2]) > 0.1 &&
         Math.abs(Math.abs(m.start[0]) - halfW) < 0.01 &&
         Math.abs(Math.abs(m.end[0]) - halfW) < 0.01,
     );
@@ -138,7 +158,8 @@ describe('eave framed openings cut double/ladder columns too', () => {
     expect(clippedInside(s, 1, cz - 10, cz + 10, 0, 12).length).toBe(0);
   });
 
-  it('ladder-leg build (24w x 18h): an 8ft frame-out clears chords and rungs', () => {
+  // 24w x 18h is DOUBLE legs under the current rule (ladder needs W >= 52).
+  it('tall double-leg build (24w x 18h): an 8ft frame-out clears both posts', () => {
     const s = build({
       width: 24, length: 40, legHeight: 18,
       openings: [{ id: 'fo2', type: 'frameOut', side: 'left', offset: 20, width: 8, height: 10, sillHeight: 0, customerSupplied: true } as never],
@@ -146,6 +167,17 @@ describe('eave framed openings cut double/ladder columns too', () => {
     const halfL = s.length / 2;
     const cz = -halfL + 20;
     expect(clippedInside(s, -1, cz - 4, cz + 4, 0, 10).length).toBe(0);
+  });
+
+  it('real ladder build (56w x 12h): a 10ft eave frame-out clears both chords and the rungs', () => {
+    const s = build({
+      width: 56, length: 60, legHeight: 12,
+      openings: [{ id: 'fo4', type: 'frameOut', side: 'left', offset: 20, width: 10, height: 10, sillHeight: 0, customerSupplied: true } as never],
+    });
+    const halfL = s.length / 2;
+    const cz = -halfL + 20;
+    expect(ladderRungs(s).length).toBeGreaterThan(0); // it really is a ladder build
+    expect(clippedInside(s, -1, cz - 5, cz + 5, 0, 10).length).toBe(0);
   });
 
   it('legs outside the opening span are untouched', () => {

@@ -12,6 +12,7 @@ import { createCorrugatedTexture, type RibDirection } from './textures';
 import { stripsAround, type LocalRect } from './Siding';
 import { OpeningFixture } from './OpeningFixture';
 import { GuideLine, Measure, Chip3D, ftIn, RED, RED_DIM } from './Openings';
+import { CLICK_DRAG_THRESHOLD_PX } from './openingAnim';
 
 const COMP_PROUD = COMPONENT_OUTSET - SHEET_OUTSET; // component standoff past the wall sheeting
 
@@ -813,7 +814,7 @@ function DraggableLeanToOpening({
       // Same click-vs-drag rule as the main building: under 5px is a click, which
       // must NOT move the part or write a position back (that could reprice).
       moved = Math.max(moved, Math.hypot(ev.clientX - sx, ev.clientY - sy));
-      if (moved < 5) return;
+      if (moved < CLICK_DRAG_THRESHOLD_PX) return;
       if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
       const rect = gl.domElement.getBoundingClientRect();
       const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;

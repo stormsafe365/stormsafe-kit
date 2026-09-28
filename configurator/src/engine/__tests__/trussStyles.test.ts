@@ -24,9 +24,9 @@ const ladderRungs = (s: ReturnType<typeof deriveStructure>) => {
 };
 
 // Current rule (geometry.ts deriveStructure, same as the program's badges):
-// LADDER when W >= 52 (any height); DOUBLE when W is 32-51 or H >= 14; else
-// SINGLE. Older comments that say "ladder at H >= 17" are stale.
-describe('truss/leg styles — single, double (W 32-51 or H>=14), ladder (W>=52)', () => {
+// LADDER when W >= 52 (any height); DOUBLE when W is 32-51 or H >= 15 (owner
+// 9/28/26: 14' is single); else SINGLE. Older comments that say 'ladder at H >= 17' are stale.
+describe('truss/leg styles — single, double (W 32-51 or H>=15), ladder (W>=52)', () => {
   it('small build → 2 legs per bent (one post each side)', () => {
     const s = build({ width: 24, length: 30, legHeight: 12 });
     expect(legCount(s)).toBe(s.frameCount * 2);
@@ -37,8 +37,13 @@ describe('truss/leg styles — single, double (W 32-51 or H>=14), ladder (W>=52)
     expect(legCount(s)).toBe(s.frameCount * 4);
   });
 
-  it('height 14 → DOUBLE legs: 4 posts per bent', () => {
+  it('height 14 → still SINGLE legs (owner 9/28: double starts at 15)', () => {
     const s = build({ width: 24, length: 30, legHeight: 14 });
+    expect(legCount(s)).toBe(s.frameCount * 2);
+  });
+
+  it('height 15 → DOUBLE legs: 4 posts per bent', () => {
+    const s = build({ width: 24, length: 30, legHeight: 15 });
     expect(legCount(s)).toBe(s.frameCount * 4);
   });
 

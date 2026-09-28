@@ -500,10 +500,10 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
 
   // --- Frame bents: legs + gable rafters + knee braces + peak collar tie ---
   // The roof member is the simple single rafter ("bow"). Leg style varies:
-  //   • DOUBLE leg   when W > 31 (or H 14-16) — a second post welded just
+  //   • DOUBLE leg   when W > 31 (or H 15+) — a second post welded just
   //     INBOARD of the first (toward the interior, along X), tops meeting the
   //     rafter underside. 16' legs are STANDARD DOUBLE legs, not ladder.
-  //   • LADDER leg   when H >= 17 — a deep two-chord column IN THE TRUSS
+  //   • LADDER leg   when W >= 52 — a deep two-chord column IN THE TRUSS
   //     PLANE: outer chord at the wall, inner chord ~a foot and a half
   //     inboard, horizontal rungs between them every ~3'. (The first attempt
   //     split the posts ALONG the wall (Z), which laid the ladder flat against
@@ -512,8 +512,10 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   // Ladder legs are a WIDE-building feature — Master Price Book 7/16/26 footnote:
   // 32'-51' wide = standard double legs, 52'-60' = standard ladder legs (any
   // height). Sensei renders CCI 30x96x18 with plain double legs (owner screenshot
-  // 8/31/26). Narrow tall buildings (14'+) get double posts.
-  const doublePost = (W > 31 && W < 52) || H >= 14;
+  // 8/31/26). Narrow tall buildings get double posts from 15' up — owner 9/28/26 +
+  // both price books: the 15' & 16' rows "include double legs + double base rail";
+  // 14' and under are single legs.
+  const doublePost = (W > 31 && W < 52) || H >= 15;
   const ladderLeg = W >= 52;
   const LADDER_D = Math.min(2, Math.max(1.3, H * 0.09)); // ladder column depth (inboard, X)
   const DOUBLE_D = 0.4;                                  // doubled-post gap (inboard, X)

@@ -551,6 +551,12 @@ function syncFromBuilder(win: BuilderWindow) {
   if (w && w !== st.width) st.setWidth(w);
   if (l && l !== st.length) st.setLength(l);
   if (h && h !== st.legHeight) st.setLegHeight(h);
+  // Main roof pitch: mirror the pitch the program DISPLAYS (standard 3:12,
+  // 2:12 on buildings over 31' wide, or an upgrade like 4:12). The 3D model
+  // used to sit at its 3:12 default no matter what the quote said.
+  const pitchEl = G('pitch') as HTMLElement | null;
+  const pRise = pitchEl ? parseFloat(String(pitchEl.textContent || '').split(':')[0]) : NaN;
+  if (Number.isFinite(pRise) && pRise > 0 && pRise !== st.roofPitch) st.setRoofPitch(pRise);
 
   // Truss spacing: mirror the program EXACTLY by calling its own getTrussInfo()
   // (e.g. 24-wide standard = 5' OC, 4' OC upgrade, wide-span = 4'). Without this

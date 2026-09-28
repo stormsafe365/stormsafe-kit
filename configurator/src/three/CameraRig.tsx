@@ -25,6 +25,9 @@ export function CameraRig() {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const cmd = useEditorStore((s) => s.cameraCmd);
+  // View-only Look flag: part of the refit key so a Look switch (which may
+  // change the FOV) refits the frame. Classic never changes it.
+  const renderStyle = useEditorStore((s) => s.renderStyle);
 
   const goalPos = useRef<THREE.Vector3 | null>(null);
   const goalLook = useRef<THREE.Vector3 | null>(null);
@@ -103,12 +106,12 @@ export function CameraRig() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cmd?.nonce]);
 
-  // Auto-frame on size change: keep the current orbit DIRECTION but refit the
-  // distance + recentre, so a resized building stays fully in frame.
+  // Auto-frame on size (or Look) change: keep the current orbit DIRECTION but
+  // refit the distance + recentre, so a resized building stays fully in frame.
   const prevKey = useRef('');
   const initialized = useRef(false);
   useEffect(() => {
-    const key = `${W}x${L}x${top.toFixed(2)}`;
+    const key = `${W}x${L}x${top.toFixed(2)}|${renderStyle}`;
 
     // On first load, auto-frame with 'iso' preset
     if (!initialized.current && controls) {
@@ -127,7 +130,7 @@ export function CameraRig() {
     }
     prevKey.current = key;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [W, L, top]);
+  }, [W, L, top, renderStyle]);
 
   // Dev: expose camera + controls (+ gl/scene for scene-graph verification)
   // so a precise view can be set for screenshots.

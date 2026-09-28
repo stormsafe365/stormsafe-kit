@@ -1,9 +1,19 @@
 import { useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useEditorStore } from '@/store/useEditorStore';
+import { useEditorStore, type RenderStyle } from '@/store/useEditorStore';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * True when this object or any ancestor is tagged `userData.captureIgnore` —
+ * scenery (slab, sky, ground decals) that must not widen the capture framing.
+ * Nothing in the classic look sets it, so the classic fit is unchanged.
+ */
+const isCaptureIgnored = (ob: THREE.Object3D) => {
+  for (let o: THREE.Object3D | null = ob; o; o = o.parent) if (o.userData?.captureIgnore) return true;
+  return false;
+};
 
 /**
  * Exposes window.__ssCapture3D() — used by the pricing program's PDF export to
@@ -16,6 +26,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * and lifts the orbit distance clamp — otherwise a long building's elevation
  * (camera far back) gets clipped by maxDistance or washed out by fog. Everything
  * is restored in `finally` so the live interactive view is untouched.
+ *
+ * While it runs, the editor store's `captureMode` is true (animations may use
+ * it to snap closed). The view-only renderStyle in effect is read once via
+ * getState() and exposed afterwards as window.__ssLastCapture = { renderStyle,
+ * at }; the returned image record itself is unchanged.
  */
 export function CaptureHook() {
   const gl = useThree((s) => s.gl);
@@ -27,8 +42,9 @@ export function CaptureHook() {
     const w = window as unknown as {
       __ssCapture3D?: () => Promise<Record<string, string>>;
       __ssSetViewInstant?: (p: string) => void;
+      __ssLastCapture?: { renderStyle: RenderStyle; at: string };
     };
-    w.__ssCapture3D = async () => {
+    const captureViews = async () => {
       const setView = w.__ssSetViewInstant;
       const goToView = useEditorStore.getState().goToView;
       const views = ['iso', 'front', 'back', 'left', 'right'] as const;
@@ -83,6 +99,7 @@ export function CaptureHook() {
         scene.traverse((ob) => {
           const m = ob as THREE.Mesh;
           if (!m.isMesh || !m.geometry) return;
+          if (isCaptureIgnored(m)) return; // tagged scenery never drives the framing
           if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
           const b = m.geometry.boundingBox;
           if (!b || !isFinite(b.min.x) || !isFinite(b.max.x)) return;
@@ -194,6 +211,20 @@ export function CaptureHook() {
         if (savedSpacing) useEditorStore.getState().setShowSpacing(true);
       }
       return out;
+    };
+    w.__ssCapture3D = async () => {
+      const ed = useEditorStore.getState();
+      // Look in effect for this capture (view-only flag; read once, never written).
+      const renderStyle = ed.renderStyle;
+      // captureMode brackets the WHOLE capture (incl. the close-openings wait).
+      // It only flags state; capture timing and output are unchanged.
+      ed.setCaptureMode(true);
+      try {
+        return await captureViews();
+      } finally {
+        useEditorStore.getState().setCaptureMode(false);
+        w.__ssLastCapture = { renderStyle, at: new Date().toISOString() };
+      }
     };
     return () => {
       delete w.__ssCapture3D;

@@ -17,7 +17,8 @@ const PRESETS: { value: CameraPreset; label: string }[] = [
 ];
 
 /**
- * Floating viewport controls — presentation mode switch + camera presets.
+ * Floating viewport controls — presentation mode switch + camera presets, the
+ * Spacing overlay and the view-only Look (renderStyle) switch.
  * Pure UI: it only pokes the editor store; the CameraRig + BuildingModel react.
  */
 export function ViewControls() {
@@ -26,6 +27,9 @@ export function ViewControls() {
   const goToView = useEditorStore((s) => s.goToView);
   const showSpacing = useEditorStore((s) => s.showSpacing);
   const setShowSpacing = useEditorStore((s) => s.setShowSpacing);
+  const renderStyle = useEditorStore((s) => s.renderStyle);
+  const setRenderStyle = useEditorStore((s) => s.setRenderStyle);
+  const enhanced = renderStyle === 'enhanced';
 
   return (
     <div className="pointer-events-auto absolute right-4 top-4 flex w-[256px] max-w-[calc(100%-2rem)] flex-col gap-2 rounded-xl border border-border-vis bg-dark-2/95 p-2.5 shadow-lg backdrop-blur">
@@ -63,17 +67,32 @@ export function ViewControls() {
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={() => setShowSpacing(!showSpacing)}
-        aria-pressed={showSpacing}
-        title="Show every component's size and all spacing / heights on the walls facing you"
-        className={`rounded-md border px-1.5 py-1.5 font-head text-[10px] uppercase tracking-wide2 transition-colors ${
-          showSpacing ? 'border-teal bg-teal text-dark' : 'border-border-vis bg-dark-3 text-sub hover:border-teal hover:text-teal'
-        }`}
-      >
-        {showSpacing ? 'Spacing: On' : 'Spacing'}
-      </button>
+      <div className="grid grid-cols-2 gap-1">
+        <button
+          type="button"
+          onClick={() => setShowSpacing(!showSpacing)}
+          aria-pressed={showSpacing}
+          title="Show every component's size and all spacing / heights on the walls facing you"
+          className={`rounded-md border px-1.5 py-1.5 font-head text-[10px] uppercase tracking-wide2 transition-colors ${
+            showSpacing ? 'border-teal bg-teal text-dark' : 'border-border-vis bg-dark-3 text-sub hover:border-teal hover:text-teal'
+          }`}
+        >
+          {showSpacing ? 'Spacing: On' : 'Spacing'}
+        </button>
+
+        {/* View-only look switch: never saved, never priced, never sent to the program. */}
+        <button
+          type="button"
+          onClick={() => setRenderStyle(enhanced ? 'classic' : 'enhanced')}
+          aria-pressed={enhanced}
+          title="Switch the 3D look between Classic and the new render (view only: never saved or priced)"
+          className={`whitespace-nowrap rounded-md border px-1.5 py-1.5 font-head text-[10px] uppercase tracking-wide2 transition-colors ${
+            enhanced ? 'border-teal bg-teal text-dark' : 'border-border-vis bg-dark-3 text-sub hover:border-teal hover:text-teal'
+          }`}
+        >
+          {enhanced ? 'Look: New' : 'Look: Classic'}
+        </button>
+      </div>
     </div>
   );
 }

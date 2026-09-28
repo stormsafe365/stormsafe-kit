@@ -4,6 +4,14 @@ import type { WallSide } from '@/types/building';
 /** How the building shell is presented. */
 export type ViewMode = 'exterior' | 'structure' | 'cutaway';
 
+/**
+ * Which LOOK the 3D view renders with. VIEW-ONLY: lives only in this transient
+ * editor store — never persisted, never bridged to or read by the pricing
+ * program, never part of the quote. 'classic' is today's look and the default
+ * (client PDFs depend on it); 'enhanced' is the render-upgrade look.
+ */
+export type RenderStyle = 'classic' | 'enhanced';
+
 /** Named camera framings. 'interior' drops the camera inside looking out. */
 export type CameraPreset =
   | 'front'
@@ -47,6 +55,14 @@ interface EditorStore {
   showSpacing: boolean;
   /** Components the user clicked OPEN (door swings, roll-up rolls, window slides). */
   openIds: Record<string, boolean>;
+  /** View-only look switch (see RenderStyle). Default 'classic'. Never persisted. */
+  renderStyle: RenderStyle;
+  /**
+   * True while window.__ssCapture3D() (quote / contract / approval PDF capture)
+   * is running. Animations may read it to snap closed instead of easing.
+   * Nothing reads it yet — capture timing is unchanged.
+   */
+  captureMode: boolean;
 
   openEditor: (wall?: WallSide) => void;
   closeEditor: () => void;
@@ -62,6 +78,8 @@ interface EditorStore {
   setShowSpacing: (on: boolean) => void;
   toggleOpen: (id: string) => void;
   closeAllOpenings: () => void;
+  setRenderStyle: (style: RenderStyle) => void;
+  setCaptureMode: (on: boolean) => void;
 }
 
 export const useEditorStore = create<EditorStore>((set) => ({
@@ -76,6 +94,8 @@ export const useEditorStore = create<EditorStore>((set) => ({
   cameraCmd: null,
   showSpacing: false,
   openIds: {},
+  renderStyle: 'classic',
+  captureMode: false,
 
   openEditor: (wall) => set((s) => ({ editorOpen: true, activeWall: wall ?? s.activeWall })),
   closeEditor: () => set({ editorOpen: false, dragging: false }),
@@ -103,4 +123,6 @@ export const useEditorStore = create<EditorStore>((set) => ({
   setShowSpacing: (on) => set({ showSpacing: on }),
   toggleOpen: (id) => set((s) => ({ openIds: { ...s.openIds, [id]: !s.openIds[id] } })),
   closeAllOpenings: () => set({ openIds: {} }),
+  setRenderStyle: (style) => set({ renderStyle: style }),
+  setCaptureMode: (on) => set({ captureMode: on }),
 }));

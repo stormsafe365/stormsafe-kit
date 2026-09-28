@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { useResolvedBuilding } from '@/engine/useResolvedBuilding';
 import { swatchHex } from '@/config/colors';
 import { useEditorStore, type ViewMode } from '@/store/useEditorStore';
+import type { StructureModel } from '@/engine/geometry';
+import type { BuildingConfig } from '@/types/building';
 import { Frame } from './Frame';
 import { Siding } from './Siding';
 import { LeanToSiding } from './LeanToSiding';
@@ -50,6 +52,52 @@ function ShellGroup({ opacity, children }: { opacity: number; children: React.Re
   return <group ref={ref}>{children}</group>;
 }
 
+interface ShellProps {
+  structure: StructureModel;
+  config: BuildingConfig;
+  trimHex: string;
+}
+
+/** CLASSIC shell (today's look, the default): siding, lean-tos, trim, openings. */
+function ClassicShell({ structure, config, trimHex }: ShellProps) {
+  return (
+    <>
+      <Siding
+        structure={structure}
+        openings={config.openings}
+        wallOrientation={config.panelOrientation}
+        roofOrientation={config.roofOrientation}
+        colors={config.colors}
+        wainscot={config.wainscot}
+      />
+      <LeanToSiding
+        leanTos={structure.leanTos}
+        wallOrientation={config.panelOrientation}
+        roofOrientation={config.roofOrientation}
+        colors={config.colors}
+        wainscot={config.wainscot}
+        overhangFt={structure.roofOverhangFt}
+        trimColor={trimHex}
+      />
+      <Trim structure={structure} color={trimHex} wainscot={config.wainscot} openings={config.openings} />
+      <Openings openings={config.openings} structure={structure} trimColor={trimHex} wallColor={swatchHex(config.colors.walls)} />
+    </>
+  );
+}
+
+/**
+ * ENHANCED shell — Phase 2 PLACEHOLDER: an ALIAS of the classic shell (same
+ * component identity), so flipping the Look today remounts nothing. (A remount
+ * recreates every shell material in fresh-mount order; three sorts opaque
+ * draws by material.id, so equal-depth edge pixels shift — measured ~800 px at
+ * delta <= 46 on A_CA vs the golden set, the same signature as a fresh page
+ * load.) The render-upgrade components plug in HERE, and only here: enhanced
+ * main siding + trim (Phase 5), lean-to shell (Phase 6), fixtures (Phase 7).
+ * Everything here sits inside ShellGroup, so decals / shade bands that must
+ * keep their own opacity need material.userData.keepTransparent.
+ */
+const EnhancedShell = ClassicShell;
+
 /**
  * Assembles the live building from the resolved pipeline. Frame (incl. hat
  * channels, girts, purlins) is laid down before the siding skin, mirroring real
@@ -60,31 +108,19 @@ export function BuildingModel() {
   const { config } = resolved;
   const trimHex = swatchHex(config.colors.trim);
   const viewMode = useEditorStore((s) => s.viewMode);
+  const renderStyle = useEditorStore((s) => s.renderStyle);
   const showFrameProminent = viewMode !== 'exterior';
 
   return (
     <group>
       <Frame members={structure.members} framingGauge={config.framingGauge} emphasize={showFrameProminent} />
       <ShellGroup opacity={SHELL_OPACITY[viewMode]}>
-        <Siding
-          structure={structure}
-          openings={config.openings}
-          wallOrientation={config.panelOrientation}
-          roofOrientation={config.roofOrientation}
-          colors={config.colors}
-          wainscot={config.wainscot}
-        />
-        <LeanToSiding
-          leanTos={structure.leanTos}
-          wallOrientation={config.panelOrientation}
-          roofOrientation={config.roofOrientation}
-          colors={config.colors}
-          wainscot={config.wainscot}
-          overhangFt={structure.roofOverhangFt}
-          trimColor={trimHex}
-        />
-        <Trim structure={structure} color={trimHex} wainscot={config.wainscot} openings={config.openings} />
-        <Openings openings={config.openings} structure={structure} trimColor={trimHex} wallColor={swatchHex(config.colors.walls)} />
+        {/* The single renderStyle branch point for the building shell. */}
+        {renderStyle === 'enhanced' ? (
+          <EnhancedShell structure={structure} config={config} trimHex={trimHex} />
+        ) : (
+          <ClassicShell structure={structure} config={config} trimHex={trimHex} />
+        )}
       </ShellGroup>
     </group>
   );

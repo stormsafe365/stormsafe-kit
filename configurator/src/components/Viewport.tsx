@@ -8,6 +8,72 @@ import { ViewControls } from '@/components/ViewControls';
 import { useEditorStore } from '@/store/useEditorStore';
 
 /**
+ * CLASSIC scene rig — today's background, fog, lights, contact shadows and
+ * ground grid, moved here VERBATIM from the Canvas body. This is the default
+ * look and the one client PDFs are captured with: keep it pixel-identical.
+ */
+function ClassicSceneRig() {
+  return (
+    <>
+      <color attach="background" args={['#08121d']} />
+      <fog attach="fog" args={['#08121d', 80, 360]} />
+
+      {/* All four vertical walls MUST read the identical shade (critical for
+          client PDFs). The key light is placed PERFECTLY straight overhead
+          (zero horizontal component) → N·L is the same (0) for every vertical
+          wall regardless of which way it faces, so the directional adds NO
+          per-wall difference. Wall shade then comes only from the uniform
+          ambient + sky hemisphere, which are azimuth-independent. The roof
+          (sloped) still catches the overhead light for depth. NOTE: the siding
+          envMap is also zeroed (Siding.tsx) because the HDRI is directional
+          and would otherwise tint one wall vs another. */}
+      {/* The warehouse HDRI environment was tinting walls DIRECTIONALLY (it's
+          brighter on some sides) — removed below. Walls are now lit ONLY by
+          the azimuth-uniform ambient + sky hemisphere, so all four sides read
+          the EXACT same shade (verified identical). The overhead key adds roof
+          form; the ground keeps its soft <ContactShadows>. */}
+      <hemisphereLight args={['#eef3f9', '#4a5563', 1.6]} />
+      <ambientLight intensity={0.85} />
+      <directionalLight position={[0, 60, 0.0001]} intensity={0.4} />
+      {/* TEST: env removed to check if it's tinting the walls directionally */}
+      {/* <Environment preset="warehouse" /> */}
+
+      <ContactShadows position={[0, 0.01, 0]} opacity={0.45} scale={120} blur={2.4} far={40} />
+      <Grid
+        position={[0, 0, 0]}
+        args={[200, 200]}
+        cellSize={2}
+        cellColor="#1e2d42"
+        sectionSize={10}
+        sectionColor="#2a3d55"
+        fadeDistance={140}
+        infiniteGrid
+      />
+    </>
+  );
+}
+
+/**
+ * ENHANCED scene rig — Phase 2 PLACEHOLDER: an ALIAS of the classic rig (same
+ * component identity), so flipping the Look today remounts nothing and is a
+ * strict no-op. Phase 3 replaces the alias with the real render-upgrade scene
+ * (sun / hemi / fill, sky + environment, slab, fog, exposure, FOV). Anything
+ * that rig changes on the shared renderer / scene / camera must be restored
+ * when it unmounts so switching back to Classic renders the classic look.
+ */
+const EnhancedSceneRig = ClassicSceneRig;
+
+/**
+ * The ONE place the scene look branches on the view-only renderStyle flag.
+ * Subscribes itself so a Look toggle re-renders only the rig, not the Canvas.
+ * Sits before <BuildingModel/> / <CameraRig/> so its effects run first.
+ */
+function SceneRig() {
+  const renderStyle = useEditorStore((s) => s.renderStyle);
+  return renderStyle === 'enhanced' ? <EnhancedSceneRig /> : <ClassicSceneRig />;
+}
+
+/**
  * LAYER 3 entry — the responsive 3D viewport.
  *
  * Pure presentation: it owns the camera, lighting, ground, and controls, then
@@ -29,47 +95,15 @@ export function Viewport() {
           if (!useEditorStore.getState().dragging) selectOpening(null);
         }}
       >
-        <color attach="background" args={['#08121d']} />
-        <fog attach="fog" args={['#08121d', 80, 360]} />
-
-        {/* All four vertical walls MUST read the identical shade (critical for
-            client PDFs). The key light is placed PERFECTLY straight overhead
-            (zero horizontal component) → N·L is the same (0) for every vertical
-            wall regardless of which way it faces, so the directional adds NO
-            per-wall difference. Wall shade then comes only from the uniform
-            ambient + sky hemisphere, which are azimuth-independent. The roof
-            (sloped) still catches the overhead light for depth. NOTE: the siding
-            envMap is also zeroed (Siding.tsx) because the HDRI is directional
-            and would otherwise tint one wall vs another. */}
-        {/* The warehouse HDRI environment was tinting walls DIRECTIONALLY (it's
-            brighter on some sides) — removed below. Walls are now lit ONLY by
-            the azimuth-uniform ambient + sky hemisphere, so all four sides read
-            the EXACT same shade (verified identical). The overhead key adds roof
-            form; the ground keeps its soft <ContactShadows>. */}
-        <hemisphereLight args={['#eef3f9', '#4a5563', 1.6]} />
-        <ambientLight intensity={0.85} />
-        <directionalLight position={[0, 60, 0.0001]} intensity={0.4} />
+        {/* Background, fog, lights, contact shadows + ground grid (per Look). */}
+        <SceneRig />
 
         <Suspense fallback={null}>
           <BuildingModel />
-          {/* TEST: env removed to check if it's tinting the walls directionally */}
-          {/* <Environment preset="warehouse" /> */}
         </Suspense>
 
         <CameraRig />
         <CaptureHook />
-
-        <ContactShadows position={[0, 0.01, 0]} opacity={0.45} scale={120} blur={2.4} far={40} />
-        <Grid
-          position={[0, 0, 0]}
-          args={[200, 200]}
-          cellSize={2}
-          cellColor="#1e2d42"
-          sectionSize={10}
-          sectionColor="#2a3d55"
-          fadeDistance={140}
-          infiniteGrid
-        />
 
         <OrbitControls
           makeDefault

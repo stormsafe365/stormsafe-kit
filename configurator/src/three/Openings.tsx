@@ -665,6 +665,7 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
   }
   const gapY = Math.min(1.3, eave * 0.25);
   const allY = 0.3;
+  const oh = structure.roofOverhangFt ?? 0;
 
   return (
     <group>
@@ -692,6 +693,15 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
       })}
       <Measure a={pt(0, allY)} b={pt(span, allY)} mid={pt(span / 2, allY)} label={`${ftIn(span)}W`} />
       <Measure a={pt(0.35, 0)} b={pt(0.35, eave)} mid={pt(0.35, eave * 0.6)} label={`${ftIn(eave)}H`} vertical />
+      {/* Roof line: wall length + overhang past each end (6" std => 50' wall = 51' roof). */}
+      {!gable && (
+        <Measure
+          a={pt(-oh, eave + 0.45)}
+          b={pt(span + oh, eave + 0.45)}
+          mid={pt(span / 2, eave + 0.45)}
+          label={`${ftIn(span + 2 * oh)} roof`}
+        />
+      )}
       {gable && (
         <Measure a={pt(span / 2, eave)} b={pt(span / 2, peak)} mid={pt(span / 2, (eave + peak) / 2)} label={`${ftIn(peak)}H`} vertical />
       )}

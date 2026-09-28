@@ -91,7 +91,7 @@ function DraggableOpening({
   wallColor: string;
 }) {
   const updateOpening = useBuildingStore((s) => s.updateOpening);
-  const { selectedOpeningId, selectOpening, setActiveWall, setDragging } = useEditorStore();
+  const { selectOpening, setActiveWall, setDragging } = useEditorStore();
   // Camera/renderer for manual drag raycasting; controls disabled while dragging.
   const gl = useThree((s) => s.gl);
   const camera = useThree((s) => s.camera);
@@ -124,7 +124,6 @@ function DraggableOpening({
   });
 
   const wall = structure.walls[opening.side];
-  const selected = selectedOpeningId === opening.id;
 
   // World-space plane of this opening's wall — drags raycast against it.
   const wallPlane = useMemo(() => plyForWall(opening.side, structure), [opening.side, structure]);
@@ -278,8 +277,6 @@ function DraggableOpening({
     return g;
   }, [cut45, cutC, w, h]);
 
-  const emissive = selected ? '#22d3c8' : '#000000';
-
   // --- Direct 3D drag: grab the component and slide it along its wall ---
   // Uses window-level listeners + manual raycast so the drag never depends on
   // R3F pointer-capture and OrbitControls can't fight it.
@@ -327,7 +324,7 @@ function DraggableOpening({
   const panelZ = isGlass ? -0.025 : 0; // recess glass behind the proud frame
   const onFloor = opening.sillHeight <= 0.1;
   // A black window carries its frame color (opening.color) — black-framed glass.
-  const tc = selected ? '#22d3c8' : isGlass && opening.color ? opening.color : trimColor;
+  const tc = isGlass && opening.color ? opening.color : trimColor;
 
   return (
     <group>
@@ -401,12 +398,6 @@ function DraggableOpening({
             </mesh>
             {opening.type === 'rollUpDoor' && <RollUpRail w={w} h={h} panelDepth={panelDepth} color={opening.color} />}
           </group>
-        )}
-        {selected && (
-          <mesh position={[0, 0, trimDepth / 2 + 0.02]}>
-            <planeGeometry args={[w + t, h + t]} />
-            <meshStandardMaterial color="#22d3c8" emissive={emissive} emissiveIntensity={0.25} transparent opacity={0.1} />
-          </mesh>
         )}
 
         {/* Window — double-hung (1-over-1): a single proud white meeting rail

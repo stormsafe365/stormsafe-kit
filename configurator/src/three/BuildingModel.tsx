@@ -10,6 +10,7 @@ import { Siding } from './Siding';
 import { LeanToSiding } from './LeanToSiding';
 import { Openings } from './Openings';
 import { Trim } from './Trim';
+import { EnhancedSite } from './enhanced/EnhancedSite';
 
 /** Shell opacity per view mode (exterior fully solid; structure/cutaway ghost). */
 const SHELL_OPACITY: Record<ViewMode, number> = {
@@ -122,6 +123,10 @@ export function BuildingModel() {
           <ClassicShell structure={structure} config={config} trimHex={trimHex} />
         )}
       </ShellGroup>
+      {/* ENHANCED ground + slab + soft contact decals: outside ShellGroup (never
+          ghosted), capture-ignored, and absent in classic. Last child, so the
+          classic Frame / ShellGroup keep their slots and never remount. */}
+      {renderStyle === 'enhanced' && <EnhancedSite structure={structure} />}
     </group>
   );
 }

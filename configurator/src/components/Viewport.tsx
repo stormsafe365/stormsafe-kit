@@ -5,6 +5,7 @@ import { BuildingModel } from '@/three/BuildingModel';
 import { CameraRig } from '@/three/CameraRig';
 import { CaptureHook } from '@/three/CaptureHook';
 import { ViewControls } from '@/components/ViewControls';
+import { EnhancedSceneRig } from '@/three/enhanced/EnhancedSceneRig';
 import { useEditorStore } from '@/store/useEditorStore';
 
 /**
@@ -54,19 +55,13 @@ function ClassicSceneRig() {
 }
 
 /**
- * ENHANCED scene rig — Phase 2 PLACEHOLDER: an ALIAS of the classic rig (same
- * component identity), so flipping the Look today remounts nothing and is a
- * strict no-op. Phase 3 replaces the alias with the real render-upgrade scene
- * (sun / hemi / fill, sky + environment, slab, fog, exposure, FOV). Anything
- * that rig changes on the shared renderer / scene / camera must be restored
- * when it unmounts so switching back to Classic renders the classic look.
- */
-const EnhancedSceneRig = ClassicSceneRig;
-
-/**
  * The ONE place the scene look branches on the view-only renderStyle flag.
  * Subscribes itself so a Look toggle re-renders only the rig, not the Canvas.
  * Sits before <BuildingModel/> / <CameraRig/> so its effects run first.
+ * ENHANCED (src/three/enhanced/EnhancedSceneRig) restores everything it
+ * changes on the shared renderer / scene / camera when it unmounts, so
+ * switching back to Classic renders the classic look. Its ground + slab are
+ * mounted by BuildingModel (outside ShellGroup), also only while enhanced.
  */
 function SceneRig() {
   const renderStyle = useEditorStore((s) => s.renderStyle);

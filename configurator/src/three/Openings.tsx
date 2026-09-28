@@ -114,7 +114,7 @@ function DraggableOpening({
     openT.current += (target - openT.current) * Math.min(1, dt * 4);
     if (Math.abs(openT.current - target) < 0.002) openT.current = target;
     const t = openT.current;
-    if (swingRef.current) swingRef.current.rotation.y = -t * 1.6; // ~92° outward
+    if (swingRef.current) swingRef.current.rotation.y = (opening.impact ? -1 : 1) * t * 1.6; // hi-impact swings OUT, standard swings IN (hinge left, knob right)
     if (rollRef.current) {
       const k = 0.9 * t; // roll up to ~10% showing at the header
       rollRef.current.scale.y = 1 - k;

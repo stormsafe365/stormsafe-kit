@@ -105,6 +105,8 @@ interface DesiredOpening {
   doorStyle?: 'std' | '6panel' | '9lite' | 'diamond';
   /** Roll-up door top corners cut at 45° (program ".r45" = Yes). */
   cut45?: boolean;
+  /** Hi-impact / hi-wind walk door (CA "hi", CCI "hiwind") — swings OUT; standard swings IN. */
+  impact?: boolean;
   /** Source program entry + item index — lets a 3D drag write back to the program. */
   entry: Element;
   itemIndex: number;
@@ -170,12 +172,14 @@ function readOpenings(
       let color: string | undefined;
       let doorStyle: 'std' | '6panel' | '9lite' | 'diamond' | undefined;
       let cut45: boolean | undefined;
+      let impact: boolean | undefined;
       if (type === 'rollup') {
         color = rudColorHex(it.color);
         cut45 = lv(el, '.r45') === 'yes'; // program "45° Angle Cut: Yes"
       } else if (type === 'wtd') {
         doorStyle = (it.style as typeof doorStyle) || 'std';
         color = it.color === 'black' ? BLACK : undefined;
+        impact = /^(hi|hiwind)$/.test(lv(el, '.whi'));
       } else if (type === 'win') color = it.color === 'black' ? BLACK : undefined;
       out.push({
         type: OTYPE_MAP[type] ?? 'frameOut',
@@ -187,6 +191,7 @@ function readOpenings(
         color,
         doorStyle,
         cut45,
+        impact,
         entry: el,
         itemIndex: i,
       });
@@ -756,7 +761,7 @@ function syncFromBuilder(win: BuilderWindow) {
     const map: NonNullable<BuilderWindow['__ssOpenMap']> = {};
     for (const d of desired) {
       const id = cur.addOpening(d.type, d.side);
-      cur.updateOpening(id, { offset: d.offset, width: d.width, height: d.height, sillHeight: d.sillHeight, color: d.color, doorStyle: d.doorStyle, cut45: d.cut45 });
+      cur.updateOpening(id, { offset: d.offset, width: d.width, height: d.height, sillHeight: d.sillHeight, color: d.color, doorStyle: d.doorStyle, cut45: d.cut45, impact: d.impact });
       map[id] = { entry: d.entry, itemIndex: d.itemIndex, side: d.side, width: d.width };
     }
     win.__ssOpenMap = map;

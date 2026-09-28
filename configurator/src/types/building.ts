@@ -162,6 +162,8 @@ export interface Opening {
   doorStyle?: 'std' | '6panel' | '9lite' | 'diamond';
   /** Roll-up door with its top corners cut at 45° (program "45° Angle Cut"). */
   cut45?: boolean;
+  /** Walk door is hi-impact/hi-wind: swings OUTWARD (standard doors swing inward). */
+  impact?: boolean;
 }
 
 /** Color targets — each can take any swatch code from config/colors. */

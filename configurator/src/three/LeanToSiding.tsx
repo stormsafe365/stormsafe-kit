@@ -13,7 +13,6 @@ import { stripsAround, type LocalRect } from './Siding';
 import { OpeningFixture } from './OpeningFixture';
 import { GuideLine, Measure, Chip3D, ftIn, RED, RED_DIM } from './Openings';
 import { CLICK_DRAG_THRESHOLD_PX } from './openingAnim';
-import { cutHoles, holesTouching, type CutHole, type P2 } from './polyCut';
 
 const COMP_PROUD = COMPONENT_OUTSET - SHEET_OUTSET; // component standoff past the wall sheeting
 
@@ -694,30 +693,6 @@ function cutGable(
   return { strips, triangle: { corners: tri, uvs: triUv } };
 }
 
-/**
- * A partial end outline (gableOutline) cut around its frame-outs (classic
- * UVs / planes), or null when no frame-out reaches into it — the caller then
- * draws the single classic panel, unchanged.
- */
-export function partialEndPieces(
-  geo: SurfaceSet,
-  which: 'front' | 'back',
-  val: GableVal,
-  frameOuts: LeanToOpening[],
-): Array<{ corners: Pt[]; uvs: UV[] }> | null {
-  if (!frameOuts.length) return null;
-  const g = geo.gable;
-  const plane = which === 'front' ? g.frontPlane : g.backPlane;
-  const minA = Math.min(g.innerAcross, g.outerAcross);
-  const outline = gableOutline(val, g.innerAcross, g.outerAcross, g.lh, g.connH) as P2[];
-  const holes: CutHole[] = frameOuts.map((o) => ({ c: minA + o.offsetFt, w: o.widthFt, y0: o.sillFt, y1: o.sillFt + o.heightFt }));
-  if (!holesTouching(outline, holes).length) return null;
-  return cutHoles(outline, holes).map((poly) => ({
-    corners: poly.map(([a, y]): Pt => (g.kind === 'eave' ? [a, y, plane] : [plane, y, a])),
-    uvs: poly.map(([a, y]): UV => [a, y]),
-  }));
-}
-
 function GableEnd({
   geo,
   which,
@@ -733,20 +708,6 @@ function GableEnd({
 }) {
   if (val === 'open') return null;
   if (!(val === 'closed' && openings.length > 0)) {
-    // A PARTIAL end (half end / gable only / q1-q3) is cut around the
-    // frame-outs drawn on it (the only fixtures a partial end shows —
-    // rendersLeanToFixture), so a see-through frame-out is really open.
-    // Without one reaching into the outline it stays the single classic panel.
-    const pieces = val === 'closed' ? null : partialEndPieces(geo, which, val, openings.filter((o) => o.type === 'frameOut'));
-    if (pieces) {
-      return (
-        <>
-          {pieces.map((p, i) => (
-            <PolyPanel key={`pe-${i}`} corners={p.corners} uvs={p.uvs} material={material} />
-          ))}
-        </>
-      );
-    }
     const corners = which === 'front' ? geo.frontGable(val) : geo.backGable(val);
     const uvs = which === 'front' ? geo.frontGableUV(val) : geo.backGableUV(val);
     return <PolyPanel corners={corners} uvs={uvs} material={material} />;
@@ -891,7 +852,6 @@ export function DraggableLeanToOpening({
         sillHeight={opening.sillFt}
         trimColor={trimColor}
         panelColor={opening.color}
-        selected={selected}
         onPanelPointerDown={onDown}
       />
       {selected && <LeanToOpeningGuides geo={geo} lt={lt} opening={opening} />}

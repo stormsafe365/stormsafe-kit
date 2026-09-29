@@ -133,18 +133,21 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
         // → that wall reads as a different shade. Walls keep their rib LOOK from
         // the baked color map instead, so every side renders identically (this
         // matters for client PDFs). The roof keeps its bump (no opposite-face).
-        let bumpMap: THREE.CanvasTexture | undefined;
+        // No bump map = leave the key out (three.js warns on `bumpMap: undefined`
+        // and ignores it: the material is the same, default null bumpMap).
+        const bump: { bumpMap?: THREE.CanvasTexture } = {};
         if (bumped) {
-          bumpMap = base.bump.clone();
+          const bumpMap = base.bump.clone();
           bumpMap.needsUpdate = true;
           bumpMap.repeat.set(rx, ry);
           bumpMap.offset.set(ox, oy);
+          bump.bumpMap = bumpMap;
         }
         // Powder-coated steel = painted DIELECTRIC, not bare mirror metal.
         // NOTE: no roughnessMap — a mid-gray map would halve roughness → gloss.
         return new THREE.MeshStandardMaterial({
           map,
-          bumpMap,
+          ...bump,
           // Roof is the only bumped surface — stronger relief so the vertical
           // ribs read as pronounced ridges (like IdeaRoom), not faint lines.
           bumpScale: bumped ? 0.05 : 0,

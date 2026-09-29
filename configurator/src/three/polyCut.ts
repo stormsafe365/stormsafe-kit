@@ -1,7 +1,9 @@
 /**
- * Pure 2D polygon cutting for wall sheeting (render-upgrade Phase 6). Shared
- * by the classic lean-to ends (LeanToSiding GableEnd: partial ends cut around
- * their frame-outs) and the enhanced lean-to shell (enhanced/leanToShell.ts).
+ * Pure 2D polygon cutting for wall sheeting (render-upgrade Phase 6), used by
+ * the ENHANCED lean-to shell (enhanced/leanToShell.ts: every lean-to wall
+ * outline, incl. the partial ends, cut around its openings). The classic
+ * lean-to (LeanToSiding) does not use it — classic partial ends stay the
+ * single classic panel.
  *
  * Coordinates are a wall's plane: c = along-wall world coordinate, y = height.
  */

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG } from '@/config/constants';
 import { deriveStructure, SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
@@ -7,7 +9,6 @@ import { litFromRight, type V3 } from '../enhanced/materials';
 import { SHELL, roofBatches, roofSurface, shellLayout, trimBatches, type ShellBatch } from '../enhanced/shellGeometry';
 import { LEAN_TO, applyCornerCuts, leanToBatches, leanToCornerCuts, leanToRoofCuts } from '../enhanced/leanToShell';
 import { cutHoles, polyArea, type P2 } from '../polyCut';
-import { eaveSurfaces, partialEndPieces, resolveWalls } from '../LeanToSiding';
 
 // Render-upgrade Phase 6: the enhanced lean-to shell (pure geometry) and the
 // main-shell interplay (roof cut-backs, corner-trim cuts).
@@ -219,23 +220,10 @@ describe('enhanced lean-to — walls', () => {
     }
   });
 
-  it('classic partial ends cut around frame-outs too (and stay one panel without one)', () => {
-    const { s } = build([leanTo({ enclosure: 'custom', customWalls: { front: 'q2', back: 'open', side: 'open' } })]);
-    const lt = s.leanTos[0];
-    const geo = eaveSurfaces(lt, s.roofOverhangFt, resolveWalls(lt));
-    expect(partialEndPieces(geo, 'front', 'q2', [])).toBeNull();
-    const far: LeanToOpening = { id: 'f', type: 'frameOut', wall: 'front', widthFt: 2, heightFt: 2, sillFt: 0, offsetFt: 5 };
-    expect(partialEndPieces(geo, 'front', 'q2', [far])).toBeNull(); // below the band: nothing to cut
-    const fo: LeanToOpening = { ...far, heightFt: 8 };
-    const pieces = partialEndPieces(geo, 'front', 'q2', [fo])!;
-    expect(pieces.length).toBeGreaterThan(1);
-    const minA = Math.min(lt.inner.x, lt.outer.x);
-    for (const p of pieces) {
-      const xs = p.corners.map((c) => c[0]);
-      const ys = p.corners.map((c) => c[1]);
-      const inside = Math.min(...xs) > minA + 4 - 1e-6 && Math.max(...xs) < minA + 6 + 1e-6 && Math.min(...ys) < 8 - 1e-6;
-      expect(inside).toBe(false);
-    }
+  it('the CLASSIC lean-to is not cut by this phase: classic partial ends stay the single classic panel', () => {
+    // Scope guard (owner-rule list): the partial-end cutting is enhanced-only.
+    const classic = readFileSync(fileURLToPath(new URL('../LeanToSiding.tsx', import.meta.url)), 'utf8');
+    expect(classic).not.toMatch(/polyCut|partialEndPieces|cutHoles/);
   });
 });
 
@@ -363,15 +351,20 @@ describe('enhanced lean-to — main-shell interplay', () => {
     }
   });
 
-  it('main corner trim is cut where a lean-to end continues its wall (from the slab when closed, above the roof when open)', () => {
+  it('main corner trim: cut from the slab up to the lean-to roof where an end wall continues it (resumes ON the roof); whole at an OPEN end', () => {
     const enc = build([leanTo()]);
     const cc = leanToCornerCuts(enc.s);
     expect(cc.map((c) => [c.sx, c.zs]).sort()).toEqual([[1, -1], [1, 1]]);
-    for (const c of cc) expect(c.y0).toBeCloseTo(0, 6);
+    const lt = enc.s.leanTos[0];
+    for (const c of cc) {
+      expect(c.y0).toBeCloseTo(0, 6);
+      // up to the flashing BOTTOM (just under the lean-to roof top at the main wall), not through the flashing band
+      expect(c.y1).toBeGreaterThan(lt.peakHeightFt - 0.1);
+      expect(c.y1).toBeLessThan(lt.peakHeightFt + 0.1);
+    }
     const inp = { structure: enc.s, openings: [], wallOrientation: enc.cfg.panelOrientation, colors: enc.cfg.colors, wainscot: enc.cfg.wainscot };
     const lay = applyCornerCuts(shellLayout(inp), cc);
-    const lt = enc.s.leanTos[0];
-    for (const k of lay.corners.filter((k) => k.sx === 1)) expect(k.y0).toBeGreaterThan(lt.peakHeightFt);
+    for (const k of lay.corners.filter((k) => k.sx === 1)) expect(k.y0).toBeCloseTo(cc[0].y1, 6);
     expect(lay.corners.filter((k) => k.sx === -1).every((k) => k.y0 < 1e-6)).toBe(true);
     // corner trim triangles near the +X front corner below the lean-to roof are gone
     const tb = allTris(trimBatches({ ...inp, trimColor: enc.cfg.colors.trim }, lay));
@@ -381,8 +374,89 @@ describe('enhanced lean-to — main-shell interplay', () => {
       const c = centroid(t);
       return Math.abs(c[0] - xw) < 0.3 && Math.abs(c[2] + zw) < 0.3 && c[1] > 1 && c[1] < lt.lowLegHeightFt;
     })).toBe(false);
+    // OPEN ends: still outside corners -> the main corner trim is not cut at all (continuous, as in Phase 5).
     const open = build([leanTo({ enclosure: 'open' })]);
-    for (const c of leanToCornerCuts(open.s)) expect(c.y0).toBeGreaterThan(open.s.leanTos[0].peakHeightFt - 0.5);
+    expect(leanToCornerCuts(open.s)).toEqual([]);
+    // Custom: closed front / open back -> only the front corner is cut.
+    const mixed = build([leanTo({ enclosure: 'custom', customWalls: { front: 'closed', back: 'open', side: 'q3' } })]);
+    expect(leanToCornerCuts(mixed.s).map((c) => [c.sx, c.zs])).toEqual([[1, -1]]);
+  });
+
+  it('the wall flashing face stops against the standing main corner trim (no gap, no overlap); its leg still reaches over the corner', () => {
+    for (const enclosure of ['enclosed', 'open'] as const) {
+      const { cfg, s } = build([leanTo({ enclosure })]); // Left Eave -> the +X wall, full length
+      const lt = s.leanTos[0];
+      const bs = batchesOf(cfg, s);
+      const xw = s.width / 2 + SO;
+      const halfL = s.length / 2;
+      const inset = SHELL.cornerWidth - SO; // the corner plate on this wall reaches halfL - inset
+      const face = allTris(bs, surface('trim')).filter(
+        (t) => t.p.every((p) => Math.abs(p[0] - (xw + T)) < 1e-4) && centroid(t)[1] > lt.peakHeightFt - 0.1,
+      );
+      expect(face.length).toBeGreaterThan(0);
+      const zs = face.flatMap((t) => t.p.map((p) => p[2]));
+      expect(Math.min(...zs)).toBeCloseTo(-halfL + inset, 6);
+      expect(Math.max(...zs)).toBeCloseTo(halfL - inset, 6);
+      // the main corner plate (after the lean-to cuts) covers the flashing band at both ends
+      const inp = { structure: s, openings: [], wallOrientation: cfg.panelOrientation, colors: cfg.colors, wainscot: cfg.wainscot };
+      const corners = applyCornerCuts(shellLayout(inp), leanToCornerCuts(s)).corners.filter((k) => k.sx === 1);
+      const yFl = Math.min(...face.flatMap((t) => t.p.map((p) => p[1])));
+      for (const zs2 of [-1, 1]) expect(corners.some((k) => k.zs === zs2 && k.y0 <= yFl + 1e-6 && k.y1 > yFl + LEAN_TO.flash.face - 1e-6)).toBe(true);
+      // the leg (on the lean-to roof) still runs out over both corners
+      const leg = allTris(bs, surface('trim')).filter((t) => {
+        const c = centroid(t);
+        return c[0] > xw + 0.02 && c[0] < xw + LEAN_TO.flash.leg && Math.abs(c[1] - lt.peakHeightFt) < 0.2;
+      });
+      const lz = leg.flatMap((t) => t.p.map((p) => p[2]));
+      expect(Math.min(...lz)).toBeLessThan(-(halfL + SO));
+      expect(Math.max(...lz)).toBeGreaterThan(halfL + SO);
+    }
+  });
+
+  it('gable cut: a short rake closes the gable overhang where it resumes and a cap closes the cut roof edge from the lean-to roof up', () => {
+    const { cfg, s } = build([leanTo({ attachedSide: 'Front Gable', widthFt: 12, lowLegHeightFt: 8, roofPitch: '2:12', lengthFt: 24 })]);
+    const cuts = leanToRoofCuts(s);
+    expect(cuts.gable.length).toBe(2);
+    const bs = roofBatches({ structure: s, roofOrientation: cfg.roofOrientation, colors: cfg.colors, cuts });
+    const zF = s.length / 2 + SO;
+    const zE = s.length / 2 + s.roofOverhangFt;
+    const r = roofSurface(s);
+    for (const c of cuts.gable) {
+      expect(c.capY).toBeDefined();
+      const lo = Math.min(c.x0, c.x1);
+      const hi = Math.max(c.x0, c.x1);
+      // cap: outer face on the plane z = -(zF + T), from the lean-to roof up, inside the cut
+      expect(trimFaceAt(bs, 2, -(zF + T), (p) => p[0] > lo && p[0] < hi && p[1] > c.capY!)).toBe(true);
+      // closing rake at the boundary nearer the ridge (the one at the drip needs none)
+      const inner = Math.abs(lo) < Math.abs(hi) ? lo : hi;
+      expect(Math.abs(inner)).toBeLessThan(r.dripX - 0.1);
+      // (its face is square to the roof plane, so match it by position: across the overhang, at the boundary)
+      const closing = allTris(bs, surface('trim')).filter((t) => {
+        const q = centroid(t);
+        return Math.abs(q[0] - inner) < 0.1 && q[2] < -zF && q[2] > -zE - 2 * T && Math.abs(q[1] - r.topAt(inner)) < 0.25;
+      });
+      expect(closing.length).toBeGreaterThan(0);
+    }
+    // nothing capped where the main roof keeps its gable overhang (near the ridge)
+    expect(trimFaceAt(bs, 2, -(zF + T), (p) => Math.abs(p[0]) < 1)).toBe(false);
+  });
+
+  it('the wall flashing follows a gable wall top that dips into its band (no bare wall between the lean-to roof and the main rake)', () => {
+    const { cfg, s } = build([leanTo({ attachedSide: 'Front Gable', widthFt: 12, lowLegHeightFt: 8, roofPitch: '2:12', lengthFt: 24 })]);
+    const ts = allTris(batchesOf(cfg, s), surface('trim'));
+    const zF = s.length / 2 + SO;
+    const r = roofSurface(s);
+    const y0 = leanToRoofCuts(s).gable[0].capY! - LEAN_TO.flash.below;
+    const gaps = SHELL.roofUnderGap + SHELL.wallTopGap;
+    const wallTop = (x: number) => r.topAt(x) - gaps;
+    // right slope: where the end wall's top is 0.12 over the flashing bottom (inside the 0.22 band)
+    const x = (r.ridgeY - (y0 + 0.12 + gaps)) / r.slope;
+    expect(x).toBeGreaterThan(0);
+    expect(x).toBeLessThan(s.width / 2);
+    expect(covers(ts, [x, y0 + 0.08, -(zF + T)])).toBe(true);
+    expect(covers(ts, [x, wallTop(x) + 0.03, -(zF + T)])).toBe(false);
+    // where the band is fully sheeted it is the full-height face
+    expect(covers(ts, [0, y0 + LEAN_TO.flash.face - 0.01, -(zF + T)])).toBe(true);
   });
 
   it('a lean-to that stops short of the corner leaves the main corner trim alone', () => {

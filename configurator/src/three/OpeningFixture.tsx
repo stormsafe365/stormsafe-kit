@@ -53,7 +53,6 @@ export function OpeningFixture({
   trimColor,
   panelColor,
   doorStyle,
-  selected = false,
   onPanelPointerDown,
 }: {
   pos: [number, number, number];
@@ -67,7 +66,6 @@ export function OpeningFixture({
   panelColor?: string;
   /** Walk-through door face style (std / 6-panel / 9-lite / diamond). */
   doorStyle?: DoorStyle;
-  selected?: boolean;
   onPanelPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
 }) {
   const isGlass = type === 'window';
@@ -127,8 +125,9 @@ export function OpeningFixture({
   const panelDepth = isFrameOut ? 0.06 : isGlass ? 0.035 : 0.09;
   const panelZ = isGlass ? -0.025 : 0;
   const onFloor = sillHeight <= 0.1;
-  const tc = selected ? '#22d3c8' : isGlass && panelColor ? panelColor : trimColor;
-  const emissive = selected ? '#22d3c8' : '#000000';
+  // Owner rule: no selection tint on ANY component (a picked / dragged part
+  // keeps its real colors; the placement guides show what is picked).
+  const tc = isGlass && panelColor ? panelColor : trimColor;
 
   return (
     <group position={pos} rotation={[0, rotY, 0]}>
@@ -152,12 +151,6 @@ export function OpeningFixture({
       ) : (
         <mesh position={[0, 0, panelZ]} material={panelMat} castShadow onPointerDown={onPanelPointerDown}>
           <boxGeometry args={[w, h, panelDepth]} />
-        </mesh>
-      )}
-      {selected && (
-        <mesh position={[0, 0, trimDepth / 2 + 0.02]}>
-          <planeGeometry args={[w + t, h + t]} />
-          <meshStandardMaterial color="#22d3c8" emissive={emissive} emissiveIntensity={0.25} transparent opacity={0.1} />
         </mesh>
       )}
 

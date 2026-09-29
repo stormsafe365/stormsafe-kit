@@ -24,7 +24,7 @@ import { ftIn, roofLengthFt, roofLengthLabel } from '../dimLabels';
  * - a press under 5px is a click (open/close), never a drag;
  * - the Spacing roof-length label is span + 2 x structure.roofOverhangFt;
  * - click-to-open state and the Spacing overlay are wired up;
- * - no teal selection tint on main-building openings.
+ * - no teal selection tint on main-building openings or lean-to fixtures.
  * The source checks at the bottom make sure the component still USES these
  * helpers, so a test can't pass while the rendered code drifts.
  */
@@ -247,6 +247,13 @@ describe('Openings.tsx / LeanToSiding.tsx keep the owner-rule wiring', () => {
 
   it('no teal selection tint on main-building openings', () => {
     expect(openings).not.toMatch(/22d3c8/i);
+  });
+
+  it('no teal selection tint on lean-to fixtures (OpeningFixture has no selected state)', () => {
+    const fixture = src('../OpeningFixture.tsx');
+    expect(fixture).not.toMatch(/22d3c8/i);
+    expect(fixture).not.toMatch(/\bselected\b/);
+    expect(leanTo).not.toMatch(/selected=\{selected\}/);
   });
 
   it('PDF capture hides Spacing and shuts opened parts before the snapshots', () => {

@@ -69,12 +69,16 @@ import {
  *    wainscot Z-trim;
  *  - two lean-tos wrapping a main corner: their overlapping roof corners are
  *    mitered on a hip with a hip cap, rakes stop at the hip (no crossing stubs);
- *  - the main building's corner trim is cut where a lean-to end wall continues
- *    its wall plane (and through the lean-to roof / flashing);
+ *  - the main building's corner trim is cut where a lean-to end wall is
+ *    sheeted at that corner (it continues the main wall plane), up to the
+ *    lean-to roof: the trim resumes ON the roof and the wall flashing stops
+ *    against it. An OPEN end keeps the main corner trim whole (still an
+ *    outside corner), the flashing face stops against it too;
  *  - flush lean-to (connection within LEAN_TO.flushFt of the main eave, or the
  *    main eave trim would hit its roof): the main eave overhang + eave trim are
  *    skipped along it; a gable lean-to trims the main gable overhang / rake
- *    only where they would run into its roof (near the eave corners).
+ *    only where they would run into its roof (near the eave corners), with a
+ *    closing rake where the overhang resumes and a cap over the cut roof edge.
  *
  * Lean-to sizing, posts and all opening / drag / write-back math are untouched.
  */
@@ -455,7 +459,7 @@ export function leanToRoofCuts(s: StructureModel): MainRoofCuts {
     const push = (x0: number, x1: number) => {
       const lo = Math.max(x0, xa, -r.dripX);
       const hi = Math.min(x1, xb, r.dripX);
-      if (hi - lo > EPS) cuts.gable.push({ sz: f.out, x0: lo, x1: hi });
+      if (hi - lo > EPS) cuts.gable.push({ sz: f.out, x0: lo, x1: hi, capY: f.topAt(f.mainFace) });
     };
     if (r.mono) {
       // top(x) = ridgeY - (x + W/2) * slope falls toward +X.
@@ -486,11 +490,15 @@ export interface CornerCut {
 }
 
 /**
- * Main corner-trim cuts: where a lean-to runs to a main corner, its end wall
- * continues that wall plane, so the main corner trim is dropped over the
- * height that end wall covers at the corner, and always through the lean-to
- * roof up to the top of its flashing (an OPEN lean-to end keeps the main
- * corner trim below its roof: that corner is still an outside corner).
+ * Main corner-trim cuts. Where a lean-to runs to a main corner and its end
+ * wall is sheeted at that corner, the end wall continues the main wall plane:
+ * the main corner trim is dropped from where that sheet starts up to the
+ * flashing BOTTOM, so it resumes right on the lean-to roof, continuous through
+ * the flashing band (the flashing face stops against it, leanToBatches) — no
+ * wall or flashing end shows between the lean-to rake and the resumed trim.
+ * An OPEN end (nothing sheeted at the corner) cuts nothing: that corner is
+ * still an outside corner, so the main corner trim runs whole past the
+ * lean-to roof (as in Phase 5) and the flashing face stops against it.
  */
 export function leanToCornerCuts(s: StructureModel): CornerCut[] {
   if (!s.leanTos?.length) return [];
@@ -502,13 +510,13 @@ export function leanToCornerCuts(s: StructureModel): CornerCut[] {
       if (!c) continue;
       const end = walls.find((w) => w.id === id);
       const span = end ? spanAt(end.outline, f.mainFace) : null;
-      const under = f.topAt(f.mainFace) - SHELL.roofUnderGap - 0.03;
+      if (!span) continue;
+      const yJ = f.topAt(f.mainFace);
       cuts.push({
         sx: c.sx,
         zs: c.zs,
-        y0: span ? Math.min(span[0], under) : under,
-        // Up to the flashing top (the corner trim resumes right on top of it).
-        y1: f.topAt(f.mainFace) - LEAN_TO.flash.below + LEAN_TO.flash.face,
+        y0: Math.min(span[0], yJ - SHELL.roofUnderGap - 0.03),
+        y1: yJ - LEAN_TO.flash.below,
       });
     }
   }
@@ -556,8 +564,20 @@ interface Zone {
   y1: number;
 }
 
-/** Covered along-wall runs of a main wall over [y0, y1], inside [lo, hi] (not across a main opening). */
-function mainCoverage(w: ShellWall | null, y0: number, y1: number, lo: number, hi: number): [number, number][] {
+/** A flashing run on a main wall: along-wall [c0, c1], face top t0 at c0 / t1 at c1 (= the band top when fully sheeted). */
+type Cover = [c0: number, c1: number, t0: number, t1: number];
+
+/** A flashing face shorter than this (where the wall top dips into the band) is not drawn. */
+const MIN_FLASH_FACE = 0.06;
+
+/**
+ * Sheeted along-wall runs of a main wall over the flashing band [y0, y1],
+ * inside [lo, hi], never across a main opening. Where the wall's sheet top
+ * dips into the band (a gable end wall near its eave corners, under the main
+ * rake) the run is kept with its face top clipped to the sheet top (sloped),
+ * as long as at least MIN_FLASH_FACE of it is sheeted.
+ */
+function mainCoverage(w: ShellWall | null, y0: number, y1: number, lo: number, hi: number): Cover[] {
   if (!w || hi - lo <= EPS) return [];
   const bps: number[] = [lo, hi];
   for (const r of w.regions) bps.push(r.c0, r.c1);
@@ -567,7 +587,7 @@ function mainCoverage(w: ShellWall | null, y0: number, y1: number, lo: number, h
       const p = poly[i];
       const q = poly[(i + 1) % poly.length];
       bps.push(p[0]);
-      for (const y of [y0, y1]) {
+      for (const y of [y0, y0 + MIN_FLASH_FACE, y1]) {
         if ((p[1] - y) * (q[1] - y) < 0) bps.push(p[0] + ((y - p[1]) / (q[1] - p[1])) * (q[0] - p[0]));
       }
     }
@@ -576,19 +596,39 @@ function mainCoverage(w: ShellWall | null, y0: number, y1: number, lo: number, h
     .filter((c) => c >= lo && c <= hi)
     .sort((a, b) => a - b)
     .filter((c, i, arr) => i === 0 || c - arr[i - 1] > 1e-7);
-  const runs: [number, number][] = [];
+  const runs: Cover[] = [];
   for (let i = 0; i + 1 < xs.length; i++) {
     const a = xs[i];
     const b = xs[i + 1];
     const mid = (a + b) / 2;
     const sp = sheetSpanAt(w, mid);
-    const ok = !!sp && sp[0] <= y0 + 1e-6 && sp[1] >= y1 - 1e-6;
     const hole = w.holes.some((h) => mid > h.c - h.w / 2 && mid < h.c + h.w / 2 && h.y0 < y1 && h.y1 > y0);
-    if (!ok || hole) continue;
-    if (runs.length && Math.abs(runs[runs.length - 1][1] - a) < 1e-7) runs[runs.length - 1][1] = b;
-    else runs.push([a, b]);
+    if (!sp || sp[0] > y0 + 1e-6 || sp[1] < y0 + MIN_FLASH_FACE - 1e-6 || hole) continue;
+    let t0 = y1;
+    let t1 = y1;
+    if (sp[1] < y1 - 1e-6) {
+      // Sheet top inside the band on this segment (linear between the breakpoints): clip the face to it.
+      const e = Math.min(0.01, (b - a) / 4);
+      const ta = sheetSpanAt(w, a + e)?.[1] ?? sp[1];
+      const tb = sheetSpanAt(w, b - e)?.[1] ?? sp[1];
+      const k = (tb - ta) / (b - a - 2 * e);
+      t0 = Math.min(y1, ta - k * e);
+      t1 = Math.min(y1, tb + k * e);
+    }
+    const prev = runs[runs.length - 1];
+    const full = (c: Cover) => c[2] === y1 && c[3] === y1;
+    if (prev && Math.abs(prev[1] - a) < 1e-7 && full(prev) && t0 === y1 && t1 === y1) prev[1] = b;
+    else runs.push([a, b, t0, t1]);
   }
-  return runs.filter(([a, b]) => b - a > 0.05);
+  // Drop slivers: chains of touching runs shorter than 0.05 in all.
+  const out: Cover[] = [];
+  for (let i = 0; i < runs.length; ) {
+    let j = i;
+    while (j + 1 < runs.length && Math.abs(runs[j + 1][0] - runs[j][1]) < 1e-7) j++;
+    if (runs[j][1] - runs[i][0] > 0.05) out.push(...runs.slice(i, j + 1));
+    i = j + 1;
+  }
+  return out;
 }
 
 /**
@@ -610,6 +650,8 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
     colors: inp.colors,
     wainscot: inp.wainscot,
   });
+  // The main corner trims as EnhancedTrim draws them (lean-to cuts applied): the flashing stops against them.
+  const mainCorners = applyCornerCuts(layout, leanToCornerCuts(s)).corners;
   const set = new BatchSet();
   const wallOrient = sheetOrientation(inp.wallOrientation);
   const roofOrient = sheetOrientation(inp.roofOrientation);
@@ -875,15 +917,52 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
       const y1 = y0 + fl.face;
       const endLo = f.eave ? -m.halfL : -m.halfW;
       const endHi = -endLo;
-      for (let [c0, c1] of mainCoverage(mw, y0, y1, rS, rE)) {
-        // Reach over the main corner (its trim is cut there) when the roof does;
-        // a gable lean-to leaves the corner plate to an eave lean-to sharing it.
-        const ext = (sxz: { sx: number; zs: number }) => SO + (!f.eave && claimed.has(`${sxz.sx},${sxz.zs}`) ? 0 : T);
-        const cornerAt = (end: -1 | 1) => (f.eave ? { sx: f.out, zs: end } : { sx: end, zs: f.out });
-        if (Math.abs(c0 - endLo) < 0.03 && rS < c0 - EPS) c0 = Math.max(rS, c0 - ext(cornerAt(-1)));
-        if (Math.abs(c1 - endHi) < 0.03 && rE > c1 + EPS) c1 = Math.min(rE, c1 + ext(cornerAt(1)));
-        localBox(roofTrim, f, f.mainFace, f.mainFace + f.out * T, y0, y1, c0, c1);
-        legOn(roofTrim, f.mainFace, yJ, c0, c1, f.n, f.aHat, fl.leg, fl.lift);
+      const cornerAt = (end: -1 | 1) => (f.eave ? { sx: f.out, zs: end } : { sx: end, zs: f.out });
+      // Is the main corner trim (after the lean-to cuts) standing over this flashing band at that end?
+      const cornerKept = (end: -1 | 1) => {
+        const k = cornerAt(end);
+        return mainCorners.some((c) => c.end !== 'partition' && c.sx === k.sx && c.zs === k.zs && c.y0 < y1 - EPS && c.y1 > y0 + EPS);
+      };
+      // Its plate on this wall reaches cornerWidth in from the corner face (= inset from the framing line).
+      const inset = SHELL.cornerWidth - SO;
+      // Past the corner the leg reaches over the corner when the roof does; a
+      // gable lean-to leaves the corner plate to an eave lean-to sharing it.
+      const ext = (sxz: { sx: number; zs: number }) => SO + (!f.eave && claimed.has(`${sxz.sx},${sxz.zs}`) ? 0 : T);
+      /** A face whose top follows a dipping wall top (t0 at c0 -> t1 at c1): outer face, top, ends. */
+      const slopedFace = (c0: number, c1: number, t0: number, t1: number) => {
+        const a0 = f.mainFace;
+        const a1 = f.mainFace + f.out * T;
+        const len = Math.hypot(c1 - c0, t1 - t0);
+        const r = f.rHat;
+        const back: V3 = [-r[0], -r[1], -r[2]];
+        const topN: V3 = [(-r[0] * (t1 - t0)) / len, (c1 - c0) / len, (-r[2] * (t1 - t0)) / len];
+        polygon(roofTrim, [f.P(a1, y0, c0), f.P(a1, y0, c1), f.P(a1, t1, c1), f.P(a1, t0, c0)], f.aHat);
+        polygon(roofTrim, [f.P(a0, t0, c0), f.P(a1, t0, c0), f.P(a1, t1, c1), f.P(a0, t1, c1)], topN);
+        polygon(roofTrim, [f.P(a0, y0, c0), f.P(a1, y0, c0), f.P(a1, t0, c0), f.P(a0, t0, c0)], back);
+        polygon(roofTrim, [f.P(a0, y0, c1), f.P(a1, y0, c1), f.P(a1, t1, c1), f.P(a0, t1, c1)], r);
+      };
+      for (const [c0, c1, t0, t1] of mainCoverage(mw, y0, y1, rS, rE)) {
+        let f0 = c0;
+        let f1 = c1;
+        let l0 = c0;
+        let l1 = c1;
+        if (Math.abs(c0 - endLo) < 0.03) {
+          if (rS < c0 - EPS) l0 = Math.max(rS, c0 - ext(cornerAt(-1)));
+          // The face stops against a standing corner trim (never through it); with none it wraps like the leg.
+          f0 = cornerKept(-1) ? Math.max(c0, endLo + inset) : l0;
+        }
+        if (Math.abs(c1 - endHi) < 0.03) {
+          if (rE > c1 + EPS) l1 = Math.min(rE, c1 + ext(cornerAt(1)));
+          f1 = cornerKept(1) ? Math.min(c1, endHi - inset) : l1;
+        }
+        if (f1 - f0 > 1e-3) {
+          if (t0 >= y1 && t1 >= y1) localBox(roofTrim, f, f.mainFace, f.mainFace + f.out * T, y0, y1, f0, f1);
+          else {
+            const topAt = (c: number) => Math.min(y1, t0 + ((c - c0) / (c1 - c0)) * (t1 - t0));
+            slopedFace(f0, f1, topAt(f0), topAt(f1));
+          }
+        }
+        legOn(roofTrim, f.mainFace, yJ, l0, l1, f.n, f.aHat, fl.leg, fl.lift);
       }
     }
   }

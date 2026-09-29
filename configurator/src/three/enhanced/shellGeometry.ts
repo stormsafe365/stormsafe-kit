@@ -612,8 +612,12 @@ export function wallBatches(inp: ShellInput, layout: ShellLayout = shellLayout(i
 export interface MainRoofCuts {
   /** Eave side sx: plan z-ranges where the main eave overhang + eave trim are skipped. */
   eave: { sx: -1 | 1; z0: number; z1: number }[];
-  /** Gable end sz: plan x-ranges where the main gable overhang + rake trim are skipped. */
-  gable: { sz: -1 | 1; x0: number; x1: number }[];
+  /**
+   * Gable end sz: plan x-ranges where the main gable overhang + rake trim are
+   * skipped. capY = the lean-to roof top at the end-wall face: a cap plate
+   * closes the cut roof edge from there up (none when absent).
+   */
+  gable: { sz: -1 | 1; x0: number; x1: number; capY?: number }[];
 }
 
 export const hasRoofCuts = (c?: MainRoofCuts | null): c is MainRoofCuts => !!c && (c.eave.length > 0 || c.gable.length > 0);
@@ -778,7 +782,9 @@ function breakpoints(values: number[], lo: number, hi: number): number[] {
  * side-wall face (x = +-(W/2 + SHEET_OUTSET)) and inside a gable cut at the
  * end-wall face (z = +-(L/2 + SHEET_OUTSET)). Eave trim skips eave cuts (a
  * short rake closes the overhang where it resumes), rakes skip gable cuts and
- * start at the wall face where an eave cut reaches the gable edge.
+ * start at the wall face where an eave cut reaches the gable edge. A gable cut
+ * gets the same short closing rake where the gable overhang resumes, and a cap
+ * over its cut roof edge (from the lean-to roof up, cutEdgeCap).
  */
 function roofBatchesCut(inp: RoofBatchInput, cuts: MainRoofCuts): ShellBatch[] {
   const s = inp.structure;
@@ -902,7 +908,56 @@ function roofBatchesCut(inp: RoofBatchInput, cuts: MainRoofCuts): ShellBatch[] {
         rakeTrim(trim, [b, r.topAt(b), z], [a, r.topAt(a), z], normalOf(1), [0, 0, sz]);
     }
   }
+
+  // Gable cuts: close the raw roof edges they leave.
+  const capUp = SHELL.rake.faceCenter + SHELL.rake.face / 2; // a rake face's top over the roof skin
+  for (const c of cuts.gable) {
+    const sz = c.sz;
+    const lo = Math.max(Math.min(c.x0, c.x1), -r.dripX);
+    const hi = Math.min(Math.max(c.x0, c.x1), r.dripX);
+    if (hi - lo <= EPS) continue;
+    // Where the gable overhang resumes past the cut, a short rake closes its
+    // side edge (end-wall face -> past the gable rake's face).
+    for (const [xb, face] of [[lo, 1], [hi, -1]] as const) {
+      if (Math.abs(xb) >= r.dripX - 1e-6 || gableCut(sz, xb - face * 0.01)) continue;
+      rakeTrim(trim, [xb, r.topAt(xb), sz * (zE + T)], [xb, r.topAt(xb), sz * zF], normalOf(xb < 0 ? -1 : 1), [face, 0, 0]);
+    }
+    // Along the cut the roof ends at the end-wall face: a cap closes that
+    // edge from the lean-to roof up (over the eave trim's end at a drip corner).
+    if (c.capY === undefined) continue;
+    const xa = lo <= -r.dripX + 1e-6 ? lo - T : lo;
+    const xb = hi >= r.dripX - 1e-6 ? hi + T : hi;
+    const xs = r.pitched && xa < 0 && xb > 0 ? [xa, 0, xb] : [xa, xb];
+    for (let i = 0; i + 1 < xs.length; i++) cutEdgeCap(trim, r, sz, zF, xs[i], xs[i + 1], c.capY, capUp);
+  }
   return set.build();
+}
+
+/**
+ * A cap plate on the end-wall face (z = sz*zF .. sz*(zF + T)) over plan x in
+ * [a, b] (one roof plane), from yB up to `up` over the roof top, kept where
+ * it is at least 0.01 tall.
+ */
+function cutEdgeCap(e: Emitter, r: RoofSurface, sz: -1 | 1, zF: number, a: number, b: number, yB: number, up: number) {
+  const min = 0.01;
+  const top = (x: number) => r.topAt(x) + up;
+  const hA = top(a) - yB;
+  const hB = top(b) - yB;
+  if (b - a <= 1e-6 || (hA < min && hB < min)) return;
+  const at = (h: number) => a + ((h - hA) / (hB - hA)) * (b - a);
+  const x0 = hA < min ? at(min) : a;
+  const x1 = hB < min ? at(min) : b;
+  if (x1 - x0 <= 1e-4) return;
+  const T = SHELL.trimT;
+  const zi = sz * zF;
+  const zo = sz * (zF + T);
+  const t0 = top(x0);
+  const t1 = top(x1);
+  const len = Math.hypot(x1 - x0, t1 - t0);
+  polygon(e, [[x0, yB, zo], [x1, yB, zo], [x1, t1, zo], [x0, t0, zo]], [0, 0, sz]);
+  polygon(e, [[x0, t0, zi], [x1, t1, zi], [x1, t1, zo], [x0, t0, zo]], [-(t1 - t0) / len, (x1 - x0) / len, 0]);
+  polygon(e, [[x0, yB, zi], [x0, yB, zo], [x0, t0, zo], [x0, t0, zi]], [-1, 0, 0]);
+  polygon(e, [[x1, yB, zi], [x1, yB, zo], [x1, t1, zo], [x1, t1, zi]], [1, 0, 0]);
 }
 
 // ── Batches: corner, base, bottom, Z-trim ──────────────────────────────────

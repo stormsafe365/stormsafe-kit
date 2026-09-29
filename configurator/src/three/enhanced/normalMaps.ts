@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { PrintPanelKey } from '@/config/colors';
-import { drawPrintPattern } from '../textures';
+import { createDoorTexture, drawPrintPattern, type DoorStyle } from '../textures';
 
 /**
  * ENHANCED look — panel NORMAL MAPS + the two small color maps (render-upgrade
@@ -425,6 +425,21 @@ export function slatColorTexture(): THREE.CanvasTexture {
     const t = canvasTexture(slatColorPixels(), SLAT_COLOR_PX);
     t.colorSpace = THREE.SRGBColorSpace;
     t.name = 'enhanced-slat-color';
+    return t;
+  });
+}
+
+/**
+ * Shared walk-door face color map per style and white / black (sRGB, one
+ * image over the whole slab). Drawn by the classic look's own door painter
+ * (textures.ts createDoorTexture), so both looks show the same 6-panel /
+ * 9-lite / diamond faces and black doors.
+ */
+export function doorFaceTexture(style: DoorStyle, dark: boolean): THREE.CanvasTexture {
+  return lazy(`door-${style}-${dark ? 'blk' : 'wht'}`, () => {
+    const t = createDoorTexture(style, dark);
+    t.anisotropy = anisotropy;
+    t.name = `enhanced-door-${style}-${dark ? 'blk' : 'wht'}`;
     return t;
   });
 }

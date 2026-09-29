@@ -15,6 +15,7 @@ import { EnhancedSiding } from './enhanced/EnhancedSiding';
 import { EnhancedRoof } from './enhanced/EnhancedRoof';
 import { EnhancedTrim } from './enhanced/EnhancedTrim';
 import { EnhancedLeanTos } from './enhanced/EnhancedLeanTos';
+import { LeanToSpacingOverlay } from './LeanToSpacing';
 
 /** Shell opacity per view mode (exterior fully solid; structure/cutaway ghost). */
 const SHELL_OPACITY: Record<ViewMode, number> = {
@@ -95,10 +96,11 @@ function ClassicShell({ structure, config, trimHex }: ShellProps) {
  * trim are the enhanced components (src/three/enhanced: outward-facing,
  * world-UV corrugated sheeting from the cached rib normal-map materials, bent
  * plate trims). Phase 6: the lean-to sheeting / roof / trim are enhanced too
- * (EnhancedLeanTos; the main roof and corner trims make room for them). The
- * opening fixtures (Phase 7) are still the classic components with the
- * classic props (lean-to fixtures: the classic DraggableLeanToOpening), so
- * their placement, drag and click math is untouched. Everything here sits inside ShellGroup,
+ * (EnhancedLeanTos; the main roof and corner trims make room for them). Phase
+ * 7: the door / window / roll-up / frame-out fixtures are the enhanced look
+ * (enhanced/fixtures.tsx) drawn by the SAME Openings / DraggableLeanToOpening
+ * components (look="enhanced"), so their placement, drag, click threshold,
+ * write-back, guides and Spacing are untouched. Everything here sits inside ShellGroup,
  * so decals / shade bands that must keep their own opacity need
  * material.userData.keepTransparent. (Flipping the Look remounts the shell;
  * three sorts opaque draws by material.id, so a classic build viewed right
@@ -136,7 +138,7 @@ function EnhancedShell({ structure, config, trimHex }: ShellProps) {
         colors={config.colors}
         wainscot={config.wainscot}
       />
-      <Openings openings={config.openings} structure={structure} trimColor={trimHex} wallColor={swatchHex(config.colors.walls)} />
+      <Openings openings={config.openings} structure={structure} trimColor={trimHex} wallColor={swatchHex(config.colors.walls)} look="enhanced" />
     </>
   );
 }
@@ -164,6 +166,8 @@ export function BuildingModel() {
         ) : (
           <ClassicShell structure={structure} config={config} trimHex={trimHex} />
         )}
+        {/* Spacing button: lean-to walls too (both looks; renders nothing while Spacing is off). */}
+        <LeanToSpacingOverlay leanTos={structure.leanTos} overhangFt={structure.roofOverhangFt} />
       </ShellGroup>
       {/* ENHANCED ground + slab + soft contact decals: outside ShellGroup (never
           ghosted), capture-ignored, and absent in classic. Last child, so the

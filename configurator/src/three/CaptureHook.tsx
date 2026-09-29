@@ -27,8 +27,10 @@ const isCaptureIgnored = (ob: THREE.Object3D) => {
  * (camera far back) gets clipped by maxDistance or washed out by fog. Everything
  * is restored in `finally` so the live interactive view is untouched.
  *
- * While it runs, the editor store's `captureMode` is true (animations may use
- * it to snap closed). The view-only renderStyle in effect is read once via
+ * While it runs, the editor store's `captureMode` is true: every click-to-open
+ * part (useOpenAmount, both looks, main + lean-to) snaps shut the moment it
+ * turns on, synchronously, and stays shut until it ends, so the closed doors
+ * in the PDF no longer depend on the close-animation wait below (kept as-is). The view-only renderStyle in effect is read once via
  * getState() and exposed afterwards as window.__ssLastCapture = { renderStyle,
  * at }; the returned image record itself is unchanged.
  */
@@ -53,8 +55,8 @@ export function CaptureHook() {
       // Capture wants the WHOLE building, crisp — temporarily remove the limits
       // that exist for nice interactive orbiting.
       // Quote/contract renderings must show the building CLOSED and clean: hide
-      // the Spacing overlay and shut any doors/windows the rep clicked open,
-      // then let the close animations settle before the first snapshot.
+      // the Spacing overlay and shut any doors/windows the rep clicked open
+      // (captureMode has already snapped them shut; the wait is a kept margin).
       const ed = useEditorStore.getState();
       const savedSpacing = ed.showSpacing;
       const savedOpen = ed.openIds;

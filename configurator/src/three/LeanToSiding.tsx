@@ -13,6 +13,8 @@ import { stripsAround, type LocalRect } from './Siding';
 import { OpeningFixture } from './OpeningFixture';
 import { GuideLine, Measure, Chip3D, ftIn, RED, RED_DIM } from './Openings';
 import { CLICK_DRAG_THRESHOLD_PX } from './openingAnim';
+import { EnhancedFixture } from './enhanced/fixtures';
+import { fixtureFaceZ } from './enhanced/fixtureLayout';
 
 const COMP_PROUD = COMPONENT_OUTSET - SHEET_OUTSET; // component standoff past the wall sheeting
 
@@ -774,21 +776,35 @@ function dragInfo(geo: SurfaceSet, opening: LeanToOpening): DragInfo {
 
 // A lean-to OpeningFixture you can grab and slide along its wall. Updates the
 // store live for smooth feedback; BuildHost writes the final spot back into the
-// pricing program on release (drag-end), so price + 3D stay in sync.
+// pricing program on release (drag-end), so price + 3D stay in sync. A plain
+// CLICK (< 5px) opens / closes the door, roll-up or window (view-only, like the
+// main building): it never moves the part and never writes back.
 export function DraggableLeanToOpening({
   geo,
   lt,
   opening,
   trimColor,
+  enhanced = false,
+  wallColor,
+  sheeted = false,
 }: {
   geo: SurfaceSet;
   lt: LeanToStructure;
   opening: LeanToOpening;
   trimColor: string;
+  /** Draw the enhanced fixture (same placement / drag / click handling). */
+  enhanced?: boolean;
+  /** Enhanced only: wall color (reveal). */
+  wallColor?: string;
+  /** Enhanced only: sheeting surrounds this opening (reveal). */
+  sheeted?: boolean;
 }) {
   const updateLeanToOpening = useBuildingStore((s) => s.updateLeanToOpening);
   const selectLeanToOpening = useEditorStore((s) => s.selectLeanToOpening);
   const setDragging = useEditorStore((s) => s.setDragging);
+  const toggleOpen = useEditorStore((s) => s.toggleOpen);
+  const showSpacing = useEditorStore((s) => s.showSpacing);
+  const isOpen = useEditorStore((s) => !!s.openIds[opening.id]);
   const selected = useEditorStore((s) => s.selectedLeanToOpeningId === opening.id);
   const gl = useThree((s) => s.gl);
   const camera = useThree((s) => s.camera);
@@ -830,6 +846,9 @@ export function DraggableLeanToOpening({
     const up = () => {
       dragRef.current = false;
       if (controls) controls.enabled = true;
+      // A click opens / closes the part (never a frame-out). View-only: the
+      // write-back below stays gated on a real drag (dragMoved), untouched.
+      if (moved < CLICK_DRAG_THRESHOLD_PX && opening.type !== 'frameOut') toggleOpen(oid);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       setTimeout(() => {
@@ -843,18 +862,42 @@ export function DraggableLeanToOpening({
 
   return (
     <>
-      <OpeningFixture
-        pos={pos}
-        rotY={rotY}
-        type={opening.type as OpeningType}
-        w={opening.widthFt}
-        h={opening.heightFt}
-        sillHeight={opening.sillFt}
-        trimColor={trimColor}
-        panelColor={opening.color}
-        onPanelPointerDown={onDown}
-      />
-      {selected && <LeanToOpeningGuides geo={geo} lt={lt} opening={opening} />}
+      {enhanced ? (
+        <group position={pos} rotation={[0, rotY, 0]}>
+          <EnhancedFixture
+            type={opening.type as OpeningType}
+            w={opening.widthFt}
+            h={opening.heightFt}
+            sillHeight={opening.sillFt}
+            faceZ={fixtureFaceZ('leanTo')}
+            trimColor={trimColor}
+            wallColor={wallColor ?? trimColor}
+            color={opening.color}
+            doorStyle={opening.doorStyle}
+            impact={opening.impact}
+            sheeted={sheeted}
+            frameOutPane={false}
+            isOpen={isOpen}
+            onPointerDown={onDown}
+          />
+        </group>
+      ) : (
+        <OpeningFixture
+          pos={pos}
+          rotY={rotY}
+          type={opening.type as OpeningType}
+          w={opening.widthFt}
+          h={opening.heightFt}
+          sillHeight={opening.sillFt}
+          trimColor={trimColor}
+          panelColor={opening.color}
+          doorStyle={opening.doorStyle}
+          impact={opening.impact}
+          openId={opening.id}
+          onPanelPointerDown={onDown}
+        />
+      )}
+      {selected && !showSpacing && <LeanToOpeningGuides geo={geo} lt={lt} opening={opening} />}
     </>
   );
 }

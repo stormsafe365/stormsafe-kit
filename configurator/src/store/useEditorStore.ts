@@ -59,8 +59,9 @@ interface EditorStore {
   renderStyle: RenderStyle;
   /**
    * True while window.__ssCapture3D() (quote / contract / approval PDF capture)
-   * is running. Animations may read it to snap closed instead of easing.
-   * Nothing reads it yet — capture timing is unchanged.
+   * is running. Every click-to-open part (useOpenAmount) SNAPS shut when it
+   * turns on and stays shut while it is on, so the PDF images always show
+   * doors / windows closed. Capture timing is unchanged.
    */
   captureMode: boolean;
 

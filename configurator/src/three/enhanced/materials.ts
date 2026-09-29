@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import { isMetallic, printPanelKey, swatchHex, type PrintPanelKey } from '@/config/colors';
 import type { PanelOrientation } from '@/types/building';
 import { ENHANCED_LOOK } from './look';
+import type { DoorStyle } from '../textures';
 import {
+  doorFaceTexture,
   lapShadeTexture,
   normalMapTexture,
   printPanelTexture,
@@ -54,10 +56,16 @@ import {
  * ShellGroup (BuildingModel) sets opacity / transparent / depthWrite on shell
  * materials, so a key must only be used by shell meshes or only by
  * non-shell meshes: 'frame' is the one surface meant for outside the shell.
- * Anything a single mesh needs to change (e.g. roll-up clipping planes) goes
- * on a material.clone() owned by that mesh: the clone shares the textures,
- * the owner disposes it, and it is NOT in the cache (releasing it is a no-op
- * and setEnhancedMaterialEnvironment does not reach it).
+ * Anything a single mesh needs to change goes on a material.clone() owned by
+ * that mesh: the clone shares the textures, the owner disposes it, and it is
+ * NOT in the cache (releasing it is a no-op and setEnhancedMaterialEnvironment
+ * does not reach it).
+ *
+ * CLIPPING (Phase 7 roll-ups): 'slat' / 'opening' / 'hardware' take an
+ * optional clipTopY (world Y). The material then clips everything ABOVE that
+ * horizontal plane (a rolling curtain never shows above its opening). The
+ * plane is world-horizontal, so every door with the same top shares one
+ * cached, environment-bound material; it is part of the key.
  */
 
 // ── Parameters (lab code) ──────────────────────────────────────────────────
@@ -159,11 +167,14 @@ export type EnhancedMaterialSpec =
     })
   | (Paintable & { surface: 'roof'; orientation: SheetOrientation; flipX?: boolean })
   | { surface: 'roofUnder' }
-  | (Paintable & { surface: 'trim' | 'reveal' | 'opening' })
-  | (Paintable & { surface: 'slat'; heightFt: number })
+  | (Paintable & { surface: 'trim' | 'reveal' })
+  | (Paintable & { surface: 'opening'; clipTopY?: number })
+  | (Paintable & { surface: 'slat'; heightFt: number; clipTopY?: number })
   | { surface: 'glass' }
   | { surface: 'frame'; color?: string }
-  | { surface: 'hardware'; part: HardwarePart };
+  | { surface: 'hardware'; part: HardwarePart; clipTopY?: number }
+  /** Walk-door leaf: the style's face drawing (white / black) as the color map. */
+  | { surface: 'door'; style: DoorStyle; dark: boolean };
 
 const GALVALUME_CODE = 'GALVALUME';
 
@@ -193,6 +204,14 @@ export function resolvePaint(color: string, galvalume?: boolean): { hex: string;
 
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
 
+/** A valid roll-up clip height, or undefined (no clipping). */
+const clipY = (spec: { clipTopY?: number }): number | undefined =>
+  spec.clipTopY !== undefined && Number.isFinite(spec.clipTopY) ? r3(spec.clipTopY) : undefined;
+const clipSuffix = (spec: { clipTopY?: number }) => {
+  const y = clipY(spec);
+  return y === undefined ? '' : `|clip${y}`;
+};
+
 /** The cache key of a spec. Specs that render identically share a key (e.g. 'GALVALUME' and '#B8BDC2'). */
 export function materialKey(spec: EnhancedMaterialSpec): string {
   switch (spec.surface) {
@@ -204,19 +223,24 @@ export function materialKey(spec: EnhancedMaterialSpec): string {
       return print ? base + '|print-' + print : base;
     }
     case 'trim':
-    case 'reveal':
-    case 'opening': {
+    case 'reveal': {
       const p = resolvePaint(spec.color, spec.galvalume);
       return `${spec.surface}|${p.hex}|${p.galvalume ? 'galv' : 'paint'}`;
     }
+    case 'opening': {
+      const p = resolvePaint(spec.color, spec.galvalume);
+      return `opening|${p.hex}|${p.galvalume ? 'galv' : 'paint'}${clipSuffix(spec)}`;
+    }
     case 'slat': {
       const p = resolvePaint(spec.color, spec.galvalume);
-      return `slat|${p.hex}|${p.galvalume ? 'galv' : 'paint'}|h${r3(slatHeight(spec.heightFt))}`;
+      return `slat|${p.hex}|${p.galvalume ? 'galv' : 'paint'}|h${r3(slatHeight(spec.heightFt))}${clipSuffix(spec)}`;
     }
     case 'frame':
       return `frame|${resolvePaint(spec.color ?? GALVALUME_CODE).hex}`;
     case 'hardware':
-      return `hardware|${spec.part}`;
+      return `hardware|${spec.part}${clipSuffix(spec)}`;
+    case 'door':
+      return `door|${spec.style}|${spec.dark ? 'blk' : 'wht'}`;
     default:
       return spec.surface;
   }
@@ -298,6 +322,12 @@ function build(spec: EnhancedMaterialSpec): { material: THREE.MeshStandardMateri
       m = std({ ...(p.galvalume ? t.galvalume : t.painted), color: paintColor(p.hex) });
       break;
     }
+    case 'door': {
+      // The face drawing carries the color (white or black slab); white base so it shows as drawn.
+      m = std({ ...P.opening.painted, color: new THREE.Color(0xffffff) });
+      m.map = doorFaceTexture(spec.style, spec.dark);
+      break;
+    }
     case 'slat': {
       const p = resolvePaint(spec.color, spec.galvalume);
       m = std({ ...(p.galvalume ? P.slat.galvalume : P.slat.painted), color: paintColor(p.hex) });
@@ -328,6 +358,11 @@ function build(spec: EnhancedMaterialSpec): { material: THREE.MeshStandardMateri
       m = std({ ...h, color: paintColor(resolvePaint(h.color).hex) });
       break;
     }
+  }
+  const clip = 'clipTopY' in spec ? clipY(spec) : undefined;
+  if (clip !== undefined) {
+    // Keep y <= clip (three clips where n . p + constant < 0).
+    m.clippingPlanes = [new THREE.Plane(new THREE.Vector3(0, -1, 0), clip)];
   }
   m.envMap = environment;
   return { material: m, owned };

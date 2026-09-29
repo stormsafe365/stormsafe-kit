@@ -36,3 +36,24 @@ export function rendersLeanToFixture(
       return false;
   }
 }
+
+/**
+ * A lean-to's resolved wall closures (outer side + front/back ends) from its
+ * enclosure — the same rule as LeanToSiding's resolveWalls (a test holds them
+ * equal). Lives here so the engine (geometry.ts) can ask rendersLeanToFixture
+ * which END-wall openings are actually drawn before it frames around them.
+ */
+export function leanToWallSettings(lt: {
+  enclosure: string;
+  customWalls?: { front: string; back: string; side: string };
+}): { side: string; front: string; back: string } {
+  if (lt.enclosure === 'enclosed') return { side: 'closed', front: 'closed', back: 'closed' };
+  if (lt.enclosure === 'custom' && lt.customWalls) {
+    return {
+      side: lt.customWalls.side || 'open',
+      front: lt.customWalls.front || 'open',
+      back: lt.customWalls.back || 'open',
+    };
+  }
+  return { side: 'open', front: 'open', back: 'open' };
+}

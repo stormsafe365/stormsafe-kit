@@ -47,3 +47,21 @@ describe('lean-to fixture visibility', () => {
     expect(rendersLeanToFixture(op('walkDoor', 'back'), walls('open', 'closed', 'open'))).toBe(false);
   });
 });
+
+describe('leanToWallSettings (engine) = LeanToSiding resolveWalls (3D)', () => {
+  it('resolves every enclosure / custom-wall combination the same way', async () => {
+    const { leanToWallSettings } = await import('../leanToFixtures');
+    const { resolveWalls } = await import('@/three/LeanToSiding');
+    const customs = [
+      undefined,
+      { front: 'closed', back: 'open', side: 'q3' },
+      { front: 'q2', back: 'halfEnd', side: 'closed' },
+      { front: '', back: '', side: '' },
+    ];
+    for (const enclosure of ['open', 'enclosed', 'custom'] as const)
+      for (const customWalls of customs) {
+        const lt = { enclosure, customWalls } as never;
+        expect(leanToWallSettings(lt)).toEqual(resolveWalls(lt));
+      }
+  });
+});

@@ -7,8 +7,9 @@ import type { LeanTo, LeanToOpening, Opening } from '@/types/building';
 /**
  * Lean-to FRAMING accuracy (render-upgrade phase 8, drawing only — no price
  * change). Owner 9/29/26: lean-to posts follow the SAME leg rule as the main
- * building (a 15'+ post is doubled); lean-to bents get a real knee brace; a
- * gable-attached lean-to's posts run at the main truss OC from its own start.
+ * building (a 15'+ post is doubled); lean-to bents get a real knee brace that
+ * never crosses a framed opening on a lean-to end wall. Bent POSITIONS are the
+ * pre-existing grid (gable lean-tos included) — they feed the drag guides.
  */
 
 type S = ReturnType<typeof deriveStructure>;
@@ -177,8 +178,9 @@ describe('lean-to inner posts: never a duplicate of a main leg', () => {
     ]);
     const connH = 7 + (10 * 2) / 12;
     const ltInner = legsAtZ(s, -21).filter((m) => near(topOf(m), connH));
-    // Posts at x = -12, -7, -2, 3, 8, 12; the corners (+-12) are main legs.
-    expect(ltInner.map((m) => m.start[0]).sort((a, b) => a - b)).toEqual([-7, -2, 3, 8]);
+    // Bents at x = -12, -11, -6, -1, 4, 9, 12 (the main Z grid reused along X);
+    // the corners (+-12) are main legs.
+    expect(ltInner.map((m) => m.start[0]).sort((a, b) => a - b)).toEqual([-11, -6, -1, 4, 9]);
   });
 });
 
@@ -246,45 +248,196 @@ describe('lean-to knee braces are real (not on the rafter line)', () => {
   });
 });
 
-describe('gable-attached lean-to posts run at the main truss OC from the lean-to start', () => {
-  const gaps = (xs: number[]) => xs.slice(1).map((x, i) => x - xs[i]);
+describe('lean-to bent positions are the pre-existing grid (drag guides unchanged)', () => {
+  /** The grid as it was before the render port: both span ends + every main truss position strictly inside. */
+  const legacyOffsets = (s: S) => {
+    const lt = s.leanTos[0];
+    const a = lt.spanStart;
+    const b = lt.spanEnd;
+    return Array.from(new Set([a, ...s.framePositionsZ.filter((v) => v > a && v < b), b]))
+      .sort((p, q) => p - q)
+      .map((v) => v - a);
+  };
 
-  it('24x42 (5ft OC), full-width Front Gable lean-to: 0,5,10,15,20,24 (not the old 0,1,6,...,24 from the main Z grid)', () => {
+  it('J_CA-like 30x40 (4ft OC) full-width Front Gable lean-to: 0,3,7,...,27,30 (main Z grid reused along X)', () => {
+    const s = build({ width: 30, length: 40, legHeight: 12, trussSpacingFt: 4 }, [
+      leanTo({ attachedSide: 'Front Gable', widthFt: 12, lengthFt: 30 }),
+    ]);
+    const lt = s.leanTos[0];
+    expect(lt.trussOffsets.map((v) => +v.toFixed(6))).toEqual([0, 3, 7, 11, 15, 19, 23, 27, 30]);
+    // One outer post per bent, standing exactly there (world X = -15 + offset).
+    const zOut = -20 - 12;
+    expect(legsAtZ(s, zOut).map((m) => +m.start[0].toFixed(6)).sort((a, b) => a - b)).toEqual(
+      [0, 3, 7, 11, 15, 19, 23, 27, 30].map((o) => -15 + o),
+    );
+  });
+
+  it('24x42 (5ft OC) Front Gable lean-to keeps 0,1,6,11,16,21,24', () => {
     const s = build({ width: 24, length: 42, legHeight: 10, trussSpacingFt: 5 }, [
       leanTo({ attachedSide: 'Front Gable', widthFt: 12, lengthFt: 24 }),
     ]);
-    const lt = s.leanTos[0];
-    expect(lt.trussOffsets.map((v) => +v.toFixed(6))).toEqual([0, 5, 10, 15, 20, 24]);
-    // The outer posts stand exactly there (world X = -12 + offset).
-    const zOut = -21 - 12;
-    expect(legsAtZ(s, zOut).map((m) => +m.start[0].toFixed(6)).sort((a, b) => a - b)).toEqual([-12, -7, -2, 3, 8, 12]);
+    expect(s.leanTos[0].trussOffsets.map((v) => +v.toFixed(6))).toEqual([0, 1, 6, 11, 16, 21, 24]);
   });
 
-  it('every bay is <= the OC and all but the last are exactly the OC (regular), for offsets and both gables', () => {
+  it('every side, offset and OC: trussOffsets = the legacy grid, with one outer post per bent', () => {
     const cfgs: Array<[number, number, number, Partial<LeanTo>]> = [
       [30, 50, 4, { attachedSide: 'Back Gable', lengthFt: 30 }],
       [30, 40, 4, { attachedSide: 'Back Gable', lengthFt: 20, offsetFt: 3 }],
       [24, 30, 5, { attachedSide: 'Front Gable', lengthFt: 24 }],
       [40, 60, 4, { attachedSide: 'Front Gable', lengthFt: 26, offsetFt: 7 }],
+      [30, 40, 4, { attachedSide: 'Left Eave', lengthFt: 40 }],
+      [30, 40, 4, { attachedSide: 'Right Eave', lengthFt: 22, offsetFt: 3 }],
     ];
     for (const [W, L, oc, o] of cfgs) {
       const s = build({ width: W, length: L, legHeight: 12, trussSpacingFt: oc }, [leanTo(o)]);
       const lt = s.leanTos[0];
-      const g = gaps(lt.trussOffsets);
-      expect(lt.trussOffsets[0]).toBeCloseTo(0, 6);
-      expect(lt.trussOffsets[lt.trussOffsets.length - 1]).toBeCloseTo(lt.lengthFt, 6);
-      for (const d of g) expect(d).toBeLessThanOrEqual(oc + 1e-6);
-      for (const d of g.slice(0, -1)) expect(d).toBeCloseTo(oc, 6);
-      // one outer post per bent
-      const zOut = lt.outer.z;
-      expect(legsAtZ(s, zOut).length).toBe(lt.trussOffsets.length);
+      expect(lt.trussOffsets).toEqual(legacyOffsets(s));
+      const eave = String(o.attachedSide).includes('Eave');
+      const outer = eave ? legsAtX(s, lt.outer.x) : legsAtZ(s, lt.outer.z);
+      expect(outer.length).toBe(lt.trussOffsets.length);
     }
   });
 
-  it('eave lean-tos still sit on the main truss grid (rafters tie to the main legs)', () => {
+  it('eave lean-tos sit on the main truss grid (rafters tie to the main legs)', () => {
     const s = build({ width: 30, length: 40, legHeight: 12, trussSpacingFt: 4 }, [leanTo({ lengthFt: 40 })]);
     const lt = s.leanTos[0];
     expect(lt.trussOffsets.map((v) => v + lt.spanStart)).toEqual(s.framePositionsZ);
+  });
+});
+
+describe('a doubled (15ft+) outer post: the knee brace springs from the inboard post', () => {
+  it('Left Eave low 16: every brace foot is on the second post (0.4ft inboard), never crossing the outer post line', () => {
+    const s = build({ width: 30, length: 40, legHeight: 20 }, [leanTo({ lowLegHeightFt: 16 })]);
+    const outerX = 27;
+    const ltBraces = s.members.filter((m) => m.kind === 'brace' && Math.max(m.start[0], m.end[0]) > 15.5);
+    expect(ltBraces.length).toBe(s.leanTos[0].trussOffsets.length);
+    const connH = 16 + 2;
+    const roofAt = (x: number) => connH + (16 - connH) * ((x - 15) / 12);
+    for (const b of ltBraces) {
+      expect(b.start[0]).toBeCloseTo(outerX - 0.4, 6);
+      expect(b.start[1]).toBeCloseTo(roofAt(outerX - 0.4) - 3, 6);
+      // Entirely inboard of (or on) the second post: it never passes through a post.
+      expect(Math.max(b.start[0], b.end[0])).toBeLessThanOrEqual(outerX - 0.4 + 1e-6);
+      // Tip on the rafter, ~3ft inboard of the foot.
+      expect(b.end[1]).toBeCloseTo(roofAt(b.end[0]), 6);
+      expect(b.start[0] - b.end[0]).toBeGreaterThan(2.7);
+    }
+  });
+
+  it('a single (14ft) outer post keeps the brace foot on the outer post', () => {
+    const s = build({ width: 30, length: 40, legHeight: 20 }, [leanTo({ lowLegHeightFt: 14 })]);
+    const ltBraces = s.members.filter((m) => m.kind === 'brace' && Math.max(m.start[0], m.end[0]) > 15.5);
+    for (const b of ltBraces) expect(b.start[0]).toBeCloseTo(27, 6);
+  });
+});
+
+describe('lean-to END-wall openings: no knee brace across a framed opening', () => {
+  // K_CCI-like: 30x40x12 + Left Eave lean-to 12 wide, low 8, 2:12 (connH 10);
+  // outer wall at x = 27, main wall at x = 15, front end bent at z = -20, back at z = 20.
+  const main = { width: 30, length: 40, legHeight: 12, trussSpacingFt: 4 };
+  const fo = (o: Partial<LeanToOpening>): LeanToOpening => ({
+    id: 'lt1:fo', type: 'frameOut', wall: 'front', widthFt: 6, heightFt: 7, sillFt: 0, offsetFt: 8, ...o,
+  });
+  const ltBracesAt = (s: S, z: number) =>
+    s.members.filter((m) => m.kind === 'brace' && near(m.start[2], z) && near(m.end[2], z) && Math.min(m.start[0], m.end[0]) > 15.05);
+  /** Does the (x, y) segment pass inside the rectangle [lo,hi] x [ylo,yhi]? (sampled) */
+  const crosses = (m: Member, lo: number, hi: number, ylo: number, yhi: number) => {
+    for (let i = 0; i <= 200; i++) {
+      const t = i / 200;
+      const x = m.start[0] + (m.end[0] - m.start[0]) * t;
+      const y = m.start[1] + (m.end[1] - m.start[1]) * t;
+      if (x > lo && x < hi && y > ylo && y < yhi) return true;
+    }
+    return false;
+  };
+
+  it('a 6x7 frame-out near the outer post on the FRONT end: that bent has no brace crossing it; every other bent keeps its brace', () => {
+    // centre x = 15 + 8 = 23 -> spans x 20..26; the brace runs x 27 -> 24, y 5 -> ~8.5.
+    const bare = build(main, [leanTo({ enclosure: 'custom', openings: [] })]);
+    expect(ltBracesAt(bare, -20).length).toBe(1);
+    expect(crosses(ltBracesAt(bare, -20)[0], 20, 26, 0, 7)).toBe(true); // the defect this guards against
+    const s = build(main, [leanTo({ enclosure: 'custom', openings: [fo({})] })]);
+    for (const b of ltBracesAt(s, -20)) expect(crosses(b, 20 - 0.2, 26 + 0.2, 0, 7 + 0.2)).toBe(false);
+    expect(ltBracesAt(s, -20).length).toBe(0);
+    for (const z of s.leanTos[0].trussOffsets.map((o) => o - 20).filter((z) => z > -20)) expect(ltBracesAt(s, z).length).toBe(1);
+    // The outer corner post (x = 27) is outside the opening: full height.
+    const corner = legsAtX(s, 27, -20);
+    expect(corner.length).toBe(1);
+    expect(topOf(corner[0])).toBeCloseTo(8, 6);
+  });
+
+  it('a 4x7 frame-out on the BACK end (Q_CCI-like, Right Eave): the back bent loses the brace that crossed it', () => {
+    const r = (op: LeanToOpening[]) =>
+      build(main, [leanTo({ attachedSide: 'Right Eave', enclosure: 'custom', openings: op })]);
+    // Right Eave: outer x = -27, inner -15; minA = -27 -> centre -27 + 3 = -24, spans -26..-22.
+    const back = fo({ wall: 'back', widthFt: 4, offsetFt: 3 });
+    const bare = r([]);
+    const s = r([back]);
+    const at = (st: S, z: number) =>
+      st.members.filter((m) => m.kind === 'brace' && near(m.start[2], z) && near(m.end[2], z) && Math.max(m.start[0], m.end[0]) < -15.05);
+    expect(at(bare, 20).length).toBe(1);
+    expect(at(s, 20).length).toBe(0);
+    expect(at(s, -20).length).toBe(1); // the front bent is untouched
+  });
+
+  it('only a DRAWN end-wall opening moves framing: a door on an open end (not drawn) keeps the brace; a frame-out there drops it', () => {
+    // K_CCI walls: front closed, back OPEN, outer 3/4. A walk door on the open back is not drawn.
+    const customWalls = { front: 'closed', back: 'open', side: 'q3' } as const;
+    const door = fo({ id: 'lt1:wd', type: 'walkDoor', wall: 'back' });
+    const bare = build(main, [leanTo({ enclosure: 'custom', customWalls, openings: [] })]);
+    const withDoor = build(main, [leanTo({ enclosure: 'custom', customWalls, openings: [door] })]);
+    expect(withDoor.members).toEqual(bare.members);
+    const withFo = build(main, [leanTo({ enclosure: 'custom', customWalls, openings: [fo({ wall: 'back' })] })]);
+    expect(ltBracesAt(withFo, 20).length).toBe(0);
+    // The same door on a CLOSED front end is drawn, so it does drop that brace.
+    const front = build(main, [leanTo({ enclosure: 'custom', customWalls, openings: [fo({ id: 'lt1:wd', type: 'walkDoor' })] })]);
+    expect(ltBracesAt(front, -20).length).toBe(0);
+  });
+
+  it('an end-wall opening away from the brace leaves it alone (walk door beside the main wall)', () => {
+    // 3x7 walk door centred 2ft from the main wall: x 15.5..18.5; brace x 24..27.
+    const wd = fo({ id: 'lt1:wd', type: 'walkDoor', widthFt: 3, offsetFt: 2 });
+    const s = build(main, [leanTo({ enclosure: 'enclosed', openings: [wd] })]);
+    const bare = build(main, [leanTo({ enclosure: 'enclosed', openings: [] })]);
+    expect(ltBracesAt(s, -20)).toEqual(ltBracesAt(bare, -20));
+  });
+
+  it('a post standing in an end-wall opening is cut over its height (doubled outer post twin flush with the corner)', () => {
+    // 30x40x20 + low 16 (doubled outer post: x 27 and 26.6); 6x7 frame-out flush to the outer corner: x 21..27.
+    const s = build({ width: 30, length: 40, legHeight: 20, trussSpacingFt: 4 }, [
+      leanTo({ lowLegHeightFt: 16, enclosure: 'custom', openings: [fo({ offsetFt: 9 })] }),
+    ]);
+    for (const x of [27, 26.6]) {
+      const at = legsAtX(s, x, -20);
+      expect(at.length).toBe(1);
+      expect(Math.min(at[0].start[1], at[0].end[1])).toBeGreaterThanOrEqual(7 - 1e-6);
+    }
+    // The next bent is untouched.
+    expect(legsAtX(s, 27, -16).length).toBe(1);
+    expect(topOf(legsAtX(s, 27, -16)[0])).toBeCloseTo(16, 6);
+  });
+
+  it('never touches the main building: members inboard of the main wall line are identical with / without end-wall openings', () => {
+    const ops = [fo({}), fo({ id: 'lt1:wd', type: 'walkDoor', widthFt: 12, heightFt: 11, offsetFt: 6 }), fo({ wall: 'back', widthFt: 12, heightFt: 11, offsetFt: 6 })];
+    const s = build(main, [leanTo({ enclosure: 'enclosed', openings: ops })]);
+    const bare = build(main, [leanTo({ enclosure: 'enclosed', openings: [] })]);
+    const mainSide = (st: S) => st.members.filter((m) => Math.min(m.start[0], m.end[0]) <= 15 + 1e-6);
+    expect(mainSide(s)).toEqual(mainSide(bare));
+    expect(s.members).not.toEqual(bare.members); // ...while the lean-to end bents ARE cut
+    // The main +X legs at both lean-to end bents keep their full 12ft height.
+    for (const z of [-20, 20]) expect(topOf(legsAtX(s, 15, z)[0])).toBeCloseTo(12, 6);
+  });
+
+  it('gable lean-to end walls: the end bent brace is dropped when a frame-out crosses it', () => {
+    // 30x40x12 + Back Gable lean-to 12 wide full width: across = Z (inner 20, outer 32), run = X.
+    // Front end bent at x = -15. minA = 20 -> centre 20 + 8 = 28, spans 25..31; brace z 32 -> 29, y 5 -> ~8.5.
+    const g = (op: LeanToOpening[]) =>
+      build(main, [leanTo({ attachedSide: 'Back Gable', lengthFt: 30, enclosure: 'custom', openings: op })]);
+    const at = (st: S, x: number) =>
+      st.members.filter((m) => m.kind === 'brace' && near(m.start[0], x) && near(m.end[0], x) && Math.min(m.start[2], m.end[2]) > 20.05);
+    expect(at(g([]), -15).length).toBe(1);
+    expect(at(g([fo({})]), -15).length).toBe(0);
+    expect(at(g([fo({})]), 15).length).toBe(1);
   });
 });
 

@@ -79,7 +79,7 @@ const EPS = 0.01;
 
 // ── Small vector helpers ───────────────────────────────────────────────────
 
-type UV = readonly [number, number];
+export type UV = readonly [number, number];
 const sub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const add = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 const scale = (a: V3, k: number): V3 => [a[0] * k, a[1] * k, a[2] * k];
@@ -103,7 +103,7 @@ export interface ShellBatch {
   uv: Float32Array;
 }
 
-class Emitter {
+export class Emitter {
   readonly pos: number[] = [];
   readonly nor: number[] = [];
   readonly uv: number[] = [];
@@ -120,7 +120,7 @@ const ZERO_UV = (): UV => [0, 0];
  * A planar CONVEX polygon, wound so its front face (and the normal attribute)
  * points along `n` whatever order the points come in.
  */
-function polygon(e: Emitter, pts: V3[], n: V3, uvOf: (p: V3) => UV = ZERO_UV) {
+export function polygon(e: Emitter, pts: V3[], n: V3, uvOf: (p: V3) => UV = ZERO_UV) {
   if (pts.length < 3) return;
   // Newell normal of the given order.
   let nx = 0;
@@ -139,7 +139,7 @@ function polygon(e: Emitter, pts: V3[], n: V3, uvOf: (p: V3) => UV = ZERO_UV) {
 }
 
 /** A local frame: origin + orthonormal axes. */
-interface Frame3 {
+export interface Frame3 {
   o: V3;
   x: V3;
   y: V3;
@@ -149,7 +149,7 @@ const WORLD: Frame3 = { o: [0, 0, 0], x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] }
 const at = (f: Frame3, l: V3): V3 => add(f.o, add(scale(f.x, l[0]), add(scale(f.y, l[1]), scale(f.z, l[2]))));
 
 /** A box (plate) centered at local `c` with local size `s`, 6 outward faces. */
-function box(e: Emitter, f: Frame3, c: V3, s: V3) {
+export function box(e: Emitter, f: Frame3, c: V3, s: V3) {
   const ax = [f.x, f.y, f.z];
   for (let k = 0; k < 3; k++) {
     const i = (k + 1) % 3;
@@ -168,7 +168,7 @@ function box(e: Emitter, f: Frame3, c: V3, s: V3) {
 }
 
 /** Axis-aligned box from two corners. */
-function aabb(e: Emitter, a: V3, b: V3) {
+export function aabb(e: Emitter, a: V3, b: V3) {
   const lo: V3 = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.min(a[2], b[2])];
   const hi: V3 = [Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.max(a[2], b[2])];
   if (hi[0] - lo[0] < 1e-6 || hi[1] - lo[1] < 1e-6 || hi[2] - lo[2] < 1e-6) return;
@@ -203,7 +203,7 @@ function prismZ(e: Emitter, profile: [number, number][], z0: number, z1: number)
 }
 
 /** Collects emitters per (material, castShadow). */
-class BatchSet {
+export class BatchSet {
   private readonly m = new Map<string, { spec: EnhancedMaterialSpec; cast: boolean; e: Emitter }>();
   get(spec: EnhancedMaterialSpec, cast: boolean): Emitter {
     const id = `${materialKey(spec)}|${cast ? 'cast' : 'nocast'}`;
@@ -309,12 +309,15 @@ export interface WallPlane {
   u: V3;
 }
 
+/** The geometric part of a wall plane (lean-to walls use it too). */
+export type PlaneRef = Pick<WallPlane, 'along' | 'at' | 'n' | 'u'>;
+
 /** A world point on a wall plane: `c` along the wall's world axis, `y` up, `out` along the normal. */
-export const wallPoint = (w: WallPlane, c: number, y: number, out = 0): V3 =>
+export const wallPoint = (w: PlaneRef, c: number, y: number, out = 0): V3 =>
   w.along === 'z' ? [w.at + w.n[0] * out, y, c] : [c, y, w.at + w.n[2] * out];
 
 /** World-feet UVs of a wall point (u along +u, v = height). */
-export const wallUV = (w: WallPlane) => (p: V3): UV => [dot(p, w.u), p[1]];
+export const wallUV = (w: PlaneRef) => (p: V3): UV => [dot(p, w.u), p[1]];
 
 /** An opening projected on its wall: world coordinate along the wall axis + vertical extent. */
 export interface WallHole {
@@ -599,10 +602,32 @@ export function wallBatches(inp: ShellInput, layout: ShellLayout = shellLayout(i
 
 // ── Batches: roof skins, ridge cap, eave + rake trim ───────────────────────
 
-type RoofBatchInput = { structure: RoofInputs; roofOrientation: PanelOrientation; colors: Pick<BuildingColors, 'roof' | 'trim'> };
+/**
+ * Lean-to driven cut-backs of the main roof (render only, Phase 6; built by
+ * leanToShell.ts leanToRoofCuts). Inside a cut the main roof ends at the wall
+ * sheeting face instead of overhanging, and its eave / rake trim is skipped,
+ * so a flush lean-to roof (or a gable lean-to's roof near the eave corners)
+ * never runs through the main overhang or its trim.
+ */
+export interface MainRoofCuts {
+  /** Eave side sx: plan z-ranges where the main eave overhang + eave trim are skipped. */
+  eave: { sx: -1 | 1; z0: number; z1: number }[];
+  /** Gable end sz: plan x-ranges where the main gable overhang + rake trim are skipped. */
+  gable: { sz: -1 | 1; x0: number; x1: number }[];
+}
+
+export const hasRoofCuts = (c?: MainRoofCuts | null): c is MainRoofCuts => !!c && (c.eave.length > 0 || c.gable.length > 0);
+
+type RoofBatchInput = {
+  structure: RoofInputs;
+  roofOrientation: PanelOrientation;
+  colors: Pick<BuildingColors, 'roof' | 'trim'>;
+  /** Lean-to cut-backs (none = the plain Phase-5 roof, byte-identical). */
+  cuts?: MainRoofCuts | null;
+};
 
 /** A frame along a roof edge (lab edgeFrame): +x from `from` to `to`, +y = `up` (roof normal), +z = x cross y. */
-function edgeFrame(from: V3, to: V3, up: V3, side: V3): { f: Frame3; len: number; out: number } {
+export function edgeFrame(from: V3, to: V3, up: V3, side: V3): { f: Frame3; len: number; out: number } {
   const d = sub(to, from);
   const len = Math.hypot(d[0], d[1], d[2]);
   const x = unit(d);
@@ -612,7 +637,7 @@ function edgeFrame(from: V3, to: V3, up: V3, side: V3): { f: Frame3; len: number
   return { f: { o: from, x, y, z }, len, out };
 }
 
-function rakeTrim(e: Emitter, from: V3, to: V3, up: V3, side: V3) {
+export function rakeTrim(e: Emitter, from: V3, to: V3, up: V3, side: V3) {
   const { f, len, out } = edgeFrame(from, to, up, side);
   const T = SHELL.trimT;
   const k = SHELL.rake;
@@ -620,7 +645,7 @@ function rakeTrim(e: Emitter, from: V3, to: V3, up: V3, side: V3) {
   box(e, f, [len / 2, k.legCenter, -out * (k.leg / 2)], [len, T, k.leg]); // leg lying on the panel
 }
 
-function eaveTrim(e: Emitter, from: V3, to: V3, up: V3, side: V3) {
+export function eaveTrim(e: Emitter, from: V3, to: V3, up: V3, side: V3) {
   const { f, len, out } = edgeFrame(from, to, up, side);
   const T = SHELL.trimT;
   const k = SHELL.eave;
@@ -668,6 +693,7 @@ export function roofPlanes(r: RoofSurface, width: number): RoofPlane[] {
 }
 
 export function roofBatches(inp: RoofBatchInput): ShellBatch[] {
+  if (hasRoofCuts(inp.cuts)) return roofBatchesCut(inp, inp.cuts);
   const s = inp.structure;
   const r = roofSurface(s);
   const set = new BatchSet();
@@ -732,6 +758,148 @@ export function roofBatches(inp: RoofBatchInput): ShellBatch[] {
     } else {
       // Mono: low -> high along the one plane. Flat gable: straight across.
       rakeTrim(trim, [r.dripX, r.topAt(r.dripX), z], [-r.dripX, r.topAt(-r.dripX), z], normalOf(1), [0, 0, sz]);
+    }
+  }
+  return set.build();
+}
+
+/** Sorted, de-duplicated breakpoints inside [lo, hi]. */
+function breakpoints(values: number[], lo: number, hi: number): number[] {
+  const xs = values.map((v) => Math.min(hi, Math.max(lo, v))).sort((a, b) => a - b);
+  const out: number[] = [];
+  for (const x of xs) if (!out.length || x - out[out.length - 1] > 1e-7) out.push(x);
+  return out;
+}
+
+/**
+ * The main roof with lean-to cut-backs (MainRoofCuts). Same planes, normals,
+ * rib flip and UVs as the plain roof; each plane is emitted as plan
+ * rectangles (a notched plane), so inside an eave cut the plane stops at the
+ * side-wall face (x = +-(W/2 + SHEET_OUTSET)) and inside a gable cut at the
+ * end-wall face (z = +-(L/2 + SHEET_OUTSET)). Eave trim skips eave cuts (a
+ * short rake closes the overhang where it resumes), rakes skip gable cuts and
+ * start at the wall face where an eave cut reaches the gable edge.
+ */
+function roofBatchesCut(inp: RoofBatchInput, cuts: MainRoofCuts): ShellBatch[] {
+  const s = inp.structure;
+  const r = roofSurface(s);
+  const set = new BatchSet();
+  const orientation = sheetOrientation(inp.roofOrientation);
+  const zE = r.gableZ;
+  const under = SHELL.roofUnderGap;
+  const T = SHELL.trimT;
+  const xw = Math.min(s.width / 2 + SHEET_OUTSET, r.dripX);
+  const zF = Math.min(s.length / 2 + SHEET_OUTSET, zE);
+  const inRange = (v: number, a: number, b: number) => v > Math.min(a, b) && v < Math.max(a, b);
+  const eaveCut = (sx: number, z: number) => cuts.eave.some((c) => c.sx === sx && inRange(z, c.z0, c.z1));
+  const gableCut = (sz: number, x: number) => cuts.gable.some((c) => c.sz === sz && inRange(x, c.x0, c.x1));
+  const kept = (x: number, z: number) =>
+    !(Math.abs(x) > xw && eaveCut(Math.sign(x), z)) && !(Math.abs(z) > zF && gableCut(Math.sign(z), x));
+
+  for (const pl of roofPlanes(r, s.width)) {
+    const full: V3[] = [
+      [pl.x0, r.topAt(pl.x0), -zE],
+      [pl.x0, r.topAt(pl.x0), zE],
+      [pl.x1, r.topAt(pl.x1), zE],
+      [pl.x1, r.topAt(pl.x1), -zE],
+    ];
+    let n = unit(cross(sub(full[1], full[0]), sub(full[3], full[0])));
+    if (n[1] < 0) n = scale(n, -1);
+    const flip = orientation === 'vertical' && litFromRight(n, pl.u);
+    const uvOf = (p: V3): UV => [dot(p, pl.u), -Math.abs(p[0] - pl.vFrom) / r.cos];
+    const top = set.get({ surface: 'roof', color: inp.colors.roof, orientation, flipX: flip }, false);
+    const bottom = set.get({ surface: 'roofUnder' }, false);
+    const lo = Math.min(pl.x0, pl.x1);
+    const hi = Math.max(pl.x0, pl.x1);
+    const xs = breakpoints([lo, hi, -xw, xw, ...cuts.gable.flatMap((c) => [c.x0, c.x1])], lo, hi);
+    const zs = breakpoints([-zE, -zF, zF, zE, ...cuts.eave.flatMap((c) => [c.z0, c.z1])], -zE, zE);
+    const rect = (xa: number, xb: number, za: number, zb: number) => {
+      const pts: V3[] = [
+        [xa, r.topAt(xa), za],
+        [xa, r.topAt(xa), zb],
+        [xb, r.topAt(xb), zb],
+        [xb, r.topAt(xb), za],
+      ];
+      polygon(top, pts, n, uvOf);
+      polygon(bottom, pts.map((p): V3 => [p[0], p[1] - under, p[2]]), scale(n, -1), uvOf);
+    };
+    for (let i = 0; i + 1 < xs.length; i++) {
+      const xa = xs[i];
+      const xb = xs[i + 1];
+      const xm = (xa + xb) / 2;
+      let start: number | null = null;
+      for (let j = 0; j + 1 < zs.length; j++) {
+        const inside = kept(xm, (zs[j] + zs[j + 1]) / 2);
+        if (inside && start === null) start = zs[j];
+        if (!inside && start !== null) {
+          rect(xa, xb, start, zs[j]);
+          start = null;
+        }
+      }
+      if (start !== null) rect(xa, xb, start, zs[zs.length - 1]);
+    }
+  }
+
+  const trim = set.get({ surface: 'trim', color: inp.colors.trim }, false);
+  if (r.pitched) prismZ(trim, ridgeCapProfile(r), -(zE + SHELL.ridgeCap.endOverrun), zE + SHELL.ridgeCap.endOverrun);
+  const normalOf = (sx: number): V3 => (r.mono ? unit([r.slope, 1, 0]) : unit([sx * r.slope, 1, 0]));
+
+  // Eave trims: skip eave cuts; at a gable cut covering the drip corner stop at the end-wall face.
+  for (const sx of [-1, 1] as const) {
+    const x = sx * r.dripX;
+    const y = r.topAt(x);
+    const stopAt: Record<number, boolean> = { [-1]: gableCut(-1, x - sx * 0.01), [1]: gableCut(1, x - sx * 0.01) };
+    const gaps: [number, number][] = cuts.eave.filter((c) => c.sx === sx).map((c) => [c.z0, c.z1]);
+    for (const sz of [-1, 1] as const) if (stopAt[sz]) gaps.push([sz * zF, sz * (zE + 1)]);
+    for (const [a, b] of subtractRanges(-zE, zE, gaps)) {
+      const ea = stopAt[-1] && Math.abs(a + zF) < 1e-6 ? 0 : T;
+      const eb = stopAt[1] && Math.abs(b - zF) < 1e-6 ? 0 : T;
+      eaveTrim(trim, [x, y, a - ea], [x, y, b + eb], normalOf(sx), [sx, 0, 0]);
+    }
+    // Where the overhang resumes past an eave cut, a short rake closes its end face.
+    for (const c of cuts.eave.filter((k) => k.sx === sx)) {
+      for (const [zb, face] of [[Math.min(c.z0, c.z1), 1], [Math.max(c.z0, c.z1), -1]] as const) {
+        if (Math.abs(zb) >= zE - 1e-6 || eaveCut(sx, zb - face * 0.01)) continue;
+        rakeTrim(trim, [x, y, zb], [sx * xw, r.topAt(sx * xw), zb], normalOf(sx), [0, 0, face]);
+      }
+    }
+  }
+
+  for (const sz of [-1, 1] as const) {
+    const z = sz * zE;
+    if (r.pitched) {
+      const R: V3 = [0, r.ridgeY, z];
+      for (const sx of [-1, 1] as const) {
+        // |x| ranges (this side) where the rake is skipped.
+        const gaps: [number, number][] = cuts.gable
+          .filter((c) => c.sz === sz)
+          .map((c): [number, number] => {
+            const lo = Math.min(c.x0, c.x1);
+            const hi = Math.max(c.x0, c.x1);
+            return sx > 0 ? [Math.max(0, lo), Math.max(0, hi)] : [Math.max(0, -hi), Math.max(0, -lo)];
+          });
+        if (eaveCut(sx, z - sz * 0.01)) gaps.push([xw, r.dripX + 1]);
+        for (const [u0, u1] of subtractRanges(0, r.dripX, gaps)) {
+          const from: V3 = [sx * u1, r.topAt(sx * u1), z];
+          const to: V3 = u0 <= 1e-9 ? R : [sx * u0, r.topAt(sx * u0), z];
+          rakeTrim(trim, from, to, normalOf(sx), [0, 0, sz]);
+        }
+      }
+      if (!gableCut(sz, 0)) {
+        const top = SHELL.rake.faceCenter + SHELL.rake.face / 2;
+        const a = add(R, scale(normalOf(-1), top));
+        const d = add(R, scale(normalOf(1), top));
+        for (const [off, nz] of [[0, -sz], [sz * T, sz]] as const) {
+          const sh = (p: V3): V3 => [p[0], p[1], p[2] + off];
+          polygon(trim, [sh(R), sh(a), sh(d)], [0, 0, nz]);
+        }
+      }
+    } else {
+      const gaps: [number, number][] = cuts.gable.filter((c) => c.sz === sz).map((c) => [c.x0, c.x1]);
+      if (eaveCut(-1, z - sz * 0.01)) gaps.push([-r.dripX - 1, -xw]);
+      if (eaveCut(1, z - sz * 0.01)) gaps.push([xw, r.dripX + 1]);
+      for (const [a, b] of subtractRanges(-r.dripX, r.dripX, gaps))
+        rakeTrim(trim, [b, r.topAt(b), z], [a, r.topAt(a), z], normalOf(1), [0, 0, sz]);
     }
   }
   return set.build();

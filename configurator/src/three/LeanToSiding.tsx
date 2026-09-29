@@ -13,6 +13,7 @@ import { stripsAround, type LocalRect } from './Siding';
 import { OpeningFixture } from './OpeningFixture';
 import { GuideLine, Measure, Chip3D, ftIn, RED, RED_DIM } from './Openings';
 import { CLICK_DRAG_THRESHOLD_PX } from './openingAnim';
+import { cutHoles, holesTouching, type CutHole, type P2 } from './polyCut';
 
 const COMP_PROUD = COMPONENT_OUTSET - SHEET_OUTSET; // component standoff past the wall sheeting
 
@@ -199,12 +200,12 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
 }
 
 // ── Wall-setting resolution ────────────────────────────────────────────────
-type GableVal = 'open' | 'halfEnd' | 'gable' | 'q1' | 'q2' | 'q3' | 'closed';
+export type GableVal = 'open' | 'halfEnd' | 'gable' | 'q1' | 'q2' | 'q3' | 'closed';
 /** Roof-down band coverage for the fractional end closures. */
 const GABLE_BAND_FRAC: Partial<Record<GableVal, number>> = { q1: 0.25, q2: 0.5, q3: 0.75 };
-type SideVal = string; // open | closed | q1 | q2 | q3 | 1panel | 2panel | 3panel
+export type SideVal = string; // open | closed | q1 | q2 | q3 | 1panel | 2panel | 3panel
 
-function resolveWalls(lt: LeanToStructure): { side: SideVal; front: GableVal; back: GableVal } {
+export function resolveWalls(lt: LeanToStructure): { side: SideVal; front: GableVal; back: GableVal } {
   if (lt.enclosure === 'enclosed') return { side: 'closed', front: 'closed', back: 'closed' };
   if (lt.enclosure === 'custom' && lt.customWalls) {
     return {
@@ -220,7 +221,7 @@ function resolveWalls(lt: LeanToStructure): { side: SideVal; front: GableVal; ba
 // Each returns the surfaces for one lean-to in a normalized shape so the JSX
 // above stays orientation-agnostic.
 
-interface SurfaceSet {
+export interface SurfaceSet {
   roofTop: Pt[];
   roofUnder: Pt[];
   roofUV: UV[];
@@ -353,7 +354,7 @@ function leanToTrim(
 }
 
 /** EAVE-attached (Left/Right): walls vary in X, length runs along Z. */
-function eaveSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; front: GableVal; back: GableVal }): SurfaceSet {
+export function eaveSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; front: GableVal; back: GableVal }): SurfaceSet {
   const innerX = lt.inner.x;
   const outerX = lt.outer.x;
   const lh = lt.lowLegHeightFt;
@@ -430,7 +431,7 @@ function eaveSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; f
 }
 
 /** GABLE-attached (Front/Back): walls vary in Z, length runs along X. */
-function gableSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; front: GableVal; back: GableVal }): SurfaceSet {
+export function gableSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; front: GableVal; back: GableVal }): SurfaceSet {
   const innerZ = lt.inner.z;
   const outerZ = lt.outer.z;
   const lh = lt.lowLegHeightFt;
@@ -693,6 +694,30 @@ function cutGable(
   return { strips, triangle: { corners: tri, uvs: triUv } };
 }
 
+/**
+ * A partial end outline (gableOutline) cut around its frame-outs (classic
+ * UVs / planes), or null when no frame-out reaches into it — the caller then
+ * draws the single classic panel, unchanged.
+ */
+export function partialEndPieces(
+  geo: SurfaceSet,
+  which: 'front' | 'back',
+  val: GableVal,
+  frameOuts: LeanToOpening[],
+): Array<{ corners: Pt[]; uvs: UV[] }> | null {
+  if (!frameOuts.length) return null;
+  const g = geo.gable;
+  const plane = which === 'front' ? g.frontPlane : g.backPlane;
+  const minA = Math.min(g.innerAcross, g.outerAcross);
+  const outline = gableOutline(val, g.innerAcross, g.outerAcross, g.lh, g.connH) as P2[];
+  const holes: CutHole[] = frameOuts.map((o) => ({ c: minA + o.offsetFt, w: o.widthFt, y0: o.sillFt, y1: o.sillFt + o.heightFt }));
+  if (!holesTouching(outline, holes).length) return null;
+  return cutHoles(outline, holes).map((poly) => ({
+    corners: poly.map(([a, y]): Pt => (g.kind === 'eave' ? [a, y, plane] : [plane, y, a])),
+    uvs: poly.map(([a, y]): UV => [a, y]),
+  }));
+}
+
 function GableEnd({
   geo,
   which,
@@ -708,6 +733,20 @@ function GableEnd({
 }) {
   if (val === 'open') return null;
   if (!(val === 'closed' && openings.length > 0)) {
+    // A PARTIAL end (half end / gable only / q1-q3) is cut around the
+    // frame-outs drawn on it (the only fixtures a partial end shows —
+    // rendersLeanToFixture), so a see-through frame-out is really open.
+    // Without one reaching into the outline it stays the single classic panel.
+    const pieces = val === 'closed' ? null : partialEndPieces(geo, which, val, openings.filter((o) => o.type === 'frameOut'));
+    if (pieces) {
+      return (
+        <>
+          {pieces.map((p, i) => (
+            <PolyPanel key={`pe-${i}`} corners={p.corners} uvs={p.uvs} material={material} />
+          ))}
+        </>
+      );
+    }
     const corners = which === 'front' ? geo.frontGable(val) : geo.backGable(val);
     const uvs = which === 'front' ? geo.frontGableUV(val) : geo.backGableUV(val);
     return <PolyPanel corners={corners} uvs={uvs} material={material} />;
@@ -775,7 +814,7 @@ function dragInfo(geo: SurfaceSet, opening: LeanToOpening): DragInfo {
 // A lean-to OpeningFixture you can grab and slide along its wall. Updates the
 // store live for smooth feedback; BuildHost writes the final spot back into the
 // pricing program on release (drag-end), so price + 3D stay in sync.
-function DraggableLeanToOpening({
+export function DraggableLeanToOpening({
   geo,
   lt,
   opening,
@@ -941,7 +980,7 @@ function LeanToOpeningGuides({ geo, lt, opening }: { geo: SurfaceSet; lt: LeanTo
 //   halfEnd → inner (tall) vertical half, floor to roof
 //   q1/q2/q3 → band hanging from the roof, bottom edge at the matching
 //              fraction of each side's height (sheeted area = exact fraction)
-function gableOutline(v: GableVal, inner: number, outer: number, lh: number, connH: number): UV[] {
+export function gableOutline(v: GableVal, inner: number, outer: number, lh: number, connH: number): UV[] {
   if (v === 'gable') {
     return [
       [inner, lh],

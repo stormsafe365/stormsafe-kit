@@ -14,6 +14,7 @@ import { EnhancedSite } from './enhanced/EnhancedSite';
 import { EnhancedSiding } from './enhanced/EnhancedSiding';
 import { EnhancedRoof } from './enhanced/EnhancedRoof';
 import { EnhancedTrim } from './enhanced/EnhancedTrim';
+import { EnhancedLeanTos } from './enhanced/EnhancedLeanTos';
 
 /** Shell opacity per view mode (exterior fully solid; structure/cutaway ghost). */
 const SHELL_OPACITY: Record<ViewMode, number> = {
@@ -93,9 +94,11 @@ function ClassicShell({ structure, config, trimHex }: ShellProps) {
  * ENHANCED shell (render-upgrade). Phase 5: the main building's walls, roof and
  * trim are the enhanced components (src/three/enhanced: outward-facing,
  * world-UV corrugated sheeting from the cached rib normal-map materials, bent
- * plate trims). Lean-tos (Phase 6) and the opening fixtures (Phase 7) are
- * still the classic components with the classic props, so their placement,
- * drag and click math is untouched. Everything here sits inside ShellGroup,
+ * plate trims). Phase 6: the lean-to sheeting / roof / trim are enhanced too
+ * (EnhancedLeanTos; the main roof and corner trims make room for them). The
+ * opening fixtures (Phase 7) are still the classic components with the
+ * classic props (lean-to fixtures: the classic DraggableLeanToOpening), so
+ * their placement, drag and click math is untouched. Everything here sits inside ShellGroup,
  * so decals / shade bands that must keep their own opacity need
  * material.userData.keepTransparent. (Flipping the Look remounts the shell;
  * three sorts opaque draws by material.id, so a classic build viewed right
@@ -117,14 +120,14 @@ function EnhancedShell({ structure, config, trimHex }: ShellProps) {
         roofColor={config.colors.roof}
         trimColor={config.colors.trim}
       />
-      <LeanToSiding
-        leanTos={structure.leanTos}
+      <EnhancedLeanTos
+        structure={structure}
+        mainOpenings={config.openings}
         wallOrientation={config.panelOrientation}
         roofOrientation={config.roofOrientation}
         colors={config.colors}
         wainscot={config.wainscot}
-        overhangFt={structure.roofOverhangFt}
-        trimColor={trimHex}
+        trimHex={trimHex}
       />
       <EnhancedTrim
         structure={structure}

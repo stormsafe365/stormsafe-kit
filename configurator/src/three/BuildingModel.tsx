@@ -11,6 +11,9 @@ import { LeanToSiding } from './LeanToSiding';
 import { Openings } from './Openings';
 import { Trim } from './Trim';
 import { EnhancedSite } from './enhanced/EnhancedSite';
+import { EnhancedSiding } from './enhanced/EnhancedSiding';
+import { EnhancedRoof } from './enhanced/EnhancedRoof';
+import { EnhancedTrim } from './enhanced/EnhancedTrim';
 
 /** Shell opacity per view mode (exterior fully solid; structure/cutaway ghost). */
 const SHELL_OPACITY: Record<ViewMode, number> = {
@@ -87,17 +90,53 @@ function ClassicShell({ structure, config, trimHex }: ShellProps) {
 }
 
 /**
- * ENHANCED shell — Phase 2 PLACEHOLDER: an ALIAS of the classic shell (same
- * component identity), so flipping the Look today remounts nothing. (A remount
- * recreates every shell material in fresh-mount order; three sorts opaque
- * draws by material.id, so equal-depth edge pixels shift — measured ~800 px at
- * delta <= 46 on A_CA vs the golden set, the same signature as a fresh page
- * load.) The render-upgrade components plug in HERE, and only here: enhanced
- * main siding + trim (Phase 5), lean-to shell (Phase 6), fixtures (Phase 7).
- * Everything here sits inside ShellGroup, so decals / shade bands that must
- * keep their own opacity need material.userData.keepTransparent.
+ * ENHANCED shell (render-upgrade). Phase 5: the main building's walls, roof and
+ * trim are the enhanced components (src/three/enhanced: outward-facing,
+ * world-UV corrugated sheeting from the cached rib normal-map materials, bent
+ * plate trims). Lean-tos (Phase 6) and the opening fixtures (Phase 7) are
+ * still the classic components with the classic props, so their placement,
+ * drag and click math is untouched. Everything here sits inside ShellGroup,
+ * so decals / shade bands that must keep their own opacity need
+ * material.userData.keepTransparent. (Flipping the Look remounts the shell;
+ * three sorts opaque draws by material.id, so a classic build viewed right
+ * after a flip differs by ~800 equal-depth edge pixels until it is rebuilt.)
  */
-const EnhancedShell = ClassicShell;
+function EnhancedShell({ structure, config, trimHex }: ShellProps) {
+  return (
+    <>
+      <EnhancedSiding
+        structure={structure}
+        openings={config.openings}
+        wallOrientation={config.panelOrientation}
+        colors={config.colors}
+        wainscot={config.wainscot}
+      />
+      <EnhancedRoof
+        structure={structure}
+        roofOrientation={config.roofOrientation}
+        roofColor={config.colors.roof}
+        trimColor={config.colors.trim}
+      />
+      <LeanToSiding
+        leanTos={structure.leanTos}
+        wallOrientation={config.panelOrientation}
+        roofOrientation={config.roofOrientation}
+        colors={config.colors}
+        wainscot={config.wainscot}
+        overhangFt={structure.roofOverhangFt}
+        trimColor={trimHex}
+      />
+      <EnhancedTrim
+        structure={structure}
+        openings={config.openings}
+        wallOrientation={config.panelOrientation}
+        colors={config.colors}
+        wainscot={config.wainscot}
+      />
+      <Openings openings={config.openings} structure={structure} trimColor={trimHex} wallColor={swatchHex(config.colors.walls)} />
+    </>
+  );
+}
 
 /**
  * Assembles the live building from the resolved pipeline. Frame (incl. hat

@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import type { PrintPanelKey } from '@/config/colors';
+import { drawPrintPattern } from '../textures';
 
 /**
  * ENHANCED look — panel NORMAL MAPS + the two small color maps (render-upgrade
@@ -388,6 +390,31 @@ export function lapShadeTexture(): THREE.CanvasTexture {
     t.colorSpace = THREE.SRGBColorSpace;
     t.repeat.set(1 / TILE_FT, 1 / TILE_FT);
     t.name = 'enhanced-lap-shade';
+    return t;
+  });
+}
+
+/** Print-panel color map resolution (px per 36" tile; the classic print module size). */
+export const PRINT_PANEL_PX = 512;
+
+/**
+ * Shared CCI print-panel wainscot color map (wood / brick / stone printed
+ * steel; sRGB, repeat 1/3 = UVs in feet, one 3 ft module per tile). Drawn by
+ * the classic look's own pattern painter (textures.ts drawPrintPattern) so
+ * both looks show the same print; the enhanced ribs come from the normal map,
+ * so nothing is painted over the print here.
+ */
+export function printPanelTexture(print: PrintPanelKey): THREE.CanvasTexture {
+  return lazy('print-' + print, () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = PRINT_PANEL_PX;
+    drawPrintPattern(canvas.getContext('2d')!, PRINT_PANEL_PX, print);
+    const t = new THREE.CanvasTexture(canvas);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = anisotropy;
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.repeat.set(1 / TILE_FT, 1 / TILE_FT);
+    t.name = 'enhanced-print-' + print;
     return t;
   });
 }

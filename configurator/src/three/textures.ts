@@ -111,7 +111,7 @@ function seededRand(seed: number): () => number {
  * The rib pass draws OVER this, keeping the printed sheet reading as formed
  * steel — which is what the real product is.
  */
-function drawPrintPattern(ctx: CanvasRenderingContext2D, size: number, print: PrintPanelKey): void {
+export function drawPrintPattern(ctx: CanvasRenderingContext2D, size: number, print: PrintPanelKey): void {
   const rnd = seededRand({ blackwood: 11, richwood: 23, rusticbrick: 37, stonewall: 53 }[print]);
 
   if (print === 'blackwood' || print === 'richwood') {

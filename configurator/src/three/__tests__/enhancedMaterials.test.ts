@@ -257,3 +257,14 @@ describe('per-wall rib flip (lab litFromRight)', () => {
     expect(litFromRight(n, u, [fromLeft, fromRight])).toBe(true);
   });
 });
+
+describe('print-panel wainscot (Phase 5)', () => {
+  it('a PRINT-<KEY> wall color gets its own key (the print is the color map); print:null forces plain paint', () => {
+    const printed = materialKey({ surface: 'wall', color: 'PRINT-RICHWOOD', orientation: 'vertical' });
+    expect(printed).toContain('|print-richwood');
+    expect(materialKey({ surface: 'wall', color: 'PRINT-RICHWOOD', orientation: 'vertical', print: null })).not.toContain('print');
+    expect(materialKey({ surface: 'wall', color: swatchHex('PRINT-RICHWOOD'), orientation: 'vertical' })).not.toContain('print');
+    expect(materialKey({ surface: 'wall', color: 'WXA0090L', orientation: 'vertical' })).not.toContain('print');
+    expect(materialKey({ surface: 'wall', color: 'WXA0090L', orientation: 'vertical', print: 'stonewall' })).toContain('|print-stonewall');
+  });
+});

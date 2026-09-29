@@ -3,6 +3,8 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { ENHANCED_LOOK, linearColor } from './look';
 import { createSkyEnvironment } from './environment';
+import { setEnhancedMaterialEnvironment } from './materials';
+import { configureEnhancedTextures } from './normalMaps';
 
 // Light colors: the lab's hexes as raw linear values (see look.ts).
 const HEMI_SKY = linearColor(ENHANCED_LOOK.hemi.sky);
@@ -72,7 +74,13 @@ export function EnhancedSceneRig() {
     const env = createSkyEnvironment(gl);
     scene.environment = env.texture;
     scene.environmentIntensity = ENHANCED_LOOK.env.intensity;
+    // Enhanced shell materials (materials.ts) carry their OWN envMap so their
+    // per-surface envMapIntensity (walls 0.35, roof 0.08, trim 0.5, ...)
+    // applies instead of the scene-wide 0.25. Unbound BEFORE the texture is freed.
+    setEnhancedMaterialEnvironment(env.texture);
+    configureEnhancedTextures(gl);
     return () => {
+      setEnhancedMaterialEnvironment(null);
       if (scene.environment === env.texture) scene.environment = savedEnv;
       scene.environmentIntensity = savedIntensity;
       env.dispose();

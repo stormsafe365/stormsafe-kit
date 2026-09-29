@@ -1,10 +1,11 @@
 import * as THREE from 'three';
-import { isMetallic, swatchHex } from '@/config/colors';
+import { isMetallic, printPanelKey, swatchHex, type PrintPanelKey } from '@/config/colors';
 import type { PanelOrientation } from '@/types/building';
 import { ENHANCED_LOOK } from './look';
 import {
   lapShadeTexture,
   normalMapTexture,
+  printPanelTexture,
   releaseTextureClone,
   slatColorTexture,
   textureClone,
@@ -13,7 +14,8 @@ import {
 
 /**
  * ENHANCED look — MATERIAL LIBRARY (render-upgrade Phase 4, HANDOFF Step 3).
- * Not used by the classic look, and not yet mounted by any component.
+ * Not used by the classic look. Mounted by the enhanced main shell (Phase 5:
+ * EnhancedSiding / EnhancedRoof / EnhancedTrim through ShellMeshes).
  *
  * Every material is an imperative THREE.MeshStandardMaterial, cached by key
  * (surface, color, galvalume, orientation, flipX, ...). Never hand these
@@ -144,7 +146,17 @@ interface Paintable {
 }
 
 export type EnhancedMaterialSpec =
-  | (Paintable & { surface: 'wall'; orientation: WallOrientation; flipX?: boolean })
+  | (Paintable & {
+      surface: 'wall';
+      orientation: WallOrientation;
+      flipX?: boolean;
+      /**
+       * CCI print-panel wainscot: the printed pattern is the color map (the
+       * paint color is ignored, like classic). Default = recognized from a
+       * 'PRINT-<KEY>' color code.
+       */
+      print?: PrintPanelKey | null;
+    })
   | (Paintable & { surface: 'roof'; orientation: SheetOrientation; flipX?: boolean })
   | { surface: 'roofUnder' }
   | (Paintable & { surface: 'trim' | 'reveal' | 'opening' })
@@ -187,7 +199,9 @@ export function materialKey(spec: EnhancedMaterialSpec): string {
     case 'wall':
     case 'roof': {
       const p = resolvePaint(spec.color, spec.galvalume);
-      return `${spec.surface}|${p.hex}|${p.galvalume ? 'galv' : 'paint'}|${spec.orientation}|${spec.flipX ? 'flipX' : 'std'}`;
+      const print = spec.surface === 'wall' ? wallPrint(spec) : null;
+      const base = `${spec.surface}|${p.hex}|${p.galvalume ? 'galv' : 'paint'}|${spec.orientation}|${spec.flipX ? 'flipX' : 'std'}`;
+      return print ? base + '|print-' + print : base;
     }
     case 'trim':
     case 'reveal':
@@ -207,6 +221,10 @@ export function materialKey(spec: EnhancedMaterialSpec): string {
       return spec.surface;
   }
 }
+
+/** A wall spec's print-panel pattern: explicit, else from a 'PRINT-<KEY>' color code; null = plain paint. */
+const wallPrint = (spec: { color: string; print?: PrintPanelKey | null }): PrintPanelKey | null =>
+  spec.print !== undefined ? spec.print : printPanelKey(spec.color);
 
 /** Roll-up curtain height used for the slat repeat (guards 0 / NaN). */
 const slatHeight = (h: number) => (Number.isFinite(h) && h > 0.25 ? h : 1);
@@ -251,6 +269,12 @@ function build(spec: EnhancedMaterialSpec): { material: THREE.MeshStandardMateri
       m.normalScale.set(spec.flipX ? -ns : ns, ns);
       // Lap siding only: the under-board shadow band. Sheet panels carry NO color detail (HANDOFF pitfall 4).
       m.map = lap ? lapShadeTexture() : null;
+      // Print-panel wainscot: the print IS the color (white base so the map shows as drawn).
+      const print = wallPrint(spec);
+      if (print && !lap) {
+        m.color.set(0xffffff);
+        m.map = printPanelTexture(print);
+      }
       break;
     }
     case 'roof': {

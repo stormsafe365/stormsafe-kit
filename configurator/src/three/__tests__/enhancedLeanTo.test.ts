@@ -6,8 +6,8 @@ import { deriveStructure, SHEET_OUTSET, type StructureModel } from '@/engine/geo
 import { resolveBuilding } from '@/engine/ruleEngine';
 import type { BuildingConfig, LeanTo, LeanToOpening } from '@/types/building';
 import { litFromRight, type V3 } from '../enhanced/materials';
-import { SHELL, roofBatches, roofSurface, shellLayout, trimBatches, type ShellBatch } from '../enhanced/shellGeometry';
-import { LEAN_TO, applyCornerCuts, leanToBatches, leanToCornerCuts, leanToRoofCuts } from '../enhanced/leanToShell';
+import { Emitter, SHELL, box, cutPlate, plumbAt, rakeTrim, roofBatches, roofSurface, shellLayout, trimBatches, type ShellBatch } from '../enhanced/shellGeometry';
+import { LEAN_TO, leanToBatches, leanToRoofCuts, mergeSpans } from '../enhanced/leanToShell';
 import { cutHoles, polyArea, type P2 } from '../polyCut';
 
 // Render-upgrade Phase 6: the enhanced lean-to shell (pure geometry) and the
@@ -351,35 +351,79 @@ describe('enhanced lean-to — main-shell interplay', () => {
     }
   });
 
-  it('main corner trim: cut from the slab up to the lean-to roof where an end wall continues it (resumes ON the roof); whole at an OPEN end', () => {
-    const enc = build([leanTo()]);
-    const cc = leanToCornerCuts(enc.s);
-    expect(cc.map((c) => [c.sx, c.zs]).sort()).toEqual([[1, -1], [1, 1]]);
-    const lt = enc.s.leanTos[0];
-    for (const c of cc) {
-      expect(c.y0).toBeCloseTo(0, 6);
-      // up to the flashing BOTTOM (just under the lean-to roof top at the main wall), not through the flashing band
-      expect(c.y1).toBeGreaterThan(lt.peakHeightFt - 0.1);
-      expect(c.y1).toBeLessThan(lt.peakHeightFt + 0.1);
+  it('main corner trim is NEVER cut by a lean-to: full height where an end wall continues it; the lean-to end-wall trims break around it', () => {
+    // Golden classic / lab: a full-height main corner trim at the junction (Phase 6 review: B, D, K, L).
+    for (const enclosure of ['enclosed', 'open'] as const) {
+      const { cfg, s } = build([leanTo({ enclosure })], { wainscot: { enabled: true, heightFt: 3 } });
+      const lt = s.leanTos[0];
+      const inp = { structure: s, openings: [], wallOrientation: cfg.panelOrientation, colors: cfg.colors, wainscot: cfg.wainscot };
+      const lay = shellLayout(inp);
+      const xw = s.width / 2 + SO;
+      const zw = s.length / 2 + SO;
+      for (const zs of [-1, 1]) {
+        const k = lay.corners.find((c) => c.sx === 1 && c.zs === zs && c.end !== 'partition');
+        expect(k).toBeDefined();
+        expect(k!.y0).toBeCloseTo(0, 6);
+        expect(k!.y1).toBeGreaterThan(s.legHeight - 0.5);
+      }
+      // the main corner trim stands below the lean-to roof at the +X front corner
+      const tb = allTris(trimBatches({ ...inp, trimColor: cfg.colors.trim }, lay));
+      expect(tb.some((t) => {
+        const c = centroid(t);
+        return Math.abs(c[0] - xw) < 0.3 && Math.abs(c[2] + zw) < 0.3 && c[1] > 1 && c[1] < lt.lowLegHeightFt;
+      })).toBe(true);
+      // the lean-to's own wall trims (base, Z) on the end planes stop at the main corner plate's footprint
+      const cw = SHELL.cornerWidth;
+      const wallTrims = allTris(batchesOf(cfg, s), (b) => b.spec.surface === 'trim' && b.castShadow);
+      if (enclosure === 'enclosed') expect(wallTrims.length).toBeGreaterThan(0);
+      for (const t of wallTrims) {
+        if (!t.p.every((p) => Math.abs(Math.abs(p[2]) - zw) < 0.05)) continue;
+        const c = centroid(t);
+        expect(c[0] > xw - cw + 1e-6 && c[0] < xw + T - 1e-6).toBe(false);
+      }
     }
-    const inp = { structure: enc.s, openings: [], wallOrientation: enc.cfg.panelOrientation, colors: enc.cfg.colors, wainscot: enc.cfg.wainscot };
-    const lay = applyCornerCuts(shellLayout(inp), cc);
-    for (const k of lay.corners.filter((k) => k.sx === 1)) expect(k.y0).toBeCloseTo(cc[0].y1, 6);
-    expect(lay.corners.filter((k) => k.sx === -1).every((k) => k.y0 < 1e-6)).toBe(true);
-    // corner trim triangles near the +X front corner below the lean-to roof are gone
-    const tb = allTris(trimBatches({ ...inp, trimColor: enc.cfg.colors.trim }, lay));
-    const xw = enc.s.width / 2 + SO;
-    const zw = enc.s.length / 2 + SO;
-    expect(tb.some((t) => {
-      const c = centroid(t);
-      return Math.abs(c[0] - xw) < 0.3 && Math.abs(c[2] + zw) < 0.3 && c[1] > 1 && c[1] < lt.lowLegHeightFt;
-    })).toBe(false);
-    // OPEN ends: still outside corners -> the main corner trim is not cut at all (continuous, as in Phase 5).
-    const open = build([leanTo({ enclosure: 'open' })]);
-    expect(leanToCornerCuts(open.s)).toEqual([]);
-    // Custom: closed front / open back -> only the front corner is cut.
-    const mixed = build([leanTo({ enclosure: 'custom', customWalls: { front: 'closed', back: 'open', side: 'q3' } })]);
-    expect(leanToCornerCuts(mixed.s).map((c) => [c.sx, c.zs])).toEqual([[1, -1]]);
+  });
+
+  it('an outer corner L runs the full height of both sheeted edges (3/4 outer wall over a closed end; closed outer wall beside an end band)', () => {
+    const cw = SHELL.cornerWidth;
+    for (const [customWalls, expectBottom] of [
+      [{ front: 'closed', back: 'open', side: 'q3' }, 0], // K_CCI: the end wall is sheeted to the slab under the 3/4 outer wall
+      [{ front: 'q2', back: 'halfEnd', side: 'closed' }, 0], // Q_CCI: the outer wall is sheeted to the slab under the end band
+    ] as const) {
+      const { cfg, s } = build([leanTo({ enclosure: 'custom', customWalls: { ...customWalls } })]);
+      const lt = s.leanTos[0];
+      const xwL = lt.outer.x + SO; // outer wall sheet plane (Left Eave -> +X)
+      const zF = lt.spanStart - SO; // front end plane
+      const ts = allTris(batchesOf(cfg, s), surface('trim')).filter(
+        (t) => t.p.every((p) => Math.abs(p[0] - (xwL + T)) < 1e-4) && t.p.every((p) => p[2] > zF - 0.03 && p[2] < zF + cw + 1e-4),
+      );
+      expect(ts.length).toBeGreaterThan(0);
+      expect(Math.min(...ts.flatMap((t) => t.p.map((p) => p[1])))).toBeCloseTo(expectBottom, 6);
+      // and up to under the roof
+      expect(Math.max(...ts.flatMap((t) => t.p.map((p) => p[1])))).toBeGreaterThan(lt.lowLegHeightFt - 0.5);
+    }
+    expect(mergeSpans([0, 5], [3, 8])).toEqual([[0, 8]]);
+    expect(mergeSpans([5, 8], [0, 2])).toEqual([[0, 2], [5, 8]]);
+    expect(mergeSpans([0, 2], [2, 8])).toEqual([[0, 8]]);
+  });
+
+  it('wall trims stand LEAN_TO.trimLift off the sheet: no trim face lies in a sheet plane (no z-fight seen from inside)', () => {
+    for (const enclosure of ['enclosed', 'custom'] as const) {
+      const { cfg, s } = build(
+        [leanTo({ enclosure, customWalls: enclosure === 'custom' ? { front: 'closed', back: 'open', side: 'q3' } : undefined })],
+        { wainscot: { enabled: true, heightFt: 3 } },
+      );
+      const lt = s.leanTos[0];
+      const planes: [0 | 2, number][] = [[0, lt.outer.x + SO], [2, lt.spanStart - SO], [2, lt.spanEnd + SO]];
+      const bs = batchesOf(cfg, s);
+      const wallTrims = allTris(bs, (b) => b.spec.surface === 'trim' && b.castShadow);
+      expect(wallTrims.length).toBeGreaterThan(0);
+      for (const t of wallTrims)
+        for (const [axis, v] of planes) expect(t.p.every((p) => Math.abs(p[axis] - v) < 1e-6)).toBe(false);
+      // the outer faces stay T proud of the sheet (base trim along a closed outer wall; bottom trim of the 3/4 wall)
+      const yEdge = enclosure === 'enclosed' ? 0 : 0.25 * lt.lowLegHeightFt;
+      expect(trimFaceAt(bs, 0, lt.outer.x + SO + T, (c) => Math.abs(c[1] - yEdge) < 0.1 && c[2] > 0)).toBe(true);
+    }
   });
 
   it('the wall flashing face stops against the standing main corner trim (no gap, no overlap); its leg still reaches over the corner', () => {
@@ -390,26 +434,28 @@ describe('enhanced lean-to — main-shell interplay', () => {
       const xw = s.width / 2 + SO;
       const halfL = s.length / 2;
       const inset = SHELL.cornerWidth - SO; // the corner plate on this wall reaches halfL - inset
+      // (on the wall: the corner closures past the ends share the plane x = xw + T)
       const face = allTris(bs, surface('trim')).filter(
-        (t) => t.p.every((p) => Math.abs(p[0] - (xw + T)) < 1e-4) && centroid(t)[1] > lt.peakHeightFt - 0.1,
+        (t) => t.p.every((p) => Math.abs(p[0] - (xw + T)) < 1e-4 && Math.abs(p[2]) <= halfL + SO + 1e-6) && centroid(t)[1] > lt.peakHeightFt - 0.1,
       );
       expect(face.length).toBeGreaterThan(0);
       const zs = face.flatMap((t) => t.p.map((p) => p[2]));
       expect(Math.min(...zs)).toBeCloseTo(-halfL + inset, 6);
       expect(Math.max(...zs)).toBeCloseTo(halfL - inset, 6);
-      // the main corner plate (after the lean-to cuts) covers the flashing band at both ends
+      // the main corner plate (never cut by the lean-to) covers the flashing band at both ends
       const inp = { structure: s, openings: [], wallOrientation: cfg.panelOrientation, colors: cfg.colors, wainscot: cfg.wainscot };
-      const corners = applyCornerCuts(shellLayout(inp), leanToCornerCuts(s)).corners.filter((k) => k.sx === 1);
+      const corners = shellLayout(inp).corners.filter((k) => k.sx === 1);
       const yFl = Math.min(...face.flatMap((t) => t.p.map((p) => p[1])));
       for (const zs2 of [-1, 1]) expect(corners.some((k) => k.zs === zs2 && k.y0 <= yFl + 1e-6 && k.y1 > yFl + LEAN_TO.flash.face - 1e-6)).toBe(true);
       // the leg (on the lean-to roof) still runs out over both corners
       const leg = allTris(bs, surface('trim')).filter((t) => {
         const c = centroid(t);
-        return c[0] > xw + 0.02 && c[0] < xw + LEAN_TO.flash.leg && Math.abs(c[1] - lt.peakHeightFt) < 0.2;
+        return c[0] > xw + T + 0.01 && c[0] < xw + LEAN_TO.flash.leg && Math.abs(c[1] - lt.peakHeightFt) < 0.2 && Math.abs(c[2]) < halfL + SO + T;
       });
       const lz = leg.flatMap((t) => t.p.map((p) => p[2]));
-      expect(Math.min(...lz)).toBeLessThan(-(halfL + SO));
-      expect(Math.max(...lz)).toBeGreaterThan(halfL + SO);
+      // ... to the main corner trim's outer face (where the lean-to roof closure starts)
+      expect(Math.min(...lz)).toBeCloseTo(-(halfL + SO + T), 6);
+      expect(Math.max(...lz)).toBeCloseTo(halfL + SO + T, 6);
     }
   });
 
@@ -459,8 +505,116 @@ describe('enhanced lean-to — main-shell interplay', () => {
     expect(covers(ts, [0, y0 + LEAN_TO.flash.face - 0.01, -(zF + T)])).toBe(true);
   });
 
-  it('a lean-to that stops short of the corner leaves the main corner trim alone', () => {
-    const { s } = build([leanTo({ lengthFt: 20, offsetFt: 5 })]);
-    expect(leanToCornerCuts(s)).toEqual([]);
+  it('past a main corner the lean-to roof + rake stop at the corner trim face (plumb rake end) and a closure continues the corner trim', () => {
+    // Phase 6 review: J_CA / K_CCI — no roof, underside or rake end poking past the main wall plane beside the corner trim.
+    const cases = [
+      ['Left Eave', 'enclosed', 30],
+      ['Left Eave', 'open', 30],
+      ['Front Gable', 'open', 24],
+    ] as const;
+    for (const [attachedSide, enclosure, lengthFt] of cases) {
+      const { cfg, s } = build([leanTo({ attachedSide, enclosure, lengthFt })]);
+      const lt = s.leanTos[0];
+      const eave = attachedSide.includes('Eave');
+      const inner = eave ? lt.inner.x : lt.inner.z;
+      const outer = eave ? lt.outer.x : lt.outer.z;
+      const out = Math.sign(outer - inner);
+      const mainFace = inner + out * SO;
+      const aCut = mainFace + out * T;
+      const E = (eave ? s.length : s.width) / 2 + SO + T;
+      const rS = lt.spanStart - s.roofOverhangFt;
+      expect(rS).toBeLessThan(-E); // the roof does overhang past both main corners
+      const across = (p: V3) => (eave ? p[0] : p[2]);
+      const run = (p: V3) => (eave ? p[2] : p[0]);
+      const plan = (a: number, r: number): [number, number] => (eave ? [a, r] : [r, a]);
+      const bs = batchesOf(cfg, s);
+      const roof = allTris(bs, surface('roof'));
+      for (const r of [-(E + 0.1), E + 0.1]) {
+        expect(coversPlan(roof, ...plan(inner + out * 0.05, r))).toBe(false); // nothing past the wall plane beyond the corner
+        expect(coversPlan(roof, ...plan(aCut + out * 0.1, r))).toBe(true); // the overhang itself stays
+      }
+      expect(coversPlan(roof, ...plan(inner + out * 0.05, 0))).toBe(true); // between the corners it still runs into the wall
+      // Beyond the corners no roof skin / underside / roof trim vertex sits inside the main wall face plane
+      // (a square-cut rake end would lean its face bottom past it: the rake end is PLUMB on aCut) ...
+      for (const b of bs.filter((x) => !x.castShadow))
+        for (const t of tris(b)) for (const p of t.p) if (Math.abs(run(p)) > E + 1e-6) expect(out * (across(p) - mainFace)).toBeGreaterThanOrEqual(-1e-6);
+      const rakeEnd = allTris(bs, surface('trim')).flatMap((t) => t.p).filter((p) => Math.abs(across(p) - aCut) < 1e-6 && Math.abs(run(p)) > E + 0.1);
+      expect(rakeEnd.length).toBeGreaterThanOrEqual(8);
+      // ... and the closure plate lies on the attached wall's plane (a = mainFace .. aCut), from under the rake face to its top.
+      const closure = allTris(bs, surface('trim')).filter((t) => t.p.every((p) => Math.abs(across(p) - mainFace) < 1e-6 && Math.abs(run(p)) >= E - 1e-6));
+      expect(closure.length).toBeGreaterThanOrEqual(4); // both ends
+      const slope = (lt.peakHeightFt - lt.lowLegHeightFt) / Math.abs(outer - inner);
+      const topA = lt.peakHeightFt - (aCut - inner) * out * slope + SHELL.roofLift * Math.hypot(1, slope); // roof top skin at aCut
+      const ys = closure.flatMap((t) => t.p.map((p) => p[1]));
+      expect(Math.min(...ys)).toBeLessThan(topA - SHELL.roofUnderGap - 0.05); // covers the underside end (and the rake face bottom)
+      expect(Math.max(...ys)).toBeGreaterThanOrEqual(topA + SHELL.rake.faceCenter + SHELL.rake.face / 2); // up to the rake face top
+    }
+  });
+
+  it('a lean-to that stops short of the corner: no roof clip, no closure (its rakes run to the framing line)', () => {
+    const { cfg, s } = build([leanTo({ lengthFt: 20, offsetFt: 5 })]);
+    const lt = s.leanTos[0];
+    const bs = batchesOf(cfg, s);
+    const roof = allTris(bs, surface('roof'));
+    const oh = s.roofOverhangFt;
+    for (const r of [lt.spanStart - oh + 0.05, lt.spanEnd + oh - 0.05]) expect(coversPlan(roof, lt.inner.x + 0.05, r)).toBe(true);
+    const xw = s.width / 2 + SO;
+    expect(allTris(bs, surface('trim')).some((t) => t.p.every((p) => Math.abs(p[0] - xw) < 1e-6) && Math.abs(centroid(t)[2]) > s.length / 2)).toBe(false);
+  });
+});
+
+describe('enhanced shell — plumb-cut trim ends (cutPlate)', () => {
+  const from: V3 = [10, 8, 0];
+  const to: V3 = [0, 10, 0];
+  const up: V3 = [0.2 / Math.hypot(0.2, 1), 1 / Math.hypot(0.2, 1), 0];
+  const side: V3 = [0, 0, -1];
+  const pts = (e: Emitter): V3[] => Array.from({ length: e.pos.length / 3 }, (_, i) => [e.pos[i * 3], e.pos[i * 3 + 1], e.pos[i * 3 + 2]]);
+
+  it('rakeTrim with no cut planes is the plain two-box rake (byte-identical)', () => {
+    const a = new Emitter();
+    rakeTrim(a, from, to, up, side);
+    const b = new Emitter();
+    rakeTrim(b, from, to, up, side, null, null);
+    expect(b.pos).toEqual(a.pos);
+    expect(b.nor).toEqual(a.nor);
+  });
+
+  it('a plumb cut puts that whole end ON the plane; the other end stays square; every face winds outward', () => {
+    const plain = new Emitter();
+    rakeTrim(plain, from, to, up, side);
+    const cut = new Emitter();
+    rakeTrim(cut, from, to, up, side, null, plumbAt('x', 0.5));
+    expect(cut.pos.length).toBe(plain.pos.length); // 2 plates x 6 faces x 2 triangles
+    const P = pts(cut);
+    expect(Math.min(...P.map((p) => p[0]))).toBeCloseTo(0.5, 9);
+    expect(P.filter((p) => Math.abs(p[0] - 0.5) < 1e-9).length).toBeGreaterThanOrEqual(8);
+    // the far end (x > 9) is exactly the plain rake's
+    const key = (p: V3) => p.map((v) => v.toFixed(9)).join(',');
+    const far = new Set(pts(plain).filter((p) => p[0] > 9).map(key));
+    expect(new Set(P.filter((p) => p[0] > 9).map(key))).toEqual(far);
+    // outward: each triangle's normal attribute agrees with its winding and points away from its plate's center
+    const half = P.length / 2;
+    for (const [lo, hi] of [[0, half], [half, P.length]]) {
+      const c = [0, 1, 2].map((k) => P.slice(lo, hi).reduce((s2, p) => s2 + p[k], 0) / (hi - lo)) as unknown as V3;
+      for (let i = lo; i < hi; i += 3) {
+        const t: Tri = { p: [P[i], P[i + 1], P[i + 2]], n: [cut.nor[i * 3], cut.nor[i * 3 + 1], cut.nor[i * 3 + 2]], uv: [] };
+        expect(dot(geoNormal(t), t.n)).toBeGreaterThan(0);
+        expect(dot(t.n, sub(centroid(t), c))).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('cutPlate with no cuts spans the same box as box()', () => {
+    const f = { o: [1, 2, 3] as V3, x: [1, 0, 0] as V3, y: [0, 1, 0] as V3, z: [0, 0, 1] as V3 };
+    const a = new Emitter();
+    cutPlate(a, f, 4, [-0.1, 0.2], [0, 0.05], null, null);
+    const b = new Emitter();
+    box(b, f, [2, 0.05, 0.025], [4, 0.3, 0.05]);
+    const bb = (e: Emitter) => [0, 1, 2].map((k) => [Math.min(...pts(e).map((p) => p[k])), Math.max(...pts(e).map((p) => p[k]))]);
+    for (const [[a0, a1], [b0, b1]] of bb(a).map((r, k) => [r, bb(b)[k]])) {
+      expect(a0).toBeCloseTo(b0, 9);
+      expect(a1).toBeCloseTo(b1, 9);
+    }
+    expect(a.pos.length).toBe(b.pos.length);
   });
 });

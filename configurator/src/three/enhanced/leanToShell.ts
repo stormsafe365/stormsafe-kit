@@ -11,6 +11,7 @@ import {
   box,
   eaveTrim,
   edgeFrame,
+  plumbAt,
   polygon,
   rakeTrim,
   roofSurface,
@@ -24,7 +25,6 @@ import {
   type PlaneRef,
   type RoofSurface,
   type ShellBatch,
-  type ShellCorner,
   type ShellLayout,
   type ShellWall,
   type UV,
@@ -34,9 +34,8 @@ import {
 /**
  * ENHANCED look — LEAN-TO SHELL GEOMETRY (render-upgrade Phase 6). Pure: turns
  * the resolved lean-tos into merged vertex batches (EnhancedLeanTos) plus the
- * two things the enhanced MAIN shell needs to know about them (main roof
- * cut-backs for EnhancedRoof, main corner-trim cuts for EnhancedTrim). Nothing
- * here is used by the classic look.
+ * one thing the enhanced MAIN shell needs to know about them (main roof
+ * cut-backs for EnhancedRoof). Nothing here is used by the classic look.
  *
  * It WRAPS the builder's existing lean-to geometry (LeanToSiding.tsx), so the
  * sheeting lines up with the classic fixtures, drag planes and 2D rules:
@@ -66,14 +65,24 @@ import {
  *    inside corner where an end wall meets the main wall, the junction of two
  *    lean-tos wrapping a corner), base trim only where a sheet meets the slab,
  *    bottom trim on hanging edges (incl. the sloped bottom of a q-band end),
- *    wainscot Z-trim;
+ *    wainscot Z-trim. An outer corner L runs the full height of BOTH of its
+ *    walls' sheeted edges (a 3/4 outer wall over a closed end: down to the
+ *    slab; a closed outer wall beside a roof-down end band: the whole outer
+ *    edge), so no raw sheet edge shows under / over the shorter wall;
+ *  - wall-mounted trim plates stand LEAN_TO.trimLift off the sheet: their
+ *    back face never shares the sheet's plane (no z-fight where the inside of
+ *    an open / partial lean-to shows); the outer faces stay where they were;
  *  - two lean-tos wrapping a main corner: their overlapping roof corners are
  *    mitered on a hip with a hip cap, rakes stop at the hip (no crossing stubs);
- *  - the main building's corner trim is cut where a lean-to end wall is
- *    sheeted at that corner (it continues the main wall plane), up to the
- *    lean-to roof: the trim resumes ON the roof and the wall flashing stops
- *    against it. An OPEN end keeps the main corner trim whole (still an
- *    outside corner), the flashing face stops against it too;
+ *  - the main building's corner trim is NEVER cut (golden classic / lab): a
+ *    lean-to end wall that continues a main wall plane butts against the
+ *    full-height main corner trim, and its own base / bottom / Z trims break
+ *    around it. The wall flashing face stops against the main corner trim;
+ *  - where a lean-to roof overhangs PAST a main corner (the lean-to runs to
+ *    that corner, not mitered, not flush), its roof and rake stop at the main
+ *    corner trim's outer face (plumb rake end) and a closure plate continues
+ *    the corner trim over that roof end: no roof / rake end pokes past the
+ *    main wall plane beside the corner trim;
  *  - flush lean-to (connection within LEAN_TO.flushFt of the main eave, or the
  *    main eave trim would hit its roof): the main eave overhang + eave trim are
  *    skipped along it; a gable lean-to trims the main gable overhang / rake
@@ -97,6 +106,12 @@ export const LEAN_TO = {
   hip: { half: 0.3, lift: 0.012 },
   /** A flush lean-to's main-roof cut runs this far past its roof ends (the main closing rake sits outside its rake). */
   cutGap: 2 * SHELL.trimT,
+  /**
+   * Wall-mounted lean-to trim plates start this far off the sheet (outer faces
+   * unchanged): a plate's back face on the sheet's plane z-fights the sheet's
+   * back face seen from inside an open / partial lean-to.
+   */
+  trimLift: 0.01,
 } as const;
 
 // ── 2D helpers (wall plane: c = along-wall world coordinate, y = height; cutting: ../polyCut.ts) ──
@@ -482,67 +497,51 @@ export function leanToRoofCuts(s: StructureModel): MainRoofCuts {
   return cuts;
 }
 
-export interface CornerCut {
-  sx: -1 | 1;
-  zs: -1 | 1;
-  y0: number;
-  y1: number;
+/** Merge two vertical spans into one or two disjoint spans (sorted). */
+export function mergeSpans(a: [number, number], b: [number, number]): [number, number][] {
+  const [p, q] = a[0] <= b[0] ? [a, b] : [b, a];
+  return q[0] <= p[1] + EPS ? [[p[0], Math.max(p[1], q[1])]] : [p, q];
 }
+
+/** Main corner (sx, zs) at the spanStart (-1) / spanEnd (+1) end of a lean-to's run. */
+const runEndCorner = (f: LeanToFrame, end: -1 | 1): { sx: -1 | 1; zs: -1 | 1 } => (f.eave ? { sx: f.out, zs: end } : { sx: end, zs: f.out });
 
 /**
- * Main corner-trim cuts. Where a lean-to runs to a main corner and its end
- * wall is sheeted at that corner, the end wall continues the main wall plane:
- * the main corner trim is dropped from where that sheet starts up to the
- * flashing BOTTOM, so it resumes right on the lean-to roof, continuous through
- * the flashing band (the flashing face stops against it, leanToBatches) — no
- * wall or flashing end shows between the lean-to rake and the resumed trim.
- * An OPEN end (nothing sheeted at the corner) cuts nothing: that corner is
- * still an outside corner, so the main corner trim runs whole past the
- * lean-to roof (as in Phase 5) and the flashing face stops against it.
+ * Where a lean-to roof overhangs PAST a main corner. E = run coordinate of
+ * the main corner trim's outer face (the main end wall's corner plate for an
+ * eave lean-to, the side wall's for a gable lean-to); aCut = across coordinate
+ * of the main corner plate's outer face on the attached wall. At an end with
+ * clip = true (the roof reaches past +-E, the end is not mitered, the lean-to
+ * is not flush, and a main corner trim stands over the lean-to roof band
+ * there) the roof and rake stop at aCut beyond +-E and a closure plate over
+ * `band` (leanToBatches) continues the corner trim over that roof end.
  */
-export function leanToCornerCuts(s: StructureModel): CornerCut[] {
-  if (!s.leanTos?.length) return [];
-  const { m, models } = buildModels(s, 0, 'Vertical');
-  const cuts: CornerCut[] = [];
-  for (const { f, walls } of models) {
-    for (const id of ['front', 'back'] as const) {
-      const c = endCorner(f, m, id);
-      if (!c) continue;
-      const end = walls.find((w) => w.id === id);
-      const span = end ? spanAt(end.outline, f.mainFace) : null;
-      if (!span) continue;
-      const yJ = f.topAt(f.mainFace);
-      cuts.push({
-        sx: c.sx,
-        zs: c.zs,
-        y0: Math.min(span[0], yJ - SHELL.roofUnderGap - 0.03),
-        y1: yJ - LEAN_TO.flash.below,
-      });
-    }
-  }
-  return cuts;
+function cornerClip(f: LeanToFrame, m: MainCtx, corners: ShellLayout['corners'], mitered: Partial<Record<'front' | 'back', unknown>>) {
+  const T = SHELL.trimT;
+  const E = (f.eave ? m.halfL : m.halfW) + SO + T;
+  const aCut = f.mainFace + f.out * T;
+  const band = closureBand(f, aCut);
+  const trimAt = (end: -1 | 1) => {
+    const k = runEndCorner(f, end);
+    return corners.some((c) => c.end !== 'partition' && c.sx === k.sx && c.zs === k.zs && c.y0 < band[1] && c.y1 > band[0]);
+  };
+  const rS = f.r0 - f.oh;
+  const rE = f.r1 + f.oh;
+  return {
+    E,
+    aCut,
+    band,
+    front: !f.flush && !mitered.front && rS < -E - EPS && trimAt(-1),
+    back: !f.flush && !mitered.back && rE > E + EPS && trimAt(1),
+  };
 }
 
-/** The main shell layout with the lean-to corner cuts applied (corners split / dropped). */
-export function applyCornerCuts(layout: ShellLayout, cuts: CornerCut[]): ShellLayout {
-  if (!cuts.length) return layout;
-  const corners: ShellCorner[] = [];
-  for (const k of layout.corners) {
-    const gaps = k.end === 'partition' ? [] : cuts.filter((c) => c.sx === k.sx && c.zs === k.zs).map((c): [number, number] => [c.y0, c.y1]);
-    if (!gaps.length) {
-      corners.push(k);
-      continue;
-    }
-    for (const [y0, y1] of subtractRanges(k.y0, k.y1, gaps)) if (y1 - y0 >= SHELL.minCornerFt) corners.push({ ...k, y0, y1 });
-  }
-  return { ...layout, corners };
-}
-
-/** Memo key of everything the main-shell interplay depends on. */
-export function leanToShapeKey(s: StructureModel): string {
-  return JSON.stringify(
-    (s.leanTos ?? []).map((lt) => [lt.attachedSide, lt.inner, lt.outer, lt.spanStart, lt.spanEnd, lt.lowLegHeightFt, lt.peakHeightFt, lt.enclosure, lt.customWalls ?? null]),
-  );
+/** Vertical band [yLo, yHi] a lean-to rake (face + leg) covers at across a, plumb. */
+function closureBand(f: LeanToFrame, a: number): [number, number] {
+  const k = SHELL.rake;
+  const T = SHELL.trimT;
+  const y = f.topAt(a);
+  return [y + (k.faceCenter - k.face / 2) / f.cos, y + Math.max(k.faceCenter + k.face / 2, k.legCenter + T / 2) / f.cos];
 }
 
 // ── Batches ─────────────────────────────────────────────────────────────────
@@ -650,8 +649,8 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
     colors: inp.colors,
     wainscot: inp.wainscot,
   });
-  // The main corner trims as EnhancedTrim draws them (lean-to cuts applied): the flashing stops against them.
-  const mainCorners = applyCornerCuts(layout, leanToCornerCuts(s)).corners;
+  // The main corner trims as EnhancedTrim draws them (never cut by a lean-to): the flashing stops against them.
+  const mainCorners = layout.corners;
   const set = new BatchSet();
   const wallOrient = sheetOrientation(inp.wallOrientation);
   const roofOrient = sheetOrientation(inp.roofOrientation);
@@ -660,6 +659,7 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
   const roofTrim = set.get(trimSpec, false);
   const T = SHELL.trimT;
   const cw = SHELL.cornerWidth;
+  const L = LEAN_TO.trimLift;
 
   const zones = new Map<LtWall, Zone[]>();
   const addZone = (w: LtWall | undefined, z: Zone) => {
@@ -688,39 +688,53 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
       const rEnd = id === 'front' ? f.r0 : f.r1;
       const ePlane = rEnd + dir * SO;
       // Outer corner: outer wall meets this end wall (two-plate L, end plate wraps the corner).
+      // It runs the full height of both sheeted edges (their merged spans), so a
+      // shorter wall never leaves the other wall's edge raw above / below it.
       if (side && end) {
         const a = spanAt(side.outline, rEnd);
         const b = spanAt(end.outline, f.outer);
         if (a && b) {
-          const y0 = Math.max(a[0], b[0]);
-          const y1 = Math.min(a[1], b[1], under(f, f.wallFace - f.out * cw, f.wallFace + f.out * T));
-          if (y1 - y0 >= SHELL.minCornerFt) {
+          const top = under(f, f.wallFace - f.out * cw, f.wallFace + f.out * T);
+          for (const [s0, s1] of mergeSpans(a, b)) {
+            const y0 = s0;
+            const y1 = Math.min(s1, top);
+            if (y1 - y0 < SHELL.minCornerFt) continue;
             addZone(side, { c0: ePlane - dir * cw, c1: ePlane, y0, y1 });
             addZone(end, { c0: f.wallFace - f.out * cw, c1: f.wallFace + f.out * T, y0, y1 });
             plates.push(() => {
-              localBox(wallTrim, f, f.wallFace, f.wallFace + f.out * T, y0, y1, ePlane - dir * cw, ePlane);
-              localBox(wallTrim, f, f.wallFace - f.out * cw, f.wallFace + f.out * T, y0, y1, ePlane, ePlane + dir * T);
+              // (both plates stand trimLift off their sheets; the side plate reaches the end plate's back)
+              localBox(wallTrim, f, f.wallFace + f.out * L, f.wallFace + f.out * T, y0, y1, ePlane - dir * cw, ePlane + dir * L);
+              localBox(wallTrim, f, f.wallFace - f.out * cw, f.wallFace + f.out * T, y0, y1, ePlane + dir * L, ePlane + dir * T);
             });
           }
         }
       }
+      if (!end) continue;
+      const corner = endCorner(f, m, id);
+      if (corner) {
+        // This end wall continues a main wall plane: it butts against the
+        // full-height main corner trim, whose plate covers
+        // [mainFace - cornerWidth, mainFace + T] on this plane (EnhancedTrim).
+        // Its own base / bottom / Z trims break there.
+        const k = mainCorners.find((c) => c.end !== 'partition' && c.sx === corner.sx && c.zs === corner.zs);
+        if (k) addZone(end, { c0: f.mainFace - f.out * cw, c1: f.mainFace + f.out * T, y0: k.y0, y1: k.y1 });
+        continue;
+      }
       // Inside corner: this end wall meets the main wall part-way along it.
-      if (end && !endCorner(f, m, id)) {
-        const mw = mainWallFor(layout, f);
-        const a = mw ? sheetSpanAt(mw, ePlane) : null;
-        const b = spanAt(end.outline, f.mainFace);
-        if (a && b) {
-          const y0 = Math.max(a[0], b[0]);
-          const y1 = Math.min(a[1], b[1], under(f, f.mainFace, f.mainFace + f.out * cw));
-          if (y1 - y0 >= SHELL.minCornerFt) {
-            addZone(end, { c0: f.mainFace, c1: f.mainFace + f.out * cw, y0, y1 });
-            // The main-wall plate sits on top of the main base trim.
-            const yB = y0 < EPS ? SHELL.baseHeight : y0;
-            plates.push(() => {
-              localBox(wallTrim, f, f.mainFace, f.mainFace + f.out * cw, y0, y1, ePlane, ePlane + dir * T);
-              if (y1 - yB > 0.05) localBox(wallTrim, f, f.mainFace, f.mainFace + f.out * T, yB, y1, ePlane, ePlane + dir * cw);
-            });
-          }
+      const mw = mainWallFor(layout, f);
+      const a = mw ? sheetSpanAt(mw, ePlane) : null;
+      const b = spanAt(end.outline, f.mainFace);
+      if (a && b) {
+        const y0 = Math.max(a[0], b[0]);
+        const y1 = Math.min(a[1], b[1], under(f, f.mainFace, f.mainFace + f.out * cw));
+        if (y1 - y0 >= SHELL.minCornerFt) {
+          addZone(end, { c0: f.mainFace, c1: f.mainFace + f.out * cw, y0, y1 });
+          // The main-wall plate sits on top of the main base trim.
+          const yB = y0 < EPS ? SHELL.baseHeight : y0;
+          plates.push(() => {
+            localBox(wallTrim, f, f.mainFace, f.mainFace + f.out * cw, y0, y1, ePlane + dir * L, ePlane + dir * T);
+            if (y1 - yB > 0.05) localBox(wallTrim, f, f.mainFace + f.out * L, f.mainFace + f.out * T, yB, y1, ePlane + dir * L, ePlane + dir * cw);
+          });
         }
       }
     }
@@ -743,8 +757,8 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
     addZone(ea, { c0: xw, c1: xw + j.sx * cw, y0, y1 });
     addZone(eb, { c0: zw, c1: zw + j.zs * cw, y0, y1 });
     plates.push(() => {
-      aabb(wallTrim, [xw, y0, zw], [xw + j.sx * cw, y1, zw + j.zs * T]); // on the eave lean-to's end wall
-      aabb(wallTrim, [xw, y0, zw], [xw + j.sx * T, y1, zw + j.zs * cw]); // on the gable lean-to's end wall
+      aabb(wallTrim, [xw + j.sx * L, y0, zw + j.zs * L], [xw + j.sx * cw, y1, zw + j.zs * T]); // on the eave lean-to's end wall
+      aabb(wallTrim, [xw + j.sx * L, y0, zw + j.zs * L], [xw + j.sx * T, y1, zw + j.zs * cw]); // on the gable lean-to's end wall
     });
   }
 
@@ -789,7 +803,7 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
           const yAt = (c: number) => p[1] + ((c - p[0]) / dx) * dy;
           if (Math.max(p[1], q[1]) < EPS) {
             // Sheet meets the slab: base trim, broken at floor-level openings and corner plates.
-            for (const [a, b] of subtractRanges(ca, cb, [...floorCuts, ...zoneGaps(w, 0)])) plate(a, b, 0, SHELL.baseHeight, 0, T);
+            for (const [a, b] of subtractRanges(ca, cb, [...floorCuts, ...zoneGaps(w, 0)])) plate(a, b, 0, SHELL.baseHeight, L, T);
             continue;
           }
           // Hanging bottom edge (partial band, gable-only / half-end header, q-band end): bottom trim.
@@ -799,7 +813,7 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
             .map((h): [number, number] => [h.c - h.w / 2, h.c + h.w / 2]);
           for (const [a, b] of subtractRanges(ca, cb, [...cuts, ...zoneGaps(w, yMid)])) {
             if (Math.abs(dy) < 1e-6) {
-              plate(a, b, p[1] - bt.below, p[1] + bt.above, 0, T);
+              plate(a, b, p[1] - bt.below, p[1] + bt.above, L, T);
               continue;
             }
             // Sloped edge (q-band end): a plate along the edge in the wall plane.
@@ -809,8 +823,8 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
             const z = w.plane.n;
             let y = unit([z[1] * x[2] - z[2] * x[1], z[2] * x[0] - z[0] * x[2], z[0] * x[1] - z[1] * x[0]]);
             if (y[1] < 0) y = [-y[0], -y[1], -y[2]];
-            const L = Math.hypot(B[0] - A[0], B[1] - A[1], B[2] - A[2]);
-            box(wallTrim, { o: A, x, y, z }, [L / 2, (bt.above - bt.below) / 2, T / 2], [L, bt.above + bt.below, T]);
+            const len = Math.hypot(B[0] - A[0], B[1] - A[1], B[2] - A[2]);
+            box(wallTrim, { o: A, x, y, z }, [len / 2, (bt.above - bt.below) / 2, (L + T) / 2], [len, bt.above + bt.below, T - L]);
           }
         }
       }
@@ -837,24 +851,34 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
     const uDir: V3 = f.eave ? [0, 0, -f.out] : [f.out, 0, 0];
     const flip = roofOrient === 'vertical' && litFromRight(f.n, uDir);
     const acrossOf = (p: Plan) => (f.eave ? p[0] : p[1]);
-    let plan: Plan[] = [
-      [f.roofInner, rS],
-      [f.drip, rS],
-      [f.drip, rE],
-      [f.roofInner, rE],
-    ].map(([a, r]) => {
-      const w = f.P(a, 0, r);
-      return [w[0], w[2]] as Plan;
-    });
+    // Past a main corner the roof stops at the corner trim's outer face (clip).
+    const clip = cornerClip(f, m, mainCorners, md.miter);
+    const rect = (a0: number, a1: number, r0: number, r1: number): Plan[] =>
+      [
+        [a0, r0],
+        [a1, r0],
+        [a1, r1],
+        [a0, r1],
+      ].map(([a, r]) => {
+        const w = f.P(a, 0, r);
+        return [w[0], w[2]] as Plan;
+      });
+    // Convex plan pieces: the whole roof, or (clipped) the full-length strip
+    // outside the corner-trim plane + the strip into the wall between the corners.
+    let pieces: Plan[][] =
+      clip.front || clip.back
+        ? [rect(clip.aCut, f.drip, rS, rE), rect(f.roofInner, clip.aCut, clip.front ? -clip.E : rS, clip.back ? clip.E : rE)]
+        : [rect(f.roofInner, f.drip, rS, rE)];
     for (const mt of Object.values(md.miter)) {
       if (!mt) continue;
       const side = (p: Plan) => (mt.Q[0] - mt.P[0]) * (p[1] - mt.P[1]) - (mt.Q[1] - mt.P[1]) * (p[0] - mt.P[0]);
       const keep = Math.sign(side(mt.keep)) || 1;
-      plan = clipHalf(plan, (p) => keep * side(p));
+      pieces = pieces.map((pc) => clipHalf(pc, (p) => keep * side(p)));
     }
-    if (plan.length >= 3) {
+    const uvOf = (p: V3): UV => [p[0] * uDir[0] + p[1] * uDir[1] + p[2] * uDir[2], -Math.abs((f.eave ? p[0] : p[2]) - f.inner) / f.cos];
+    for (const plan of pieces) {
+      if (plan.length < 3) continue;
       const pts = plan.map((p): V3 => [p[0], f.topAt(acrossOf(p)), p[1]]);
-      const uvOf = (p: V3): UV => [p[0] * uDir[0] + p[1] * uDir[1] + p[2] * uDir[2], -Math.abs((f.eave ? p[0] : p[2]) - f.inner) / f.cos];
       polygon(set.get({ surface: 'roof', color: inp.colors.roof, orientation: roofOrient, flipX: flip }, false), pts, f.n, uvOf);
       polygon(
         set.get({ surface: 'roofUnder' }, false),
@@ -871,9 +895,19 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
     for (const id of ['front', 'back'] as const) {
       const r = id === 'front' ? rS : rE;
       const mt = md.miter[id];
-      const aEnd = mt ? acrossOf(mt.Q) : f.roofInner;
+      const clipped = clip[id];
+      const aEnd = mt ? acrossOf(mt.Q) : clipped ? clip.aCut : f.roofInner;
       const sideDir: V3 = id === 'front' ? [-f.rHat[0], 0, -f.rHat[2]] : f.rHat;
-      if (Math.abs(aEnd - f.drip) > 0.05) rakeTrim(roofTrim, at(f.drip, r), at(aEnd, r), f.n, sideDir);
+      // Past a main corner: a PLUMB end on the closure (never leaning into the corner trim) ...
+      const cutTo = clipped ? plumbAt(f.eave ? 'x' : 'z', clip.aCut) : null;
+      if (Math.abs(aEnd - f.drip) > 0.05) rakeTrim(roofTrim, at(f.drip, r), at(aEnd, r), f.n, sideDir, null, cutTo);
+      // ... and a closure plate continuing the main corner trim's plate on the
+      // attached wall out over the roof end, from under the rake face to its top.
+      if (clipped) {
+        const rOut = id === 'front' ? r - T : r + T;
+        const rIn = id === 'front' ? -clip.E : clip.E;
+        localBox(roofTrim, f, f.mainFace, clip.aCut, clip.band[0], clip.band[1], rOut, rIn);
+      }
       if (mt) {
         // Hip cap: a plate on this roof along Q -> P (the other roof lays its own).
         const from: V3 = [mt.Q[0], f.topAt(acrossOf(mt.Q)), mt.Q[1]];
@@ -917,8 +951,8 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
       const y1 = y0 + fl.face;
       const endLo = f.eave ? -m.halfL : -m.halfW;
       const endHi = -endLo;
-      const cornerAt = (end: -1 | 1) => (f.eave ? { sx: f.out, zs: end } : { sx: end, zs: f.out });
-      // Is the main corner trim (after the lean-to cuts) standing over this flashing band at that end?
+      const cornerAt = (end: -1 | 1) => runEndCorner(f, end);
+      // Is a main corner trim standing over this flashing band at that end?
       const cornerKept = (end: -1 | 1) => {
         const k = cornerAt(end);
         return mainCorners.some((c) => c.end !== 'partition' && c.sx === k.sx && c.zs === k.zs && c.y0 < y1 - EPS && c.y1 > y0 + EPS);

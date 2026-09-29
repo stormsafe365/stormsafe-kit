@@ -641,10 +641,77 @@ export function edgeFrame(from: V3, to: V3, up: V3, side: V3): { f: Frame3; len:
   return { f: { o: from, x, y, z }, len, out };
 }
 
-export function rakeTrim(e: Emitter, from: V3, to: V3, up: V3, side: V3) {
+/** A plane dot(n, p) = d (world). */
+export interface CutPlane {
+  n: V3;
+  d: number;
+}
+
+/** A vertical cut plane at plan x (n = +X) or plan z (n = +Z). */
+export const plumbAt = (axis: 'x' | 'z', v: number): CutPlane => ({ n: axis === 'x' ? [1, 0, 0] : [0, 0, 1], d: v });
+
+/**
+ * Six planar faces of a hexahedron given its 8 corners, indexed
+ * end * 4 + yi * 2 + zi (end 0/1 along the frame's x, yi / zi = low/high
+ * local y / z), each wound outward.
+ */
+function hexahedron(e: Emitter, c: V3[]) {
+  const mid: V3 = scale(c.reduce((s, p) => add(s, p), [0, 0, 0] as V3), 1 / 8);
+  for (const q of [
+    [0, 1, 3, 2],
+    [4, 5, 7, 6],
+    [0, 1, 5, 4],
+    [2, 3, 7, 6],
+    [0, 2, 6, 4],
+    [1, 3, 7, 5],
+  ]) {
+    const pts = q.map((i) => c[i]);
+    let n = unit(cross(sub(pts[1], pts[0]), sub(pts[3], pts[0])));
+    const fc = scale(pts.reduce((s, p) => add(s, p), [0, 0, 0] as V3), 1 / 4);
+    if (dot(n, sub(fc, mid)) < 0) n = scale(n, -1);
+    polygon(e, pts, n);
+  }
+}
+
+/**
+ * A plate along an edge frame spanning local y [y0, y1] x z [z0, z1] from
+ * x = 0 to x = len, like box() — except that an end with a cut plane is cut
+ * by that plane instead of square to the edge (each end corner slides along
+ * the edge onto the plane), e.g. a PLUMB end on a sloped trim.
+ */
+export function cutPlate(e: Emitter, f: Frame3, len: number, y: [number, number], z: [number, number], cut0: CutPlane | null, cut1: CutPlane | null) {
+  const c: V3[] = [];
+  for (const end of [0, 1] as const) {
+    const cut = end === 0 ? cut0 : cut1;
+    for (const yy of y)
+      for (const zz of z) {
+        let s = end === 0 ? 0 : len;
+        if (cut) {
+          const dn = dot(cut.n, f.x);
+          if (Math.abs(dn) > 1e-6) s = (cut.d - dot(cut.n, at(f, [0, yy, zz]))) / dn;
+        }
+        c.push(at(f, [s, yy, zz]));
+      }
+  }
+  hexahedron(e, c);
+}
+
+/**
+ * Rake L trim from `from` to `to`. Optional cut planes replace the square
+ * ends (a lean-to rake ending on the closure at a main corner gets a PLUMB
+ * end, so its sloped face never leans past the closure into the corner trim);
+ * with none it is the plain two-box rake (byte-identical to Phase 5).
+ */
+export function rakeTrim(e: Emitter, from: V3, to: V3, up: V3, side: V3, cutFrom: CutPlane | null = null, cutTo: CutPlane | null = null) {
   const { f, len, out } = edgeFrame(from, to, up, side);
   const T = SHELL.trimT;
   const k = SHELL.rake;
+  if (cutFrom || cutTo) {
+    const zr = (a: number, b: number): [number, number] => [Math.min(a, b), Math.max(a, b)];
+    cutPlate(e, f, len, [k.faceCenter - k.face / 2, k.faceCenter + k.face / 2], zr(0, out * T), cutFrom, cutTo);
+    cutPlate(e, f, len, [k.legCenter - T / 2, k.legCenter + T / 2], zr(0, -out * k.leg), cutFrom, cutTo);
+    return;
+  }
   box(e, f, [len / 2, k.faceCenter, (out * T) / 2], [len, k.face, T]); // face over the roof edge
   box(e, f, [len / 2, k.legCenter, -out * (k.leg / 2)], [len, T, k.leg]); // leg lying on the panel
 }

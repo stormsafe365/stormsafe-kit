@@ -120,8 +120,14 @@ export const ENHANCED_MATERIAL_PARAMS = {
   },
   /** Window glass (lab M.glass; same values as the builder's classic glass). */
   glass: { color: '#aab4ba', metalness: 0.35, roughness: 0.08, envMapIntensity: 1.25, opacity: 0.78 },
-  /** Structural frame, bare Galvalume (HANDOFF Step 8; lab M.frame). */
-  frame: { metalness: 0.85, roughness: 0.45, envMapIntensity: 0.6 },
+  /**
+   * Structural frame, bare Galvalume (HANDOFF Step 8: metalness ~0.85,
+   * roughness ~0.45; lab M.frame). The lab's env 0.6 washes the thin tubes out
+   * to a flat pale blue under the builder's bright, even sky (legs vanish
+   * against the slab / light background in the Phase-8 screenshots); a gentler
+   * 0.3 keeps every face readable as steel.
+   */
+  frame: { metalness: 0.85, roughness: 0.45, envMapIntensity: 0.3 },
   /**
    * Door hardware (lab L877-885 + the roll-up lift handle). The lab left these
    * at envMapIntensity 1 (its applyMode gave every material the env map).

@@ -1,5 +1,6 @@
 import type { Member } from '@/engine/geometry';
 import type { FramingGauge } from '@/types/building';
+import type { RenderStyle } from '@/store/useEditorStore';
 import {
   FRAME_PROFILES,
   HAT_CHANNEL_VISUAL_FT,
@@ -7,12 +8,23 @@ import {
   RAIL_VISUAL_FT,
 } from '@/config/materials';
 import { SteelMember } from './SteelMember';
+import { useEnhancedMaterials } from './enhanced/ShellMeshes';
 
 interface FrameProps {
   members: Member[];
   framingGauge: FramingGauge;
   /** Structure/cutaway view — paint all members a touch brighter so they read. */
   emphasize?: boolean;
+  /**
+   * View-only Look (render-upgrade). 'classic' (default) = today's per-member
+   * materials, byte-identical. 'enhanced' = HANDOFF Step 8: the SAME members
+   * (single / double / ladder legs untouched) in one shared bare-Galvalume
+   * material (materials.ts 'frame': metalness 0.85, roughness 0.45, gentle env)
+   * and no shadow casting (owner: even, bright, readable — no frame shadows on
+   * the shell). The frame sits outside ShellGroup, so Structure / Cutaway still
+   * ghost only the shell.
+   */
+  look?: RenderStyle;
 }
 
 // Every framing member is bare galvalume steel — columns, rafters, ridge, base
@@ -28,9 +40,16 @@ const GALVALUME_EMPHASIZED = '#d6dde4';
  * members (purlins, girts, hat channels) use fixed thinner profiles. All
  * members are galvalume — the framing is bare galvanized steel.
  */
-export function Frame({ members, framingGauge, emphasize = false }: FrameProps) {
+export function Frame({ members, framingGauge, emphasize = false, look = 'classic' }: FrameProps) {
   const frameSize = FRAME_PROFILES[framingGauge].visualSizeFt;
   const color = emphasize ? GALVALUME_EMPHASIZED : GALVALUME;
+  // Enhanced: one cached material for every member (retained while mounted,
+  // released when the Look flips back or the frame unmounts). The classic
+  // path never asks for it, so it retains nothing.
+  const enhancedMaterial = useEnhancedMaterials();
+  const enhanced = look === 'enhanced';
+  // Palette Galvalume; structure / cutaway use the classic emphasized tone so the frame still pops.
+  const frameMat = enhanced ? enhancedMaterial({ surface: 'frame', color: emphasize ? GALVALUME_EMPHASIZED : undefined }) : undefined;
 
   return (
     <group>
@@ -56,7 +75,20 @@ export function Frame({ members, framingGauge, emphasize = false }: FrameProps) 
             break; // legs + rafters use full gauge size
         }
 
-        return (
+        return frameMat ? (
+          // Distinct keys per Look: flipping it remounts the members instead of
+          // swapping a JSX material child for a material prop on the same mesh.
+          <SteelMember
+            key={`e-${m.kind}-${i}`}
+            start={m.start}
+            end={m.end}
+            size={size}
+            color={color}
+            material={frameMat}
+            castShadow={false}
+            receiveShadow={false}
+          />
+        ) : (
           <SteelMember key={`${m.kind}-${i}`} start={m.start} end={m.end} size={size} color={color} />
         );
       })}

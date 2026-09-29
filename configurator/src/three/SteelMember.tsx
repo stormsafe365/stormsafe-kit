@@ -12,6 +12,15 @@ interface SteelMemberProps {
   color: string;
   metalness?: number;
   roughness?: number;
+  /**
+   * An explicit material to use INSTEAD of the per-member color / metalness /
+   * roughness one (the enhanced Look's shared bare-Galvalume frame material).
+   * Owned by the caller; omitted = the classic JSX material, unchanged.
+   */
+  material?: THREE.Material;
+  /** Shadow flags (default true = classic). The enhanced Look casts none. */
+  castShadow?: boolean;
+  receiveShadow?: boolean;
 }
 
 /**
@@ -26,6 +35,9 @@ export function SteelMember({
   color,
   metalness = 0.7,
   roughness = 0.45,
+  material,
+  castShadow = true,
+  receiveShadow = true,
 }: SteelMemberProps) {
   const { position, quaternion, length } = useMemo(() => {
     const a = new THREE.Vector3(...start);
@@ -37,8 +49,15 @@ export function SteelMember({
     return { position: mid, quaternion: quat, length: len };
   }, [start, end]);
 
+  if (material) {
+    return (
+      <mesh position={position} quaternion={quaternion} material={material} castShadow={castShadow} receiveShadow={receiveShadow}>
+        <boxGeometry args={[size, length, size]} />
+      </mesh>
+    );
+  }
   return (
-    <mesh position={position} quaternion={quaternion} castShadow receiveShadow>
+    <mesh position={position} quaternion={quaternion} castShadow={castShadow} receiveShadow={receiveShadow}>
       {/* Box is unit-tall on Y, then stretched to the member length. */}
       <boxGeometry args={[size, length, size]} />
       <meshStandardMaterial color={color} metalness={metalness} roughness={roughness} />

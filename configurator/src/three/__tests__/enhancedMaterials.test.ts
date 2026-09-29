@@ -174,7 +174,7 @@ describe('Galvalume (code OR hex)', () => {
     const u = getEnhancedMaterial({ surface: 'roofUnder' });
     expect([u.metalness, u.roughness, u.envMapIntensity]).toEqual([0.85, 0.55, 0.4]);
     const f = getEnhancedMaterial({ surface: 'frame' });
-    expect([f.metalness, f.roughness, f.envMapIntensity]).toEqual([0.85, 0.45, 0.6]);
+    expect([f.metalness, f.roughness, f.envMapIntensity]).toEqual([0.85, 0.45, 0.3]); // gentle env (phase 8)
   });
 });
 

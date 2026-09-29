@@ -100,7 +100,9 @@ function ClassicShell({ structure, config, trimHex }: ShellProps) {
  * 7: the door / window / roll-up / frame-out fixtures are the enhanced look
  * (enhanced/fixtures.tsx) drawn by the SAME Openings / DraggableLeanToOpening
  * components (look="enhanced"), so their placement, drag, click threshold,
- * write-back, guides and Spacing are untouched. Everything here sits inside ShellGroup,
+ * write-back, guides and Spacing are untouched. Phase 8: the frame (outside
+ * ShellGroup, drawn by BuildingModel) takes the shared bare-Galvalume material
+ * and casts no shadows (Frame look="enhanced"). Everything here sits inside ShellGroup,
  * so decals / shade bands that must keep their own opacity need
  * material.userData.keepTransparent. (Flipping the Look remounts the shell;
  * three sorts opaque draws by material.id, so a classic build viewed right
@@ -158,7 +160,7 @@ export function BuildingModel() {
 
   return (
     <group>
-      <Frame members={structure.members} framingGauge={config.framingGauge} emphasize={showFrameProminent} />
+      <Frame members={structure.members} framingGauge={config.framingGauge} emphasize={showFrameProminent} look={renderStyle} />
       <ShellGroup opacity={SHELL_OPACITY[viewMode]}>
         {/* The single renderStyle branch point for the building shell. */}
         {renderStyle === 'enhanced' ? (

@@ -2,27 +2,35 @@ import { useMemo, useRef, useState } from 'react';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import type { LeanToOpening, Opening, OpeningType, WallSide } from '@/types/building';
+import type { Opening, OpeningType, WallSide } from '@/types/building';
 import { COMPONENT_OUTSET, SHEET_OUTSET, openingWorldTransform, type LeanToStructure, type StructureModel, type Vec3 } from '@/engine/geometry';
 import { clampOffset, checkCollision } from '@/engine/layout';
 import { TRUSS_CLEARANCE_FT } from '@/config/constants';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures';
+import { CLICK_DRAG_THRESHOLD_PX, swingAngle, walkDoorHingeX, walkDoorKnobX } from './openingAnim';
+import { ftIn, roofLengthLabel } from './dimLabels';
+import { useOpenAmount } from './useOpenAmount';
+import { OpeningHitPlane } from './OpeningFixture';
+import { chamferFillGeometry, chamferFrameGeometry, chamferPanelGeometry, cut45Leg } from './cut45Geometry';
+import { EnhancedFixture } from './enhanced/fixtures';
+import { fixtureFaceZ, mainOpeningsSheeted } from './enhanced/fixtureLayout';
+
+// Re-exported: LeanToSiding and others import ftIn from here.
+export { ftIn };
 
 interface OpeningsProps {
   openings: Opening[];
   structure: StructureModel;
   trimColor: string;
   wallColor: string;
-}
-
-/** Feet (decimal) → feet-inches string, e.g. 4.75 → 4'9". */
-export function ftIn(ft: number): string {
-  const totalIn = Math.round(ft * 12);
-  const f = Math.floor(totalIn / 12);
-  const i = totalIn % 12;
-  return i ? `${f}'${i}"` : `${f}'`;
+  /**
+   * Fixture look. Omitted = classic (today's fixtures, the default). 'enhanced'
+   * draws enhanced/fixtures.tsx inside the SAME wall transform; placement,
+   * drag, click threshold, write-back, guides and Spacing are shared.
+   */
+  look?: 'classic' | 'enhanced';
 }
 
 const PANEL_COLOR: Record<OpeningType, string> = {
@@ -54,7 +62,7 @@ const isDarkHex = (hex?: string): boolean => {
   return 0.299 * r + 0.587 * g + 0.114 * b < 110;
 };
 
-export function Openings({ openings, structure, trimColor, wallColor }: OpeningsProps) {
+export function Openings({ openings, structure, trimColor, wallColor, look = 'classic' }: OpeningsProps) {
   // Render an opening wherever it's placed — doors / frame-outs commonly go on
   // open carport ends, gable-only ends, and partial-sheeted sides. The only
   // guard: a partition opening needs an actual partition (GCH split) to exist.
@@ -62,10 +70,26 @@ export function Openings({ openings, structure, trimColor, wallColor }: Openings
   const selectedId = useEditorStore((s) => s.selectedOpeningId);
   const showSpacing = useEditorStore((s) => s.showSpacing);
   const sel = visible.find((o) => o.id === selectedId);
+  const enhanced = look === 'enhanced';
+  // Enhanced only: which openings have sheeting around them (they get a reveal).
+  const sheetedKey = enhanced ? JSON.stringify(visible.map((o) => [o.id, o.type, o.side, o.offset, o.width, o.height, o.sillHeight])) : '';
+  const sheeted = useMemo(
+    () => (enhanced ? mainOpeningsSheeted(structure, visible) : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sheetedKey covers the openings
+    [enhanced, structure, sheetedKey],
+  );
   return (
     <group>
       {visible.map((o) => (
-        <DraggableOpening key={o.id} opening={o} structure={structure} trimColor={trimColor} wallColor={wallColor} />
+        <DraggableOpening
+          key={o.id}
+          opening={o}
+          structure={structure}
+          trimColor={trimColor}
+          wallColor={wallColor}
+          enhanced={enhanced}
+          sheeted={!!sheeted?.[o.id]}
+        />
       ))}
       {showSpacing && <SpacingOverlay openings={visible} structure={structure} />}
       {sel && !showSpacing && (
@@ -84,11 +108,17 @@ function DraggableOpening({
   structure,
   trimColor,
   wallColor,
+  enhanced = false,
+  sheeted = false,
 }: {
   opening: Opening;
   structure: StructureModel;
   trimColor: string;
   wallColor: string;
+  /** Draw the enhanced fixture (same transform, same pointer handling). */
+  enhanced?: boolean;
+  /** Enhanced only: sheeting surrounds this opening (reveal). */
+  sheeted?: boolean;
 }) {
   const updateOpening = useBuildingStore((s) => s.updateOpening);
   const { selectOpening, setActiveWall, setDragging } = useEditorStore();
@@ -101,20 +131,17 @@ function DraggableOpening({
 
   // Click-to-open animation (Sensei-style): walk door swings open on its
   // hinges, roll-up/garage door rolls up, window's lower sash slides up. A
-  // CLICK toggles it; a real drag (moved > 5px) still just slides the part.
+  // CLICK toggles it; a real drag (CLICK_DRAG_THRESHOLD_PX = 5px or more) still just slides the part.
   const isOpen = useEditorStore((s) => !!s.openIds[opening.id]);
   const toggleOpen = useEditorStore((s) => s.toggleOpen);
-  const openT = useRef(0);
   const swingRef = useRef<THREE.Group>(null);
   const rollRef = useRef<THREE.Group>(null);
   const sashRef = useRef<THREE.Group>(null);
-  useFrame((_, dt) => {
-    const target = isOpen ? 1 : 0;
-    if (Math.abs(openT.current - target) < 0.001) return;
-    openT.current += (target - openT.current) * Math.min(1, dt * 4);
-    if (Math.abs(openT.current - target) < 0.002) openT.current = target;
-    const t = openT.current;
-    if (swingRef.current) swingRef.current.rotation.y = (opening.impact ? -1 : 1) * t * 1.6; // hi-impact swings OUT, standard swings IN (hinge left, knob right)
+  // Classic motion (the enhanced fixture runs its own). useOpenAmount keeps the
+  // classic ease, snaps shut when a PDF capture starts (captureMode) and snaps
+  // under prefers-reduced-motion.
+  useOpenAmount(isOpen, (t) => {
+    if (swingRef.current) swingRef.current.rotation.y = swingAngle(opening.impact, t); // hi-impact swings OUT, standard swings IN (hinge left, knob right)
     if (rollRef.current) {
       const k = 0.9 * t; // roll up to ~10% showing at the header
       rollRef.current.scale.y = 1 - k;
@@ -143,9 +170,10 @@ function DraggableOpening({
   // door still reads as a clean rectangle with clipped corners (matches Sensei
   // / IdeaRoom), never a trapezoid.
   const cut45 = opening.type === 'rollUpDoor' && !!opening.cut45;
-  const cutC = Math.min(0.83, w * 0.09, h * 0.09); // chamfer leg (equal H/V = 45°)
+  const cutC = cut45Leg(w, h); // chamfer leg (equal H/V = 45°)
 
   const panelMat = useMemo(() => {
+    if (enhanced) return null; // the enhanced fixture uses the shared enhanced materials
     if (isWalk) {
       // Walk-through door face: style (std/6-panel/9-lite/diamond) + white/black.
       const map = doorTexFor((opening.doorStyle ?? 'std') as DoorStyle, doorDark);
@@ -199,83 +227,30 @@ function DraggableOpening({
       metalness: 0.3,
       roughness: 0.6,
     });
-  }, [isWalk, isSlat, isGlass, isFrameOut, opening.type, h, opening.color, opening.doorStyle, doorDark]);
+  }, [enhanced, isWalk, isSlat, isGlass, isFrameOut, opening.type, h, opening.color, opening.doorStyle, doorDark]);
 
   // Door panel with both top corners cut at 45° (extruded chamfered rectangle).
   const t = 0.17; // jamb/header face ~2" (spec 2–3") — folded flashing
   const trimDepth = 0.07; // shallow proud depth (not a thick picture frame)
 
-  // Front-face UVs are normalized 0..1 over the bounding box so the slat texture
-  // tiles exactly like the plain box panel does.
-  const cutGeo = useMemo(() => {
-    if (!cut45) return null;
-    const c = cutC;
-    const d = isFrameOut ? 0.06 : 0.09;
-    const s = new THREE.Shape();
-    s.moveTo(-w / 2, -h / 2);
-    s.lineTo(w / 2, -h / 2);
-    s.lineTo(w / 2, h / 2 - c);
-    s.lineTo(w / 2 - c, h / 2);
-    s.lineTo(-w / 2 + c, h / 2);
-    s.lineTo(-w / 2, h / 2 - c);
-    s.closePath();
-    const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false });
-    g.translate(0, 0, -d / 2);
-    const p = g.attributes.position;
-    const uv = g.attributes.uv;
-    for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) + w / 2) / w, (p.getY(i) + h / 2) / h);
-    uv.needsUpdate = true;
-    return g;
-  }, [cut45, cutC, w, h, isFrameOut]);
-
-  // Trim as ONE continuous folded U-frame following the chamfered outline:
-  // jambs + header + the two corner clips traced as a single band of uniform
-  // width `t`, open at the bottom (floor door). Perfectly mitered corners — no
-  // overshoot/notches from stacking separate boxes.
-  const cutFrameGeo = useMemo(() => {
-    if (!cut45) return null;
-    const c = cutC;
-    const a = t * (Math.SQRT2 - 1); // chamfer endpoints shift along the edges when offset out by t
-    const s = new THREE.Shape();
-    // Outer perimeter: up the left edge, across the top (around both clips), down the right.
-    s.moveTo(-w / 2 - t, -h / 2);
-    s.lineTo(-w / 2 - t, h / 2 - c + a);
-    s.lineTo(-w / 2 + c - a, h / 2 + t);
-    s.lineTo(w / 2 - c + a, h / 2 + t);
-    s.lineTo(w / 2 + t, h / 2 - c + a);
-    s.lineTo(w / 2 + t, -h / 2);
-    // Inner perimeter (door edge) back down the right, across top, up the left.
-    s.lineTo(w / 2, -h / 2);
-    s.lineTo(w / 2, h / 2 - c);
-    s.lineTo(w / 2 - c, h / 2);
-    s.lineTo(-w / 2 + c, h / 2);
-    s.lineTo(-w / 2, h / 2 - c);
-    s.lineTo(-w / 2, -h / 2);
-    s.closePath();
-    const g = new THREE.ExtrudeGeometry(s, { depth: trimDepth, bevelEnabled: false });
-    g.translate(0, 0, -trimDepth / 2);
-    return g;
-  }, [cut45, cutC, w, h, t, trimDepth]);
-
-  // The chamfer removes the door's top corners, exposing the rectangular wall
-  // opening behind → you'd see straight inside. Cap each cut corner with a
-  // wall-colored triangle at the WALL plane so it reads as solid sheeting
-  // (matching the manufacturer look) instead of a see-through gap.
-  const cutFillGeo = useMemo(() => {
-    if (!cut45) return null;
-    const c = cutC;
-    const z = -(COMPONENT_OUTSET - SHEET_OUTSET); // wall sheeting plane in the fixture frame
-    const v = new Float32Array([
-      // top-right corner triangle
-      w / 2, h / 2 - c, z, w / 2, h / 2, z, w / 2 - c, h / 2, z,
-      // top-left corner triangle
-      -w / 2, h / 2 - c, z, -w / 2 + c, h / 2, z, -w / 2, h / 2, z,
-    ]);
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(v, 3));
-    g.computeVertexNormals();
-    return g;
-  }, [cut45, cutC, w, h]);
+  // 45° angle-cut shapes (cut45Geometry.ts, shared with the enhanced fixture):
+  // the chamfered panel (UVs 0..1 so the slats tile like the box panel), ONE
+  // continuous folded U-frame trim following the chamfered outline, and
+  // wall-colored corner caps at the WALL plane so the cut corners read as
+  // solid sheeting instead of a see-through gap. Classic only.
+  const cutGeo = useMemo(
+    () => (cut45 && !enhanced ? chamferPanelGeometry(w, h, cutC, isFrameOut ? 0.06 : 0.09) : null),
+    [cut45, enhanced, cutC, w, h, isFrameOut],
+  );
+  const cutFrameGeo = useMemo(
+    () => (cut45 && !enhanced ? chamferFrameGeometry(w, h, cutC, t, trimDepth) : null),
+    [cut45, enhanced, cutC, w, h, t, trimDepth],
+  );
+  const cutFillGeo = useMemo(
+    // z = the wall sheeting plane in the fixture frame
+    () => (cut45 && !enhanced ? chamferFillGeometry(w, h, cutC, -(COMPONENT_OUTSET - SHEET_OUTSET)) : null),
+    [cut45, enhanced, cutC, w, h],
+  );
 
   // --- Direct 3D drag: grab the component and slide it along its wall ---
   // Uses window-level listeners + manual raycast so the drag never depends on
@@ -296,7 +271,7 @@ function DraggableOpening({
     const move = (ev: PointerEvent) => {
       if (!dragRef.current) return;
       moved = Math.max(moved, Math.hypot(ev.clientX - sx, ev.clientY - sy));
-      if (moved < 5) return; // not a drag yet — a click stays a click (opens/closes)
+      if (moved < CLICK_DRAG_THRESHOLD_PX) return; // not a drag yet — a click stays a click (opens/closes)
       if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
       const rect = gl.domElement.getBoundingClientRect();
       const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
@@ -310,7 +285,7 @@ function DraggableOpening({
     const up = () => {
       dragRef.current = false;
       if (controls) controls.enabled = true;
-      if (moved < 5 && opening.type !== 'frameOut') toggleOpen(oid);
+      if (moved < CLICK_DRAG_THRESHOLD_PX && opening.type !== 'frameOut') toggleOpen(oid);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       // Keep `dragging` true through this pointerup so the canvas's
@@ -321,11 +296,39 @@ function DraggableOpening({
     window.addEventListener('pointerup', up);
   };
 
+  if (enhanced) {
+    // Same wall transform, same onDown (drag / click / write-back); only the look differs.
+    return (
+      <group>
+        <group position={pos} rotation={[0, rotY, 0]}>
+          <EnhancedFixture
+            type={opening.type}
+            w={w}
+            h={h}
+            sillHeight={opening.sillHeight}
+            faceZ={fixtureFaceZ(opening.side)}
+            trimColor={trimColor}
+            wallColor={wallColor}
+            color={opening.color}
+            doorStyle={opening.doorStyle}
+            impact={opening.impact}
+            cut45={cut45}
+            sheeted={sheeted}
+            frameOutPane
+            isOpen={isOpen}
+            onPointerDown={onDown}
+          />
+        </group>
+      </group>
+    );
+  }
+
   const panelDepth = isFrameOut ? 0.06 : isGlass ? 0.035 : 0.09;
   const panelZ = isGlass ? -0.025 : 0; // recess glass behind the proud frame
   const onFloor = opening.sillHeight <= 0.1;
   // A black window carries its frame color (opening.color) — black-framed glass.
   const tc = isGlass && opening.color ? opening.color : trimColor;
+  const pm = panelMat!; // classic: always built
 
   return (
     <group>
@@ -363,15 +366,15 @@ function DraggableOpening({
             45° cut roll-up uses the chamfered extrusion instead of a box. */}
         {cutGeo ? (
           <group ref={rollRef}>
-            <mesh position={[0, 0, panelZ]} geometry={cutGeo} material={panelMat} castShadow onPointerDown={onDown} />
+            <mesh position={[0, 0, panelZ]} geometry={cutGeo} material={pm} castShadow />
             <RollUpRail w={w} h={h} panelDepth={panelDepth} color={opening.color} />
           </group>
         ) : isWalk ? (
           // Hinge pivot on the left jamb so the slab SWINGS open (click to toggle).
-          <group position={[-w / 2, 0, 0]}>
+          <group position={[walkDoorHingeX(w), 0, 0]}>
             <group ref={swingRef}>
               <group position={[w / 2, 0, 0]}>
-                <mesh position={[0, 0, panelZ]} material={panelMat} castShadow onPointerDown={onDown}>
+                <mesh position={[0, 0, panelZ]} material={pm} castShadow onPointerDown={onDown}>
                   <boxGeometry args={[w, h, panelDepth]} />
                 </mesh>
                 <WalkDoorHardware w={w} h={h} panelDepth={panelDepth} />
@@ -381,11 +384,11 @@ function DraggableOpening({
         ) : isGlass ? (
           // Double-hung: fixed upper sash + a lower sash that slides up when opened.
           <>
-            <mesh position={[0, h / 4, panelZ]} material={panelMat} onPointerDown={onDown}>
+            <mesh position={[0, h / 4, panelZ]} material={pm} onPointerDown={onDown}>
               <boxGeometry args={[w, h / 2, panelDepth]} />
             </mesh>
             <group ref={sashRef}>
-              <mesh position={[0, -h / 4, panelZ + 0.03]} material={panelMat} onPointerDown={onDown}>
+              <mesh position={[0, -h / 4, panelZ + 0.03]} material={pm} onPointerDown={onDown}>
                 <boxGeometry args={[w, h / 2, panelDepth]} />
               </mesh>
               {/* meeting rail rides on top of the lower sash */}
@@ -394,7 +397,7 @@ function DraggableOpening({
           </>
         ) : (
           <group ref={isSlat ? rollRef : undefined}>
-            <mesh position={[0, 0, panelZ]} material={panelMat} castShadow={!isFrameOut} onPointerDown={onDown}>
+            <mesh position={[0, 0, panelZ]} material={pm} castShadow={!isFrameOut} onPointerDown={isSlat ? undefined : onDown}>
               <boxGeometry args={[w, h, panelDepth]} />
             </mesh>
             {opening.type === 'rollUpDoor' && <RollUpRail w={w} h={h} panelDepth={panelDepth} color={opening.color} />}
@@ -419,6 +422,11 @@ function DraggableOpening({
 
         {/* Walk-door hardware + roll-up rail live INSIDE the moving panel groups
             above (WalkDoorHardware / RollUpRail) so they travel with the slab. */}
+
+        {/* Roll-up / garage door: a FIXED invisible hit plane the size of the
+            opening takes the clicks and drags, so the door stays clickable
+            (to close) wherever the rolled curtain is. Draws nothing. */}
+        {isSlat && <OpeningHitPlane w={w} h={h} z={panelDepth / 2} onPointerDown={onDown} />}
 
         {/* Components are added / duplicated / removed in the pricing program
             (the source of truth that also prices them); the 3D only positions
@@ -468,7 +476,7 @@ function TrimBar({
 function WalkDoorHardware({ w, h, panelDepth }: { w: number; h: number; panelDepth: number }) {
   return (
     <group>
-      <group position={[w / 2 - 0.2, -h / 2 + 3.0, panelDepth / 2]}>
+      <group position={[walkDoorKnobX(w), -h / 2 + 3.0, panelDepth / 2]}>
         <mesh position={[0, 0, 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow>
           <cylinderGeometry args={[0.07, 0.07, 0.03, 18]} />
           <meshStandardMaterial color="#6b7077" metalness={0.85} roughness={0.28} />
@@ -637,21 +645,14 @@ function SpacingOverlay({ openings, structure }: { openings: Opening[]; structur
   );
 }
 
-function ltSizeLabel(o: LeanToOpening): string {
-  if (o.type === 'walkDoor' || o.type === 'window') return `${Math.round(o.widthFt * 12)}"x${Math.round(o.heightFt * 12)}"`;
-  return `${ftIn(o.widthFt)}x${ftIn(o.heightFt)}`;
-}
-
 /**
  * Spacing overlay for each LEAN-TO (owner 9/29/26: "it should reflect all
  * dimensions of the lean-to, not just the main building"). On the lean-to end
  * facing the camera: LOW LEG height, HIGH SIDE (connection) height, width out
  * from the building and roof pitch. When its outer side faces the camera: its
  * length, roof-edge length with overhang, and where it starts/stops along a
- * longer building wall. Plus every lean-to door/window/roll-up/frame-out size,
- * the gaps between them and sill heights, on each lean-to wall facing the
- * camera. Wall positions mirror LeanToSiding's placement math (outer-wall
- * offsets from spanStart; end-wall offsets from the across-minimum edge).
+ * longer building wall. Lean-to door/window/roll-up/frame-out sizes, gaps and
+ * sills on lean-to walls are drawn by LeanToSpacing.tsx (render-upgrade P7).
  */
 function LeanToSpacing({ lt, structure }: { lt: LeanToStructure; structure: StructureModel }) {
   const camera = useThree((st) => st.camera);
@@ -662,7 +663,6 @@ function LeanToSpacing({ lt, structure }: { lt: LeanToStructure; structure: Stru
   const s0 = lt.spanStart, s1 = lt.spanEnd;
   const lh = lt.lowLegHeightFt, hh = lt.peakHeightFt;
   const W = Math.abs(outA - inA), L = Math.abs(s1 - s0);
-  const minA = Math.min(inA, outA);
   const oh = structure.roofOverhangFt ?? 0;
   // main-building extent along the lean-to's run axis
   const runMin = eaveAtt ? -structure.length / 2 : -structure.width / 2;
@@ -689,53 +689,6 @@ function LeanToSpacing({ lt, structure }: { lt: LeanToStructure; structure: Stru
   const OFF = 0.6;
   const rEnd = endR + endOut * OFF;
   const pitch = W > 0 ? Math.round(((hh - lh) / W) * 12 * 2) / 2 : 0;
-  const r3 = (v: number) => Math.round(v * 1000) / 1000;
-
-  // Gap chain + size chips + sills along one lean-to wall.
-  //   along(t) → world point at position t (0..len) along the wall, height y.
-  function wallChain(key: string, items: LeanToOpening[], len: number, along: (t: number, y: number) => Vec3, capAt: (t: number) => number) {
-    const sorted = [...items].sort((a, b) => a.offsetFt - b.offsetFt);
-    const stops = Array.from(new Set([0, len, ...sorted.flatMap((o) => [r3(o.offsetFt - o.widthFt / 2), r3(o.offsetFt + o.widthFt / 2)])]))
-      .filter((v) => v >= -0.01 && v <= len + 0.01)
-      .sort((a, b) => a - b);
-    const isOpening = (a: number, b: number) =>
-      sorted.some((o) => Math.abs(o.offsetFt - o.widthFt / 2 - a) < 0.02 && Math.abs(o.offsetFt + o.widthFt / 2 - b) < 0.02);
-    const gapY = Math.min(1.3, lh * 0.25);
-    const gaps: Array<[number, number]> = [];
-    for (let i = 0; i < stops.length - 1; i++) {
-      const a = stops[i], b = stops[i + 1];
-      if (b - a > 0.05 && !isOpening(a, b)) gaps.push([a, b]);
-    }
-    return (
-      <group key={key}>
-        {sorted.length > 0 && gaps.map(([a, b], i) => (
-          <Measure key={`g${i}`} a={along(a, gapY)} b={along(b, gapY)} mid={along((a + b) / 2, gapY)} label={ftIn(b - a)} />
-        ))}
-        {sorted.map((o) => {
-          const top = o.sillFt + o.heightFt;
-          const chipY = Math.min(capAt(o.offsetFt) - 0.3, top + 0.6);
-          const Lft = o.offsetFt - o.widthFt / 2;
-          return (
-            <group key={o.id}>
-              <Chip3D at={along(o.offsetFt, chipY)} label={ltSizeLabel(o)} />
-              {o.sillFt > 0.1 && (
-                <Measure a={along(Lft - 0.2, 0)} b={along(Lft - 0.2, o.sillFt)} mid={along(Lft - 0.2, o.sillFt / 2)} label={`sill ${ftIn(o.sillFt)}`} vertical />
-              )}
-            </group>
-          );
-        })}
-      </group>
-    );
-  }
-  // local wall height at an across position (low at the outer edge, high at the building)
-  const endHeightAt = (acrossFromMin: number) => {
-    const a = minA + acrossFromMin;
-    return lh + (hh - lh) * (W > 0 ? Math.abs(a - outA) / W : 0);
-  };
-  const outerOps = lt.openings.filter((o) => o.wall === 'outer');
-  const frontOps = lt.openings.filter((o) => o.wall === 'front');
-  const backOps = lt.openings.filter((o) => o.wall === 'back');
-
   // Behind the building (none of its walls face the camera) → show nothing; the
   // labels draw on top of everything and would float through the main walls.
   if (!seeFront && !seeBack && !seeOuter) return null;
@@ -758,11 +711,8 @@ function LeanToSpacing({ lt, structure }: { lt: LeanToStructure; structure: Stru
           {runMax - s1 > 0.05 && (
             <Measure a={P(outA + dirA * OFF, s1, 0.3)} b={P(outA + dirA * OFF, runMax, 0.3)} mid={P(outA + dirA * OFF, (s1 + runMax) / 2, 0.3)} label={`${ftIn(runMax - s1)} no lean-to`} />
           )}
-          {wallChain('outer', outerOps, L, (t, y) => P(outA + dirA * 0.22, s0 + t, y), () => lh)}
         </>
       )}
-      {seeFront && wallChain('front', frontOps, W, (t, y) => P(minA + t, s0 - 0.22, y), endHeightAt)}
-      {seeBack && wallChain('back', backOps, W, (t, y) => P(minA + t, s1 + 0.22, y), endHeightAt)}
     </group>
   );
 }
@@ -824,7 +774,7 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
           a={pt(-oh, eave + 0.45)}
           b={pt(span + oh, eave + 0.45)}
           mid={pt(span / 2, eave + 0.45)}
-          label={`${ftIn(span + 2 * oh)} roof`}
+          label={roofLengthLabel(span, oh)}
         />
       )}
       {gable && (

@@ -1,5 +1,6 @@
 import type { BuildingType, EndSheeting, LeanToOpening, OpenEnd, Opening, WallOverrides, WallSide } from '@/types/building';
 import type { ResolvedBuilding } from './ruleEngine';
+import { leanToWallSettings, rendersLeanToFixture } from './leanToFixtures';
 
 /**
  * LAYER 2 (cont.) — Structural geometry derivation.
@@ -124,6 +125,30 @@ const member = (kind: MemberKind, start: Vec3, end: Vec3): Member => ({
   end,
   length: dist(start, end),
 });
+
+/**
+ * Column style for a leg `heightFt` tall on a bent `widthFt` wide — the
+ * program's badge rule (quote-builder doBld; Master Price Book 7/16/26
+ * footnote; owner 9/28/26):
+ *   LADDER when W >= 52 (any height);
+ *   DOUBLE when W is 32-51, or the leg is 15'+ tall;
+ *   SINGLE otherwise.
+ * The main building evaluates it with its width + eave height. A lean-to
+ * (owner 9/29/26 — DRAWING ONLY, no price change) evaluates it with its own
+ * width and each post's own height, so a 15'+ lean-to post is doubled; lean-to
+ * widths (8-20) never reach the width rules.
+ */
+export type LegStyle = 'single' | 'double' | 'ladder';
+export function legStyleFor(widthFt: number, heightFt: number): LegStyle {
+  if (widthFt >= 52) return 'ladder';
+  if ((widthFt > 31 && widthFt < 52) || heightFt >= 15) return 'double';
+  return 'single';
+}
+
+/** Doubled-post gap (ft): the second post stands this far inboard in the bent plane. */
+const DOUBLE_D = 0.4;
+/** Ladder column depth (ft, inboard in the bent plane) for a leg `heightFt` tall. */
+const ladderDepth = (heightFt: number): number => Math.min(2, Math.max(1.3, heightFt * 0.09));
 
 const purlinRunsPerSlope = (rafterLength: number): number => Math.max(2, Math.round(rafterLength / 3));
 const hatRows = (legHeight: number): number => Math.max(2, Math.round(legHeight / 2));
@@ -261,19 +286,68 @@ function clipFrameAtEaveOpenings(members: Member[], openings: Opening[], halfW: 
  * an opening on that wall spans the post's run position, the part of the member
  * inside the opening's height band is removed. Mirrors openingPlacement's math:
  * the opening centre along the run is `spanStart + offsetFt`.
+ *
+ * The outer wall's column may be DOUBLED (a 15'+ lean-to post, see
+ * legStyleFor): its second post and inset base rail stand `depth` inboard of
+ * the wall plane, so the band reaches that far INBOARD (never outboard) — the
+ * lean-to analogue of the main eave clip's deep-column band. A single-post
+ * lean-to keeps the original ±0.1 ft plane test exactly.
+ *
+ * END-wall openings (wall 'front' = the run-start end bent, 'back' = the
+ * run-end bent; only ones whose fixture is drawn — rendersLeanToFixture)
+ * sit in the end bent's own plane, where the knee brace runs
+ * diagonally from the outer post up to the rafter. There a lean-to post
+ * (outboard of the main wall line only — the main building's own leg at the
+ * inner corner is never touched) is cut over the opening's height like any
+ * post, and a knee brace that would cross the opening (or its trim, within
+ * END_BRACE_CLEAR) is left out of that bent entirely rather than leaving
+ * floating stubs: a framed walk-through has nothing across its corner.
  */
+const END_BRACE_CLEAR = 0.25;
 function clipFrameAtLeanToOpenings(members: Member[], leanTos: LeanToStructure[]): Member[] {
-  type Band = { eave: boolean; plane: number; lo: number; hi: number; ylo: number; yhi: number };
+  type Band = { eave: boolean; plane: number; inb: number; depth: number; lo: number; hi: number; ylo: number; yhi: number };
+  /** An opening on a lean-to END wall, in that end bent's plane (run = const). */
+  type EndBand = { eave: boolean; run: number; inner: number; sOut: number; width: number; lo: number; hi: number; ylo: number; yhi: number };
   const bands: Band[] = [];
+  const endBands: EndBand[] = [];
   for (const lt of leanTos) {
     const eave = lt.attachedSide === 'Left Eave' || lt.attachedSide === 'Right Eave';
+    const plane = eave ? lt.outer.x : lt.outer.z;
+    const innerPlane = eave ? lt.inner.x : lt.inner.z;
+    const inb = Math.sign(innerPlane - plane) || 1; // outer wall -> main building
+    const style = legStyleFor(lt.widthFt, lt.lowLegHeightFt);
+    const depth = style === 'ladder' ? ladderDepth(lt.lowLegHeightFt) : style === 'double' ? DOUBLE_D : 0;
+    const walls = leanToWallSettings(lt);
     for (const op of lt.openings ?? []) {
+      if (op.wall === 'front' || op.wall === 'back') {
+        // Only an end-wall opening that is actually DRAWN (rendersLeanToFixture:
+        // a frame-out always, a door/window only on a closed end) moves framing.
+        if (!rendersLeanToFixture(op, walls)) continue;
+        // Same across math as the lean-to fixture placement (LeanToSiding
+        // openingPlacement): centre = min(inner, outer) + offsetFt.
+        const c = Math.min(innerPlane, plane) + op.offsetFt;
+        const sill = op.sillFt ?? 0;
+        endBands.push({
+          eave,
+          run: op.wall === 'front' ? lt.spanStart : lt.spanEnd,
+          inner: innerPlane,
+          sOut: -inb,
+          width: Math.abs(plane - innerPlane),
+          lo: c - op.widthFt / 2,
+          hi: c + op.widthFt / 2,
+          ylo: sill,
+          yhi: sill + op.heightFt,
+        });
+        continue;
+      }
       if (op.wall !== 'outer') continue; // posts only cross the outer long wall
       const c = lt.spanStart + op.offsetFt; // centre along the run axis
       const sill = op.sillFt ?? 0;
       bands.push({
         eave,
-        plane: eave ? lt.outer.x : lt.outer.z,
+        plane,
+        inb,
+        depth,
         lo: c - op.widthFt / 2,
         hi: c + op.widthFt / 2,
         ylo: sill,
@@ -281,7 +355,53 @@ function clipFrameAtLeanToOpenings(members: Member[], leanTos: LeanToStructure[]
       });
     }
   }
-  if (!bands.length) return members;
+  if (!bands.length && !endBands.length) return members;
+
+  // Is world coordinate `v` (across the wall) on the outer wall plane, or within
+  // the doubled column's depth inboard of it?
+  const inWallBand = (b: Band, v: number) => {
+    const d = (v - b.plane) * b.inb; // distance inboard of the wall plane
+    return d > -0.1 && d < b.depth + 0.1;
+  };
+
+  // End-wall openings: is this leg / brace one of the lean-to's own members in
+  // that end bent's plane? (Constant run coordinate at the end, both feet
+  // strictly OUTBOARD of the main wall line and not past the outer wall.)
+  const inEndBent = (b: EndBand, m: Member) => {
+    const ra = b.eave ? 2 : 0;
+    const ca = b.eave ? 0 : 2;
+    if (Math.abs(m.start[ra] - b.run) > 0.01 || Math.abs(m.end[ra] - b.run) > 0.01) return false;
+    const d0 = (m.start[ca] - b.inner) * b.sOut;
+    const d1 = (m.end[ca] - b.inner) * b.sOut;
+    return Math.min(d0, d1) > 0.05 && Math.max(d0, d1) < b.width + 0.1;
+  };
+  /** Does the segment (across, y) cross the opening rectangle grown by `pad`? (Liang-Barsky.) */
+  const segHitsRect = (b: EndBand, m: Member, pad: number) => {
+    const ca = b.eave ? 0 : 2;
+    const x0 = m.start[ca];
+    const y0 = m.start[1];
+    const dx = m.end[ca] - x0;
+    const dy = m.end[1] - y0;
+    let t0 = 0;
+    let t1 = 1;
+    const edges: Array<[number, number]> = [
+      [-dx, x0 - (b.lo - pad)],
+      [dx, b.hi + pad - x0],
+      [-dy, y0 - (b.ylo - pad)],
+      [dy, b.yhi + pad - y0],
+    ];
+    for (const [p, q] of edges) {
+      if (Math.abs(p) < 1e-9) {
+        if (q < 0) return false;
+        continue;
+      }
+      const r = q / p;
+      if (p < 0) t0 = Math.max(t0, r);
+      else t1 = Math.min(t1, r);
+      if (t0 > t1) return false;
+    }
+    return true;
+  };
 
   const out: Member[] = [];
   for (const m of members) {
@@ -296,7 +416,7 @@ function clipFrameAtLeanToOpenings(members: Member[], leanTos: LeanToStructure[]
         const runAxis = b.eave ? 2 : 0;
         const planeAxis = b.eave ? 0 : 2;
         const onPlane =
-          Math.abs(m.start[planeAxis] - b.plane) < 0.1 && Math.abs(m.end[planeAxis] - b.plane) < 0.1;
+          Math.abs(m.start[planeAxis] - m.end[planeAxis]) < 0.01 && inWallBand(b, m.start[planeAxis]);
         if (!onPlane) continue;
         const next: Array<[Vec3, Vec3]> = [];
         for (const [s, e] of railSegs) {
@@ -325,17 +445,36 @@ function clipFrameAtLeanToOpenings(members: Member[], leanTos: LeanToStructure[]
     }
     let segs: Array<[Vec3, Vec3]> = [[m.start, m.end]];
     let cut = false;
+    // Lean-to END-wall openings (see the doc comment): a knee brace that would
+    // cross one is left out of that bent; a post standing in one is cut over its
+    // height (then still goes through the outer-wall bands below).
+    const endHits = endBands.filter((b) => inEndBent(b, m));
+    if (endHits.length) {
+      const ca = endHits[0].eave ? 0 : 2;
+      if (Math.abs(m.start[ca] - m.end[ca]) >= 0.01) {
+        if (endHits.some((b) => segHitsRect(b, m, END_BRACE_CLEAR))) continue; // brace dropped
+      } else {
+        const a = m.start[ca];
+        for (const b of endHits) {
+          if (a < b.lo - 0.01 || a > b.hi + 0.01) continue;
+          const next: Array<[Vec3, Vec3]> = [];
+          for (const [s, e] of segs) next.push(...clipSegmentByY(s, e, b.ylo, b.yhi));
+          segs = next;
+          cut = true;
+        }
+      }
+    }
     for (const b of bands) {
       let onPlane: boolean;
       let run: number;
       if (b.eave) {
         const constZ = Math.abs(m.start[2] - m.end[2]) < 0.01;
-        const atPlane = Math.abs(m.start[0] - b.plane) < 0.1 || Math.abs(m.end[0] - b.plane) < 0.1;
+        const atPlane = inWallBand(b, m.start[0]) || inWallBand(b, m.end[0]);
         onPlane = constZ && atPlane;
         run = m.start[2];
       } else {
         const constX = Math.abs(m.start[0] - m.end[0]) < 0.01;
-        const atPlane = Math.abs(m.start[2] - b.plane) < 0.1 || Math.abs(m.end[2] - b.plane) < 0.1;
+        const atPlane = inWallBand(b, m.start[2]) || inWallBand(b, m.end[2]);
         onPlane = constX && atPlane;
         run = m.start[0];
       }
@@ -515,10 +654,11 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   // 8/31/26). Narrow tall buildings get double posts from 15' up — owner 9/28/26 +
   // both price books: the 15' & 16' rows "include double legs + double base rail";
   // 14' and under are single legs.
-  const doublePost = (W > 31 && W < 52) || H >= 15;
-  const ladderLeg = W >= 52;
-  const LADDER_D = Math.min(2, Math.max(1.3, H * 0.09)); // ladder column depth (inboard, X)
-  const DOUBLE_D = 0.4;                                  // doubled-post gap (inboard, X)
+  // (legStyleFor holds the rule, shared with the lean-to posts.)
+  const mainLegStyle = legStyleFor(W, H);
+  const doublePost = mainLegStyle === 'double';
+  const ladderLeg = mainLegStyle === 'ladder';
+  const LADDER_D = ladderDepth(H); // ladder column depth (inboard, X)
 
   const braceLen = Math.min(3, H * 0.45);
   const tBrace = rafterLength > 0 ? Math.min(0.5, braceLen / rafterLength) : 0;
@@ -761,9 +901,21 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     },
   };
 
-  // --- Lean-tos: SHED ROOF with intermediate trusses at building-matched spacing ---
-  // Key: lean-to truss spacing = main building truss spacing (4' or 5' OC)
-  // Trusses at each position: 2 posts (inner@connH, outer@lh) + rafters + ridge purlins
+  // --- Lean-tos: SHED-ROOF bents on the main building's truss grid ---
+  // Each bent: outer post (low, lh) + rafter up to the main wall (connH) + a
+  // knee brace at the outer post; posts follow the main leg rule (legStyleFor —
+  // a 15'+ post is doubled, drawing only); an outer base rail (doubled under a
+  // doubled post) + two roof purlins run the length. The inner (high) end of
+  // the rafter rides on the main building's own leg wherever one stands; a
+  // lean-to inner post is drawn only where none does (a partial lean-to's end
+  // between main trusses, and along a main gable wall).
+  // Bent positions (UNCHANGED from before the render port — they also feed
+  // trussOffsets, i.e. the drag-time post guides): both span ends + every
+  // main-building truss position (framePositionsZ) strictly inside the span.
+  // For a gable-attached lean-to those Z positions are reused along X, which
+  // gives short end bays (e.g. 0,3,7,...,27,30 on a 30' wall at 4' OC).
+  // Re-spacing them to the OC from the lean-to start is an owner decision that
+  // has not been made, so it is deliberately NOT done here.
   const derivedLeanTos: LeanToStructure[] = [];
   for (const lt of config.leanTos ?? []) {
     if (!lt.widthFt || !lt.lengthFt || !lt.lowLegHeightFt) continue;
@@ -782,6 +934,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     if (lt.type !== 'attached') continue;
     const side = lt.attachedSide || 'Left Eave';
     const isEave = side === 'Left Eave' || side === 'Right Eave';
+    if (!isEave && side !== 'Front Gable' && side !== 'Back Gable') continue;
 
     // Span along the attachment wall: length clamped to the wall, shifted by
     // the user-chosen start offset (ft from the building front for eave sides,
@@ -792,256 +945,120 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     const spanA = (isEave ? -halfL : -halfW) + runOff;
     const spanB = spanA + runLen;
 
-    // Filter main building truss positions that fall within the lean-to span
-    const ltPositions = framePositionsZ.filter((z) => {
-      if (isEave) {
-        return z >= spanA && z <= spanB;
-      } else {
-        // Front/Back: use X positions within the lean-to's run
-        return z >= spanA && z <= spanB;
-      }
-    });
+    // World coordinate ACROSS the lean-to (X for an eave lean-to, Z for a gable
+    // one) of its inner edge (the main wall) and outer wall. Left/Right are
+    // defined as viewed from the FRONT of the building. In the front camera
+    // (looking +Z), world +X renders on screen-LEFT, so Left Eave maps to +X
+    // and Right Eave to -X. Front Gable = -Z, Back Gable = +Z.
+    const innerC =
+      side === 'Left Eave' ? halfW : side === 'Right Eave' ? -halfW : side === 'Front Gable' ? -halfL : halfL;
+    const outerC =
+      side === 'Left Eave' ? halfW + lw : side === 'Right Eave' ? -halfW - lw : side === 'Front Gable' ? -halfL - lw : halfL + lw;
+    const sOut = Math.sign(outerC - innerC) || 1; // world direction inner -> outer
+    /** World point at run position `run`, across coordinate `c`, height `y`. */
+    const P = (run: number, c: number, y: number): Vec3 => (isEave ? [c, y, run] : [run, y, c]);
+    /** Lean-to roofline (rafter) height at across coordinate `c`. */
+    const roofY = (c: number): number =>
+      c === innerC ? connH : c === outerC ? lh : connH + (lh - connH) * ((c - innerC) / (outerC - innerC));
 
-    // Left/Right are defined as viewed from the FRONT of the building. In the
-    // front camera (looking +Z), world +X renders on screen-LEFT, so Left Eave
-    // maps to +X and Right Eave to -X.
-    const xInner = side === 'Left Eave' ? halfW : side === 'Right Eave' ? -halfW : null;
-    const xOuter = side === 'Left Eave' ? halfW + lw : side === 'Right Eave' ? -halfW - lw : null;
+    // Bent positions along the run (see the block comment: the pre-existing grid).
+    const runPos = Array.from(
+      new Set([spanA, ...framePositionsZ.filter((v) => v > spanA && v < spanB), spanB]),
+    ).sort((a, b) => a - b);
+    // Does a MAIN-building leg already stand at this run position on the lean-to's
+    // wall line? (Every main truss on an eave wall; the two corners on a gable wall.)
+    const mainLegAt = (run: number): boolean =>
+      isEave ? framePositionsZ.some((z) => Math.abs(z - run) < 0.01) : Math.abs(Math.abs(run) - halfW) < 0.01;
 
-    const zInner = side === 'Front Gable' ? -halfL : side === 'Back Gable' ? halfL : null;
-    const zOuter = side === 'Front Gable' ? -halfL - lw : side === 'Back Gable' ? halfL + lw : null;
-
-    // ===== EAVE-ATTACHED (Left or Right) =====
-    if (side === 'Left Eave' || side === 'Right Eave') {
-      // Ensure we have front and back trusses, plus intermediates
-      const zFront = spanA;
-      const zBack = spanB;
-      const allZ = [zFront, ...ltPositions.filter(z => z > zFront && z < zBack), zBack];
-      const uniqueZ = Array.from(new Set(allZ)).sort((a, b) => a - b);
-
-      // Create truss frames at each position (front + intermediates + back)
-      for (let i = 0; i < uniqueZ.length; i++) {
-        const z = uniqueZ[i];
-
-        // ONLY vertical posts at this truss location
-        members.push(member('leg', [xInner!, 0, z], [xInner!, connH, z])); // inner post (high, at wall)
-        members.push(member('leg', [xOuter!, 0, z], [xOuter!, lh, z])); // outer post (low, away from building)
-
-        // Add simple rafter (roof support) from inner post top to outer post top
-        members.push(member('rafter', [xInner!, connH, z], [xOuter!, lh, z]));
-
-        // Add corner/knee braces (crossing X-pattern for structural bracing)
-        // One diagonal from inner post top to 2/3 point along the rafter
-        const rafter2_3_X = xInner! + (xOuter! - xInner!) * (2 / 3);
-        const rafter2_3_Y = connH + (lh - connH) * (2 / 3);
-        members.push(member('brace', [xInner!, connH, z], [rafter2_3_X, rafter2_3_Y, z]));
-
-        // Another diagonal from outer post top to 1/3 point along the rafter (crossing diagonal)
-        const rafter1_3_X = xInner! + (xOuter! - xInner!) * (1 / 3);
-        const rafter1_3_Y = connH + (lh - connH) * (1 / 3);
-        members.push(member('brace', [xOuter!, lh, z], [rafter1_3_X, rafter1_3_Y, z]));
-
-        // Connect to adjacent trusses with a LONGITUDINAL base rail (along the length).
-        // OUTER (low-leg) wall only: an attached lean-to is a roof extension that
-        // SHARES the main building's wall on the inner side — there is no second
-        // wall there, so no lean-to base rail (it was drawing a phantom rail
-        // across floor-level framed openings in the shared wall).
-        if (i > 0) {
-          const zPrev = uniqueZ[i - 1];
-          members.push(member('baseRail', [xOuter!, 0, zPrev], [xOuter!, 0, z])); // at outer edge
+    // A lean-to post at across coordinate `c` (inboard direction `inb` along the
+    // across axis): single, or doubled / laddered by the main leg rule on its
+    // own height, the extra chord `depth` inboard rising to the rafter.
+    const pushPost = (run: number, c: number, inb: number) => {
+      const top = roofY(c);
+      members.push(member('leg', P(run, c, 0), P(run, c, top)));
+      const style = legStyleFor(lw, top);
+      if (style === 'single') return;
+      const c2 = c + inb * (style === 'ladder' ? ladderDepth(top) : DOUBLE_D);
+      members.push(member('leg', P(run, c2, 0), P(run, c2, roofY(c2))));
+      if (style === 'ladder') {
+        const rungs = Math.max(3, Math.round(top / 3));
+        for (let i = 1; i < rungs; i++) {
+          const y = (top * i) / rungs;
+          members.push(member('brace', P(run, c, y), P(run, c2, y)));
         }
       }
+    };
 
-      // Add purlins (horizontal roof support members) along the roof slope
-      // Purlins run the full length front-to-back at intermediate heights
-      if (uniqueZ.length > 1) {
-        const zFront = uniqueZ[0];
-        const zBack = uniqueZ[uniqueZ.length - 1];
-        // Add 2 purlin lines at 1/3 and 2/3 heights up the slope
-        for (let p = 1; p <= 2; p++) {
-          const t = p / 3; // 1/3 or 2/3 along the slope
-          const purlinX = xInner! + (xOuter! - xInner!) * t;
-          const purlinY = connH + (lh - connH) * t;
-          members.push(member('purlin', [purlinX, purlinY, zFront], [purlinX, purlinY, zBack]));
-        }
+    // Knee brace at the outer post (same proportions as the main bent's): from
+    // the post, braceLen below the low eave, up to the rafter braceLen along it
+    // toward the main wall. A ladder post skips it, like the main building.
+    // On a DOUBLED outer post the brace springs from the inboard (second) post,
+    // so it never passes through that post; a single post is unchanged.
+    const outerStyle = legStyleFor(lw, lh);
+    const kneeLen = Math.min(3, lh * 0.45);
+    const ltRafterLen = Math.hypot(lw, connH - lh);
+    const tKnee = ltRafterLen > 0 ? Math.min(0.5, kneeLen / ltRafterLen) : 0;
+    const kneeFootC = outerStyle === 'double' ? outerC - sOut * DOUBLE_D : outerC;
+    const kneeTipC = kneeFootC + (innerC - outerC) * tKnee;
+    // Outer base rail(s): at the wall, plus one under the second post of a doubled / ladder post.
+    const railCs =
+      outerStyle === 'ladder'
+        ? [outerC, outerC - sOut * ladderDepth(lh)]
+        : outerStyle === 'double'
+          ? [outerC, outerC - sOut * DOUBLE_D]
+          : [outerC];
+
+    for (let i = 0; i < runPos.length; i++) {
+      const run = runPos[i];
+      if (!mainLegAt(run)) pushPost(run, innerC, sOut); // inner post, only where no main leg stands
+      pushPost(run, outerC, -sOut); // outer post (low, away from the building)
+      members.push(member('rafter', P(run, innerC, connH), P(run, outerC, lh)));
+      if (outerStyle !== 'ladder' && kneeLen > 0.05 && tKnee > 0) {
+        members.push(member('brace', P(run, kneeFootC, roofY(kneeFootC) - kneeLen), P(run, kneeTipC, roofY(kneeTipC))));
       }
-
+      // LONGITUDINAL base rail along the OUTER (low-leg) wall only: an attached
+      // lean-to is a roof extension that SHARES the main building's wall on the
+      // inner side — there is no second wall there, so no lean-to base rail (it
+      // was drawing a phantom rail across floor-level framed openings in the
+      // shared wall).
+      if (i > 0) {
+        for (const c of railCs) members.push(member('baseRail', P(runPos[i - 1], c, 0), P(run, c, 0)));
+      }
     }
-    // ===== GABLE-ATTACHED (Front or Back) =====
-    else if (side === 'Front Gable' || side === 'Back Gable') {
-      // Ensure we have left and right trusses, plus intermediates
-      const xLeft = spanA;
-      const xRight = spanB;
-      const allX = [xLeft, ...framePositionsZ.filter(x => x > xLeft && x < xRight), xRight];
-      const uniqueX = Array.from(new Set(allX)).sort((a, b) => a - b);
 
-      for (let i = 0; i < uniqueX.length; i++) {
-        const x = uniqueX[i];
-
-        // ONLY vertical posts at this truss location
-        members.push(member('leg', [x, 0, zInner!], [x, connH, zInner!])); // inner post (high, at wall)
-        members.push(member('leg', [x, 0, zOuter!], [x, lh, zOuter!])); // outer post (low, away from building)
-
-        // Add simple rafter (roof support) from inner post top to outer post top
-        members.push(member('rafter', [x, connH, zInner!], [x, lh, zOuter!]));
-
-        // Add corner/knee braces (crossing X-pattern for structural bracing)
-        // One diagonal from inner post top to 2/3 point along the rafter
-        const rafter2_3_Y = connH + (lh - connH) * (2 / 3);
-        const rafter2_3_Z = zInner! + (zOuter! - zInner!) * (2 / 3);
-        members.push(member('brace', [x, connH, zInner!], [x, rafter2_3_Y, rafter2_3_Z]));
-
-        // Another diagonal from outer post top to 1/3 point along the rafter (crossing diagonal)
-        const rafter1_3_Y = connH + (lh - connH) * (1 / 3);
-        const rafter1_3_Z = zInner! + (zOuter! - zInner!) * (1 / 3);
-        members.push(member('brace', [x, lh, zOuter!], [x, rafter1_3_Y, rafter1_3_Z]));
-
-        // Connect to adjacent trusses with a LONGITUDINAL base rail (left to right).
-        // OUTER wall only — the inner side shares the main building's gable wall
-        // (see the eave-attached note above: no phantom rail on a shared wall).
-        if (i > 0) {
-          const xPrev = uniqueX[i - 1];
-          members.push(member('baseRail', [xPrev, 0, zOuter!], [x, 0, zOuter!])); // at outer edge
-        }
-      }
-
-      // Add purlins (horizontal roof support members) along the roof slope
-      // Purlins run the full width left-to-right at intermediate heights
-      if (uniqueX.length > 1) {
-        const xLeft = uniqueX[0];
-        const xRight = uniqueX[uniqueX.length - 1];
-        // Add 2 purlin lines at 1/3 and 2/3 heights up the slope
-        for (let p = 1; p <= 2; p++) {
-          const t = p / 3; // 1/3 or 2/3 along the slope
-          const purlinY = connH + (lh - connH) * t;
-          const purlinZ = zInner! + (zOuter! - zInner!) * t;
-          members.push(member('purlin', [xLeft, purlinY, purlinZ], [xRight, purlinY, purlinZ]));
-        }
+    // Two purlin lines at 1/3 and 2/3 of the slope, full run.
+    if (runPos.length > 1) {
+      const r0 = runPos[0];
+      const r1 = runPos[runPos.length - 1];
+      for (let p = 1; p <= 2; p++) {
+        const t = p / 3;
+        const c = innerC + (outerC - innerC) * t;
+        const y = connH + (lh - connH) * t;
+        members.push(member('purlin', P(r0, c, y), P(r1, c, y)));
       }
     }
 
     // ===== DERIVE LEAN-TO PANEL DATA (for 3D rendering) =====
     const enclosure = (lt.enclosure ?? 'open') as 'open' | 'enclosed' | 'custom';
-    const customWalls = lt.customWalls; // Pass through custom wall settings if present
-
-    if (side === 'Left Eave' || side === 'Right Eave') {
-      // Eave-attached: use Z range
-      const zFront = spanA;
-      const zBack = spanB;
-      // Post positions along the run (same set the frame loop builds), as offsets
-      // from spanStart so they line up with an opening's offsetFt.
-      const postZ = Array.from(
-        new Set([zFront, ...ltPositions.filter((z) => z > zFront && z < zBack), zBack]),
-      ).sort((a, b) => a - b);
-      derivedLeanTos.push({
-        id: lt.id,
-        enclosure,
-        customWalls,
-        openings: lt.openings ?? [],
-        attachedSide: side,
-        widthFt: lw,
-        lengthFt: Math.abs(zBack - zFront),
-        lowLegHeightFt: lh,
-        peakHeightFt: peakH,
-        rise,
-        inner: { x: xInner!, z: zFront },
-        outer: { x: xOuter!, z: zFront },
-        spanStart: zFront,
-        spanEnd: zBack,
-        trussOffsets: postZ.map((z) => z - zFront),
-      });
-    } else {
-      // Gable-attached: use X range
-      const xLeft = spanA;
-      const xRight = spanB;
-      const postX = Array.from(
-        new Set([xLeft, ...framePositionsZ.filter((x) => x > xLeft && x < xRight), xRight]),
-      ).sort((a, b) => a - b);
-      derivedLeanTos.push({
-        id: lt.id,
-        enclosure,
-        customWalls,
-        openings: lt.openings ?? [],
-        attachedSide: side,
-        widthFt: lw,
-        lengthFt: xRight - xLeft,
-        lowLegHeightFt: lh,
-        peakHeightFt: peakH,
-        rise,
-        inner: { x: xLeft, z: zInner! },
-        outer: { x: xLeft, z: zOuter! },
-        spanStart: xLeft,
-        spanEnd: xRight,
-        trussOffsets: postX.map((x) => x - xLeft),
-      });
-    }
-  }
-
-  // ===== ADD LEAN-TO CORNER BRACES (safe, separate section) =====
-  // After all other frame members are created, add corner braces to each lean-to
-  for (const lt of config.leanTos ?? []) {
-    if (!lt.widthFt || !lt.lengthFt || !lt.lowLegHeightFt) continue;
-    if (lt.type !== 'attached') continue;
-
-    const lw = lt.widthFt;
-    const ll = lt.lengthFt;
-    const lh = lt.lowLegHeightFt;
-    const pitchStr = lt.roofPitch || '2:12';
-    const [riseStr] = pitchStr.split(':');
-    const pitch = parseFloat(riseStr) || 2;
-    const rise = (lw * pitch) / 12;
-    const connH = Math.min(H, lh + rise);
-    const side = lt.attachedSide || 'Left Eave';
-
-    // Left/Right are defined as viewed from the FRONT of the building. In the
-    // front camera (looking +Z), world +X renders on screen-LEFT, so Left Eave
-    // maps to +X and Right Eave to -X.
-    const xInner = side === 'Left Eave' ? halfW : side === 'Right Eave' ? -halfW : null;
-    const xOuter = side === 'Left Eave' ? halfW + lw : side === 'Right Eave' ? -halfW - lw : null;
-    const zInner = side === 'Front Gable' ? -halfL : side === 'Back Gable' ? halfL : null;
-    const zOuter = side === 'Front Gable' ? -halfL - lw : side === 'Back Gable' ? halfL + lw : null;
-
-    // Same span math as the frame loop above — honor the placement offset.
-    const isEave2 = side === 'Left Eave' || side === 'Right Eave';
-    const wallLen2 = isEave2 ? L : W;
-    const runLen2 = Math.min(ll, wallLen2);
-    const runOff2 = Math.max(0, Math.min(lt.offsetFt ?? 0, wallLen2 - runLen2));
-    const spanA2 = (isEave2 ? -halfL : -halfW) + runOff2;
-    const spanB2 = spanA2 + runLen2;
-
-    // Get the frame positions that fall within this lean-to span
-    const ltPositions = framePositionsZ.filter((z) => {
-      if (isEave2) {
-        return z >= spanA2 && z <= spanB2;
-      }
-      return true;
+    derivedLeanTos.push({
+      id: lt.id,
+      enclosure,
+      customWalls: lt.customWalls, // Pass through custom wall settings if present
+      openings: lt.openings ?? [],
+      attachedSide: side,
+      widthFt: lw,
+      lengthFt: isEave ? Math.abs(spanB - spanA) : spanB - spanA,
+      lowLegHeightFt: lh,
+      peakHeightFt: peakH,
+      rise,
+      inner: isEave ? { x: innerC, z: spanA } : { x: spanA, z: innerC },
+      outer: isEave ? { x: outerC, z: spanA } : { x: spanA, z: outerC },
+      spanStart: spanA,
+      spanEnd: spanB,
+      // Post positions along the run (the bents above), as offsets from
+      // spanStart so they line up with an opening's offsetFt.
+      trussOffsets: runPos.map((r) => r - spanA),
     });
-
-    // EAVE-ATTACHED: Add corner braces
-    if ((side === 'Left Eave' || side === 'Right Eave') && xInner !== null && xOuter !== null) {
-      const zFront = spanA2;
-      const zBack = spanB2;
-      const allZ = [zFront, ...ltPositions.filter((z) => z > zFront && z < zBack), zBack];
-      const uniqueZ = Array.from(new Set(allZ)).sort((a, b) => a - b);
-
-      for (const z of uniqueZ) {
-        // Simple diagonal braces from posts toward the roof center
-        members.push(member('brace', [xInner, connH, z], [xOuter, lh, z]));
-      }
-    }
-
-    // GABLE-ATTACHED: Add corner braces
-    if ((side === 'Front Gable' || side === 'Back Gable') && zInner !== null && zOuter !== null) {
-      const xLeft = spanA2;
-      const xRight = spanB2;
-      const allX = [xLeft, ...framePositionsZ.filter((x) => x > xLeft && x < xRight), xRight];
-      const uniqueX = Array.from(new Set(allX)).sort((a, b) => a - b);
-
-      for (const x of uniqueX) {
-        // Simple diagonal braces from posts toward the roof center
-        members.push(member('brace', [x, connH, zInner], [x, lh, zOuter]));
-      }
-    }
   }
 
   return {

@@ -12,6 +12,9 @@ import { createCorrugatedTexture, type RibDirection } from './textures';
 import { stripsAround, type LocalRect } from './Siding';
 import { OpeningFixture } from './OpeningFixture';
 import { GuideLine, Measure, Chip3D, ftIn, RED, RED_DIM } from './Openings';
+import { CLICK_DRAG_THRESHOLD_PX } from './openingAnim';
+import { EnhancedFixture } from './enhanced/fixtures';
+import { fixtureFaceZ } from './enhanced/fixtureLayout';
 
 const COMP_PROUD = COMPONENT_OUTSET - SHEET_OUTSET; // component standoff past the wall sheeting
 
@@ -198,12 +201,12 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
 }
 
 // ── Wall-setting resolution ────────────────────────────────────────────────
-type GableVal = 'open' | 'halfEnd' | 'gable' | 'q1' | 'q2' | 'q3' | 'closed';
+export type GableVal = 'open' | 'halfEnd' | 'gable' | 'q1' | 'q2' | 'q3' | 'closed';
 /** Roof-down band coverage for the fractional end closures. */
 const GABLE_BAND_FRAC: Partial<Record<GableVal, number>> = { q1: 0.25, q2: 0.5, q3: 0.75 };
-type SideVal = string; // open | closed | q1 | q2 | q3 | 1panel | 2panel | 3panel
+export type SideVal = string; // open | closed | q1 | q2 | q3 | 1panel | 2panel | 3panel
 
-function resolveWalls(lt: LeanToStructure): { side: SideVal; front: GableVal; back: GableVal } {
+export function resolveWalls(lt: LeanToStructure): { side: SideVal; front: GableVal; back: GableVal } {
   if (lt.enclosure === 'enclosed') return { side: 'closed', front: 'closed', back: 'closed' };
   if (lt.enclosure === 'custom' && lt.customWalls) {
     return {
@@ -219,7 +222,7 @@ function resolveWalls(lt: LeanToStructure): { side: SideVal; front: GableVal; ba
 // Each returns the surfaces for one lean-to in a normalized shape so the JSX
 // above stays orientation-agnostic.
 
-interface SurfaceSet {
+export interface SurfaceSet {
   roofTop: Pt[];
   roofUnder: Pt[];
   roofUV: UV[];
@@ -352,7 +355,7 @@ function leanToTrim(
 }
 
 /** EAVE-attached (Left/Right): walls vary in X, length runs along Z. */
-function eaveSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; front: GableVal; back: GableVal }): SurfaceSet {
+export function eaveSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; front: GableVal; back: GableVal }): SurfaceSet {
   const innerX = lt.inner.x;
   const outerX = lt.outer.x;
   const lh = lt.lowLegHeightFt;
@@ -429,7 +432,7 @@ function eaveSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; f
 }
 
 /** GABLE-attached (Front/Back): walls vary in Z, length runs along X. */
-function gableSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; front: GableVal; back: GableVal }): SurfaceSet {
+export function gableSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; front: GableVal; back: GableVal }): SurfaceSet {
   const innerZ = lt.inner.z;
   const outerZ = lt.outer.z;
   const lh = lt.lowLegHeightFt;
@@ -773,21 +776,35 @@ function dragInfo(geo: SurfaceSet, opening: LeanToOpening): DragInfo {
 
 // A lean-to OpeningFixture you can grab and slide along its wall. Updates the
 // store live for smooth feedback; BuildHost writes the final spot back into the
-// pricing program on release (drag-end), so price + 3D stay in sync.
-function DraggableLeanToOpening({
+// pricing program on release (drag-end), so price + 3D stay in sync. A plain
+// CLICK (< 5px) opens / closes the door, roll-up or window (view-only, like the
+// main building): it never moves the part and never writes back.
+export function DraggableLeanToOpening({
   geo,
   lt,
   opening,
   trimColor,
+  enhanced = false,
+  wallColor,
+  sheeted = false,
 }: {
   geo: SurfaceSet;
   lt: LeanToStructure;
   opening: LeanToOpening;
   trimColor: string;
+  /** Draw the enhanced fixture (same placement / drag / click handling). */
+  enhanced?: boolean;
+  /** Enhanced only: wall color (reveal). */
+  wallColor?: string;
+  /** Enhanced only: sheeting surrounds this opening (reveal). */
+  sheeted?: boolean;
 }) {
   const updateLeanToOpening = useBuildingStore((s) => s.updateLeanToOpening);
   const selectLeanToOpening = useEditorStore((s) => s.selectLeanToOpening);
   const setDragging = useEditorStore((s) => s.setDragging);
+  const toggleOpen = useEditorStore((s) => s.toggleOpen);
+  const showSpacing = useEditorStore((s) => s.showSpacing);
+  const isOpen = useEditorStore((s) => !!s.openIds[opening.id]);
   const selected = useEditorStore((s) => s.selectedLeanToOpeningId === opening.id);
   const gl = useThree((s) => s.gl);
   const camera = useThree((s) => s.camera);
@@ -813,7 +830,7 @@ function DraggableLeanToOpening({
       // Same click-vs-drag rule as the main building: under 5px is a click, which
       // must NOT move the part or write a position back (that could reprice).
       moved = Math.max(moved, Math.hypot(ev.clientX - sx, ev.clientY - sy));
-      if (moved < 5) return;
+      if (moved < CLICK_DRAG_THRESHOLD_PX) return;
       if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
       const rect = gl.domElement.getBoundingClientRect();
       const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
@@ -829,6 +846,9 @@ function DraggableLeanToOpening({
     const up = () => {
       dragRef.current = false;
       if (controls) controls.enabled = true;
+      // A click opens / closes the part (never a frame-out). View-only: the
+      // write-back below stays gated on a real drag (dragMoved), untouched.
+      if (moved < CLICK_DRAG_THRESHOLD_PX && opening.type !== 'frameOut') toggleOpen(oid);
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       setTimeout(() => {
@@ -842,19 +862,42 @@ function DraggableLeanToOpening({
 
   return (
     <>
-      <OpeningFixture
-        pos={pos}
-        rotY={rotY}
-        type={opening.type as OpeningType}
-        w={opening.widthFt}
-        h={opening.heightFt}
-        sillHeight={opening.sillFt}
-        trimColor={trimColor}
-        panelColor={opening.color}
-        selected={selected}
-        onPanelPointerDown={onDown}
-      />
-      {selected && <LeanToOpeningGuides geo={geo} lt={lt} opening={opening} />}
+      {enhanced ? (
+        <group position={pos} rotation={[0, rotY, 0]}>
+          <EnhancedFixture
+            type={opening.type as OpeningType}
+            w={opening.widthFt}
+            h={opening.heightFt}
+            sillHeight={opening.sillFt}
+            faceZ={fixtureFaceZ('leanTo')}
+            trimColor={trimColor}
+            wallColor={wallColor ?? trimColor}
+            color={opening.color}
+            doorStyle={opening.doorStyle}
+            impact={opening.impact}
+            sheeted={sheeted}
+            frameOutPane={false}
+            isOpen={isOpen}
+            onPointerDown={onDown}
+          />
+        </group>
+      ) : (
+        <OpeningFixture
+          pos={pos}
+          rotY={rotY}
+          type={opening.type as OpeningType}
+          w={opening.widthFt}
+          h={opening.heightFt}
+          sillHeight={opening.sillFt}
+          trimColor={trimColor}
+          panelColor={opening.color}
+          doorStyle={opening.doorStyle}
+          impact={opening.impact}
+          openId={opening.id}
+          onPanelPointerDown={onDown}
+        />
+      )}
+      {selected && !showSpacing && <LeanToOpeningGuides geo={geo} lt={lt} opening={opening} />}
     </>
   );
 }
@@ -940,7 +983,7 @@ function LeanToOpeningGuides({ geo, lt, opening }: { geo: SurfaceSet; lt: LeanTo
 //   halfEnd → inner (tall) vertical half, floor to roof
 //   q1/q2/q3 → band hanging from the roof, bottom edge at the matching
 //              fraction of each side's height (sheeted area = exact fraction)
-function gableOutline(v: GableVal, inner: number, outer: number, lh: number, connH: number): UV[] {
+export function gableOutline(v: GableVal, inner: number, outer: number, lh: number, connH: number): UV[] {
   if (v === 'gable') {
     return [
       [inner, lh],

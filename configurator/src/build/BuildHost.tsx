@@ -19,6 +19,7 @@ import { Viewport } from '@/components/Viewport';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import type { BuildingType, EndSheeting, OpeningType, WallOverrides, WallSide } from '@/types/building';
+import { leanToWalkDoorLook, leanToWindowLook, type ProgramTypeRow } from './leanToAccessory';
 
 // Cache-bust the pricing iframe on the WEB (CRM embed) so a redeploy shows up
 // without a hard refresh. Skipped for the packaged desktop app, where the page
@@ -387,6 +388,20 @@ function writeBackLeanToOpening(win: BuilderWindow, id: string | null) {
  *   - `.ltp` = roof pitch (e.g., "2:12", "3:12")
  *   - `.lt-wm` = wall mode / enclosure (open/enclosed/custom)
  */
+/** A lean-to accessory as the 3D reads it (doorStyle / impact / color: VIEW-ONLY look fields). */
+interface LeanToOpeningRead {
+  id: string;
+  type: string;
+  wall: string;
+  widthFt: number;
+  heightFt: number;
+  sillFt: number;
+  offsetFt: number;
+  color?: string;
+  doorStyle?: 'std' | '6panel' | '9lite' | 'diamond';
+  impact?: boolean;
+}
+
 function readLeanTos(win: Window & { document: Document }): Array<{
   type: 'attached' | 'freestanding';
   attachedSide?: 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable';
@@ -398,7 +413,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
   roofPitch: string;
   enclosure: 'open' | 'enclosed' | 'custom';
   customWalls?: { front: string; back: string; side: string };
-  openings?: Array<{ id: string; type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number }>;
+  openings?: Array<LeanToOpeningRead>;
 }> {
   const out: Array<{
     type: 'attached' | 'freestanding';
@@ -411,7 +426,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     roofPitch: string;
     enclosure: 'open' | 'enclosed' | 'custom';
     customWalls?: { front: string; back: string; side: string };
-    openings?: Array<{ id: string; type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number }>;
+    openings?: Array<LeanToOpeningRead>;
   }> = [];
 
   const strVal = (el: Element, sel: string) => {
@@ -429,6 +444,17 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     if (!key) return undefined;
     const mfr = (win as unknown as { MFR?: () => { rudColors?: Array<{ v: string; hex: string }> } }).MFR;
     return mfr ? mfr().rudColors?.find((c) => c.v === key)?.hex : undefined;
+  };
+  // The active manufacturer's walk-door / window type tables (VIEW-ONLY look:
+  // door face, black color, hi-impact swing, window size). Read-only.
+  const mfrTypes = (): { wtd?: ProgramTypeRow[]; win?: ProgramTypeRow[] } => {
+    try {
+      const mfr = (win as unknown as { MFR?: () => { wtdTypes?: ProgramTypeRow[]; winTypes?: ProgramTypeRow[] } }).MFR;
+      const m = mfr ? mfr() : undefined;
+      return { wtd: m?.wtdTypes, win: m?.winTypes };
+    } catch {
+      return {};
+    }
   };
 
   const ltOpenMap: NonNullable<BuilderWindow['__ssLeanToOpenMap']> = {};
@@ -461,7 +487,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
 
     // ── Lean-to accessories (doors / windows / roll-ups) → openings ──
     // Each `.lt-acc-e` entry: type + size + which wall + position + quantity.
-    const ltOpenings: Array<{ id: string; type: string; wall: string; widthFt: number; heightFt: number; sillFt: number; offsetFt: number; color?: string }> = [];
+    const ltOpenings: LeanToOpeningRead[] = [];
     el.querySelectorAll('.lt-acc-e').forEach((ae, accIndex) => {
       const t = strVal(ae, '.lt-acc-type');
       const oType = t === 'wtd' ? 'walkDoor' : t === 'win' ? 'window' : t === 'frameout' ? 'frameOut' : 'rollUpDoor';
@@ -473,6 +499,8 @@ function readLeanTos(win: Window & { document: Document }): Array<{
       const pos = strVal(ae, '.lt-acc-pos') || 'auto';
       let w = 9, h = 8, sill = 0;
       let accColor: string | undefined;
+      let doorStyle: LeanToOpeningRead['doorStyle'];
+      let impact: boolean | undefined;
       if (oType === 'rollUpDoor') {
         const sz = (strVal(ae, '.lt-acc-size') || '9x8').toLowerCase().split('x');
         w = parseFloat(sz[0]) || 9;
@@ -481,8 +509,19 @@ function readLeanTos(win: Window & { document: Document }): Array<{
         accColor = rudColorHex(strVal(ae, '.lt-acc-color') || undefined);
       } else if (oType === 'walkDoor') {
         w = 3; h = 6.67; sill = 0;
+        // Walk-door type (VIEW-ONLY): hi-impact swings OUT (same rule as the
+        // main building), face style + black from the program's type table.
+        const look = leanToWalkDoorLook(strVal(ae, '.lt-acc-wtd-hi') || undefined, mfrTypes().wtd);
+        impact = look.impact;
+        doorStyle = look.doorStyle;
+        accColor = look.color;
       } else if (oType === 'window') {
-        w = 2.5; h = 2.5; sill = 4.16667; // window sill 4'-2"
+        sill = 4.16667; // window sill 4'-2"
+        // Window type (VIEW-ONLY): its real size (e.g. CCI 30x36) + black frame; default 30x30.
+        const look = leanToWindowLook(strVal(ae, '.lt-acc-win-hi') || undefined, mfrTypes().win);
+        w = look.widthFt;
+        h = look.heightFt;
+        accColor = look.color;
       } else {
         // frameOut — typed now (same list as Section 10). W×H from the entry;
         // a real cut you can see through. Window-type frame-outs sit at the
@@ -508,7 +547,7 @@ function readLeanTos(win: Window & { document: Document }): Array<{
         center = Math.max(w / 2 + 0.2, Math.min(wallLen - w / 2 - 0.2, center)); // keep on the wall
         const id = `lt${ltIndex}:acc${accIndex}:item${i}`; // deterministic + stable across polls
         ltOpenMap[id] = { entry: ae, itemIndex: i, width: w };
-        ltOpenings.push({ id, type: oType, wall, widthFt: w, heightFt: h, sillFt: sill, offsetFt: center, color: accColor });
+        ltOpenings.push({ id, type: oType, wall, widthFt: w, heightFt: h, sillFt: sill, offsetFt: center, color: accColor, doorStyle, impact });
       }
     });
 

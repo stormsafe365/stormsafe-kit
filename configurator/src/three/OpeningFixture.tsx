@@ -1,8 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { OpeningType } from '@/types/building';
+import { useEditorStore } from '@/store/useEditorStore';
 import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures';
+import { swingAngle, walkDoorHingeX, walkDoorKnobX } from './openingAnim';
+import { useOpenAmount } from './useOpenAmount';
 
 /**
  * The visual fixture for an opening (door / window / roll-up / framed opening):
@@ -10,7 +13,42 @@ import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures
  * door knob/hinges). Positioned + oriented by the caller via `pos` / `rotY` so
  * it can sit on a main-building wall OR a lean-to wall — identical look either
  * way. Drag is optional via `onPanelPointerDown`.
+ *
+ * Click-to-open (CLASSIC lean-to fixtures, owner rule parity with the main
+ * building; view-only): pass `openId` (the editor store's openIds key). The
+ * walk door swings on a LEFT-jamb hinge (knob right, seen from outside) —
+ * hi-impact (`impact`) OUT, standard IN (openingAnim.swingAngle); a roll-up
+ * rolls up (the classic main-building scale motion) with a FIXED invisible hit
+ * plane taking its clicks; a window's lower sash slides up. Shut, every mesh
+ * sits exactly where it always did.
  */
+
+/**
+ * A FIXED invisible click target the size of an opening (writes neither color
+ * nor depth; keepTransparent so ShellGroup never turns it into a depth
+ * occluder). Roll-ups use it so the door stays clickable wherever the
+ * rolled curtain is. captureIgnore: the PDF capture frames its camera on
+ * the meshes' bounding boxes (their centroid seeds the fit), so an invisible
+ * helper must not count, or every capture would shift a hair.
+ */
+export function OpeningHitPlane({
+  w,
+  h,
+  z,
+  onPointerDown,
+}: {
+  w: number;
+  h: number;
+  z: number;
+  onPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
+}) {
+  return (
+    <mesh position={[0, 0, z]} onPointerDown={onPointerDown} userData={{ captureIgnore: true }}>
+      <planeGeometry args={[w, h]} />
+      <meshBasicMaterial colorWrite={false} depthWrite={false} side={THREE.DoubleSide} userData={{ keepTransparent: true }} />
+    </mesh>
+  );
+}
 export const PANEL_COLOR: Record<OpeningType, string> = {
   rollUpDoor: '#ffffff',
   garageDoor: '#fbfcfd',
@@ -53,7 +91,8 @@ export function OpeningFixture({
   trimColor,
   panelColor,
   doorStyle,
-  selected = false,
+  impact,
+  openId,
   onPanelPointerDown,
 }: {
   pos: [number, number, number];
@@ -67,7 +106,10 @@ export function OpeningFixture({
   panelColor?: string;
   /** Walk-through door face style (std / 6-panel / 9-lite / diamond). */
   doorStyle?: DoorStyle;
-  selected?: boolean;
+  /** Hi-impact / hi-wind walk door: swings OUT (standard swings IN). */
+  impact?: boolean;
+  /** Editor-store openIds key: enables click-to-open (view-only). */
+  openId?: string;
   onPanelPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
 }) {
   const isGlass = type === 'window';
@@ -75,6 +117,14 @@ export function OpeningFixture({
   const isFrameOut = type === 'frameOut';
   const isWalk = type === 'walkDoor';
   const doorDark = isDarkHex(panelColor);
+
+  // ── click-to-open (view-only; the caller's click rule toggles openIds) ──
+  const isOpen = useEditorStore((s) => !!(openId && s.openIds[openId]));
+  const swingRef = useRef<THREE.Group>(null);
+  const rollRef = useRef<THREE.Group>(null);
+  const sashRef = useRef<THREE.Group>(null);
+  const glassRef = useRef<THREE.Mesh>(null);
+  const lowerRef = useRef<THREE.Mesh>(null);
 
   const panelMat = useMemo(() => {
     if (isWalk) {
@@ -127,8 +177,29 @@ export function OpeningFixture({
   const panelDepth = isFrameOut ? 0.06 : isGlass ? 0.035 : 0.09;
   const panelZ = isGlass ? -0.025 : 0;
   const onFloor = sillHeight <= 0.1;
-  const tc = selected ? '#22d3c8' : isGlass && panelColor ? panelColor : trimColor;
-  const emissive = selected ? '#22d3c8' : '#000000';
+  // Owner rule: no selection tint on ANY component (a picked / dragged part
+  // keeps its real colors; the placement guides show what is picked).
+  const tc = isGlass && panelColor ? panelColor : trimColor;
+
+  useOpenAmount(isOpen && !isFrameOut, (t) => {
+    if (swingRef.current) swingRef.current.rotation.y = swingAngle(impact, t); // hi-impact swings OUT, standard swings IN
+    if (rollRef.current) {
+      const k = 0.9 * t; // roll up to ~10% showing at the header (the classic main-building motion)
+      rollRef.current.scale.y = 1 - k;
+      rollRef.current.position.y = (h * k) / 2; // keep the top edge fixed
+    }
+    if (sashRef.current) sashRef.current.position.y = t * (h / 2) * 0.9;
+    // Window: shut = the single classic glass pane; once it moves, that pane
+    // becomes the fixed UPPER sash and the lower sash glass (hidden while
+    // shut) rides up just in front of it with the meeting rail.
+    if (glassRef.current && lowerRef.current) {
+      const split = t > 0;
+      glassRef.current.scale.y = split ? 0.5 : 1;
+      glassRef.current.position.y = split ? h / 4 : 0;
+      lowerRef.current.visible = split;
+      lowerRef.current.position.z = panelZ + 0.03 * t;
+    }
+  });
 
   return (
     <group position={pos} rotation={[0, rotY, 0]}>
@@ -149,22 +220,72 @@ export function OpeningFixture({
           <planeGeometry args={[w, h]} />
           <meshBasicMaterial colorWrite={false} depthWrite={false} side={THREE.DoubleSide} userData={{ keepTransparent: true }} />
         </mesh>
+      ) : isWalk ? (
+        // Walk door: hinge pivot on the LEFT jamb (seen from outside); the slab,
+        // knob (RIGHT) and 3 hinges swing together.
+        <group position={[walkDoorHingeX(w), 0, 0]}>
+          <group ref={swingRef}>
+            <group position={[w / 2, 0, 0]}>
+              <mesh position={[0, 0, panelZ]} material={panelMat} castShadow onPointerDown={onPanelPointerDown}>
+                <boxGeometry args={[w, h, panelDepth]} />
+              </mesh>
+              <group position={[walkDoorKnobX(w), -h / 2 + 3.0, panelDepth / 2]}>
+                <mesh position={[0, 0, 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+                  <cylinderGeometry args={[0.07, 0.07, 0.03, 18]} />
+                  <meshStandardMaterial color="#6b7077" metalness={0.85} roughness={0.28} />
+                </mesh>
+                <mesh position={[0, 0, 0.1]} castShadow>
+                  <sphereGeometry args={[0.06, 18, 14]} />
+                  <meshStandardMaterial color="#8b9097" metalness={0.9} roughness={0.22} />
+                </mesh>
+              </group>
+              {[h / 2 - 0.6, 0, -h / 2 + 0.6].map((hy, i) => (
+                <mesh key={`hinge${i}`} position={[-w / 2 + 0.05, hy, panelDepth / 2 - 0.005]} castShadow>
+                  <boxGeometry args={[0.05, 0.22, 0.04]} />
+                  <meshStandardMaterial color="#9aa0a7" metalness={0.7} roughness={0.4} />
+                </mesh>
+              ))}
+            </group>
+          </group>
+        </group>
+      ) : isSlat ? (
+        // Roll-up: the curtain + (roll-up) bottom rail + lift handle roll together.
+        <group ref={rollRef}>
+          <mesh position={[0, 0, panelZ]} material={panelMat} castShadow>
+            <boxGeometry args={[w, h, panelDepth]} />
+          </mesh>
+          {type === 'rollUpDoor' && (
+            <group>
+              <mesh position={[0, -h / 2 + 0.11, panelDepth / 2 + 0.005]} castShadow>
+                <boxGeometry args={[w, 0.2, panelDepth + 0.02]} />
+                {/* Bottom rail matches the door color (a colored roll-up should be
+                    ALL that color); default light gray for a standard white door. */}
+                <meshStandardMaterial color={panelColor || '#dfe2e7'} metalness={0.3} roughness={0.5} />
+              </mesh>
+              <mesh position={[0, -h / 2 + 0.42, panelDepth / 2 + 0.04]} castShadow>
+                <boxGeometry args={[0.5, 0.07, 0.05]} />
+                <meshStandardMaterial color="#8a9099" metalness={0.6} roughness={0.4} />
+              </mesh>
+            </group>
+          )}
+        </group>
       ) : (
-        <mesh position={[0, 0, panelZ]} material={panelMat} castShadow onPointerDown={onPanelPointerDown}>
+        <mesh ref={isGlass ? glassRef : undefined} position={[0, 0, panelZ]} material={panelMat} castShadow onPointerDown={onPanelPointerDown}>
           <boxGeometry args={[w, h, panelDepth]} />
         </mesh>
       )}
-      {selected && (
-        <mesh position={[0, 0, trimDepth / 2 + 0.02]}>
-          <planeGeometry args={[w + t, h + t]} />
-          <meshStandardMaterial color="#22d3c8" emissive={emissive} emissiveIntensity={0.25} transparent opacity={0.1} />
-        </mesh>
-      )}
 
-      {/* Window — double-hung glazing with meeting rail + sill */}
+      {/* Window — double-hung glazing with meeting rail + sill. The lower
+          sash (hidden while shut) and the meeting rail slide up together. */}
       {isGlass && (
         <group>
-          <TrimBar pos={[0, 0, trimDepth / 2 - 0.01]} size={[w + 0.02, 0.11, 0.05]} color={tc} />
+          <group ref={sashRef}>
+            {/* captureIgnore: hidden while shut, it must not move the PDF framing (see OpeningHitPlane). */}
+            <mesh ref={lowerRef} visible={false} position={[0, -h / 4, panelZ]} material={panelMat} castShadow onPointerDown={onPanelPointerDown} userData={{ captureIgnore: true }}>
+              <boxGeometry args={[w, h / 2, panelDepth]} />
+            </mesh>
+            <TrimBar pos={[0, 0, trimDepth / 2 - 0.01]} size={[w + 0.02, 0.11, 0.05]} color={tc} />
+          </group>
           <TrimBar pos={[0, h / 2 - 0.03, trimDepth / 2 - 0.02]} size={[w, 0.06, 0.04]} color={tc} />
           <TrimBar pos={[0, -h / 2 + 0.03, trimDepth / 2 - 0.02]} size={[w, 0.06, 0.04]} color={tc} />
           <mesh position={[0, -h / 2 - t * 0.45, trimDepth * 0.4]} castShadow>
@@ -174,43 +295,9 @@ export function OpeningFixture({
         </group>
       )}
 
-      {/* Walk door — round knob + 3 hinges */}
-      {type === 'walkDoor' && (
-        <group>
-          <group position={[w / 2 - 0.2, -h / 2 + 3.0, panelDepth / 2]}>
-            <mesh position={[0, 0, 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-              <cylinderGeometry args={[0.07, 0.07, 0.03, 18]} />
-              <meshStandardMaterial color="#6b7077" metalness={0.85} roughness={0.28} />
-            </mesh>
-            <mesh position={[0, 0, 0.1]} castShadow>
-              <sphereGeometry args={[0.06, 18, 14]} />
-              <meshStandardMaterial color="#8b9097" metalness={0.9} roughness={0.22} />
-            </mesh>
-          </group>
-          {[h / 2 - 0.6, 0, -h / 2 + 0.6].map((hy, i) => (
-            <mesh key={`hinge${i}`} position={[-w / 2 + 0.05, hy, panelDepth / 2 - 0.005]} castShadow>
-              <boxGeometry args={[0.05, 0.22, 0.04]} />
-              <meshStandardMaterial color="#9aa0a7" metalness={0.7} roughness={0.4} />
-            </mesh>
-          ))}
-        </group>
-      )}
-
-      {/* Roll-up door — heavier bottom rail + center lift handle */}
-      {type === 'rollUpDoor' && (
-        <group>
-          <mesh position={[0, -h / 2 + 0.11, panelDepth / 2 + 0.005]} castShadow>
-            <boxGeometry args={[w, 0.2, panelDepth + 0.02]} />
-            {/* Bottom rail matches the door color (a colored roll-up should be
-                ALL that color); default light gray for a standard white door. */}
-            <meshStandardMaterial color={panelColor || '#dfe2e7'} metalness={0.3} roughness={0.5} />
-          </mesh>
-          <mesh position={[0, -h / 2 + 0.42, panelDepth / 2 + 0.04]} castShadow>
-            <boxGeometry args={[0.5, 0.07, 0.05]} />
-            <meshStandardMaterial color="#8a9099" metalness={0.6} roughness={0.4} />
-          </mesh>
-        </group>
-      )}
+      {/* Roll-up: a FIXED invisible hit plane the size of the opening takes the
+          clicks / drags wherever the curtain is (draws nothing). */}
+      {isSlat && <OpeningHitPlane w={w} h={h} z={panelDepth / 2} onPointerDown={onPanelPointerDown} />}
     </group>
   );
 }

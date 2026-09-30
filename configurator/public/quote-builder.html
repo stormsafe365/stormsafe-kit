@@ -6279,6 +6279,12 @@ function ltPartitionIssue(el){
     else if(t==='frameout'){ up=ltAccFoUnitPrice(ae,'partition'); what='framed opening'; }
     if(!(up>0)) msg='The '+what+' on the Storage Partition Wall has no price for that size. Pick a priced size or another opening.';
   });
+  // The main gable end's fit rules (corners, header at the low jamb, 1'
+  // between openings) — an opening that can't really fit there never prints.
+  if(!msg && ltStorOn(el)){
+    var fit=ltPartFitAll(el);
+    for(var fi=0;fi<fit.length;fi++){ if(fit[fi].msg){ msg=fit[fi].msg; break; } }
+  }
   return msg;
 }
 // Print guard (quote PDF, contract, text quote): a Storage Section that is
@@ -6398,7 +6404,12 @@ function getValidRDPSizes(lt_w, lt_h, loc){
 function updateLTAccSize(accEntry){
   var lte=accEntry.closest('.lte'); if(!lte) return;
   var dims=getLTDims(lte);
-  refreshLTAccQty(accEntry); // qty offering tracks what fits on the chosen wall
+  // Storage partition only: a door just MOVED onto the partition (or switched
+  // type there) may take the first size / qty that fits; after that a door that
+  // stops fitting is KEPT and flagged, never silently swapped (ltPartSizeSelect).
+  var _accKey=((accEntry.querySelector('.lt-acc-type')||{}).value||'')+'|'+((accEntry.querySelector('.lt-acc-loc')||{}).value||'');
+  var _accFresh=(accEntry._ltAccKey!==_accKey); accEntry._ltAccKey=_accKey;
+  refreshLTAccQty(accEntry,_accFresh); // qty offering tracks what fits on the chosen wall
   // Side Frame(s) dropdown: only for wtd/win/frameout (not the 45° charge) on
   // the OUTER wall of an EAVE-attached lean-to — the wall that frames at OC.
   var _sfRow=accEntry.querySelector('.lt-acc-sf-row');
@@ -6431,13 +6442,13 @@ function updateLTAccSize(accEntry){
   // Roll-up door: filter the size dropdown
   if(type==='rollup'){
     var sizeEl=accEntry.querySelector('.lt-acc-size'); if(!sizeEl) return;
+    // Storage partition: the main gable end's fit rules at this door's spot.
+    if(loc==='partition'){ ltPartSizeSelect(accEntry,sizeEl,_accFresh); ltPartShowFit(lte); return; }
     var valid=getValidRDPSizes(dims.w,dims.h,loc);
     var cur=sizeEl.value;
     if(valid.length===0){
       sizeEl.innerHTML='<option value="" disabled selected>No size fits — adjust lean-to dimensions or location</option>';
-      addLTAccWarn(accEntry, loc==='partition'
-        ? 'No priced roll-up size fits the storage partition (door width up to lean-to width − 2\', height up to low leg − 1\'). Raise the low leg or widen the lean-to, or use a walk door / framed opening.'
-        : 'Lean-to is too small for any roll-up door at this location. Increase '+(loc==='outer'?'low-leg height':'lean-to width')+' or change location.');
+      addLTAccWarn(accEntry,'Lean-to is too small for any roll-up door at this location. Increase '+(loc==='outer'?'low-leg height':'lean-to width')+' or change location.');
     } else {
       sizeEl.innerHTML=valid.map(function(v){return '<option value="'+v.key+'">'+v.key+(v.star?' ★':'')+' — '+fC(v.price)+'</option>';}).join('');
       if(valid.some(function(v){return v.key===cur;})) sizeEl.value=cur;
@@ -6453,6 +6464,7 @@ function updateLTAccSize(accEntry){
     if(loc==='outer'&&dims.h<6.66667) addLTAccWarn(accEntry,'Window with 4\'2\" sill needs ≥6\'8\" wall (sill 4\'2\" + 2\'6\" window). Increase low-leg height.');
     else if(loc!=='outer'&&dims.w<4.5) addLTAccWarn(accEntry,'Window on gable end needs ≥4\'6\" lean-to width (2\'6\" window + 1\' each side).');
   }
+  ltPartShowFit(lte); // storage partition fit flags (no-op without partition openings)
 }
 function addLTAccWarn(accEntry,msg){
   var w=document.createElement('div');
@@ -6521,8 +6533,10 @@ function ltAccWallLen(ae){
   if(loc==='outer') return parseFloat((lte.querySelector('.ltl2')||{}).value)||0;
   return getLTDims(lte).w;
 }
-function refreshLTAccQty(ae){
+function refreshLTAccQty(ae,fresh){
   var qEl=ae.querySelector('.lt-acc-qty'); if(!qEl) return;
+  // Storage partition: the main gable end's corner / between-opening clearances.
+  if(((ae.querySelector('.lt-acc-loc')||{}).value==='partition') && ltPartDims(ae)){ ltPartQtySelect(ae,qEl,fresh); return; }
   var iw=ltAccItemWidth(ae), wl=ltAccWallLen(ae);
   var max=(iw>0&&wl>0)?Math.max(1,Math.floor(wl/(iw+1))):3;
   max=Math.min(max,24); // sanity ceiling
@@ -6530,6 +6544,245 @@ function refreshLTAccQty(ae){
   var html=''; for(var i=1;i<=max;i++) html+='<option value="'+i+'">'+i+'</option>';
   qEl.innerHTML=html;
   qEl.value=String(Math.min(cur,max));
+}
+
+// ── STORAGE PARTITION WALL: the MAIN building's gable-end fit rules ───────────
+// Owner 9/30/26: "same spacing rules ... as the gable end requires on the main
+// building" for every roll-up / walk door / window / framed opening on a
+// lean-to's Storage Partition Wall. The partition is that lean-to's END wall
+// (length = lean-to width) but SLOPED: the low leg at the outer post, rising
+// width*pitch/12 to the connection point at the building (updateLTNote). Rules:
+//   * 1' clear of each corner post. Main gable: door width <= building width - 2
+//     (getMaxDoorWidth, 1' each side) — applied to the door where it sits.
+//   * 1' header over every DOOR (roll-up, walk door, door-type framed opening),
+//     measured at the door's LOW (outer) jamb, the lowest wall over it. Main
+//     gable: 1' clearance (getMaxDoorHeight, the off-centre / 2+ door rule).
+//     The main gable's no-clearance single door leans on the gable peak rising
+//     above a centred door; the partition only falls toward its outer post, so
+//     every partition door is treated like an off-centre gable door (same 1'
+//     the lean-to ends already use: low leg - 1).
+//   * windows (and window-type framed openings): sill + window within the wall
+//     at the low jamb (the program's own lean-to window rule, updateLTAccSize).
+//   * 1' between openings (the lean-to fit-qty rule above; main gable doors
+//     need a jamb post between them).
+// Positions follow the entry's Position setting (ltPartLayout — the 3D draws
+// partition openings from it and refuses to drag one into a spot that breaks a
+// rule). Nothing here prices anything: a partition opening that breaks a rule
+// stays priced, is flagged, and blocks the quote, contract and text quote
+// (ltPartitionIssue -> ltStoragePrintBlock) until it is fixed.
+var LT_PART_CLR=1, LT_PART_GAP=1, LT_PART_DOOR_HDR=1, LT_PART_WIN_HDR=0, LT_PART_EPS=0.01;
+function ltPartGeom(lte){
+  var d=getLTDims(lte);
+  var p=((lte.querySelector('.ltp')||{}).value==='3:12')?3:2;
+  var s=(lte.querySelector('.lts')||{}).value||'Left Eave';
+  // Offsets ("ft from left") run from the 3D wall start: the OUTER (low) post
+  // is at 0 on Right Eave / Front Gable lean-tos, at the far end on Left Eave /
+  // Back Gable ones (geometry.ts inner/outer; the 3D measures from the min side).
+  return {len:d.w, low:d.h, slope:p/12, lowAtZero:(s==='Right Eave'||s==='Front Gable')};
+}
+// Partition wall height (ft) at x ft from its left end.
+function ltPartWallH(g,x){
+  var d=g.lowAtZero?x:(g.len-x);
+  return g.low+Math.max(0,Math.min(g.len,d))*g.slope;
+}
+// Size (ft) + kind of one partition opening — the same sizes the 3D draws.
+// null = the 45 degree cut (a charge, not an opening). sizeOvr: test a roll-up size.
+function ltPartDims(ae,sizeOvr){
+  var t=(ae.querySelector('.lt-acc-type')||{}).value||'rollup';
+  if(t==='rollup'){
+    var sz=String(sizeOvr!=null?sizeOvr:((ae.querySelector('.lt-acc-size')||{}).value||'')).split('x');
+    var rw=parseFloat(sz[0])||0, rh=parseFloat(sz[1])||0;
+    return {kind:'door', what:(rw&&rh?(rw+'x'+rh+' roll-up door'):'roll-up door'), w:rw, h:rh, sill:0};
+  }
+  if(t==='wtd') return {kind:'door', what:'walk door', w:3, h:6.67, sill:0};
+  if(t==='win'){
+    var wv=(ae.querySelector('.lt-acc-win-hi')||{}).value;
+    var row=(MFR().winTypes||[]).find(function(r){return r.v===wv;})||{};
+    return {kind:'win', what:'window', w:(row.fw>0?row.fw/12:2.5), h:(row.fh>0?row.fh/12:2.5), sill:4.16667};
+  }
+  var ft=(ae.querySelector('.lt-acc-fo-type')||{}).value||'';
+  if(ft.indexOf('45')>=0) return null;
+  var isWin=ft.indexOf('Window')>=0, sl=parseFloat((ae.querySelector('.lt-acc-fo-sill')||{}).value);
+  return {kind:isWin?'win':'door', what:'framed opening',
+    w:parseFloat((ae.querySelector('.lt-acc-fo-w')||{}).value)||10, h:parseFloat((ae.querySelector('.lt-acc-fo-h')||{}).value)||10,
+    sill:isWin?((isFinite(sl)&&sl>=0)?sl:4.16667):0};
+}
+// Left edges (ft from the partition's left end) of an entry's openings, per its
+// Position setting. Auto / Centered = the main gable's Auto spacing (getPosItems:
+// equal gaps); Left / Right = 1' from that corner, 1'6" between; Custom offset
+// = the typed left edges. BuildHost draws partition openings from this.
+function ltPartLayout(ae,w,qtyOvr){
+  var g=ltPartGeom(ae.closest('.lte'));
+  var n=qtyOvr||parseInt((ae.querySelector('.lt-acc-qty')||{}).value)||1;
+  var pos=(ae.querySelector('.lt-acc-pos')||{}).value||'auto';
+  var offs=Array.prototype.map.call(ae.querySelectorAll('.lt-acc-off'),function(i){return i.value;});
+  var xs=[];
+  for(var i=0;i<n;i++){
+    if(pos==='offset'&&offs[i]!==undefined) xs.push(parseFloat(offs[i])||0);
+    else if(pos==='left') xs.push(LT_PART_CLR+i*(w+1.5));
+    else if(pos==='right') xs.push(g.len-LT_PART_CLR-w-i*(w+1.5));
+    else { var gap=(g.len-n*w)/(n+1); xs.push(gap*(i+1)+w*i); }
+  }
+  return xs;
+}
+// Feet-inches for rule messages: wall heights round DOWN, needs round UP, to
+// the inch (a 0.05" slack keeps 6.67 ft / 4.16667 ft reading as 6'8" / 4'2").
+function _ltPartIn(ft,up){ var i=up?Math.ceil(ft*12-0.05):Math.floor(ft*12+0.05); return _dimFtIn(i/12); }
+function _ltPartFt(ft){ return _dimFtIn(Math.round(ft*12)/12); }
+// First rule one opening breaks ('' = fits). it: {x,w,h,sill,kind,what,n,i}.
+function ltPartItemIssue(g,it){
+  if(!(it.w>0)||!(it.h>0)) return ''; // no size: the price rule flags it
+  var who='The '+it.what+(it.n>1?(' #'+(it.i+1)):'')+' on the Storage Partition Wall';
+  var hiSide=g.lowAtZero?'RIGHT':'LEFT';
+  if(it.x<LT_PART_CLR-LT_PART_EPS || it.x+it.w>g.len-LT_PART_CLR+LT_PART_EPS){
+    var atLeft=(it.x<LT_PART_CLR-LT_PART_EPS), gap=atLeft?it.x:(g.len-it.x-it.w);
+    var post=(atLeft===g.lowAtZero)?'outer':'building-side';
+    return who+(gap<0?' runs past':' is only '+_ltPartIn(Math.max(0,gap))+' from')+' the '+post+' corner post — the main gable end keeps 1\' clear of each corner (partition '+_dimFtIn(g.len)+' wide, so an opening can be at most '+_dimFtIn(Math.max(0,g.len-2*LT_PART_CLR))+' wide).';
+  }
+  var lowX=g.lowAtZero?it.x:(it.x+it.w), H=ltPartWallH(g,lowX);
+  var hdr=(it.kind==='door')?LT_PART_DOOR_HDR:LT_PART_WIN_HDR, need=it.sill+it.h+hdr;
+  if(need>H+LT_PART_EPS){
+    return who+' does not fit under the sloped partition: the wall is only '+_ltPartIn(H,false)+' tall at its low (outer) side and it needs '+_ltPartIn(need,true)+
+      (it.kind==='door' ? (' ('+_ltPartFt(it.h)+(it.sill>0?(' + '+_ltPartFt(it.sill)+' sill'):'')+' + 1\' header, the main gable end\'s clearance)')
+                        : (' ('+_ltPartFt(it.sill)+' sill + '+_ltPartFt(it.h)+' window)'))+
+      '. Move it toward the building (the partition\'s '+hiSide+' side), pick a smaller size, or raise the low leg.';
+  }
+  return '';
+}
+// One entry's openings vs the rules (its own spacing included).
+function ltPartEntryCheck(ae,sizeOvr){
+  var g=ltPartGeom(ae.closest('.lte')), dm=ltPartDims(ae,sizeOvr);
+  if(!dm) return {items:[],msg:''};
+  var xs=ltPartLayout(ae,dm.w), items=[], msg='';
+  xs.forEach(function(x,i){
+    var it={ae:ae,x:x,w:dm.w,h:dm.h,sill:dm.sill,kind:dm.kind,what:dm.what,n:xs.length,i:i};
+    items.push(it);
+    if(!msg) msg=ltPartItemIssue(g,it);
+  });
+  if(!msg){ var p=ltPartGapPairs(items,false)[0]; if(p) msg=ltPartGapMsg(p); }
+  return {items:items,msg:msg};
+}
+// Pairs of openings closer than 1' (or overlapping). crossOnly: only pairs
+// from different entries.
+function ltPartGapPairs(items,crossOnly){
+  var s=items.filter(function(it){return it.w>0&&it.h>0;}).slice().sort(function(a,b){return a.x-b.x;}), out=[];
+  for(var i=0;i<s.length;i++) for(var j=i+1;j<s.length;j++){
+    var a=s[i], b=s[j];
+    if(crossOnly && a.ae===b.ae) continue;
+    var gap=b.x-(a.x+a.w);
+    if(gap<LT_PART_GAP-LT_PART_EPS) out.push({a:a,b:b,gap:gap});
+  }
+  return out;
+}
+function ltPartGapMsg(p){
+  var nm=function(it){return 'the '+it.what+(it.n>1?(' #'+(it.i+1)):'');};
+  return 'On the Storage Partition Wall, '+nm(p.a)+(p.gap<-LT_PART_EPS?' overlaps ':(' is only '+_ltPartIn(Math.max(0,p.gap))+' from '))+nm(p.b)+' — keep 1\' between openings (a jamb post goes between them).';
+}
+// Every partition opening of one lean-to: [{ae,msg}] ('' = fits).
+function ltPartFitAll(lte){
+  var res=[], all=[];
+  lte.querySelectorAll('.lt-acc-e').forEach(function(ae){
+    if(((ae.querySelector('.lt-acc-loc')||{}).value)!=='partition') return;
+    var c=ltPartEntryCheck(ae);
+    res.push({ae:ae,msg:c.msg}); all=all.concat(c.items);
+  });
+  if(res.length>1){
+    ltPartGapPairs(all,true).forEach(function(p){
+      res.forEach(function(r){ if(!r.msg && (r.ae===p.a.ae||r.ae===p.b.ae)) r.msg=ltPartGapMsg(p); });
+    });
+  }
+  return res;
+}
+// Signature of a <select>'s options (value / disabled / hidden / text), to
+// rebuild it only when its offering actually changes.
+function _ltSelSig(sel){ return Array.prototype.map.call(sel.options,function(o){return o.value+'\u0001'+(o.disabled?1:0)+(o.hidden?1:0)+'\u0001'+o.textContent;}).join('\u0002'); }
+function _ltOptSig(opts){ return opts.map(function(o){return o.v+'\u0001'+(o.dis?1:0)+(o.hid?1:0)+'\u0001'+o.t;}).join('\u0002'); }
+function _ltSetOpts(sel,opts,val){
+  if(_ltSelSig(sel)!==_ltOptSig(opts)){
+    sel.innerHTML=opts.map(function(o){ return '<option value="'+String(o.v).replace(/"/g,'&quot;')+'"'+(o.dis?' disabled':'')+(o.hid?' hidden':'')+'></option>'; }).join('');
+    Array.prototype.forEach.call(sel.options,function(o,i){ o.textContent=opts[i].t; });
+  }
+  if(sel.value!==String(val)) sel.value=String(val);
+}
+// Roll-up size list on the partition: every PRICED size of the lean-to
+// catalogue (getValidRDPSizes), each marked fits / doesn't fit HERE.
+function ltPartRollupOptions(ae){
+  return getValidRDPSizes(9999,9999,'partition').map(function(v){
+    return {key:v.key,price:v.price,star:v.star,fits:!ltPartEntryCheck(ae,v.key).msg};
+  });
+}
+// Build the partition size <select>. Sizes that don't fit where the door sits
+// are hidden + disabled (not offered). fresh (the door just came onto the
+// partition): keep a fitting size, else take the first one that fits. Otherwise
+// the current size is KEPT even when it no longer fits (restored quote, lean-to
+// or position changed) — flagged, still priced, printing blocked — never
+// silently swapped for another size / price.
+function ltPartSizeSelect(ae,sel,fresh){
+  var cur=sel.value, list=ltPartRollupOptions(ae);
+  var fit=list.filter(function(v){return v.fits;});
+  var curRow=list.filter(function(v){return v.key===cur;})[0];
+  var pick=cur;
+  if(fresh && !(curRow&&curRow.fits)) pick=fit.length?fit[0].key:'';
+  var opts=[];
+  if(pick==='' && !fit.length) opts.push({v:'',dis:true,t:'No size fits here — see note'});
+  else if(!list.some(function(v){return v.key===pick;})) opts.push({v:pick,dis:true,hid:true,t:(pick?(pick+' — ⚠ no price, pick a size'):'Pick a size that fits')});
+  list.forEach(function(v){
+    opts.push({v:v.key,dis:!v.fits,hid:!v.fits,t:v.key+(v.star?' ★':'')+' — '+fC(v.price)+(v.fits?'':' — ⚠ doesn\'t fit here')});
+  });
+  _ltSetOpts(sel,opts,pick);
+  var wmsg='';
+  if(!fit.length){
+    var g=ltPartGeom(ae.closest('.lte'));
+    wmsg='No priced roll-up size fits the storage partition at this position (1\' clear of each corner post, 1\' header at the door\'s low side — the partition is '+_ltPartIn(g.low,false)+' tall at the outer post, '+_ltPartIn(g.low+g.len*g.slope,false)+' at the building). Move it toward the building (the partition\'s '+(g.lowAtZero?'RIGHT':'LEFT')+' side), raise the low leg or widen the lean-to, or use a walk door / framed opening.';
+  }
+  var ow=ae.querySelector('.lt-acc-warn');
+  if(!wmsg){ if(ow) ow.remove(); }
+  else if(!ow || ow.textContent!=='⚠ '+wmsg){ if(ow) ow.remove(); addLTAccWarn(ae,wmsg); }
+}
+// Partition qty: as many as fit with 1' at each corner and 1' between. Larger
+// counts stay in the list hidden + disabled so a saved / kept qty is never
+// silently cut (flagged instead); fresh = the door just came onto the partition.
+function ltPartQtySelect(ae,qEl,fresh){
+  var dm=ltPartDims(ae), iw=(dm&&dm.w>0)?dm.w:ltAccItemWidth(ae), wl=ltAccWallLen(ae);
+  var max=(iw>0&&wl>0)?Math.max(1,Math.floor((wl-2*LT_PART_CLR+LT_PART_GAP)/(iw+LT_PART_GAP)+1e-9)):1;
+  max=Math.min(max,24);
+  var cur=parseInt(qEl.value)||1, pick=fresh?Math.min(cur,max):Math.min(cur,24);
+  var opts=[];
+  for(var i=1;i<=24;i++) opts.push({v:i,dis:i>max,hid:i>max,t:i+(i<=max?'':' — ⚠ too many for this wall')});
+  _ltSetOpts(qEl,opts,pick);
+}
+// Red per-entry flag for partition openings that break a rule (and removal
+// everywhere else). UI only.
+function ltPartShowFit(lte){
+  if(!lte) return;
+  var res=ltStorOn(lte)?ltPartFitAll(lte):[];
+  lte.querySelectorAll('.lt-acc-e').forEach(function(ae){
+    var r=res.filter(function(x){return x.ae===ae;})[0], msg=r?r.msg:'';
+    var box=ae.querySelector('.lt-acc-fitwarn');
+    if(!msg){ if(box) box.remove(); return; }
+    if(!box){
+      box=document.createElement('div'); box.className='lt-acc-fitwarn';
+      box.style.cssText='margin:4px 0;padding:5px 8px;background:#fee2e2;color:#991b1b;border-left:3px solid #dc2626;border-radius:0 4px 4px 0;font-size:10px;line-height:1.35';
+      ae.insertBefore(box,ae.firstChild.nextSibling);
+    }
+    var t='⚠ '+msg+' It is still priced; the quote, contract and text quote are blocked until it is fixed.';
+    if(box.textContent!==t) box.textContent=t;
+  });
+}
+// rc() hook: re-check every partition opening (sizes offered, qty, flags) after
+// any change (position, offsets, qty, size, lean-to side...). Never changes a
+// value, so it never changes a price; a no-op without partition openings.
+function ltPartRefreshAll(){
+  document.querySelectorAll('.lte').forEach(function(lte){
+    var has=false;
+    lte.querySelectorAll('.lt-acc-e').forEach(function(ae){
+      if(((ae.querySelector('.lt-acc-loc')||{}).value)!=='partition') return;
+      has=true;
+      var q=ae.querySelector('.lt-acc-qty'); if(q&&ltPartDims(ae)) ltPartQtySelect(ae,q,false);
+      if(((ae.querySelector('.lt-acc-type')||{}).value)==='rollup'){ var s=ae.querySelector('.lt-acc-size'); if(s) ltPartSizeSelect(ae,s,false); }
+    });
+    if(has||lte.querySelector('.lt-acc-fitwarn')) ltPartShowFit(lte);
+  });
 }
 
 function addLTAcc(entry){
@@ -9119,6 +9372,7 @@ function printRevisionForm(){
 
 async function printRevisedLayout(){
   if(!G('bw').value||!G('bl').value){ toast('Please select building dimensions first','err'); return; }
+  if(ltStoragePrintBlock()) return; // its 3D views would show a storage partition door that can't fit
   var pwin=window.open('','_blank');
   if(!pwin){ toast('Popup blocked — please allow popups','err'); return; }
   try { pwin.document.write('<!doctype html><html><body style="margin:0;background:#fff;color:#94a3b8;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;font-size:15px">Generating revised layout…</body></html>'); } catch(e){}
@@ -9609,7 +9863,7 @@ function restoreQuoteData(data){
     populateGchEnc(f['gch-enc']);   // builds options + snaps the saved length to a valid tier
     updateGchOpen();
   }
-  sy();
+  sy();
   // Re-run the building pass so size-driven rows (OC Spacing, fslean badges) match the restored quote.
   try{ if(typeof _prevOcWidth!=='undefined') _prevOcWidth=parseInt(G('bw').value)||0; doBld(); }catch(e){}
   rc();
@@ -14309,6 +14563,10 @@ function setTrussState(el, isHit, hitPositions){
 var _origRC2 = rc;
 rc = function(){
   runTrussChecks();
+  // Lean-to storage partition fit (sizes offered / qty / flags). It never
+  // changes a value, so the price pass below is unaffected; no-op without
+  // partition openings.
+  try { ltPartRefreshAll(); } catch(e){ console.warn('ltPartRefreshAll failed:', e); }
   _origRC2();
 };
 

@@ -3,6 +3,7 @@ import { useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SHEET_OUTSET, COMPONENT_OUTSET, type LeanToStructure, type Vec3 } from '@/engine/geometry';
 import { leanToWallSettings, rendersLeanToFixture, type LeanToStorageSpan } from '@/engine/leanToFixtures';
+import { clampPartitionCenter, partitionGeom } from '@/engine/partitionFit';
 import type { BuildingColors, LeanToOpening, OpeningType, PanelOrientation, Wainscot } from '@/types/building';
 import { swatchHex, isMetallic, printPanelKey } from '@/config/colors';
 import { TRUSS_CLEARANCE_FT } from '@/config/constants';
@@ -976,7 +977,15 @@ export function DraggableLeanToOpening({
       const hit = new THREE.Vector3();
       if (raycaster.ray.intersectPlane(info.plane, hit)) {
         const raw = info.coord(hit) - info.start; // offset from the wall's start edge
-        const off = Math.max(info.w / 2, Math.min(info.wallLen - info.w / 2, raw));
+        let off: number;
+        if (opening.wall === 'partition') {
+          // Storage partition: the main gable end's fit rules (corner posts,
+          // header at the low jamb, 1' between openings) — never into a spot
+          // that breaks them (the program checks the same spots).
+          const cur = useBuildingStore.getState().leanTos.flatMap((l) => l.openings ?? []).find((o) => o.id === oid);
+          const sibs = lt.openings.filter((o) => o.wall === 'partition' && o.id !== oid);
+          off = clampPartitionCenter(raw, opening, partitionGeom(lt), sibs, cur?.offsetFt ?? opening.offsetFt);
+        } else off = Math.max(info.w / 2, Math.min(info.wallLen - info.w / 2, raw));
         updateLeanToOpening(oid, { offsetFt: off });
       }
     };

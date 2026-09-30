@@ -276,6 +276,12 @@ type BuilderWindow = Window & {
   getTrussInfo?: () => { spacing: number; count: number } | null;
   rc?: (...a: unknown[]) => unknown;
   updatePosSection?: (entry: Element, qty: number, label?: string) => void;
+  /**
+   * Program's storage-PARTITION layout (quote-builder ltPartLayout): the left
+   * edges (ft from the partition's left end) of an entry's openings — the same
+   * spots its gable-end fit rules check, so the 3D draws them exactly there.
+   */
+  ltPartLayout?: (entry: Element, widthFt: number, qty?: number) => number[];
   __ssWrapped?: boolean;
   __ssViewHooked?: boolean;
   __ssOpenSig?: string;
@@ -544,9 +550,21 @@ function readLeanTos(win: Window & { document: Document }): LeanToRead[] {
       // the program's ltAccWallLen).
       const wallLen = wall === 'outer' ? lengthFt : widthFt;
       const offEls = Array.from(ae.querySelectorAll('.lt-acc-off')) as HTMLInputElement[];
+      // Storage partition: the program's own layout (its gable-end fit rules
+      // check exactly these spots). Outer / end walls keep the mapping below.
+      let partXs: number[] | null = null;
+      if (wall === 'partition' && typeof (win as BuilderWindow).ltPartLayout === 'function') {
+        try {
+          const xs = (win as BuilderWindow).ltPartLayout!(ae, w, qty);
+          if (Array.isArray(xs) && xs.length === qty && xs.every((x) => Number.isFinite(x))) partXs = xs;
+        } catch {
+          partXs = null;
+        }
+      }
       for (let i = 0; i < qty; i++) {
         let center: number;
-        if (pos === 'offset' && offEls[i]) center = (parseFloat(offEls[i].value) || 0) + w / 2;
+        if (partXs) center = partXs[i] + w / 2;
+        else if (pos === 'offset' && offEls[i]) center = (parseFloat(offEls[i].value) || 0) + w / 2;
         else if (pos === 'center' && qty === 1) center = wallLen / 2;
         else if (pos === 'left') center = w / 2 + 1 + i * (w + 1.5);
         else if (pos === 'right') center = wallLen - (w / 2 + 1) - i * (w + 1.5);

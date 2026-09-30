@@ -30,6 +30,19 @@ export const BUILDING_TYPES: { value: BuildingType; label: string; blurb: string
 /** Truss-clearance rule: warn when an opening comes within this of a leg (ft). */
 export const TRUSS_CLEARANCE_FT = 2 / 12; // 2" jamb clearance each side (truss within 2" of a door edge needs a side frame)
 
+/**
+ * Lean-to STORAGE PARTITION fit rules — the main building's gable-end rules on
+ * the sloped partition (owner 9/30/26). SAME numbers as the pricing program's
+ * LT_PART_* (quote-builder.html; a test holds them equal): 1' clear of each
+ * corner post, 1' header over a door at its LOW (outer) jamb, windows within the
+ * wall at the low jamb, 1' between openings. Tolerance matches too.
+ */
+export const LT_PARTITION_CORNER_CLEAR_FT = 1;
+export const LT_PARTITION_GAP_FT = 1;
+export const LT_PARTITION_DOOR_HEADER_FT = 1;
+export const LT_PARTITION_WINDOW_HEADER_FT = 0;
+export const LT_PARTITION_EPS_FT = 0.01;
+
 export const DEFAULT_CONFIG: BuildingConfig = {
   buildingType: 'garage',
   width: 24,

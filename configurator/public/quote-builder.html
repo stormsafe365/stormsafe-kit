@@ -7059,6 +7059,12 @@ function rcManual(){
   var dep=Math.max(0, grossDep-addDiscAmount);
   var bal=tot-grossDep;
   var adjTot=tot-addDiscAmount;
+  // Same published snapshot as rc() (textQuote reads it). No engine sheeting in
+  // INPUT mode: the 26GA wording follows the rep's sheeting select.
+  window._qTotals={mode:'input', sub:sub, disc:disc, da:da, ad:ad, tax:tax, ta:ta, tot:tot, agEx:agEx,
+    grossDep:grossDep, addDiscVal:addDiscVal, addDiscType:addDiscType, addDiscAmount:addDiscAmount,
+    dep:dep, bal:bal, adjTot:adjTot, preSheetSub:null, sheetFree:false, sheetUpgrade:0,
+    sheet26:((G('btype')&&G('btype').value==='widespan')||(G('sheeting-upgrade')&&G('sheeting-upgrade').value==='upgrade'))};
   G('dlbl').textContent='Discount ('+disc+'%)';
   G('tlbl').textContent=agEx?'Sales Tax (EXEMPT)':'Sales Tax ('+tax+'%)';
   G('pds').textContent=da?('-'+fC(da)):'\u2014';
@@ -7120,6 +7126,7 @@ function cpWallChanged(wallId, spId){
   if(typeof updateSidePanelNote==='function') updateSidePanelNote();
 }
 function rc(){
+  window._qTotals=null; // republished below (or by rcManual) once this pass has priced the build
   if(INPUT_MODE) return rcManual();
   // Carport: the Wall Options eave rows (wle/wre) and the Side Panels section
   // are the SAME setting. sp-left/sp-right stay the priced/rendered source of
@@ -7406,6 +7413,13 @@ function rc(){
   // Balance always anchored to the UNDISCOUNTED deposit so it never increases when a discount is applied.
   // Customer pays: dep + bal = (grossDep - addDiscAmount) + (tot - grossDep) = tot - addDiscAmount
   var bal=tot-grossDep;
+  // Publish the totals this pass JUST computed — the single source of truth for
+  // textQuote() (it used to re-do the price math and drifted). Read-only
+  // snapshot: nothing here reprices. adjTot = the on-screen Grand Total (#ptot).
+  window._qTotals={mode:'engine', sub:sub, disc:disc, da:da, ad:ad, tax:tax, ta:ta, tot:tot, agEx:agEx,
+    grossDep:grossDep, addDiscVal:addDiscVal, addDiscType:addDiscType, addDiscAmount:addDiscAmount,
+    dep:dep, bal:bal, adjTot:tot-addDiscAmount, preSheetSub:preSheetSub, sheetFree:sheetFree,
+    sheetUpgrade:sheetUpgrade, sheet26:(bt3==='widespan'||sheetFree||sheetUpgrade>0)};
 
   G('dlbl').textContent='Discount ('+disc+'%)';
   // Deposit label and SS discount note
@@ -13670,6 +13684,13 @@ setTimeout(function(){try{updateMiniPreview();}catch(e){}},200);
 // ══ TEXT QUOTE TO CLIENT ══════════════════════════════════════════════════
 function textQuote(){
   if(!G('bw').value||!G('bl').value){toast('Set dimensions first','err');return;}
+  // Price with the SAME pass the screen uses (rc() hands off to rcManual() in
+  // INPUT mode), then read the totals it published. No price math of its own
+  // here any more — the old private copy drifted (missed the lean-to connection
+  // fee, overhang, side panels, anchors and INPUT mode).
+  rc();
+  var T=window._qTotals;
+  if(!T){toast('Could not price this build \u2014 check the form and try again','err');return;}
   var cn=G('cn').value||'Client',w=G('bw').value,l=G('bl').value,h=G('bh').value;
   var roofStyle=G('rs').value,wallStyle=G('ws').value,pitch=G('pitch')?G('pitch').textContent:'3:12';
   var sqft=getSqFt();
@@ -13677,39 +13698,21 @@ function textQuote(){
   var roofColor=(crEl.value&&crEl.selectedIndex>0)?crEl.options[crEl.selectedIndex].text.split('(')[0].trim():'TBD';
   var wallColor=(cwEl.value&&cwEl.selectedIndex>0)?cwEl.options[cwEl.selectedIndex].text.split('(')[0].trim():'TBD';
   var trimColor=(ctEl.value&&ctEl.selectedIndex>0)?ctEl.options[ctEl.selectedIndex].text.split('(')[0].trim():'TBD';
-  var disc=parseFloat(G('disc').value)||0;
-  var tax=parseFloat(G('tax').value)||0;
-  var agEx=(G('agx')&&G('agx').value==='yes');
-  var base=gBase(),leg=gLeg(),walls2=gWalls(),vertU=gVertUpgrade();
-  var rd=gRUD(),wd=gWTD(),wn=gWIN();
-  var bt3=G('btype').value,lv=parseInt(l)||0,wv=parseInt(w)||0;
+  var bt3=G('btype').value;
   var fuVal=G('framing-upgrade')?G('framing-upgrade').value:'14';
-  var framingUpgP=0;
-  if(fuVal==='12'){if(bt3==='widespan'){var GA12C2=[20,25,30,35,40,44,48,52],GA12V2=[360,480,600,720,840,1560,1680,1800];var gci2=0;for(var gi2=0;gi2<GA12C2.length;gi2++){if(GA12C2[gi2]<=lv)gci2=gi2;else break;}framingUpgP=GA12V2[gci2];}else{var GA12S2=[20,25,30,35,40];var GA12SV2=wv<=24?[210,240,270,300,330]:[360,480,600,720,840];var gcis2=0;for(var gis2=0;gis2<GA12S2.length;gis2++){if(GA12S2[gis2]<=lv)gcis2=gis2;else break;}if(ACTIVE_MFR==='CCI'&&wv>24){framingUpgP=cci12GA(lv);}else if(lv>40){var ga12r2=(GA12SV2[4]-GA12SV2[3])/5;framingUpgP=Math.round(GA12SV2[4]+ga12r2*(lv-40));}else{framingUpgP=GA12SV2[gcis2];}}}
-  var pitchSelVal=G('pitch-sel')?G('pitch-sel').value:'standard';
-  var pitchUpgrade=MFR().pitchUpgradeFn(base, wv||0, lv||0, pitchSelVal);
-  var lapP=G('lap').value==='yes'?Math.round(base*0.10):0;
-  var wallsVert=G('ws').value==='Vertical';
-  var wainP=gWainscot();
-  var aewP=gAddEndWall();
-  var ltP=gLT(),acP=gAC(),insP=gInsul();
-  var ocSel2=G('oc-spacing'),ocVal2=ocSel2?ocSel2.value:'5oc',ocU=0;
-  if(ACTIVE_MFR!=='CA'&&ocVal2==='4oc'&&wv<=24&&bt3!=='widespan'){var OC4S2=[20,25,30,35,40],OC4V2=[300,325,350,375,400];var oci2=0;for(var oi2=0;oi2<OC4S2.length;oi2++){if(OC4S2[oi2]<=lv)oci2=oi2;else break;}if(lv>40){ocU=cciUnitSum(lv,OC4V2);}else{ocU=OC4V2[oci2];}}
-  var _cbT=cciCombo12x4((G('framing-upgrade')?G('framing-upgrade').value:'14'), ocVal2, wv, bt3, lv); if(_cbT!=null){ framingUpgP=_cbT; ocU=0; }
-  var preSheet=base+leg+framingUpgP+ocU+pitchUpgrade+walls2+vertU+rd.rud+wd.wtd+wn.win+rd.sf+wd.sf+wn.sf+lapP+wainP+aewP+ltP+acP+insP;
-  var sheetFree=(ACTIVE_MFR!=='CA'&&preSheet>=(window._freeThresh||10000)&&bt3!=='widespan');
-  var sheetU=(!sheetFree&&G('sheeting-upgrade').value==='upgrade'&&bt3!=='widespan')?preSheetSub*0.10:0;
-  var fastenerFree=((preSheet+sheetU)>=(window._freeThresh||10000));
-  var fastenerP=(G('fastener-add')&&G('fastener-add').checked&&!fastenerFree)?150:0;
-  var sub=preSheet+sheetU+fastenerP+gAdj();
-  var da=Math.round(sub*(disc/100)),ad=sub-da;
-  var ta=agEx?0:Math.round(ad*(tax/100)),tot=ad+ta;
-  var grossDep=Math.round(ad*((window._depPct||17)/100));
-  var addDV=parseFloat(G('add-disc')?G('add-disc').value:0)||0;
-  var addDT=G('add-disc-type')?G('add-disc-type').value:'dollar';
-  var addDA=addDT==='pct'?Math.round(grossDep*(addDV/100)):addDV;
-  var dep=Math.max(0,grossDep-addDA);
-  var bal=tot-grossDep;
+  var aewP=gAddEndWall(); // wording only: is there an additional end wall
+  var addDV=T.addDiscVal,addDT=T.addDiscType,addDA=T.addDiscAmount;
+  var dep=T.dep,bal=T.bal;
+  // Lean-tos: one short line each (size + side, no prices), same fields the PDF rows use.
+  var ltLines=[];
+  document.querySelectorAll('.lte').forEach(function(el){
+    var lw=parseInt(el.querySelector('.ltw')&&el.querySelector('.ltw').value)||0;
+    var ll=parseInt(el.querySelector('.ltl2')&&el.querySelector('.ltl2').value)||0;
+    if(!lw||!ll) return;
+    var ltT=el.querySelector('.lt-type'),ltFree=(ltT&&ltT.value==='freestanding');
+    var ltSide=ltFree?'':((el.querySelector('.lts')||{}).value||'');
+    ltLines.push((ltFree?'Free-Standing Lean-To ':'Lean-To ')+lw+'\' \u00D7 '+ll+'\''+(ltSide?' ('+ltSide+')':''));
+  });
   var doorLines=[];
   document.querySelectorAll('.re').forEach(function(el){var sz=el.querySelector('.rsz').value,qty=parseInt(el.querySelector('.rqt').value)||1;var loc=el.querySelector('.rloc').value.replace(' Gable End','').replace(' Eave Side','');doorLines.push(qty+'x '+sz+' Roll-Up ('+loc+')');});
   document.querySelectorAll('.we').forEach(function(el){var qty=parseInt(el.querySelector('.wqt').value)||1;var loc=el.querySelector('.wloc').value.replace(' Gable End','').replace(' Eave Side','');doorLines.push(qty+'x Walk Door ('+loc+')');});
@@ -13717,7 +13720,14 @@ function textQuote(){
   var insText='None';var iSel=G('insul-sel');
   if(iSel&&iSel.value==='roof')insText='Roof Only';else if(iSel&&iSel.value==='roof-walls')insText='Roof + Walls';
   var planLine='';
-  if(G('perm').value==='yes'){var planType=G('plans-sel')?G('plans-sel').value:MFR().defaultPlan;var pt2=G('pt')?G('pt').value:'';var planCost=MFR().planCostFn(planType,(typeof sub!=='undefined'?sub:0),(pt2==='com'||pt2==='rc2r'));if(planType!=='No Permit Required')planLine='\n\u{1F4CB} Eng. Plans: '+planType+' \u2014 $'+planCost+' (invoiced separately)';}
+  if(G('perm').value==='yes'){
+    var planType=G('plans-sel')?G('plans-sel').value:MFR().defaultPlan;var pt2=G('pt')?G('pt').value:'';
+    // Same subtotal printQuote() prices the plans on: the engine subtotal (incl. the
+    // manufacturer adjustment); INPUT mode = manual line items + the adjustment.
+    var planSub=INPUT_MODE?(manualSubtotal()+gAdj()):T.sub;
+    var planCost=MFR().planCostFn(planType,planSub,(pt2==='com'||pt2==='rc2r'));
+    if(planType!=='No Permit Required')planLine='\n\u{1F4CB} Eng. Plans: '+planType+' \u2014 $'+planCost+' (invoiced separately)';
+  }
 
   var m='\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n';
   m+='\u26A1 STORMSAFE STEEL\n';
@@ -13728,13 +13738,15 @@ function textQuote(){
   m+='\u{1F4D0} BUILDING\n';
   m+=w+'\' \u00D7 '+l+'\' \u00D7 '+h+'\' ('+sqft.toLocaleString()+' sq ft)\n';
   m+=roofStyle+' Roof \u2022 '+wallStyle+' Walls \u2022 '+pitch+'\n';
-  m+=(fuVal==='12'?'12GA':'14GA')+' Framing \u2022 '+(sheetFree||bt3==='widespan'?'26GA':'Standard Sheeting')+'\n\n';
+  m+=(fuVal==='12'?'12GA':'14GA')+' Framing \u2022 '+(T.sheet26?'26GA':'Standard Sheeting')+'\n';
+  ltLines.forEach(function(s){m+='\u2022 '+s+'\n';});
+  m+='\n';
   if(doorLines.length){m+='\u{1F6AA} DOORS & WINDOWS\n';doorLines.forEach(function(d){m+='\u2022 '+d+'\n';});m+='\n';}
   if(insText!=='None')m+='\u2744\uFE0F Insulation: '+insText+'\n\n';
   if(aewP)m+='\u{1F3E0} '+aewLabel()+'\n\n';
   m+='\u{1F3A8} COLORS\nRoof: '+roofColor+'\nWalls: '+wallColor+'\nTrim: '+trimColor+'\n\n';
   m+='\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n';
-  m+='\u{1F4B0} TOTAL:  '+fD(tot-addDA)+'\n';
+  m+='\u{1F4B0} TOTAL:  '+fD(T.adjTot)+'\n';
   var _showAD2 = G('add-disc-show') && G('add-disc-show').value === 'show';
   if(_showAD2 && addDA > 0){
     var _adLbl2 = addDT==='pct' ? ('Additional Discount ('+addDV+'% off deposit)') : 'Additional Discount (off deposit)';

@@ -627,6 +627,9 @@ function syncFromBuilder(win: BuilderWindow) {
 
   const roof = rs === 'Vertical' ? 'Vertical' : 'Horizontal';
   if (rs && roof !== st.roofOrientation) st.setRoofOrientation(roof);
+  // VIEW-ONLY roof style for the Spacing overlay's CCI center-clearance chart.
+  const roofStyle = rs === 'Regular' ? 'Regular' : rs === 'Vertical' ? 'Vertical' : 'Boxed Eave';
+  if (rs && roofStyle !== st.roofStyle) st.setRoofStyle(roofStyle);
 
   // Roof overhang: 6" standard, upgradeable to 12" via the program's "1' Overhang"
   // option (overhang-sel: none/eaves/gables/both). Any non-none selection → 12".

@@ -226,6 +226,8 @@ export interface BuildingConfig {
    * looks, e.g. leg style on wide spans. Unset = CA rules.
    */
   manufacturer?: 'CCI' | 'CA';
+  /** The program's roof style (VIEW-ONLY — Spacing's CCI center-clearance chart differs Regular vs Boxed Eave/Vertical). */
+  roofStyle?: 'Regular' | 'Boxed Eave' | 'Vertical';
   /**
    * Free-standing single-slope (CCI fslean): total roof drop (ft) from the tall
    * internal-LEFT (-X) eave down to the low (+X) eave. 0 = normal gabled

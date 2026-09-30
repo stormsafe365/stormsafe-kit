@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { Opening, OpeningType, WallSide } from '@/types/building';
 import { COMPONENT_OUTSET, SHEET_OUTSET, openingWorldTransform, type LeanToStructure, type StructureModel, type Vec3 } from '@/engine/geometry';
 import { clampOffset, checkCollision } from '@/engine/layout';
+import { cciCenterClearanceFt } from '@/engine/clearance';
 import { TRUSS_CLEARANCE_FT } from '@/config/constants';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
@@ -725,6 +726,13 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
   const gable = peak > eave + 0.1;
   const items = [...openings].sort((a, b) => a.offset - b.offset);
   const pt = (along: number, y: number): Vec3 => pushOut(openingWorldTransform(side, along, y, structure).pos, side, 0.22);
+  // CCI center clearance (owner 9/29/26): how much headroom there is in the
+  // middle before you hit the center braces — CCI chart, gable walls only.
+  const mfr = useBuildingStore((st) => st.manufacturer);
+  const roofStyle = useBuildingStore((st) => st.roofStyle);
+  const centerClr = gable && (side === 'front' || side === 'back') && !structure.monoDropFt
+    ? cciCenterClearanceFt(mfr, roofStyle, structure.width, structure.legHeight)
+    : null;
 
   // Spacing chain: every corner/edge stop; label each GAP (openings get a size chip instead).
   const r3 = (v: number) => Math.round(v * 1000) / 1000;
@@ -779,6 +787,15 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
       )}
       {gable && (
         <Measure a={pt(span / 2, eave)} b={pt(span / 2, peak)} mid={pt(span / 2, (eave + peak) / 2)} label={`${ftIn(peak)}H`} vertical />
+      )}
+      {centerClr != null && (
+        <Measure
+          a={pt(span / 2 + 1.2, 0)}
+          b={pt(span / 2 + 1.2, centerClr)}
+          mid={pt(span / 2 + 1.2, centerClr * 0.5)}
+          label={`${ftIn(centerClr)} center clearance`}
+          vertical
+        />
       )}
     </group>
   );

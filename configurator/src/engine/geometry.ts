@@ -1,6 +1,6 @@
 import type { BuildingType, EndSheeting, LeanToOpening, OpenEnd, Opening, WallOverrides, WallSide } from '@/types/building';
 import type { ResolvedBuilding } from './ruleEngine';
-import { leanToWallSettings, rendersLeanToFixture } from './leanToFixtures';
+import { leanToWallSettings, rendersLeanToFixture, type LeanToStorageSpan } from './leanToFixtures';
 
 /**
  * LAYER 2 (cont.) — Structural geometry derivation.
@@ -89,6 +89,13 @@ export interface LeanToStructure {
   /** Post/truss positions along the run, measured (ft) from spanStart — drives
    *  the drag-time spacing + truss-collision guides on the outer wall. */
   trussOffsets: number[];
+  /**
+   * Storage section (VIEW-ONLY; LeanTo.storage): partition bent position and
+   * the storage stretch of the outer wall. Absent = no storage section (the
+   * key is left out entirely, so a lean-to without one derives exactly as
+   * before).
+   */
+  storage?: LeanToStorageSpan;
 }
 
 export interface StructureModel {
@@ -309,6 +316,8 @@ function clipFrameAtEaveOpenings(members: Member[], openings: Opening[], halfW: 
  * post, and a knee brace that would cross the opening (or its trim, within
  * END_BRACE_CLEAR) is left out of that bent entirely rather than leaving
  * floating stubs: a framed walk-through has nothing across its corner.
+ * A storage PARTITION opening is treated the same way in the partition bent
+ * (storage.runAt) — no post or knee brace across a partition door.
  */
 const END_BRACE_CLEAR = 0.25;
 function clipFrameAtLeanToOpenings(members: Member[], leanTos: LeanToStructure[]): Member[] {
@@ -326,17 +335,21 @@ function clipFrameAtLeanToOpenings(members: Member[], leanTos: LeanToStructure[]
     const depth = style === 'ladder' ? ladderDepth(lt.lowLegHeightFt) : style === 'double' ? DOUBLE_D : 0;
     const walls = leanToWallSettings(lt);
     for (const op of lt.openings ?? []) {
-      if (op.wall === 'front' || op.wall === 'back') {
+      if (op.wall === 'front' || op.wall === 'back' || op.wall === 'partition') {
         // Only an end-wall opening that is actually DRAWN (rendersLeanToFixture:
         // a frame-out always, a door/window only on a closed end) moves framing.
+        // A storage PARTITION opening sits in the partition bent's plane (runAt)
+        // and is framed exactly like an end-wall opening.
         if (!rendersLeanToFixture(op, walls)) continue;
+        const run = op.wall === 'front' ? lt.spanStart : op.wall === 'back' ? lt.spanEnd : lt.storage?.runAt;
+        if (run === undefined) continue;
         // Same across math as the lean-to fixture placement (LeanToSiding
         // openingPlacement): centre = min(inner, outer) + offsetFt.
         const c = Math.min(innerPlane, plane) + op.offsetFt;
         const sill = op.sillFt ?? 0;
         endBands.push({
           eave,
-          run: op.wall === 'front' ? lt.spanStart : lt.spanEnd,
+          run,
           inner: innerPlane,
           sOut: -inb,
           width: Math.abs(plane - innerPlane),
@@ -969,9 +982,37 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       c === innerC ? connH : c === outerC ? lh : connH + (lh - connH) * ((c - innerC) / (outerC - innerC));
 
     // Bent positions along the run (see the block comment: the pre-existing grid).
-    const runPos = Array.from(
+    const gridPos = Array.from(
       new Set([spanA, ...framePositionsZ.filter((v) => v > spanA && v < spanB), spanB]),
     ).sort((a, b) => a - b);
+
+    // STORAGE SECTION (VIEW-ONLY; priced by the program): a partition wall
+    // `lengthFt` in from the storage end. Its bent is a full lean-to bent
+    // (outer post, inner post where no main leg stands, rafter, knee brace —
+    // the same members as every other bent), added to the grid; on (or within
+    // 0.05 ft of) an existing bent the partition simply uses that bent. The
+    // storage length is kept at least 0.5 ft short of the run (the program
+    // only prices a length SHORTER than the lean-to). No storage = gridPos,
+    // exactly as before.
+    let storage: LeanToStorageSpan | undefined;
+    const st = lt.storage;
+    if (st && (st.end === 'front' || st.end === 'back') && Number.isFinite(st.lengthFt) && st.lengthFt > 0) {
+      const sL = Math.min(st.lengthFt, runLen - 0.5);
+      if (sL >= 0.5) {
+        let runAt = st.end === 'front' ? spanA + sL : spanB - sL;
+        const onBent = gridPos.find((r) => Math.abs(r - runAt) < 0.05);
+        if (onBent !== undefined) runAt = onBent;
+        storage = {
+          end: st.end,
+          lengthFt: st.end === 'front' ? runAt - spanA : spanB - runAt,
+          runAt,
+          segStart: st.end === 'front' ? 0 : runAt - spanA,
+          segEnd: st.end === 'front' ? runAt - spanA : runLen,
+          faces: st.end === 'front' ? 1 : -1,
+        };
+      }
+    }
+    const runPos = storage && !gridPos.includes(storage.runAt) ? [...gridPos, storage.runAt].sort((a, b) => a - b) : gridPos;
     // Does a MAIN-building leg already stand at this run position on the lean-to's
     // wall line? (Every main truss on an eave wall; the two corners on a gable wall.)
     const mainLegAt = (run: number): boolean =>
@@ -1065,6 +1106,8 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       // Post positions along the run (the bents above), as offsets from
       // spanStart so they line up with an opening's offsetFt.
       trussOffsets: runPos.map((r) => r - spanA),
+      // Only a lean-to WITH a storage section gets the key (no-storage output unchanged).
+      ...(storage ? { storage } : {}),
     });
   }
 

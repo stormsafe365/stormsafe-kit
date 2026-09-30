@@ -72,8 +72,12 @@ export interface LeanToOpening {
   /** Stable id (deterministic from its source accessory entry) for drag + writeback. */
   id: string;
   type: 'rollUpDoor' | 'walkDoor' | 'window' | 'frameOut';
-  /** Which lean-to wall: outer long side, or front/back gable end. */
-  wall: 'outer' | 'front' | 'back';
+  /**
+   * Which lean-to wall: outer long side, front/back gable end, or the storage
+   * section's PARTITION wall (program "Storage Partition Wall"; only drawn
+   * while the lean-to has a storage section — offsets run like an end wall's).
+   */
+  wall: 'outer' | 'front' | 'back' | 'partition';
   widthFt: number;
   heightFt: number;
   sillFt: number;
@@ -126,6 +130,23 @@ export interface LeanTo {
   };
   /** Doors / windows / roll-ups placed on the lean-to's walls. */
   openings?: LeanToOpening[];
+  /**
+   * VIEW-ONLY (drawing; priced by the program): an enclosed STORAGE SECTION at
+   * one end of an attached lean-to (program "Storage Section" + "Storage
+   * Length"). A partition wall crosses the lean-to `lengthFt` in from that end;
+   * that end wall and the outer wall along the storage length are drawn closed
+   * whatever their own settings (the program prices them that way). Unset =
+   * no storage section (every quote made before this feature).
+   */
+  storage?: LeanToStorage;
+}
+
+/** A lean-to's storage section (see LeanTo.storage). */
+export interface LeanToStorage {
+  /** Which end is closed off: 'front' = the run-start end, 'back' = the run-end end (the lean-to's own Front/Back End walls). */
+  end: 'front' | 'back';
+  /** Storage length (ft) from that end to the partition wall. */
+  lengthFt: number;
 }
 
 /** The full wall/enclosure model (mirrors Sensei's Walls panel). */

@@ -2,7 +2,7 @@ import { useMemo, useRef } from 'react';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SHEET_OUTSET, COMPONENT_OUTSET, type LeanToStructure, type Vec3 } from '@/engine/geometry';
-import { rendersLeanToFixture } from '@/engine/leanToFixtures';
+import { leanToWallSettings, rendersLeanToFixture, type LeanToStorageSpan } from '@/engine/leanToFixtures';
 import type { BuildingColors, LeanToOpening, OpeningType, PanelOrientation, Wainscot } from '@/types/building';
 import { swatchHex, isMetallic, printPanelKey } from '@/config/colors';
 import { TRUSS_CLEARANCE_FT } from '@/config/constants';
@@ -121,6 +121,11 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
         const { side, front, back } = walls;
         const eave = lt.attachedSide.includes('Eave');
         const geo = eave ? eaveSurfaces(lt, overhangFt, walls) : gableSurfaces(lt, overhangFt, walls);
+        // Storage section (VIEW-ONLY): the closed stretch of an open / partial
+        // outer wall, the rest of that wall's band, and the partition's openings.
+        const stor = storageRuns(geo);
+        const shownOuter = lt.openings.filter((o) => o.wall === 'outer' && rendersLeanToFixture(o, walls));
+        const partitionOps = lt.openings.filter((o) => o.wall === 'partition' && rendersLeanToFixture(o, walls));
 
         return (
           <group key={lt.id}>
@@ -142,9 +147,16 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
                   <PolyPanel key={`side-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.walls, wallMetal, false)} />
                 ))
               : side !== 'open' &&
-                sideWallPolys(geo, side, lt.lowLegHeightFt, lt.openings.filter((o) => o.wall === 'outer')).map((p, i) => (
+                sideWallPolys(geo, side, lt.lowLegHeightFt, lt.openings.filter((o) => o.wall === 'outer'), stor?.band).map((p, i) => (
                   <PolyPanel key={`side-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.walls, wallMetal, false)} />
                 ))}
+            {/* Storage stretch of an open / partial outer wall: closed floor to
+                eave, cut around the openings drawn on it. */}
+            {side !== 'closed' &&
+              stor &&
+              wallBandStrips(geo, 0, lt.lowLegHeightFt, shownOuter, 0, stor.seg).map((p, i) => (
+                <PolyPanel key={`stor-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.walls, wallMetal, false)} />
+              ))}
 
             {/* Wainscot band on the outer wall (only when the wall is fully
                 closed) — cut around openings reaching into it, like the main
@@ -153,6 +165,12 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
               wH > 0 &&
               wallBandStrips(geo, 0, wH, lt.openings.filter((o) => o.wall === 'outer'), 0.02).map((p, i) => (
                 <PolyPanel key={`wain-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} />
+              ))}
+            {side !== 'closed' &&
+              stor &&
+              wH > 0 &&
+              wallBandStrips(geo, 0, wH, shownOuter, 0.02, stor.seg).map((p, i) => (
+                <PolyPanel key={`swain-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} />
               ))}
 
             {/* Gable ends — cut around their openings when closed */}
@@ -171,6 +189,19 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
               wH > 0 &&
               gableWainscotStrips(geo, 'back', wH, lt.openings.filter((o) => o.wall === 'back')).map((p, i) => (
                 <PolyPanel key={`bgw-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} />
+              ))}
+
+            {/* Storage PARTITION: a closed end-wall trapezoid across the
+                lean-to (low leg at the outer edge up to the connection at the
+                main wall), its face toward the open part, cut around its
+                openings; wainscot like a closed end. */}
+            {geo.gable.partition && (
+              <GableEnd geo={geo} which="partition" val="closed" openings={partitionOps} material={polyMat(tex.walls, wallMetal, false)} />
+            )}
+            {geo.gable.partition &&
+              wH > 0 &&
+              gableWainscotStrips(geo, 'partition', wH, partitionOps).map((p, i) => (
+                <PolyPanel key={`pgw-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} />
               ))}
 
             {/* Wainscot cap/divider trim — same ~2" bar the main building runs
@@ -206,16 +237,45 @@ export type GableVal = 'open' | 'halfEnd' | 'gable' | 'q1' | 'q2' | 'q3' | 'clos
 const GABLE_BAND_FRAC: Partial<Record<GableVal, number>> = { q1: 0.25, q2: 0.5, q3: 0.75 };
 export type SideVal = string; // open | closed | q1 | q2 | q3 | 1panel | 2panel | 3panel
 
-export function resolveWalls(lt: LeanToStructure): { side: SideVal; front: GableVal; back: GableVal } {
-  if (lt.enclosure === 'enclosed') return { side: 'closed', front: 'closed', back: 'closed' };
-  if (lt.enclosure === 'custom' && lt.customWalls) {
-    return {
-      side: lt.customWalls.side || 'open',
-      front: (lt.customWalls.front as GableVal) || 'open',
-      back: (lt.customWalls.back as GableVal) || 'open',
-    };
-  }
-  return { side: 'open', front: 'open', back: 'open' };
+/** Resolved lean-to walls (+ its storage section, when it has one). */
+export interface LtWalls {
+  side: SideVal;
+  front: GableVal;
+  back: GableVal;
+  storage?: LeanToStorageSpan;
+}
+
+/**
+ * The lean-to's wall closures — leanToWallSettings, the one rule (a storage
+ * section closes its end wall and rides along as `storage`).
+ */
+export function resolveWalls(lt: LeanToStructure): LtWalls {
+  return leanToWallSettings(lt) as LtWalls;
+}
+
+/** Height of the outer wall's eave-down sheeting band for a side setting (the whole low leg when closed / unknown). */
+export function sideBandHeight(side: SideVal, lh: number): number {
+  if (side === 'q1') return lh * 0.25;
+  if (side === 'q2') return lh * 0.5;
+  if (side === 'q3') return lh * 0.75;
+  const m = /^(\d)panel$/.exec(side);
+  if (m) return Math.min(lh, parseInt(m[1], 10) * 3); // N × 3' panels DOWN from the eave
+  return lh;
+}
+
+/** A wall of end-wall type: the two run ends, or the storage partition. */
+export type LtEndWall = 'front' | 'back' | 'partition';
+
+/**
+ * Sheet plane (world run coordinate) and outward run sign of an end-type
+ * lean-to wall; null for a partition when there is no storage section. The
+ * partition's sheeted face looks toward the OPEN part of the lean-to (away
+ * from the storage end), like an end wall of the open part.
+ */
+export function endWallPlane(g: SurfaceSet['gable'], which: LtEndWall): { plane: number; outward: 1 | -1 } | null {
+  if (which === 'front') return { plane: g.frontPlane, outward: -1 };
+  if (which === 'back') return { plane: g.backPlane, outward: 1 };
+  return g.partition ? { plane: g.partition.plane, outward: g.partition.faces } : null;
 }
 
 // ── Geometry builders ──────────────────────────────────────────────────────
@@ -241,7 +301,23 @@ export interface SurfaceSet {
   // outer wall plane info for sideWallPolys
   wall: { axis: 'z' | 'x'; plane: number; a: number; b: number };
   // gable-end geometry for cutting openings + placing fixtures
-  gable: { kind: 'eave' | 'gable'; innerAcross: number; outerAcross: number; lh: number; connH: number; frontPlane: number; backPlane: number };
+  gable: {
+    kind: 'eave' | 'gable';
+    innerAcross: number;
+    outerAcross: number;
+    lh: number;
+    connH: number;
+    frontPlane: number;
+    backPlane: number;
+    /**
+     * Storage partition (only with a storage section): its sheet plane (run
+     * coordinate: partition framing line + OUT toward the open part) and the
+     * run direction its face looks (LeanToStorageSpan.faces).
+     */
+    partition?: { plane: number; faces: 1 | -1 };
+  };
+  /** Storage section of this lean-to (only when it has one). */
+  storage?: LeanToStorageSpan;
 }
 
 const TRIM_T = 0.045; // ~0.5" trim metal thickness
@@ -271,9 +347,10 @@ function leanToTrim(
   r1: number, // wall run end
   rf: number, // roof run start (with overhang)
   rb: number, // roof run end
-  walls: { side: SideVal; front: GableVal; back: GableVal },
+  walls: LtWalls,
   toPt: (across: number, up: number, run: number) => Pt,
   eaveIsZ: boolean,
+  storage?: LeanToStorageSpan,
 ): BoxSpec[] {
   const specs: BoxSpec[] = [];
   const runMid = (rf + rb) / 2;
@@ -344,18 +421,46 @@ function leanToTrim(
   const outR0 = Math.sign(r0 - (r0 + r1) / 2) || -1;
   const outR1 = Math.sign(r1 - (r0 + r1) / 2) || 1;
 
+  // The storage stretch of the outer wall is closed right to its end corner.
+  const sideAt0 = sideClosed || storage?.end === 'front';
+  const sideAt1 = sideClosed || storage?.end === 'back';
   // Outer corners (cap the side-wall ends) — height = low leg.
-  if (sideClosed || frontClosed) post(outerAcross, r0, outwardA, outR0, lh, sideClosed, frontClosed);
-  if (sideClosed || backClosed) post(outerAcross, r1, outwardA, outR1, lh, sideClosed, backClosed);
+  if (sideAt0 || frontClosed) post(outerAcross, r0, outwardA, outR0, lh, sideAt0, frontClosed);
+  if (sideAt1 || backClosed) post(outerAcross, r1, outwardA, outR1, lh, sideAt1, backClosed);
   // Inner corners (gable meets building) — full height, just the gable-edge cap.
   if (frontClosed) post(innerAcross, r0, -outwardA, outR0, connH, false, true);
   if (backClosed) post(innerAcross, r1, -outwardA, outR1, connH, false, true);
 
+  // Storage PARTITION (its face looks toward the open part of the lean-to):
+  // where the closed storage stretch of an open / partial outer wall ends at
+  // the partition it is an OUTSIDE corner — an L post like an end corner (on
+  // a partial wall its outer-wall face only runs up to the eave-down band,
+  // which carries on past the partition). A fully closed outer wall meets the
+  // partition inside the building: no post there. Where the partition meets
+  // the main building: the gable-edge cap, full height.
+  if (storage) {
+    const run = storage.runAt;
+    const outRp = storage.faces;
+    if (walls.side === 'open') post(outerAcross, run, outwardA, outRp, lh, true, true);
+    else if (!sideClosed) {
+      const below = lh - sideBandHeight(walls.side, lh);
+      if (below > 0.05) post(outerAcross, run, outwardA, outRp, below, true, false);
+      post(outerAcross, run, outwardA, outRp, lh, false, true);
+    }
+    post(innerAcross, run, -outwardA, outRp, connH, false, true);
+  }
+
   return specs;
 }
 
+/** The storage partition's sheet plane (framing line + OUT toward the open part) — only with a storage section. */
+function partitionOf(lt: LeanToStructure): { partition?: { plane: number; faces: 1 | -1 } } {
+  const st = lt.storage;
+  return st ? { partition: { plane: st.runAt + st.faces * OUT, faces: st.faces } } : {};
+}
+
 /** EAVE-attached (Left/Right): walls vary in X, length runs along Z. */
-export function eaveSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; front: GableVal; back: GableVal }): SurfaceSet {
+export function eaveSurfaces(lt: LeanToStructure, oh: number, walls: LtWalls): SurfaceSet {
   const innerX = lt.inner.x;
   const outerX = lt.outer.x;
   const lh = lt.lowLegHeightFt;
@@ -398,7 +503,7 @@ export function eaveSurfaces(lt: LeanToStructure, oh: number, walls: { side: Sid
   const trim = leanToTrim(
     outerXoh, lhOh + roofLiftY, innerX, connH + roofLiftY,
     outerX, lh, connH, z0, z1, zf, zb,
-    walls, (a, u, r) => [a, u, r], true,
+    walls, (a, u, r) => [a, u, r], true, lt.storage,
   );
 
   return {
@@ -407,7 +512,8 @@ export function eaveSurfaces(lt: LeanToStructure, oh: number, walls: { side: Sid
     roofUV,
     trim,
     wall: { axis: 'z', plane: wallX, a: z0, b: z1 },
-    gable: { kind: 'eave', innerAcross: innerX, outerAcross: outerX, lh, connH, frontPlane: z0 - OUT, backPlane: z1 + OUT },
+    gable: { kind: 'eave', innerAcross: innerX, outerAcross: outerX, lh, connH, frontPlane: z0 - OUT, backPlane: z1 + OUT, ...partitionOf(lt) },
+    ...(lt.storage ? { storage: lt.storage } : {}),
     wainscot: (wH) => [
       [wallX + outwardX * 0.02, 0, z0],
       [wallX + outwardX * 0.02, 0, z1],
@@ -432,7 +538,7 @@ export function eaveSurfaces(lt: LeanToStructure, oh: number, walls: { side: Sid
 }
 
 /** GABLE-attached (Front/Back): walls vary in Z, length runs along X. */
-export function gableSurfaces(lt: LeanToStructure, oh: number, walls: { side: SideVal; front: GableVal; back: GableVal }): SurfaceSet {
+export function gableSurfaces(lt: LeanToStructure, oh: number, walls: LtWalls): SurfaceSet {
   const innerZ = lt.inner.z;
   const outerZ = lt.outer.z;
   const lh = lt.lowLegHeightFt;
@@ -473,7 +579,7 @@ export function gableSurfaces(lt: LeanToStructure, oh: number, walls: { side: Si
   const trim = leanToTrim(
     outerZoh, lhOh + roofLiftY, innerZ, connH + roofLiftY,
     outerZ, lh, connH, x0, x1, xf, xb,
-    walls, (a, u, r) => [r, u, a], false,
+    walls, (a, u, r) => [r, u, a], false, lt.storage,
   );
 
   return {
@@ -482,7 +588,8 @@ export function gableSurfaces(lt: LeanToStructure, oh: number, walls: { side: Si
     roofUV,
     trim,
     wall: { axis: 'x', plane: wallZ, a: x0, b: x1 },
-    gable: { kind: 'gable', innerAcross: innerZ, outerAcross: outerZ, lh, connH, frontPlane: x0 - OUT, backPlane: x1 + OUT },
+    gable: { kind: 'gable', innerAcross: innerZ, outerAcross: outerZ, lh, connH, frontPlane: x0 - OUT, backPlane: x1 + OUT, ...partitionOf(lt) },
+    ...(lt.storage ? { storage: lt.storage } : {}),
     wainscot: (wH) => [
       [x0, 0, wallZ + outwardZ * 0.02],
       [x1, 0, wallZ + outwardZ * 0.02],
@@ -507,21 +614,30 @@ export function gableSurfaces(lt: LeanToStructure, oh: number, walls: { side: Si
 }
 
 // Outer long wall, honoring the side-wall setting (height fraction or panel count).
-export function sideWallPolys(geo: SurfaceSet, side: SideVal, lh: number, openings: LeanToOpening[] = []): Array<{ corners: Pt[]; uvs: UV[] }> {
+// `range` (world run coordinates) limits it to part of the wall — the stretch
+// OUTSIDE a storage section (storageRuns); unset = the whole wall.
+export function sideWallPolys(geo: SurfaceSet, side: SideVal, lh: number, openings: LeanToOpening[] = [], range?: [number, number]): Array<{ corners: Pt[]; uvs: UV[] }> {
   // Sheeting hangs from the EAVE (low-leg top = lh) DOWNWARD. `h` is the height
   // of the sheeted band; it fills [lh-h, lh] and the lower wall stays open.
-  let h = lh;
-  if (side === 'q1') h = lh * 0.25;
-  else if (side === 'q2') h = lh * 0.5;
-  else if (side === 'q3') h = lh * 0.75;
-  else {
-    const m = /^(\d)panel$/.exec(side);
-    if (m) h = Math.min(lh, parseInt(m[1], 10) * 3); // N × 3' panels DOWN from the eave
-  }
+  const h = sideBandHeight(side, lh);
   // Cut the band around any opening that reaches up into it — sheeting never
   // crosses a framed opening (same rule as the fully-closed wall / the main
   // building's open-bay panels).
-  return wallBandStrips(geo, lh - h, h, openings);
+  return wallBandStrips(geo, lh - h, h, openings, 0, range);
+}
+
+/**
+ * Storage section on the OUTER wall, in world run coordinates: `seg` = the
+ * closed storage stretch, `band` = the rest of the wall (where an open /
+ * partial side setting still applies). null without a storage section.
+ */
+export function storageRuns(geo: SurfaceSet): { seg: [number, number]; band: [number, number] } | null {
+  const st = geo.storage;
+  if (!st) return null;
+  const { a, b } = geo.wall;
+  const seg: [number, number] = [a + st.segStart, a + st.segEnd];
+  const band: [number, number] = st.end === 'front' ? [seg[1], b] : [a, seg[0]];
+  return { seg, band };
 }
 
 // Outer long wall (height lh, run a..b) cut around its openings via stripsAround.
@@ -532,8 +648,13 @@ function cutOuterWall(geo: SurfaceSet, lh: number, openings: LeanToOpening[]): A
 // A horizontal sheeting band on the outer wall plane spanning [yBot, yBot+bandH],
 // cut into solid strips around the openings that intersect it. `proud` shifts
 // the band outward off the wall plane (e.g. the wainscot overlay sits 0.02 out).
-function wallBandStrips(geo: SurfaceSet, yBot: number, bandH: number, openings: LeanToOpening[], proud = 0): Array<{ corners: Pt[]; uvs: UV[] }> {
-  const { axis, a, b } = geo.wall;
+// `range` (world run coordinates) limits the band to part of the wall; opening
+// offsets are still measured from the wall start (geo.wall.a).
+function wallBandStrips(geo: SurfaceSet, yBot: number, bandH: number, openings: LeanToOpening[], proud = 0, range?: [number, number]): Array<{ corners: Pt[]; uvs: UV[] }> {
+  const { axis } = geo.wall;
+  const a0 = geo.wall.a; // opening offsets start here
+  const [a, b] = range ?? [geo.wall.a, geo.wall.b];
+  if (b - a < 0.02) return [];
   const outward = Math.sign(geo.wall.plane - (geo.gable?.innerAcross ?? 0)) || 1;
   const plane = geo.wall.plane + (proud ? outward * proud : 0);
   const wallLen = b - a;
@@ -542,7 +663,7 @@ function wallBandStrips(geo: SurfaceSet, yBot: number, bandH: number, openings: 
   const holes: LocalRect[] = openings
     .filter((o) => o.sillFt + o.heightFt > yBot + 0.01 && o.sillFt < yBot + bandH - 0.01)
     .map((o) => ({
-      u: a + o.offsetFt - midRun,
+      u: a0 + o.offsetFt - midRun,
       v: o.sillFt + o.heightFt / 2 - yMid,
       w: o.widthFt,
       h: o.heightFt,
@@ -566,10 +687,11 @@ function wallBandStrips(geo: SurfaceSet, yBot: number, bandH: number, openings: 
 // Wainscot band on a closed gable end, cut around that wall's openings —
 // replaces the old single uncut polygon so a door / frame-out leaves a real
 // gap in the band (same rule as the main building's gable wainscot).
-function gableWainscotStrips(geo: SurfaceSet, which: 'front' | 'back', wH: number, openings: LeanToOpening[]): Array<{ corners: Pt[]; uvs: UV[] }> {
+function gableWainscotStrips(geo: SurfaceSet, which: LtEndWall, wH: number, openings: LeanToOpening[]): Array<{ corners: Pt[]; uvs: UV[] }> {
   const g = geo.gable;
-  const outward = which === 'front' ? -1 : 1;
-  const plane = (which === 'front' ? g.frontPlane : g.backPlane) + outward * 0.02;
+  const ep = endWallPlane(g, which);
+  if (!ep) return [];
+  const plane = ep.plane + ep.outward * 0.02;
   const minA = Math.min(g.innerAcross, g.outerAcross);
   const maxA = Math.max(g.innerAcross, g.outerAcross);
   const width = maxA - minA;
@@ -614,7 +736,7 @@ function splitSegs(start: number, end: number, cuts: Array<{ a: number; b: numbe
 function leanToWainscotCaps(
   geo: SurfaceSet,
   wH: number,
-  walls: { side: SideVal; front: GableVal; back: GableVal },
+  walls: LtWalls,
   openings: LeanToOpening[],
 ): Array<{ pos: Pt; size: [number, number, number] }> {
   const bars: Array<{ pos: Pt; size: [number, number, number] }> = [];
@@ -623,26 +745,29 @@ function leanToWainscotCaps(
       .filter((o) => o.wall === wall && o.sillFt < wH + 0.08 && o.sillFt + o.heightFt > wH - 0.08)
       .map((o) => ({ a: origin + o.offsetFt - o.widthFt / 2, b: origin + o.offsetFt + o.widthFt / 2 }));
   const SZ = 0.16;
-  // Outer wall — bar along the run at the band's proud face.
-  if (walls.side === 'closed') {
-    const { axis, a, b } = geo.wall;
+  // Outer wall — bar along the run at the band's proud face (on an open /
+  // partial outer wall: along its closed storage stretch only).
+  const stor = walls.side === 'closed' ? null : storageRuns(geo);
+  if (walls.side === 'closed' || stor) {
+    const { axis, a } = geo.wall;
+    const [ra, rb] = stor ? stor.seg : [geo.wall.a, geo.wall.b];
     const outward = Math.sign(geo.wall.plane - geo.gable.innerAcross) || 1;
     const plane = geo.wall.plane + outward * (0.02 + SZ / 2);
-    for (const s of splitSegs(a, b, crossing('outer', a)))
+    for (const s of splitSegs(ra, rb, crossing('outer', a)))
       bars.push(
         axis === 'z'
           ? { pos: [plane, wH, (s.a + s.b) / 2], size: [SZ, SZ, s.b - s.a] }
           : { pos: [(s.a + s.b) / 2, wH, plane], size: [s.b - s.a, SZ, SZ] },
       );
   }
-  // Closed gable ends — bar along the across direction.
+  // Closed gable ends (+ a storage partition, always closed) — bar along the across direction.
   const g = geo.gable;
   const minA = Math.min(g.innerAcross, g.outerAcross);
   const maxA = Math.max(g.innerAcross, g.outerAcross);
-  for (const which of ['front', 'back'] as const) {
-    if (walls[which] !== 'closed') continue;
-    const outward = which === 'front' ? -1 : 1;
-    const plane = (which === 'front' ? g.frontPlane : g.backPlane) + outward * (0.02 + SZ / 2);
+  for (const which of ['front', 'back', 'partition'] as const) {
+    const ep = endWallPlane(g, which);
+    if (!ep || (which !== 'partition' && walls[which] !== 'closed')) continue;
+    const plane = ep.plane + ep.outward * (0.02 + SZ / 2);
     for (const s of splitSegs(minA, maxA, crossing(which, minA)))
       bars.push(
         g.kind === 'eave'
@@ -653,16 +778,16 @@ function leanToWainscotCaps(
   return bars;
 }
 
-// Gable end (front/back). When fully closed AND it has openings, cut the lower
-// rectangle around them and keep the gable triangle above; otherwise render the
-// whole trapezoid/triangle as one panel.
+// Gable end (front/back, or the storage partition). When fully closed AND it
+// has openings, cut the lower rectangle around them and keep the gable triangle
+// above; otherwise render the whole trapezoid/triangle as one panel.
 function cutGable(
   geo: SurfaceSet,
-  which: 'front' | 'back',
+  which: LtEndWall,
   openings: LeanToOpening[],
 ): { strips: Array<{ corners: Pt[]; uvs: UV[] }>; triangle: { corners: Pt[]; uvs: UV[] } } {
   const g = geo.gable;
-  const plane = which === 'front' ? g.frontPlane : g.backPlane;
+  const plane = endWallPlane(g, which)?.plane ?? g.backPlane;
   const minA = Math.min(g.innerAcross, g.outerAcross);
   const maxA = Math.max(g.innerAcross, g.outerAcross);
   const width = maxA - minA;
@@ -703,15 +828,16 @@ function GableEnd({
   material,
 }: {
   geo: SurfaceSet;
-  which: 'front' | 'back';
+  which: LtEndWall;
   val: GableVal;
   openings: LeanToOpening[];
   material: THREE.Material;
 }) {
   if (val === 'open') return null;
+  if (which === 'partition' && !geo.gable.partition) return null;
   if (!(val === 'closed' && openings.length > 0)) {
-    const corners = which === 'front' ? geo.frontGable(val) : geo.backGable(val);
-    const uvs = which === 'front' ? geo.frontGableUV(val) : geo.backGableUV(val);
+    const corners = which === 'front' ? geo.frontGable(val) : which === 'back' ? geo.backGable(val) : partitionGable(geo, val);
+    const uvs = which === 'front' ? geo.frontGableUV(val) : which === 'back' ? geo.backGableUV(val) : gableOutline(val, geo.gable.innerAcross, geo.gable.outerAcross, geo.gable.lh, geo.gable.connH);
     return <PolyPanel corners={corners} uvs={uvs} material={material} />;
   }
   const { strips, triangle } = cutGable(geo, which, openings);
@@ -725,8 +851,18 @@ function GableEnd({
   );
 }
 
+/** The storage partition's outline at its sheet plane (the end-wall outline, world points). */
+function partitionGable(geo: SurfaceSet, v: GableVal): Pt[] {
+  const g = geo.gable;
+  const plane = g.partition?.plane ?? 0;
+  return gableOutline(v, g.innerAcross, g.outerAcross, g.lh, g.connH).map(([a, y]) => (g.kind === 'eave' ? [a, y, plane] : [plane, y, a]) as Pt);
+}
+
 // World position + Y-rotation to mount an OpeningFixture on a lean-to wall so
 // its outward face points away from the building, matching the wall plane.
+// A storage PARTITION opening mounts like an end-wall one, on the partition's
+// face toward the open part of the lean-to (so a hi-impact door swings out
+// into it, a standard one into the storage room).
 function openingPlacement(geo: SurfaceSet, opening: LeanToOpening): { pos: [number, number, number]; rotY: number } {
   const yC = opening.sillFt + opening.heightFt / 2;
   if (opening.wall === 'outer') {
@@ -737,12 +873,13 @@ function openingPlacement(geo: SurfaceSet, opening: LeanToOpening): { pos: [numb
       ? { pos: [plane + outward * COMP_PROUD, yC, runC], rotY: (outward * Math.PI) / 2 }
       : { pos: [runC, yC, plane + outward * COMP_PROUD], rotY: outward > 0 ? 0 : Math.PI };
   }
-  // gable end
+  // gable end / storage partition
   const g = geo.gable;
-  const plane = opening.wall === 'front' ? g.frontPlane : g.backPlane;
+  const ep = endWallPlane(g, opening.wall) ?? { plane: g.backPlane, outward: 1 };
+  const plane = ep.plane;
   const minA = Math.min(g.innerAcross, g.outerAcross);
   const aC = minA + opening.offsetFt;
-  const outward = opening.wall === 'front' ? -1 : 1; // front faces the lean-to's low/run-start end
+  const outward = ep.outward; // front faces the lean-to's low/run-start end
   return g.kind === 'eave'
     ? { pos: [aC, yC, plane + outward * COMP_PROUD], rotY: outward > 0 ? 0 : Math.PI }
     : { pos: [plane + outward * COMP_PROUD, yC, aC], rotY: (outward * Math.PI) / 2 };
@@ -766,7 +903,7 @@ function dragInfo(geo: SurfaceSet, opening: LeanToOpening): DragInfo {
       : { plane: new THREE.Plane(new THREE.Vector3(0, 0, 1), -plane), coord: (h) => h.x, start: a, wallLen: b - a, w };
   }
   const g = geo.gable;
-  const plane = opening.wall === 'front' ? g.frontPlane : g.backPlane;
+  const plane = (endWallPlane(g, opening.wall) ?? { plane: g.backPlane }).plane;
   const minA = Math.min(g.innerAcross, g.outerAcross);
   const wallLen = Math.abs(g.innerAcross - g.outerAcross);
   return g.kind === 'eave'

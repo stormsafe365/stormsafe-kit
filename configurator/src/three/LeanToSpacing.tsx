@@ -4,7 +4,7 @@ import type { LeanToStructure, Vec3 } from '@/engine/geometry';
 import { rendersLeanToFixture } from '@/engine/leanToFixtures';
 import type { LeanToOpening } from '@/types/building';
 import { useEditorStore } from '@/store/useEditorStore';
-import { eaveSurfaces, gableSurfaces, resolveWalls, type SurfaceSet } from './LeanToSiding';
+import { endWallPlane, eaveSurfaces, gableSurfaces, resolveWalls, type SurfaceSet } from './LeanToSiding';
 import { Chip3D, Measure, ftIn } from './Openings';
 
 /**
@@ -18,8 +18,11 @@ import { Chip3D, Measure, ftIn } from './Openings';
  *   - sill heights for openings up the wall.
  * Positions use the lean-to fixture placement math (LeanToSiding
  * openingPlacement / LeanToOpeningGuides): outer wall = run start + offset,
- * end walls = the lower world across-coordinate + offset. Read-only: nothing
- * here moves, selects or writes back anything.
+ * end walls = the lower world across-coordinate + offset. A storage section's
+ * PARTITION wall is an end-type wall facing the open part of the lean-to; its
+ * chain shows while it can be seen through an open / partial wall of that
+ * open part (never through a fully enclosed lean-to). Read-only: nothing here
+ * moves, selects or writes back anything.
  */
 
 type LeanToWall = LeanToOpening['wall'];
@@ -49,8 +52,9 @@ export function leanToWallFrame(geo: SurfaceSet, wall: LeanToWall): LeanToWallFr
       heightAt: () => g.lh,
     };
   }
-  const plane = wall === 'front' ? g.frontPlane : g.backPlane;
-  const outward = wall === 'front' ? -1 : 1;
+  const ep = endWallPlane(g, wall) ?? { plane: g.backPlane, outward: 1 };
+  const plane = ep.plane;
+  const outward = ep.outward;
   const minA = Math.min(g.innerAcross, g.outerAcross);
   const span = g.innerAcross - g.outerAcross;
   return {
@@ -62,6 +66,18 @@ export function leanToWallFrame(geo: SurfaceSet, wall: LeanToWall): LeanToWallFr
       return g.lh + Math.max(0, Math.min(1, f)) * (g.connH - g.lh);
     },
   };
+}
+
+/**
+ * Can the storage partition be seen from outside? Only through the OPEN part
+ * of the lean-to: its outer wall or its far end is not fully closed. (A fully
+ * enclosed lean-to hides the partition — its labels would float on the end
+ * wall in front of it.)
+ */
+export function partitionVisible(walls: { side: string; front: string; back: string; storage?: { end: 'front' | 'back' } }): boolean {
+  if (!walls.storage) return false;
+  const openEnd = walls.storage.end === 'front' ? walls.back : walls.front;
+  return walls.side !== 'closed' || openEnd !== 'closed';
 }
 
 /** Size chip text (same rule as the main building): walk doors + windows in inches, big doors in ft-in. */
@@ -104,9 +120,10 @@ function LeanToSpacingWalls({ leanTos, overhangFt }: { leanTos: LeanToStructure[
     for (const lt of leanTos) {
       const walls = resolveWalls(lt);
       const geo = lt.attachedSide.includes('Eave') ? eaveSurfaces(lt, overhangFt, walls) : gableSurfaces(lt, overhangFt, walls);
-      for (const wall of ['outer', 'front', 'back'] as const) {
+      for (const wall of ['outer', 'front', 'back', 'partition'] as const) {
         const openings = lt.openings.filter((o) => o.wall === wall && rendersLeanToFixture(o, walls));
         if (!openings.length) continue;
+        if (wall === 'partition' && !partitionVisible(walls)) continue;
         out.push({ key: `${lt.id}:${wall}`, frame: leanToWallFrame(geo, wall), openings });
       }
     }

@@ -75,7 +75,7 @@ export function createConcreteTexture(opts: { broom?: boolean } = {}): THREE.Can
  * Gravel / asphalt / compacted-dirt surface, one seamless 256 px tile of
  * WHITE-based speckle that modulates the pad material's color (like the
  * concrete tile), seeded so captures repeat:
- *  - gravel: dense 1-3 px stones, light and dark;
+ *  - gravel: crushed aggregate — angular chips over darker gaps;
  *  - asphalt: fine aggregate glints on a near-uniform base;
  *  - dirt: soft blotches + a few pebbles.
  */
@@ -111,10 +111,39 @@ export function createGroundSurfaceTexture(kind: 'gravel' | 'asphalt' | 'dirt'):
       dot(rnd() * N, rnd() * N, 0.4 + rnd() * 0.9, `rgba(${g},${g - 3},${g - 8},0.3)`);
     }
   } else if (kind === 'gravel') {
-    for (let i = 0; i < 20000; i++) {
-      const g = Math.round(120 + rnd() * 135);
-      dot(rnd() * N, rnd() * N, 1.4 + rnd() * 3.6, `rgba(${g},${g - 2},${g - 6},0.75)`);
-    }
+    // CRUSHED aggregate (not round pebbles): angular 4-7 sided chips packed
+    // over darker interstices, each with a faint lit facet.
+    x.fillStyle = 'rgb(168,166,161)';
+    x.fillRect(0, 0, N, N);
+    const chip = (px: number, py: number, r: number, g: number) => {
+      const n = 4 + Math.floor(rnd() * 4);
+      const a0 = rnd() * Math.PI * 2;
+      const pts = Array.from({ length: n }, (_, i) => {
+        const a = a0 + ((i + (rnd() - 0.5) * 0.6) * Math.PI * 2) / n;
+        const rr = r * (0.6 + rnd() * 0.55);
+        return [Math.cos(a) * rr, Math.sin(a) * rr] as const;
+      });
+      const hi = Math.min(255, g + 22);
+      const xs = [0, ...(px - r < 0 ? [N] : []), ...(px + r > N ? [-N] : [])];
+      const ys = [0, ...(py - r < 0 ? [N] : []), ...(py + r > N ? [-N] : [])];
+      for (const dx of xs) for (const dy of ys) {
+        x.beginPath();
+        pts.forEach(([u, v], i) => (i ? x.lineTo(px + dx + u, py + dy + v) : x.moveTo(px + dx + u, py + dy + v)));
+        x.closePath();
+        x.fillStyle = `rgba(${g},${g - 2},${g - 6},0.92)`;
+        x.fill();
+        // lit facet: the chip's first two edges, a touch lighter
+        x.beginPath();
+        x.moveTo(px + dx, py + dy);
+        x.lineTo(px + dx + pts[0][0], py + dy + pts[0][1]);
+        x.lineTo(px + dx + pts[1][0], py + dy + pts[1][1]);
+        x.lineTo(px + dx + pts[2][0], py + dy + pts[2][1]);
+        x.closePath();
+        x.fillStyle = `rgba(${hi},${hi - 2},${hi - 5},0.35)`;
+        x.fill();
+      }
+    };
+    for (let i = 0; i < 9000; i++) chip(rnd() * N, rnd() * N, 2.2 + rnd() * 4.2, Math.round(160 + rnd() * 95));
   } else {
     for (let i = 0; i < 3000; i++) {
       const g = Math.round(175 + rnd() * 80);

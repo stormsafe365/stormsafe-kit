@@ -38,9 +38,9 @@ interface Props {
  *    footings, the bars inside them, the anchors' embedment / helical rods.
  *    (EnhancedSite ghosts the ground + slab in the same views.)
  * The classic look has no slab, so there the thickened edge is drawn with its
- * slab band (top at y = 0). Capture-ignored in the exterior (never moves the
- * PDF framing); a Structure / Cutaway capture frames the footings + anchor
- * depth. Mounted outside ShellGroup (owns its own opacity), no shadows.
+ * slab band (top at y = 0). Capture-ignored in every view (never moves the
+ * PDF framing, like the site). Mounted outside ShellGroup (owns its own
+ * opacity), no shadows.
  */
 export function FoundationDetails({ layout, look, viewMode }: Props) {
   const enhanced = look === 'enhanced';
@@ -113,10 +113,12 @@ export function FoundationDetails({ layout, look, viewMode }: Props) {
   }, [viewMode, exterior, statics]);
 
   const showFooting = !exterior || (enhanced && layout.type === 'footers');
-  // Capture framing: ignored in the exterior (the PDF framing never moves);
-  // in Structure / Cutaway a capture frames the footings + anchor depth too.
+  // Capture framing: ALWAYS ignored — in every view and both looks a capture
+  // frames the building exactly as before the foundation drawing (a PDF made
+  // while a rep is in Structure view keeps its framing; the footings / 3 ft
+  // helical rods never shrink the building in the shot).
   return (
-    <group userData={{ captureIgnore: exterior, foundationDetails: true }}>
+    <group userData={{ captureIgnore: true, foundationDetails: true }}>
       {geo.footing && showFooting && <mesh geometry={geo.footing} material={statics.footingMat} renderOrder={-2} />}
       {geo.edges && !exterior && <lineSegments geometry={geo.edges} material={statics.edgeMat} renderOrder={-2} />}
       {geo.rebar && !exterior && <mesh geometry={geo.rebar} material={statics.rebarMat} />}

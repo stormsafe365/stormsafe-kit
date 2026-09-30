@@ -6,7 +6,7 @@ import { deriveStructure, type StructureModel } from '@/engine/geometry';
 import { DEFAULT_CONFIG } from '@/config/constants';
 import type { FoundationType } from '@/types/building';
 import { FOUNDATION, foundationLayout, mainIsOpen, railSizeFt, slabJoints } from '../foundationLayout';
-import { anchorGeometry, footingGeometry, footingSection, rebarGeometry, unionSolidGeometry } from '../foundationGeometry';
+import { anchorGeometry, eyeHardware, footingGeometry, footingSection, rebarGeometry, unionSolidGeometry } from '../foundationGeometry';
 
 // Foundation / anchoring DRAWING (owner 9/29/26) per the CCI "FOUNDATION/
 // ANCHORING RECOMMENDATIONS (FL ONLY)" details 1A / 1B / 1 / 1C.
@@ -68,7 +68,7 @@ describe('foundation layout — concrete (details 1A / 1B / 1)', () => {
     expect(l.footings.filter((f) => f.run === 'z').every((f) => f.miter0 && f.miter1)).toBe(true);
     // Main-building anchors sit on the EAVE rails (the program's one per leg).
     expect(l.anchors.every((a) => a.run === 'z' && Math.abs(Math.abs(a.x) - 12) < 1e-9)).toBe(true);
-    // One wedge anchor per leg = the program's 2 x truss count.
+    // One wedge anchor per DRAWN leg (2 x the 3D's bents; 30 / 5 divides evenly, so = the program's count here).
     expect(l.anchor).toBe('wedge');
     expect(l.anchors.length).toBe(2 * legPositions(s));
     expect(s.width).toBe(24);
@@ -137,6 +137,64 @@ describe('foundation layout — concrete (details 1A / 1B / 1)', () => {
     expect(open.anchors.filter((a) => Math.abs(a.c - lt.outer.x) < 1e-6).length).toBe(lt.trussOffsets.length);
   });
 
+  it('enclosed lean-to: its END lines get the 1A thickened edge, main footing -> outer strip, mitered', () => {
+    const { s, l } = layoutOf(leanTo, 'concrete');
+    const lt = s.leanTos[0];
+    const e = railSizeFt('14-gauge') / 2 + 0.5;
+    const sg = Math.sign(lt.outer.x - lt.inner.x); // the program's Right Eave renders at -X
+    const beyondMain = (f: { run: string; r0: number; r1: number }) => f.run === 'x' && (sg * (f.r0 + f.r1)) / 2 > 15;
+    const outer = l.footings.find((f) => f.run === 'z' && Math.abs(f.c - lt.outer.x) < 1e-6)!;
+    const ends = l.footings.filter(beyondMain);
+    expect(ends.map((f) => f.c).sort((a, b) => a - b)).toEqual([Math.min(lt.spanStart, lt.spanEnd), Math.max(lt.spanStart, lt.spanEnd)]);
+    for (const f of ends) {
+      expect(f.width).toBe(1);
+      expect(f.bars).toBe(2);
+      // From the main eave footing's outer face out to the lean-to's slab corner, mitered there only.
+      const near = sg > 0 ? f.r0 : f.r1;
+      const far = sg > 0 ? f.r1 : f.r0;
+      expect(near).toBeCloseTo(sg * (15 + e));
+      expect(far).toBeCloseTo(lt.outer.x + sg * e);
+      expect(sg > 0 ? [f.miter0, f.miter1] : [f.miter1, f.miter0]).toEqual([false, true]);
+      // Its outer face is the lean-to slab's end edge.
+      const front = Math.abs(f.c - Math.min(lt.spanStart, lt.spanEnd)) < 1e-6;
+      expect(f.out).toBe(front ? -1 : 1);
+      expect(f.outer).toBeCloseTo(f.c + f.out * e);
+    }
+    expect(outer.miter0 && outer.miter1).toBe(true);
+    // Flush with the main building's closed front: it continues the main front footing (same line, abutting).
+    const mainFront = l.footings.find((f) => f.run === 'x' && Math.abs(f.c + 30) < 1e-6 && Math.abs((f.r0 + f.r1) / 2) < 1e-6)!;
+    const ltFront = ends.find((f) => Math.abs(f.c + 30) < 1e-6)!;
+    expect(ltFront.outer).toBeCloseTo(mainFront.outer);
+    expect(sg > 0 ? ltFront.r0 : ltFront.r1).toBeCloseTo(sg > 0 ? mainFront.r1 : mainFront.r0);
+    // The frame is untouched: no lean-to END base rail, and no anchors on the end lines.
+    expect(s.members.some((m) => m.kind === 'baseRail' && Math.abs(m.start[0] - m.end[0]) > 1e-6 && Math.min(sg * m.start[0], sg * m.end[0]) > 15 + 1e-6)).toBe(false);
+    expect(l.anchors.some((a) => a.run === 'x' && sg * a.x > 15)).toBe(false);
+    // Custom: only a closed end gets it; an open lean-to (1B) gets none.
+    const custom = layoutOf({ ...leanTo, leanTos: [{ ...leanTo.leanTos[0], enclosure: 'custom', customWalls: { side: 'closed', front: 'closed', back: 'open' } }] }, 'concrete');
+    const cEnds = custom.l.footings.filter(beyondMain);
+    expect(cEnds.length).toBe(1);
+    expect(cEnds[0].c).toBeCloseTo(Math.min(lt.spanStart, lt.spanEnd));
+    const cOuter = custom.l.footings.find((f) => f.run === 'z' && Math.abs(f.c - lt.outer.x) < 1e-6)!;
+    expect([cOuter.miter0, cOuter.miter1]).toEqual([true, false]);
+    const open = layoutOf({ ...leanTo, leanTos: [{ ...leanTo.leanTos[0], enclosure: 'open' }] }, 'concrete');
+    expect(open.l.footings.filter(beyondMain).length).toBe(0);
+  });
+
+  it('gable lean-to on a closed end: end strips run from the main end footing out, mitered', () => {
+    const g = { ...leanTo, leanTos: [{ ...leanTo.leanTos[0], attachedSide: 'Front Gable', widthFt: 10, lengthFt: 30 }] };
+    const { s, l } = layoutOf(g, 'concrete');
+    const lt = s.leanTos[0];
+    const e = railSizeFt('14-gauge') / 2 + 0.5;
+    expect(lt.outer.z).toBeLessThan(-30);
+    const ends = l.footings.filter((f) => f.run === 'z' && f.r0 < -30 - e + 1e-6 && f.r1 <= -30 - e + 1e-6);
+    expect(ends.length).toBe(2);
+    for (const f of ends) {
+      expect(f.r1).toBeCloseTo(-30 - e); // abuts the main front footing's outer face
+      expect(f.r0).toBeCloseTo(lt.outer.z - e);
+      expect(f.miter0).toBe(true);
+    }
+  });
+
   it('no anchor where a floor-level door cut the leg away', () => {
     const cut = layoutOf({ ...garage, openings: [{ id: 'r', type: 'rollUpDoor', side: 'left', offset: 15, width: 10, height: 8, sillHeight: 0 }] }, 'concrete');
     const full = layoutOf(garage, 'concrete');
@@ -181,7 +239,7 @@ describe('foundation layout — footers / ground / gravel / asphalt', () => {
   });
 
   for (const t of ['ground', 'gravel', 'asphalt'] as const) {
-    it(`${t}: no slab, no footing, one helical eye anchor per leg (program count)`, () => {
+    it(`${t}: no slab, no footing, one helical eye anchor per drawn leg`, () => {
       const { s, l } = layoutOf(wide, t);
       expect(l.slab).toBeNull();
       expect(l.pad!.length).toBe(1);
@@ -189,7 +247,7 @@ describe('foundation layout — footers / ground / gravel / asphalt', () => {
       expect(l.footings).toEqual([]);
       expect(l.anchor).toBe('eye');
       expect(l.anchors.length).toBe(2 * legPositions(s));
-      // On the outer rail, eye on its inside face.
+      // On the outer rail (the eye goes on its OUTER face — 1C; see the geometry test).
       for (const a of l.anchors) {
         expect(Math.abs(a.c)).toBeCloseTo(20);
         expect(a.inward).toBe(a.c > 0 ? -1 : 1);
@@ -248,6 +306,30 @@ describe('foundation geometry', () => {
     eye.below!.computeBoundingBox();
     expect(eye.below!.boundingBox!.min.y).toBeLessThan(-2.5); // the helical rod
   });
+
+  for (const gauge of ['14-gauge', '12-gauge'] as const) {
+    it(`eye anchor (${gauge} rail): OUTSIDE the rail (1C), eye + washers entirely above the surface`, () => {
+      const h = railSizeFt(gauge) / 2;
+      const one = { anchor: 'eye' as const, railHalf: h, anchors: [{ x: 12, z: 0, run: 'z' as const, c: 12, inward: -1 as const }] };
+      const { above, below } = anchorGeometry(one);
+      above!.computeBoundingBox();
+      const bb = above!.boundingBox!;
+      // Nothing drawn above the surface dips under y = 0 (the pad / dirt top); the rod stub starts at it.
+      expect(bb.min.y).toBeGreaterThanOrEqual(-1e-6);
+      const e = eyeHardware(h);
+      // Washers + eye clear the surface; the washers fit the rail's visible face.
+      expect(e.yb - e.washerR).toBeGreaterThan(0.001);
+      expect(e.yb - e.eyeR - e.rodR).toBeGreaterThan(0.001);
+      expect(e.yb + e.washerR).toBeLessThanOrEqual(h + 1e-9);
+      // The eye's hole clears the 1/2" bolt.
+      expect(e.eyeR - e.rodR).toBeGreaterThan(e.boltR);
+      // Outside: the eye + outer nut reach further out (+x) than the inner washer + nut reach in.
+      expect(bb.max.x - 12).toBeGreaterThan(12 - bb.min.x);
+      // The helical rod goes down on the rail's outer side.
+      below!.computeBoundingBox();
+      expect((below!.boundingBox!.min.x + below!.boundingBox!.max.x) / 2).toBeGreaterThan(12 + h);
+    });
+  }
 });
 
 describe('foundation wiring (view-only, never priced)', () => {
@@ -263,10 +345,11 @@ describe('foundation wiring (view-only, never priced)', () => {
     expect(host).not.toMatch(/G\('foundation'\)[^;]*\.value\s*=/);
   });
 
-  it('site + details are capture-ignored; classic draws the details only off the exterior view', () => {
+  it('site + details are capture-ignored in EVERY view; classic draws the details only off the exterior view', () => {
     expect(site).toMatch(/captureIgnore: true/);
-    // Exterior: never moves the PDF framing; Structure / Cutaway captures frame the footings.
-    expect(details).toMatch(/captureIgnore: exterior/);
+    // No view (exterior, Structure, Cutaway) lets the footings / helical rods move the PDF framing.
+    expect(details).toMatch(/userData=\{\{ captureIgnore: true, foundationDetails: true \}\}/);
+    expect(details).not.toMatch(/captureIgnore: exterior/);
     expect(model).toMatch(/\(renderStyle === 'enhanced' \|\| viewMode !== 'exterior'\) && \(\s*<FoundationDetails/);
     expect(details).not.toMatch(/castShadow/);
   });

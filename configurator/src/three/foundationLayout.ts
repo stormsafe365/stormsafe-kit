@@ -1,6 +1,7 @@
 import type { EndSheeting, FoundationType, FramingGauge } from '@/types/building';
 import type { LeanToStructure, Member, StructureModel } from '@/engine/geometry';
 import { FRAME_PROFILES, RAIL_VISUAL_FT } from '@/config/materials';
+import { leanToWallSettings } from '@/engine/leanToFixtures';
 import { siteRects, type Footprint } from './enhanced/look';
 
 /**
@@ -21,8 +22,11 @@ import { siteRects, type Footprint } from './enhanced/look';
  *        3 #5 continuous; TWO anchors side by side at each (doubled) leg, one
  *        through each base rail.
  *  - Base Rail Anchorage (ground / asphalt) and 1C: helical EYE anchor screwed
- *    in beside the base rail, 1/2" through-bolt through the rail + the eye,
- *    2" washers.
+ *    in beside the base rail — OUTSIDE it, as 1C draws it (beyond the slab
+ *    edge; the page-1 figure does not say which side) — with a 1/2"
+ *    through-bolt through the rail + the eye, 2" washers.
+ *  - Lean-to END lines of an enclosed / partially enclosed lean-to get the 1A
+ *    thickened edge too (a drawing-only strip: the frame has no end rail).
  * Pure: a function of the derived StructureModel (members, lean-tos,
  * enclosure), the foundation type and the framing gauge (rail tube size).
  */
@@ -94,7 +98,7 @@ export interface AnchorSpot {
   run: 'x' | 'z';
   /** Rail centerline across coordinate. */
   c: number;
-  /** Across direction toward the building interior (the eye anchor sits on this face). */
+  /** Across direction toward the building interior (an eye anchor sits on the OPPOSITE, outer face — 1C). */
   inward: 1 | -1;
 }
 
@@ -300,6 +304,7 @@ export function foundationLayout(
       else left.miter1 = right.miter1 = true;
     }
   }
+  const mainStrips = footers || (concrete && !mainOpen);
   for (const lt of s.leanTos) {
     if (!(footers || (concrete && !leanToIsOpen(lt)))) continue;
     const eave = lt.attachedSide === 'Left Eave' || lt.attachedSide === 'Right Eave';
@@ -307,17 +312,50 @@ export function foundationLayout(
     const ci = eave ? lt.inner.x : lt.inner.z;
     if (![c, ci, lt.spanStart, lt.spanEnd].every(Number.isFinite)) continue;
     const out: 1 | -1 = c - ci >= 0 ? 1 : -1;
-    pushStrip(eave ? 'z' : 'x', c, out, Math.min(lt.spanStart, lt.spanEnd) - e, Math.max(lt.spanStart, lt.spanEnd) + e, FOUNDATION.sections.residential);
+    const lo = Math.min(lt.spanStart, lt.spanEnd);
+    const hi = Math.max(lt.spanStart, lt.spanEnd);
+    const sec = FOUNDATION.sections.residential;
+    const outerStrip = pushStrip(eave ? 'z' : 'x', c, out, lo - e, hi + e, sec);
+    // END lines of an enclosed / partially enclosed lean-to (1A): wherever an
+    // end wall comes down to the floor ('closed', or the inner 'halfEnd'), the
+    // thickened edge runs along that slab edge too — from the main building's
+    // footing (abutting its outer face, so it continues the main end footing
+    // when the lean-to is flush with a closed main end) out to the lean-to's
+    // outer strip, mitered into it. The frame has no lean-to END base rail
+    // (geometry.ts frames only the outer longitudinal rail), so this is the
+    // foundation drawing only — legs, rails and anchors are unchanged.
+    const walls = leanToWallSettings(lt);
+    const mainHasStrip = mainStrips && (eave || s.enclosure[out < 0 ? 'front' : 'back'] === 'closed');
+    const from = mainHasStrip ? ci + out * e : ci; // the main-building side of the end strip
+    const to = c + out * e; // the lean-to's slab corner
+    const fwd = lt.spanStart <= lt.spanEnd; // front = the lean-to's spanStart end (LeanToSiding)
+    for (const [end, at, endOut] of [
+      ['front', lt.spanStart, fwd ? -1 : 1],
+      ['back', lt.spanEnd, fwd ? 1 : -1],
+    ] as const) {
+      if (walls[end] !== 'closed' && walls[end] !== 'halfEnd') continue;
+      const [r0, r1] = out > 0 ? [from, to] : [to, from];
+      if (r1 - r0 < sec.width + (sec.depth - FOUNDATION.slabT) + 0.5) continue; // too short to miter
+      const strip = pushStrip(eave ? 'x' : 'z', at, endOut, r0, r1, sec);
+      if (out > 0) strip.miter1 = true;
+      else strip.miter0 = true;
+      if (endOut < 0) outerStrip.miter0 = true;
+      else outerStrip.miter1 = true;
+    }
   }
 
-  // ── Anchors: one per leg / post (the program's 2 x truss count on the main
-  // building), plus the second rail's anchor at a commercial doubled leg (1). ──
+  // ── Anchors: one per DRAWN leg / post standing on a base rail, plus the
+  // second rail's anchor at a commercial doubled leg (1). This follows the 3D
+  // frame's bents (ceil(L / spacing) + 1; no leg where a floor-level door cut
+  // it), NOT the program's priced ground-anchor count (2 x (floor(L / spacing)
+  // + 1)): the two agree only when the length divides evenly by the spacing
+  // and no leg is cut. Drawing only — nothing here is priced. ──
   const anchor: 'wedge' | 'eye' = concrete || footers ? 'wedge' : 'eye';
   const feet = legFeet(s.members);
   const gableLeanTos = s.leanTos.filter((lt) => lt.attachedSide === 'Front Gable' || lt.attachedSide === 'Back Gable');
   const inSpan = (lt: LeanToStructure, v: number) =>
     v >= Math.min(lt.spanStart, lt.spanEnd) - EPS && v <= Math.max(lt.spanStart, lt.spanEnd) + EPS;
-  /** Rail run axis the program's truss-line anchors sit on: along the bents' spacing axis. */
+  /** Rail run axis a leg's anchor sits on: along the bents' spacing axis (a gable lean-to's posts: its outer rail). */
   const preferredRun = (f: Foot): 'x' | 'z' =>
     gableLeanTos.some(
       (lt) =>

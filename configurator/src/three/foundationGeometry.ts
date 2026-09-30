@@ -190,6 +190,33 @@ const nut = (axis: 'x' | 'y' | 'z', at: V3) => placed(new THREE.CylinderGeometry
 /** 2" washer (the details' "2" WASHERS"). */
 const washer = (axis: 'x' | 'y' | 'z', at: V3) => placed(new THREE.CylinderGeometry(1 / 12, 1 / 12, 0.012, 20), axis, at);
 const rod = (axis: 'x' | 'y' | 'z', at: V3, len: number, r = 0.021) => placed(new THREE.CylinderGeometry(r, r, len, 10), axis, at);
+/** A washer (20 sides) or hex nut (6 sides) of radius r, thickness t, its axis along `axis`. */
+const disc = (axis: 'x' | 'y' | 'z', at: V3, r: number, t: number, sides: number) => placed(new THREE.CylinderGeometry(r, r, t, sides), axis, at);
+
+/**
+ * Eye-anchor through-bolt hardware for a rail whose VISIBLE face (above
+ * y = 0) is `h` tall: a real 2-1/2" TS rail's hardware — 1/2" bolt, 2"
+ * washers, 1/2" hex nut, a 3/4" rod forged into an eye with a 0.8" hole —
+ * scaled to that face, the bolt at its mid-height. Every part stays above
+ * y = 0: the washer's and the eye's lowest points are yb - washerR and
+ * yb - eyeR - rodR (both > 0).
+ */
+export function eyeHardware(h: number) {
+  const k = Math.min(1, h / (2.5 / 12)); // visible face / real rail height
+  const inch = (v: number) => (v / 12) * k;
+  const rodR = inch(0.375);
+  return {
+    yb: h / 2,
+    boltR: inch(0.25),
+    washerR: inch(1),
+    washerT: Math.max(inch(0.12), 0.006),
+    nutR: inch(0.433),
+    nutT: inch(0.44),
+    rodR,
+    /** Eye centerline radius: a 0.8" hole (clears the 1/2" bolt) + the rod. */
+    eyeR: inch(0.4) + rodR,
+  };
+}
 
 /**
  * Anchor hardware, split into what shows ABOVE the surface (nut / washer /
@@ -219,32 +246,40 @@ export function anchorGeometry(layout: Pick<FoundationLayout, 'anchor' | 'anchor
       below.push(rod('y', P(0, (top - embed) / 2), top + embed));
       below.push(rod('y', P(0, -embed + 0.045), 0.07, 0.027)); // expansion clip
     } else {
-      // Helical eye anchor beside the rail (Base Rail Anchorage / 1C): the eye
-      // on the rail's INSIDE face, a 1/2" through-bolt across the rail with a
-      // 2" washer + nut each side.
-      const s = a.inward;
-      const yb = h * 0.5; // mid-height of the rail's exposed part
-      // A forged eye a bit larger than the 2" washer, so its loop reads around it.
-      const R = 0.1;
-      const tube = 0.022;
-      const boltOut = -(h + 0.058); // past the outer washer + nut
-      const boltIn = h + 2 * tube + 0.058; // past the eye, inner washer + nut
-      above.push(rod(ax, P(s * ((boltIn + boltOut) / 2), yb), boltIn - boltOut));
-      above.push(washer(ax, P(-s * (h + 0.006), yb)));
-      above.push(nut(ax, P(-s * (h + 0.012 + 0.02), yb)));
-      const eyeAt = P(s * (h + tube), yb);
-      const eye = new THREE.TorusGeometry(R, tube, 8, 20);
+      // Helical eye anchor beside the rail (Base Rail Anchorage / 1C), OUTSIDE
+      // it as 1C draws it: through-bolt across the rail — inner nut, 2" washer,
+      // rail, 2" washer, the anchor's eye, outer nut — and the anchor rod
+      // straight down from the eye into the ground.
+      // The rail is drawn centered on y = 0 (half below the surface), so only
+      // its top half (h) shows. The hardware is sized to that visible face in
+      // a real 2-1/2" TS rail's proportions (1/2" bolt, 2" washers, 3/4" rod
+      // forged into the eye), so the eye and the washers stay ENTIRELY above
+      // the surface (never cut off by the pad / dirt) and read like the detail.
+      const s = -a.inward; // outward
+      const e = eyeHardware(h);
+      const { yb } = e;
+      const inner = -(h + e.washerT + e.nutT); // inner nut's outer face
+      const outer = h + e.washerT + 2 * e.rodR + e.nutT; // outer nut's outer face
+      const stub = e.boltR; // bolt end past each nut
+      above.push(rod(ax, P(s * ((inner + outer) / 2), yb), outer - inner + 2 * stub, e.boltR));
+      above.push(disc(ax, P(-s * (h + e.washerT / 2), yb), e.washerR, e.washerT, 20));
+      above.push(disc(ax, P(-s * (h + e.washerT + e.nutT / 2), yb), e.nutR, e.nutT, 6));
+      above.push(disc(ax, P(s * (h + e.washerT / 2), yb), e.washerR, e.washerT, 20));
+      const eyeC = h + e.washerT + e.rodR; // eye (and rod) centerline, across
+      const eye = new THREE.TorusGeometry(e.eyeR, e.rodR, 8, 20);
       if (ax === 'x') eye.rotateY(Math.PI / 2);
+      const eyeAt = P(s * eyeC, yb);
       eye.translate(eyeAt[0], eyeAt[1], eyeAt[2]);
       above.push(eye);
-      above.push(washer(ax, P(s * (h + 2 * tube + 0.006), yb)));
-      above.push(nut(ax, P(s * (h + 2 * tube + 0.012 + 0.02), yb)));
-      // The anchor rod from the eye straight down, with two helix plates near its tip.
+      above.push(disc(ax, P(s * (h + e.washerT + 2 * e.rodR + e.nutT / 2), yb), e.nutR, e.nutT, 6));
+      // The rod: from the bottom of the eye (above the surface) down to y = 0
+      // shows in every view; its 3 ft auger with two helix plates is embedded.
+      const rodTop = yb - e.eyeR;
+      above.push(rod('y', P(s * eyeC, rodTop / 2), rodTop, e.rodR));
       const depth = FOUNDATION.eyeDepth;
-      const rodTop = yb - R;
-      below.push(rod('y', P(s * (h + tube), (rodTop - depth) / 2), rodTop + depth, 0.03));
+      below.push(rod('y', P(s * eyeC, -depth / 2), depth, e.rodR));
       for (const k of [0.35, 0.8]) {
-        below.push(placed(new THREE.CylinderGeometry(0.25, 0.25, 0.015, 20), 'y', P(s * (h + tube), -depth + k), 0.14));
+        below.push(placed(new THREE.CylinderGeometry(0.25, 0.25, 0.015, 20), 'y', P(s * eyeC, -depth + k), 0.14));
       }
     }
   }

@@ -97,7 +97,7 @@ export const ENHANCED_LOOK = {
   pads: {
     gravel: { color: '#a29e95', roughness: 1, tileFt: 3 },
     asphalt: { color: '#3b3f45', roughness: 0.95, tileFt: 4 },
-    dirt: { color: '#7d6b58', roughness: 1, tileFt: 6 },
+    dirt: { color: '#6d645a', roughness: 1, tileFt: 6 },
   },
   /**
    * Structure / Cutaway: the ground and slab / pad go see-through so the

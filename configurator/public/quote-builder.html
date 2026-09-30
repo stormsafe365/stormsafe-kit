@@ -13698,7 +13698,6 @@ function textQuote(){
   var roofColor=(crEl.value&&crEl.selectedIndex>0)?crEl.options[crEl.selectedIndex].text.split('(')[0].trim():'TBD';
   var wallColor=(cwEl.value&&cwEl.selectedIndex>0)?cwEl.options[cwEl.selectedIndex].text.split('(')[0].trim():'TBD';
   var trimColor=(ctEl.value&&ctEl.selectedIndex>0)?ctEl.options[ctEl.selectedIndex].text.split('(')[0].trim():'TBD';
-  var bt3=G('btype').value;
   var fuVal=G('framing-upgrade')?G('framing-upgrade').value:'14';
   var aewP=gAddEndWall(); // wording only: is there an additional end wall
   var addDV=T.addDiscVal,addDT=T.addDiscType,addDA=T.addDiscAmount;
@@ -13722,8 +13721,16 @@ function textQuote(){
   var planLine='';
   if(G('perm').value==='yes'){
     var planType=G('plans-sel')?G('plans-sel').value:MFR().defaultPlan;var pt2=G('pt')?G('pt').value:'';
-    // Same subtotal printQuote() prices the plans on: the engine subtotal (incl. the
-    // manufacturer adjustment); INPUT mode = manual line items + the adjustment.
+    // Plans-fee subtotal, still no price math of its own here:
+    //  - INPUT mode: manual line items + the manufacturer adjustment, the exact
+    //    expression printQuote() uses (rcManual's screen total leaves the
+    //    adjustment out, so here the plans line can sit on a different base than TOTAL).
+    //  - Engine mode: T.sub, the subtotal rc() just priced (incl. the adjustment),
+    //    the same number the on-screen plan note uses. printQuote() re-derives its
+    //    own engine subtotal; it equals T.sub except where the screen and the PDF
+    //    already disagree (rc() counts the lean-to connection fee in the 26GA and
+    //    fastener base/threshold and never gives fslean free 26GA; printQuote()
+    //    does neither), and then this line follows the screen, like TOTAL does.
     var planSub=INPUT_MODE?(manualSubtotal()+gAdj()):T.sub;
     var planCost=MFR().planCostFn(planType,planSub,(pt2==='com'||pt2==='rc2r'));
     if(planType!=='No Permit Required')planLine='\n\u{1F4CB} Eng. Plans: '+planType+' \u2014 $'+planCost+' (invoiced separately)';

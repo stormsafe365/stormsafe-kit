@@ -140,8 +140,12 @@ const member = (kind: MemberKind, start: Vec3, end: Vec3): Member => ({
  */
 export type LegStyle = 'single' | 'double' | 'ladder';
 export function legStyleFor(widthFt: number, heightFt: number): LegStyle {
-  if (widthFt >= 52) return 'ladder';
-  if ((widthFt > 31 && widthFt < 52) || heightFt >= 15) return 'double';
+  // Owner 9/29/26: every WIDE SPAN (32'+ wide) is framed with LADDER legs, CCI
+  // and CA ("its included in pricing - its how their framing is set up";
+  // CCI handbook p.23/p.27 commercial trusses). Narrower buildings: double legs
+  // from 15' tall, else single.
+  if (widthFt > 31) return 'ladder';
+  if (heightFt >= 15) return 'double';
   return 'single';
 }
 

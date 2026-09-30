@@ -24,17 +24,29 @@ const ladderRungs = (s: ReturnType<typeof deriveStructure>) => {
 };
 
 // Current rule (geometry.ts deriveStructure, same as the program's badges):
-// LADDER when W >= 52 (any height); DOUBLE when W is 32-51 or H >= 15 (owner
-// 9/28/26: 14' is single); else SINGLE. Older comments that say 'ladder at H >= 17' are stale.
-describe('truss/leg styles — single, double (W 32-51 or H>=15), ladder (W>=52)', () => {
+// LADDER on every wide span (W >= 32, owner 9/29/26, both mfrs); DOUBLE when
+// H >= 15 on narrower buildings (owner 9/28/26: 14' is single); else SINGLE.
+describe('truss/leg styles — single, double (H>=15 up to 31w), ladder (every wide span W>=32)', () => {
   it('small build → 2 legs per bent (one post each side)', () => {
     const s = build({ width: 24, length: 30, legHeight: 12 });
     expect(legCount(s)).toBe(s.frameCount * 2);
   });
 
-  it('wide build (W>31) → DOUBLE legs: 4 posts per bent', () => {
+  it('wide span (W>31) → LADDER legs: chords + rungs (owner 9/29/26)', () => {
     const s = build({ width: 40, length: 40, legHeight: 12 });
     expect(legCount(s)).toBe(s.frameCount * 4);
+    expect(ladderRungs(s).length).toBeGreaterThan(0);
+  });
+
+  it('32 ft wide (smallest wide span) → LADDER legs', () => {
+    const s = build({ width: 32, length: 40, legHeight: 12 });
+    expect(ladderRungs(s).length).toBeGreaterThan(0);
+  });
+
+  it('30 ft wide at 12 ft → still SINGLE legs (not a wide span)', () => {
+    const s = build({ width: 30, length: 40, legHeight: 12 });
+    expect(legCount(s)).toBe(s.frameCount * 2);
+    expect(ladderRungs(s).length).toBe(0);
   });
 
   it('height 14 → still SINGLE legs (owner 9/28: double starts at 15)', () => {
@@ -65,10 +77,10 @@ describe('truss/leg styles — single, double (W 32-51 or H>=15), ladder (W>=52)
     expect(ladderRungs(s).length).toBeGreaterThan(0);
   });
 
-  it('40w x 18h (32-51ft class) → DOUBLE legs, not ladder', () => {
+  it('40w x 18h wide span → LADDER legs (owner 9/29/26)', () => {
     const s = build({ width: 40, length: 40, legHeight: 18 });
     expect(legCount(s)).toBe(s.frameCount * 4);
-    expect(ladderRungs(s).length).toBe(0);
+    expect(ladderRungs(s).length).toBeGreaterThan(0);
   });
 
   it('inner chords stay INBOARD — the frame never grows wider than the roof', () => {
@@ -114,7 +126,7 @@ describe('truss/leg styles — single, double (W 32-51 or H>=15), ladder (W>=52)
   });
 
   it('double legs double the eave base rails (inner rail under the inner post)', () => {
-    const s = build({ width: 40, length: 40, legHeight: 12 });
+    const s = build({ width: 24, length: 40, legHeight: 16 });
     const halfW = s.width / 2;
     const eaveRails = s.members.filter((m) => m.kind === 'baseRail' && m.start[0] === m.end[0]);
     const onWall = eaveRails.filter((m) => Math.abs(Math.abs(m.start[0]) - halfW) < 0.01);
@@ -153,7 +165,7 @@ describe('eave framed openings cut double/ladder columns too', () => {
     });
   };
 
-  it('double-leg build (40w x 14h): a 20ft frame-out clears wall AND inner posts', () => {
+  it('wide-span ladder build (40w x 14h): a 20ft frame-out clears wall AND inner chord + rungs', () => {
     const s = build({
       width: 40, length: 96, legHeight: 14,
       openings: [{ id: 'fo1', type: 'frameOut', side: 'right', offset: 30, width: 20, height: 12, sillHeight: 0, customerSupplied: true } as never],

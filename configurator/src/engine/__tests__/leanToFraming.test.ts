@@ -61,12 +61,13 @@ describe('legStyleFor — the one leg rule, shared by the main building and lean
     );
   };
 
-  it('matches the program badges: ladder W>=52, double W 32-51 or 15ft+, else single', () => {
+  it('matches the program badges: ladder on every wide span W>=32 (owner 9/29/26), double 15ft+ up to 31 wide, else single', () => {
     expect(legStyleFor(24, 14)).toBe('single');
     expect(legStyleFor(24, 15)).toBe('double');
     expect(legStyleFor(30, 20)).toBe('double');
-    expect(legStyleFor(32, 8)).toBe('double');
-    expect(legStyleFor(51, 12)).toBe('double');
+    expect(legStyleFor(31, 12)).toBe('single');
+    expect(legStyleFor(32, 8)).toBe('ladder');
+    expect(legStyleFor(51, 12)).toBe('ladder');
     expect(legStyleFor(52, 8)).toBe('ladder');
     expect(legStyleFor(60, 20)).toBe('ladder');
     // Lean-to widths (8-20) never reach the width rules: height alone decides.

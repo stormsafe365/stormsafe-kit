@@ -14,7 +14,13 @@ import { leanToWallSettings, rendersLeanToFixture } from './leanToFixtures';
  */
 
 export type Vec3 = [number, number, number];
-export type MemberKind = 'leg' | 'rafter' | 'baseRail' | 'ridge' | 'purlin' | 'hatChannel' | 'girt' | 'brace';
+/**
+ * 'chord' / 'web' are the roof-truss members drawn from the manufacturers'
+ * "Trusses and Bows" charts (trussStyleFor): a chord is a bottom chord, raised
+ * tie or second (lower / sister) chord; a web is a king post, vertical,
+ * diagonal, strut or spacer. DRAWING ONLY — the BOM / quote never counts them.
+ */
+export type MemberKind = 'leg' | 'rafter' | 'baseRail' | 'ridge' | 'purlin' | 'hatChannel' | 'girt' | 'brace' | 'chord' | 'web';
 
 /**
  * Assembly layering (ft, measured out from the structural centerline):
@@ -157,6 +163,224 @@ const DOUBLE_D = 0.4;
 /** Ladder column depth (ft, inboard in the bent plane) for a leg `heightFt` tall. */
 const ladderDepth = (heightFt: number): number => Math.min(2, Math.max(1.3, heightFt * 0.09));
 
+/**
+ * Roof truss / bow WEB pattern per manufacturer + width class (owner 9/29/26 —
+ * DRAWING ONLY: no pricing, legs untouched). Read off each manufacturer's own
+ * "Trusses and Bows" chart; positions are fractions of the half-span measured
+ * from the ridge, scaled to the real width + pitch.
+ *
+ * CCI — dealer handbook p.27 "Trusses and Bows" (Vertical / Boxed Eave rows):
+ *   12'-24' bow ...... rafters only.
+ *   26'-30' truss .... a raised horizontal TIE from rafter to rafter, meeting
+ *                      them 0.66 of the half-span out (about a third of the
+ *                      rise above the eave), + two splayed STRUTS from the tie
+ *                      (±0.18) up to the rafters (±0.24).
+ *   32'-40' truss .... BOTTOM CHORD at the eave, post to post; king post;
+ *                      verticals at the 1/3 points; one diagonal each side
+ *                      (top of the inner vertical → foot of the king post).
+ *   42'-50' truss .... bottom chord; king post; verticals at the 1/4 points;
+ *                      two Howe diagonals each side (V1 top → king-post foot,
+ *                      V2 top → V1 foot; the outer vertical has none).
+ *   52'-60' truss .... as 42'-50' with a third diagonal (V3 top → V2 foot).
+ * CA — engineering sheet AD-1 (FBC 2023) "Trusses and Bows":
+ *   6'-24' bow ....... rafters only.
+ *   25'-30' truss .... a SISTER chord 5.5" c-c under each rafter (3" gap),
+ *                      ridge to 0.647 of the half-span, on 4 spacer blocks.
+ *   31'-41' truss .... BOX-EAVE: an 11"-deep parallel chord pair from each
+ *                      eave in to a break (0.30), then a FLAT raised bottom
+ *                      chord between the breaks; king post + verticals only.
+ *   42'-51' truss .... same shape, break 0.288; in the middle a vertical at
+ *                      0.133 whose top feeds two diagonals down to the king-post
+ *                      foot and the break vertical (0.266).
+ *   52'-60' truss .... break 0.447; zig-zag diagonals between the king post and
+ *                      three verticals; the box-eave panels are LACED (a Λ pair
+ *                      of short diagonals in each panel, 6" clear of the posts).
+ * Widths past 60' keep the 52'-60' pattern, scaled. The Regular (rounded-eave)
+ * rows of the charts are NOT drawn (owner: "Not now").
+ */
+export type TrussStyle =
+  | 'bow'
+  | 'cci-26-30'
+  | 'cci-32-40'
+  | 'cci-42-50'
+  | 'cci-52-60'
+  | 'ca-25-30'
+  | 'ca-31-41'
+  | 'ca-42-51'
+  | 'ca-52-60';
+export function trussStyleFor(widthFt: number, mfr?: 'CCI' | 'CA'): TrussStyle {
+  // Both charts: up to 24' is a bow, anything wider is a truss. Unset
+  // manufacturer follows CA, like legStyleFor.
+  if (widthFt < 25) return 'bow';
+  if (mfr === 'CCI') {
+    if (widthFt < 31) return 'cci-26-30';
+    if (widthFt < 41) return 'cci-32-40';
+    if (widthFt < 51) return 'cci-42-50';
+    return 'cci-52-60';
+  }
+  if (widthFt < 31) return 'ca-25-30';
+  if (widthFt < 42) return 'ca-31-41';
+  if (widthFt < 52) return 'ca-42-51';
+  return 'ca-52-60';
+}
+
+/** CCI wide trusses: verticals (half-span fractions) + Howe diagonals per side. */
+const CCI_WIDE: Record<'cci-32-40' | 'cci-42-50' | 'cci-52-60', { verts: number[]; diags: number }> = {
+  'cci-32-40': { verts: [1 / 3, 2 / 3], diags: 1 },
+  'cci-42-50': { verts: [0.25, 0.5, 0.75], diags: 2 },
+  'cci-52-60': { verts: [0.25, 0.5, 0.75], diags: 3 },
+};
+/** CCI 26'-30': tie meets the rafters at ±TIE_F; struts from ±STRUT_LO on the tie to ±STRUT_HI on the rafter. */
+const CCI_TIE_F = 0.66;
+const CCI_STRUT_LO = 0.183;
+const CCI_STRUT_HI = 0.243;
+
+/** A web end: on the top chord (rafter) or on the bottom / lower chord. */
+type WebEnd = 'top' | 'bot';
+interface CaBoxTruss {
+  /** Where the sloped box-eave lower chord turns into the flat bottom chord. */
+  brk: number;
+  /** Verticals on the flat chord (the king post is implied). */
+  mid: number[];
+  /** Middle diagonals: [from, fromEnd, to, toEnd] (fraction 0 = king post). */
+  diags: Array<[number, WebEnd, number, WebEnd]>;
+  /** Verticals in the box-eave (parallel chord) section. */
+  outer: number[];
+  /** Λ lacing in each box-eave panel between consecutive outer verticals. */
+  lace: boolean;
+}
+const CA_BOX: Record<'ca-31-41' | 'ca-42-51' | 'ca-52-60', CaBoxTruss> = {
+  'ca-31-41': { brk: 0.3, mid: [0.18], diags: [], outer: [0.31, 0.425, 0.655, 0.89], lace: false },
+  'ca-42-51': {
+    brk: 0.288,
+    mid: [0.133, 0.266],
+    diags: [
+      [0.133, 'top', 0, 'bot'],
+      [0.133, 'top', 0.266, 'bot'],
+    ],
+    outer: [0.329, 0.454, 0.645, 0.833, 0.961],
+    lace: false,
+  },
+  'ca-52-60': {
+    brk: 0.447,
+    mid: [0.142, 0.283, 0.425],
+    diags: [
+      [0, 'bot', 0.142, 'top'],
+      [0.142, 'top', 0.283, 'bot'],
+      [0.283, 'bot', 0.425, 'top'],
+    ],
+    outer: [0.468, 0.59, 0.711, 0.832, 0.953],
+    lace: true,
+  },
+};
+/** CA box-eave chord depth, centre to centre (11" out-to-out on AD-1, ~2.5" tube). */
+const CA_BOX_DEPTH = 8.5 / 12;
+/** CA 25'-30' sister chord: 3" gap + a 2.5" tube, centre to centre. */
+const CA_SISTER_DEPTH = 5.5 / 12;
+const CA_SISTER_END = 0.647;
+const CA_SISTER_SPACERS = [0.028, 0.205, 0.467, CA_SISTER_END];
+
+/** A truss member in a bent's plane: [x, y] endpoints (world ft). */
+type Seg2 = { kind: 'chord' | 'web'; a: [number, number]; b: [number, number] };
+
+/**
+ * The chart's chords + webs for one gabled bent, in the bent's X-Y plane.
+ * `colDepth` = how far the eave column reaches inboard (double / ladder inner
+ * post): a CA box-eave web inside that zone is left out — the column's inner
+ * post already stands there (two tubes in one spot read as a glitch).
+ */
+function trussSegments(style: TrussStyle, halfW: number, H: number, rise: number, colDepth: number): Seg2[] {
+  if (style === 'bow' || halfW <= 0) return [];
+  const peak = H + rise;
+  const roofY = (x: number) => peak - Math.abs(x) * (rise / halfW);
+  const secant = Math.hypot(1, rise / halfW); // vertical offset per unit of perpendicular chord depth
+  const out: Seg2[] = [];
+  const chord = (a: [number, number], b: [number, number]) => out.push({ kind: 'chord', a, b });
+  const web = (a: [number, number], b: [number, number]) => out.push({ kind: 'web', a, b });
+
+  if (style === 'cci-26-30') {
+    const yt = roofY(CCI_TIE_F * halfW);
+    chord([-CCI_TIE_F * halfW, yt], [CCI_TIE_F * halfW, yt]);
+    for (const s of [-1, 1]) web([s * CCI_STRUT_LO * halfW, yt], [s * CCI_STRUT_HI * halfW, roofY(CCI_STRUT_HI * halfW)]);
+    return out;
+  }
+  if (style === 'cci-32-40' || style === 'cci-42-50' || style === 'cci-52-60') {
+    const { verts, diags } = CCI_WIDE[style];
+    chord([-halfW, H], [halfW, H]); // bottom chord at the eave, post to post
+    web([0, H], [0, peak]); // king post
+    for (const s of [-1, 1]) {
+      for (const f of verts) web([s * f * halfW, H], [s * f * halfW, roofY(f * halfW)]);
+      for (let i = 0; i < diags; i++) {
+        const fTop = verts[i];
+        const fFoot = i === 0 ? 0 : verts[i - 1];
+        web([s * fTop * halfW, roofY(fTop * halfW)], [s * fFoot * halfW, H]);
+      }
+    }
+    return out;
+  }
+  if (style === 'ca-25-30') {
+    const dv = CA_SISTER_DEPTH * secant;
+    for (const s of [-1, 1]) {
+      const xe = s * CA_SISTER_END * halfW;
+      chord([xe, roofY(xe) - dv], [0, peak - dv]);
+      for (const f of CA_SISTER_SPACERS) {
+        const x = s * f * halfW;
+        web([x, roofY(x) - dv], [x, roofY(x)]);
+      }
+    }
+    return out;
+  }
+  // CA box-eave wide trusses.
+  const t = CA_BOX[style];
+  const dv = CA_BOX_DEPTH * secant;
+  const xb = t.brk * halfW;
+  const yb = roofY(xb) - dv; // flat bottom chord height
+  const top = (x: number): [number, number] => [x, roofY(x)];
+  const bot = (x: number): [number, number] => [x, Math.abs(x) <= xb + 1e-9 ? yb : roofY(x) - dv];
+  const inColumn = (...xs: number[]) => xs.some((x) => Math.abs(x) > halfW - colDepth - 0.25);
+  chord([-xb, yb], [xb, yb]);
+  web([0, yb], [0, peak]); // king post
+  for (const s of [-1, 1]) {
+    chord([s * xb, yb], [s * halfW, H - dv]); // box-eave lower chord, parallel to the rafter
+    for (const f of t.mid) web(bot(s * f * halfW), top(s * f * halfW));
+    for (const [f0, e0, f1, e1] of t.diags) {
+      const x0 = s * f0 * halfW;
+      const x1 = s * f1 * halfW;
+      web(e0 === 'top' ? top(x0) : bot(x0), e1 === 'top' ? top(x1) : bot(x1));
+    }
+    for (const f of t.outer) {
+      const x = s * f * halfW;
+      if (!inColumn(x)) web(bot(x), top(x));
+    }
+    if (t.lace) {
+      for (let i = 1; i < t.outer.length; i++) {
+        const fa = t.outer[i - 1];
+        const p = t.outer[i] - fa;
+        const at = (k: number) => s * (fa + (p * k) / 7) * halfW;
+        // Going outward: lower chord → top chord, 6" gap, top chord → lower chord.
+        if (!inColumn(at(1), at(3))) web(bot(at(1)), top(at(3)));
+        if (!inColumn(at(4), at(6))) web(top(at(4)), bot(at(6)));
+      }
+    }
+  }
+  return out;
+}
+
+/** Parameter along segment p0→p1 where it first crosses segment q0→q1 (X-Y), or null. */
+function segCross2(p0: [number, number], p1: [number, number], q0: [number, number], q1: [number, number]): number | null {
+  const rx = p1[0] - p0[0];
+  const ry = p1[1] - p0[1];
+  const sx = q1[0] - q0[0];
+  const sy = q1[1] - q0[1];
+  const den = rx * sy - ry * sx;
+  if (Math.abs(den) < 1e-12) return null; // parallel
+  const qpx = q0[0] - p0[0];
+  const qpy = q0[1] - p0[1];
+  const t = (qpx * sy - qpy * sx) / den;
+  const u = (qpx * ry - qpy * rx) / den;
+  return t > 1e-6 && t < 1 - 1e-6 && u >= -1e-6 && u <= 1 + 1e-6 ? t : null;
+}
+
 const purlinRunsPerSlope = (rafterLength: number): number => Math.max(2, Math.round(rafterLength / 3));
 const hatRows = (legHeight: number): number => Math.max(2, Math.round(legHeight / 2));
 
@@ -248,7 +472,12 @@ function clipFrameAtEaveOpenings(members: Member[], openings: Opening[], halfW: 
 
   const out: Member[] = [];
   for (const m of members) {
-    const clippable = m.kind === 'leg' || m.kind === 'brace';
+    // Truss webs + SLOPED chords near the eave column (CA's box-eave lower
+    // chord lands on the post ~9" under the eave) clear the opening like the
+    // column does. A LEVEL chord (CCI bottom chord at the eave) spans the whole
+    // bent — it is the header over the opening, never erased by it.
+    const level = Math.abs(m.start[1] - m.end[1]) < 1e-6;
+    const clippable = m.kind === 'leg' || m.kind === 'brace' || m.kind === 'web' || (m.kind === 'chord' && !level);
     const constZ = Math.abs(m.start[2] - m.end[2]) < 0.01;
     // A foot of the member must sit on or just inboard of an eave wall plane.
     // The band covers the DEEP-COLUMN inset too: double legs put a second post
@@ -278,6 +507,97 @@ function clipFrameAtEaveOpenings(members: Member[], openings: Opening[], halfW: 
       }
     }
     out.push(m);
+  }
+  return out;
+}
+
+/** An opening on a gable-end wall (front / back / GCH partition) in that bent's X-Y plane. */
+interface EndHole {
+  z: number;
+  lo: number;
+  hi: number;
+  ylo: number;
+  yhi: number;
+}
+/** Side clearance kept between a truss web / cut chord and a gable opening's jambs (trim), ft. */
+const END_WEB_CLEAR = 0.25;
+/**
+ * Parametric range [t0, t1] of the member (X-Y, constant Z) inside the opening
+ * rectangle — jambs grown by END_WEB_CLEAR, top taken EXACTLY (a chord or web
+ * sitting on top of a door that reaches the eave is its header, not in it).
+ * Null when it misses (touching an edge is a miss). Liang-Barsky.
+ */
+function endHoleRange(m: Member, h: EndHole): [number, number] | null {
+  const x0 = m.start[0];
+  const y0 = m.start[1];
+  const dx = m.end[0] - x0;
+  const dy = m.end[1] - y0;
+  let t0 = 0;
+  let t1 = 1;
+  const edges: Array<[number, number]> = [
+    [-dx, x0 - (h.lo - END_WEB_CLEAR)],
+    [dx, h.hi + END_WEB_CLEAR - x0],
+    [-dy, y0 - h.ylo],
+    [dy, h.yhi - 0.01 - y0],
+  ];
+  for (const [p, q] of edges) {
+    if (Math.abs(p) < 1e-9) {
+      if (q < 0) return null;
+      continue;
+    }
+    const r = q / p;
+    if (p < 0) t0 = Math.max(t0, r);
+    else t1 = Math.min(t1, r);
+    if (t0 >= t1) return null;
+  }
+  return t1 - t0 > 1e-6 ? [t0, t1] : null;
+}
+
+/**
+ * Truss chords / webs in a GABLE-END bent (the front / back end frames, or a
+ * GCH partition bent) vs the openings on that wall. A tall end door can reach
+ * up past the eave into the truss: a web it would cross is left out of that
+ * bent (no floating stubs — same rule as a lean-to end brace), and a chord it
+ * crosses is cut around it (jamb trim clear). Everything else — and every
+ * other kind of member — passes through untouched.
+ */
+function clipTrussAtEndOpenings(members: Member[], holes: EndHole[]): Member[] {
+  if (!holes.length) return members;
+  const out: Member[] = [];
+  for (const m of members) {
+    if (m.kind !== 'web' && m.kind !== 'chord') {
+      out.push(m);
+      continue;
+    }
+    const hs = holes.filter((h) => Math.abs(m.start[2] - h.z) < 0.01 && Math.abs(m.end[2] - h.z) < 0.01);
+    if (!hs.length) {
+      out.push(m);
+      continue;
+    }
+    if (m.kind === 'web') {
+      if (!hs.some((h) => endHoleRange(m, h))) out.push(m);
+      continue;
+    }
+    let segs: Array<[Vec3, Vec3]> = [[m.start, m.end]];
+    let cut = false;
+    for (const h of hs) {
+      const next: Array<[Vec3, Vec3]> = [];
+      for (const [s, e] of segs) {
+        const r = endHoleRange(member('chord', s, e), h);
+        if (!r) {
+          next.push([s, e]);
+          continue;
+        }
+        cut = true;
+        const lerp = (t: number): Vec3 => [s[0] + (e[0] - s[0]) * t, s[1] + (e[1] - s[1]) * t, s[2] + (e[2] - s[2]) * t];
+        const len = dist(s, e);
+        if (r[0] * len > 0.05) next.push([s, lerp(r[0])]);
+        if ((1 - r[1]) * len > 0.05) next.push([lerp(r[1]), e]);
+      }
+      segs = next;
+    }
+    if (cut) for (const [s, e] of segs) out.push(member('chord', s, e));
+    else out.push(m);
   }
   return out;
 }
@@ -644,8 +964,10 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   const frontHoles = holesForWall('front');
   const backHoles = holesForWall('back');
 
-  // --- Frame bents: legs + gable rafters + knee braces + peak collar tie ---
-  // The roof member is the simple single rafter ("bow"). Leg style varies:
+  // --- Frame bents: legs + gable rafters + knee braces + truss webs ---
+  // The rafters are the top chord; wider than 24' the manufacturer's truss web
+  // pattern is added under them (trussStyleFor / trussSegments; a bow keeps the
+  // peak collar tie). Leg style varies:
   //   • DOUBLE leg   when W > 31 (or H 15+) — a second post welded just
   //     INBOARD of the first (toward the interior, along X), tops meeting the
   //     rafter underside. 16' legs are STANDARD DOUBLE legs, not ladder.
@@ -672,6 +994,15 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   const pbx = Math.min(3, halfW * 0.5); // peak collar tie half-span from the ridge
   const pby = H + rise * (1 - pbx / halfW);
 
+  // Truss web pattern from the manufacturer's chart (trussStyleFor). The same
+  // in-plane pattern goes on EVERY gabled bent, end frames included; mono-slope
+  // bents keep their plain rafter. The eave column's inboard reach keeps CA's
+  // box-eave webs off the double / ladder inner post.
+  const trussStyle: TrussStyle = mono ? 'bow' : trussStyleFor(W, config.manufacturer);
+  const colDepth = ladderLeg ? LADDER_D : doublePost ? DOUBLE_D : 0;
+  const trussSegs = trussSegments(trussStyle, halfW, H, rise, colDepth);
+  const trussChords = trussSegs.filter((sg) => sg.kind === 'chord');
+
   // Column(s) at eave side `sx`, plane `z`. The inner chord/post rises past H
   // to meet the rafter underside (the roof climbs toward the ridge).
   const pushLeg = (sx: number, z: number) => {
@@ -697,9 +1028,12 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     }
   };
 
-  // One bent: columns + two gable rafters + knee braces + a peak collar tie.
+  // One bent: columns + two gable rafters + knee braces + the chart's truss
+  // webs (a BOW keeps the short peak collar tie instead — every truss chart
+  // already has members in that spot: king post, struts or sister chord).
   // Ladder bents skip the knee brace — the deep column IS the reinforcement,
-  // and a diagonal across the ladder reads as clutter.
+  // and a diagonal across the ladder reads as clutter. A knee brace that would
+  // pierce a truss chord (CA box-eave lower chord) ends ON that chord.
   const pushBent = (z: number) => {
     pushLeg(-halfW, z);
     pushLeg(halfW, z);
@@ -719,10 +1053,19 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     members.push(member('rafter', [halfW, H, z], [0, peakHeight, z]));
     if (!ladderLeg) {
       for (const sx of [-halfW, halfW]) {
-        members.push(member('brace', [sx, H - braceLen, z], [sx * (1 - tBrace), H + rise * tBrace, z]));
+        const foot: [number, number] = [sx, H - braceLen];
+        let tip: [number, number] = [sx * (1 - tBrace), H + rise * tBrace];
+        let tHit = 1;
+        for (const c of trussChords) {
+          const t = segCross2(foot, tip, c.a, c.b);
+          if (t !== null && t < tHit) tHit = t;
+        }
+        if (tHit < 1) tip = [foot[0] + (tip[0] - foot[0]) * tHit, foot[1] + (tip[1] - foot[1]) * tHit];
+        members.push(member('brace', [foot[0], foot[1], z], [tip[0], tip[1], z]));
       }
     }
-    members.push(member('brace', [-pbx, pby, z], [pbx, pby, z]));
+    if (trussStyle === 'bow') members.push(member('brace', [-pbx, pby, z], [pbx, pby, z]));
+    for (const sg of trussSegs) members.push(member(sg.kind, [sg.a[0], sg.a[1], z], [sg.b[0], sg.b[1], z]));
   };
 
   for (const z of framePositionsZ) pushBent(z);
@@ -1081,8 +1424,20 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     framePositionsZ,
     // Cut columns + knee braces out of any eave doorway/opening last, so you can
     // step right through a framed opening (horizontals were cut during build).
+    // Truss webs/chords in a gable-end bent first clear that wall's openings.
     members: clipFrameAtLeanToOpenings(
-      clipFrameAtEaveOpenings(members, config.openings ?? [], halfW, halfL),
+      clipFrameAtEaveOpenings(
+        clipTrussAtEndOpenings(members, [
+          ...frontHoles.map((h) => ({ z: -halfL, lo: h.lo, hi: h.hi, ylo: h.sill, yhi: h.top })),
+          ...backHoles.map((h) => ({ z: halfL, lo: h.lo, hi: h.hi, ylo: h.sill, yhi: h.top })),
+          ...(enclosure.partitionZ !== null
+            ? holesForWall('partition').map((h) => ({ z: enclosure.partitionZ as number, lo: h.lo, hi: h.hi, ylo: h.sill, yhi: h.top }))
+            : []),
+        ]),
+        config.openings ?? [],
+        halfW,
+        halfL,
+      ),
       derivedLeanTos,
     ),
     enclosure,

@@ -69,10 +69,11 @@ export function Frame({ members, framingGauge, emphasize = false, look = 'classi
             size = HAT_CHANNEL_VISUAL_FT;
             break;
           case 'brace':
+          case 'web': // truss verticals / diagonals / struts / spacers
             size = frameSize * 0.8; // a touch lighter than the leg/rafter
             break;
           default:
-            break; // legs + rafters use full gauge size
+            break; // legs + rafters + truss chords use full gauge size
         }
 
         return frameMat ? (

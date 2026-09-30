@@ -148,6 +148,54 @@ describe('partition fit — constants and geometry', () => {
     expect(g3.slope).toBeCloseTo(0.25, 9);
   });
 
+  it('connection point above the main eave: the partition runs from the low leg up to the main eave (flatter), same as the program', () => {
+    // The program's own ltPartGeom, fed a stub lean-to entry + main eave (bh).
+    const progGeom = (side: string, w: number, low: number, pitch: '2:12' | '3:12', bh: number) =>
+      new Function(
+        'side',
+        'w',
+        'low',
+        'pitch',
+        'bh',
+        `var G = function (id) { return id === 'bh' ? { value: String(bh) } : null; };
+         var getLTDims = function () { return { w: w, h: low }; };
+         ${programFn('ltPartGeom')}
+         var lte = { querySelector: function (s) { return s === '.ltp' ? { value: pitch } : s === '.lts' ? { value: side } : null; } };
+         return ltPartGeom(lte);`,
+      )(side, w, low, pitch, bh) as PartitionGeom & { pitch: number };
+    // CCI 30x40x10 + 20' 3:12 Right Eave, 6' low leg: 6 + 20 * 3/12 = 11' > the 10' main eave.
+    const lt = structure({ widthFt: 20, lowLegHeightFt: 6, roofPitch: '3:12' });
+    const g = partitionGeom(lt, 10);
+    expect(g.slope).toBeCloseTo(4 / 20, 9); // 6' -> 10' over 20'
+    expect(partitionGeom(lt).slope).toBeCloseTo(0.25, 9); // no main eave given: the lean-to's own pitch
+    expect(partitionGeom(lt, 12).slope).toBeCloseTo(0.25, 9); // main eave above the connection: unchanged
+    expect(partitionGeom(lt, 11).slope).toBeCloseTo(0.25, 9); // flush
+    const pg = progGeom('Right Eave', 20, 6, '3:12', 10);
+    expect({ len: pg.len, low: pg.low, slope: pg.slope, lowAtZero: pg.lowAtZero }).toEqual({ len: 20, low: 6, slope: expect.closeTo(g.slope, 9), lowAtZero: true });
+    expect(pg.pitch).toBeCloseTo(0.25, 9);
+    for (const [side, w, low, pitch, bh] of [
+      ['Left Eave', 12, 10, '2:12', 12],
+      ['Right Eave', 12, 10, '2:12', 10],
+      ['Front Gable', 16, 8, '3:12', 14],
+      ['Back Gable', 20, 8, '3:12', 12],
+      ['Left Eave', 20, 6, '3:12', 10],
+    ] as const) {
+      const three = partitionGeom(structure({ attachedSide: side, widthFt: w, lowLegHeightFt: low, roofPitch: pitch }), bh);
+      const prog = progGeom(side, w, low, pitch, bh);
+      expect(prog.slope).toBeCloseTo(three.slope, 9);
+      expect(prog.lowAtZero).toBe(three.lowAtZero);
+    }
+    // The verifier's case: Right side, 6x8 needs 9' at its low jamb. Drawn roof: 6 + 13 * 0.2 = 8.6' there -> no spot at all now.
+    expect(partitionWallHeightAt(g, 13)).toBeCloseTo(8.6, 9);
+    expect(clampPartitionCenter(16, op({ widthFt: 6, heightFt: 8 }), g, [], 16)).toBe(16);
+    expect(programOk(g, op({ widthFt: 6, heightFt: 8 }), 16, [])).toBe(false);
+    expect(programOk(partitionGeom(lt), op({ widthFt: 6, heightFt: 8 }), 16, [])).toBe(true); // what the uncapped rule allowed
+    // 6x7 needs 8': low jamb >= 10' in -> left edges 10..13.
+    expect(clampPartitionCenter(0, op({ widthFt: 6, heightFt: 7 }), g, [], 16)).toBeCloseTo(10 + 3, 9);
+    expect(programOk(g, op({ widthFt: 6, heightFt: 7 }), 13, [])).toBe(true);
+    expect(programOk(g, op({ widthFt: 6, heightFt: 7 }), 13 - 1 / 12, [])).toBe(false);
+  });
+
   it('header / window rule: doors need top + 1\', windows top only', () => {
     expect(partitionNeedFt(op({ heightFt: 8 }))).toBe(9);
     expect(partitionNeedFt(op({ type: 'walkDoor', widthFt: 3, heightFt: 6.67 }))).toBeCloseTo(7.67, 9);

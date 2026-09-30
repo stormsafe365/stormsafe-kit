@@ -969,7 +969,10 @@ export function DraggableLeanToOpening({
       // must NOT move the part or write a position back (that could reprice).
       moved = Math.max(moved, Math.hypot(ev.clientX - sx, ev.clientY - sy));
       if (moved < CLICK_DRAG_THRESHOLD_PX) return;
-      if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
+      // A partition opening counts as moved only once it really lands on a new
+      // spot (below): one with no valid spot anywhere never writes back, so its
+      // program position is never replaced by the 3D's on-wall display spot.
+      if (opening.wall !== 'partition' && !useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
       const rect = gl.domElement.getBoundingClientRect();
       const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
       const ny = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
@@ -982,9 +985,15 @@ export function DraggableLeanToOpening({
           // Storage partition: the main gable end's fit rules (corner posts,
           // header at the low jamb, 1' between openings) — never into a spot
           // that breaks them (the program checks the same spots).
-          const cur = useBuildingStore.getState().leanTos.flatMap((l) => l.openings ?? []).find((o) => o.id === oid);
+          // Main eave (the program's bh = store legHeight): a connection point above it
+          // makes the partition flatter (partitionGeom), exactly as the program reads it.
+          const bs = useBuildingStore.getState();
+          const cur = bs.leanTos.flatMap((l) => l.openings ?? []).find((o) => o.id === oid);
+          const curOff = cur?.offsetFt ?? opening.offsetFt;
           const sibs = lt.openings.filter((o) => o.wall === 'partition' && o.id !== oid);
-          off = clampPartitionCenter(raw, opening, partitionGeom(lt), sibs, cur?.offsetFt ?? opening.offsetFt);
+          off = clampPartitionCenter(raw, opening, partitionGeom(lt, bs.legHeight), sibs, curOff);
+          if (Math.abs(off - curOff) < 1e-9) return; // no new spot: nothing moves, nothing to write back
+          if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
         } else off = Math.max(info.w / 2, Math.min(info.wallLen - info.w / 2, raw));
         updateLeanToOpening(oid, { offsetFt: off });
       }

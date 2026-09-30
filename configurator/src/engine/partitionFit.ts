@@ -29,7 +29,10 @@ export interface PartitionGeom {
   len: number;
   /** Wall height at the outer (low) post = the lean-to's low leg. */
   low: number;
-  /** Rise per ft toward the building (= pitch / 12). */
+  /**
+   * Rise per ft toward the building (= pitch / 12) — flatter when the pitch
+   * would put the connection point above the main eave (see partitionGeom).
+   */
   slope: number;
   /** True when the outer (low) post sits at offset 0. */
   lowAtZero: boolean;
@@ -37,15 +40,24 @@ export interface PartitionGeom {
 
 export function partitionGeom(
   lt: Pick<LeanToStructure, 'attachedSide' | 'widthFt' | 'lowLegHeightFt' | 'peakHeightFt' | 'inner' | 'outer'>,
+  /**
+   * Main building eave height (ft) — the program's bh (store legHeight). When
+   * low leg + rise would put the connection point above it (the program's
+   * "Main eave ... too short" case), the rafter runs from the low leg to the
+   * main eave (geometry.ts connH = min(H, lh + rise)), so the partition is that
+   * much flatter — the program's ltPartGeom does the same.
+   */
+  mainEaveFt?: number,
 ): PartitionGeom {
   const eave = lt.attachedSide === 'Left Eave' || lt.attachedSide === 'Right Eave';
   const inner = eave ? lt.inner.x : lt.inner.z;
   const outer = eave ? lt.outer.x : lt.outer.z;
   const len = lt.widthFt;
+  const conn = mainEaveFt !== undefined && mainEaveFt > 0 && lt.peakHeightFt > mainEaveFt ? mainEaveFt : lt.peakHeightFt;
   return {
     len,
     low: lt.lowLegHeightFt,
-    slope: len > 0 ? (lt.peakHeightFt - lt.lowLegHeightFt) / len : 0,
+    slope: len > 0 ? Math.max(0, (conn - lt.lowLegHeightFt) / len) : 0,
     lowAtZero: outer < inner,
   };
 }

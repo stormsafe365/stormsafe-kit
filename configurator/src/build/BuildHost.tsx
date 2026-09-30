@@ -359,6 +359,21 @@ function writeBackLeanToOpening(win: BuilderWindow, id: string | null) {
   const allOpenings = useBuildingStore.getState().leanTos.flatMap((lt) => lt.openings ?? []);
   const fns = win as unknown as { updLTAccPos?: (el: Element) => void; rebuildLTAccOffsets?: (el: Element) => void };
 
+  // Storage partition: the items NOT dragged keep the program's own spots
+  // (ltPartLayout, read before the row switches to Custom offset) — not the
+  // 3D's keep-on-the-wall display spot, which differs for an item that
+  // doesn't fit (flagged) and would otherwise be written back as its position.
+  let partXs: number[] | null = null;
+  const locEl = entry.querySelector('.lt-acc-loc') as HTMLSelectElement | null;
+  if (locEl?.value === 'partition' && typeof win.ltPartLayout === 'function') {
+    try {
+      const xs = win.ltPartLayout(entry, siblings[0].width, siblings.length);
+      if (Array.isArray(xs) && xs.length === siblings.length && xs.every((x) => Number.isFinite(x))) partXs = xs;
+    } catch {
+      partXs = null;
+    }
+  }
+
   // Switch the row to explicit custom offsets and (re)build the per-item inputs.
   const posEl = entry.querySelector('.lt-acc-pos') as HTMLSelectElement | null;
   if (posEl && posEl.value !== 'offset') {
@@ -373,7 +388,10 @@ function writeBackLeanToOpening(win: BuilderWindow, id: string | null) {
     const op = allOpenings.find((o) => o.id === sib.oid);
     const input = offEls[sib.itemIndex];
     if (!op || !input) continue;
-    const pos = Math.max(0, Math.round((op.offsetFt - op.widthFt / 2) * 12) / 12); // nearest inch
+    const pos =
+      partXs && sib.oid !== id && Number.isFinite(partXs[sib.itemIndex])
+        ? partXs[sib.itemIndex] // not dragged: where the program has it
+        : Math.max(0, Math.round((op.offsetFt - op.widthFt / 2) * 12) / 12); // nearest inch
     input.value = String(Number(pos.toFixed(3)));
     input.dispatchEvent(new Event('input', { bubbles: true }));
     wrote = true;
@@ -513,6 +531,10 @@ function readLeanTos(win: Window & { document: Document }): LeanToRead[] {
       let doorStyle: LeanToOpeningRead['doorStyle'];
       let impact: boolean | undefined;
       if (oType === 'rollUpDoor') {
+        // Storage partition roll-up with NO size (no priced size fits where it
+        // sits — the program flags it and blocks printing): nothing to draw,
+        // rather than a made-up 9x8 the quote doesn't have.
+        if (wall === 'partition' && !strVal(ae, '.lt-acc-size')) return;
         const sz = (strVal(ae, '.lt-acc-size') || '9x8').toLowerCase().split('x');
         w = parseFloat(sz[0]) || 9;
         h = parseFloat(sz[1]) || 8;

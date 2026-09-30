@@ -6277,7 +6277,13 @@ function ltPartitionIssue(el){
     else if(t==='wtd'){ var _wh=(ae.querySelector('.lt-acc-wtd-hi')||{}).value||'std'; up=MFR().wtdPrices[_wh]||window._wtd_std||400; what='walk door'; }
     else if(t==='win'){ var _nh=(ae.querySelector('.lt-acc-win-hi')||{}).value||'std'; up=MFR().winPrices[_nh]||window._win_std||200; what='window'; }
     else if(t==='frameout'){ up=ltAccFoUnitPrice(ae,'partition'); what='framed opening'; }
-    if(!(up>0)) msg='The '+what+' on the Storage Partition Wall has no price for that size. Pick a priced size or another opening.';
+    if(!(up>0)){
+      var _noSz=(t==='rollup' && !((ae.querySelector('.lt-acc-size')||{}).value));
+      if(_noSz && !ltPartRollupOptions(ae).some(function(v){return v.fits;}))
+        msg='No priced roll-up size fits the Storage Partition Wall where this roll-up door sits (see the note on the door). Change its Position, raise the low leg or widen the lean-to, or use a walk door / framed opening.';
+      else if(_noSz) msg='The roll-up door on the Storage Partition Wall has no size yet. Pick one of the sizes its list offers.';
+      else msg='The '+what+' on the Storage Partition Wall has no price for that size. Pick a priced size or another opening.';
+    }
   });
   // The main gable end's fit rules (corners, header at the low jamb, 1'
   // between openings) — an opening that can't really fit there never prints.
@@ -6578,7 +6584,15 @@ function ltPartGeom(lte){
   // Offsets ("ft from left") run from the 3D wall start: the OUTER (low) post
   // is at 0 on Right Eave / Front Gable lean-tos, at the far end on Left Eave /
   // Back Gable ones (geometry.ts inner/outer; the 3D measures from the min side).
-  return {len:d.w, low:d.h, slope:p/12, lowAtZero:(s==='Right Eave'||s==='Front Gable')};
+  // The lean-to hangs off the main eave: when low leg + width*pitch/12 would
+  // put the connection point ABOVE the main eave (the "Main eave ... too short"
+  // case updateLTNote warns of), the rafter — as the 3D frame draws it,
+  // geometry.ts connH = min(H, low leg + rise) — runs from the low leg up to
+  // the main eave, so the partition under it is that much flatter. pitch: the
+  // slope of the lean-to pitch itself (slope < pitch = capped).
+  var pitch=p/12, slope=pitch, mh=parseFloat((G('bh')||{}).value);
+  if(mh>0 && d.w>0 && d.h+d.w*pitch>mh) slope=Math.max(0,(mh-d.h)/d.w);
+  return {len:d.w, low:d.h, slope:slope, pitch:pitch, lowAtZero:(s==='Right Eave'||s==='Front Gable')};
 }
 // Partition wall height (ft) at x ft from its left end.
 function ltPartWallH(g,x){
@@ -6611,7 +6625,9 @@ function ltPartDims(ae,sizeOvr){
 // Position setting. Auto / Centered = the main gable's Auto spacing (getPosItems:
 // equal gaps); Left / Right = 1' from that corner, 1'6" between; Custom offset
 // = the typed left edges. BuildHost draws partition openings from this.
-function ltPartLayout(ae,w,qtyOvr){
+// simQty (a qty being TRIED for the qty list): Custom-offset items that have no
+// input yet sit where rebuildLTAccOffsets would put them (item i at i*5 ft).
+function ltPartLayout(ae,w,qtyOvr,simQty){
   var g=ltPartGeom(ae.closest('.lte'));
   var n=qtyOvr||parseInt((ae.querySelector('.lt-acc-qty')||{}).value)||1;
   var pos=(ae.querySelector('.lt-acc-pos')||{}).value||'auto';
@@ -6619,6 +6635,7 @@ function ltPartLayout(ae,w,qtyOvr){
   var xs=[];
   for(var i=0;i<n;i++){
     if(pos==='offset'&&offs[i]!==undefined) xs.push(parseFloat(offs[i])||0);
+    else if(pos==='offset'&&simQty) xs.push(i*5);
     else if(pos==='left') xs.push(LT_PART_CLR+i*(w+1.5));
     else if(pos==='right') xs.push(g.len-LT_PART_CLR-w-i*(w+1.5));
     else { var gap=(g.len-n*w)/(n+1); xs.push(gap*(i+1)+w*i); }
@@ -6629,31 +6646,44 @@ function ltPartLayout(ae,w,qtyOvr){
 // the inch (a 0.05" slack keeps 6.67 ft / 4.16667 ft reading as 6'8" / 4'2").
 function _ltPartIn(ft,up){ var i=up?Math.ceil(ft*12-0.05):Math.floor(ft*12+0.05); return _dimFtIn(i/12); }
 function _ltPartFt(ft){ return _dimFtIn(Math.round(ft*12)/12); }
-// First rule one opening breaks ('' = fits). it: {x,w,h,sill,kind,what,n,i}.
+// The rules one opening breaks ('' = fits). it: {x,w,h,sill,kind,what,n,i}.
+// A corner-post break also says when the opening is too tall for ANY spot on
+// the partition (so the rep isn't sent chasing a position that can't work).
 function ltPartItemIssue(g,it){
   if(!(it.w>0)||!(it.h>0)) return ''; // no size: the price rule flags it
   var who='The '+it.what+(it.n>1?(' #'+(it.i+1)):'')+' on the Storage Partition Wall';
-  var hiSide=g.lowAtZero?'RIGHT':'LEFT';
-  if(it.x<LT_PART_CLR-LT_PART_EPS || it.x+it.w>g.len-LT_PART_CLR+LT_PART_EPS){
+  var hiSide=g.lowAtZero?'RIGHT':'LEFT', msgs=[];
+  var corner=(it.x<LT_PART_CLR-LT_PART_EPS || it.x+it.w>g.len-LT_PART_CLR+LT_PART_EPS);
+  if(corner){
     var atLeft=(it.x<LT_PART_CLR-LT_PART_EPS), gap=atLeft?it.x:(g.len-it.x-it.w);
     var post=(atLeft===g.lowAtZero)?'outer':'building-side';
-    return who+(gap<0?' runs past':' is only '+_ltPartIn(Math.max(0,gap))+' from')+' the '+post+' corner post — the main gable end keeps 1\' clear of each corner (partition '+_dimFtIn(g.len)+' wide, so an opening can be at most '+_dimFtIn(Math.max(0,g.len-2*LT_PART_CLR))+' wide).';
+    msgs.push(who+(gap<0?' runs past':' is only '+_ltPartIn(Math.max(0,gap))+' from')+' the '+post+' corner post — the main gable end keeps 1\' clear of each corner (partition '+_dimFtIn(g.len)+' wide, so an opening can be at most '+_dimFtIn(Math.max(0,g.len-2*LT_PART_CLR))+' wide).');
   }
-  var lowX=g.lowAtZero?it.x:(it.x+it.w), H=ltPartWallH(g,lowX);
   var hdr=(it.kind==='door')?LT_PART_DOOR_HDR:LT_PART_WIN_HDR, need=it.sill+it.h+hdr;
-  if(need>H+LT_PART_EPS){
-    return who+' does not fit under the sloped partition: the wall is only '+_ltPartIn(H,false)+' tall at its low (outer) side and it needs '+_ltPartIn(need,true)+
+  // Best spot height-wise: 1 ft in from the building-side post (its low jamb
+  // is then len - 1 - w from the outer post). No quote marks in comments in
+  // here: partitionFit.test.ts lifts this function out with a quote-aware scan.
+  var bestLowX=g.lowAtZero?(g.len-LT_PART_CLR-it.w):(LT_PART_CLR+it.w), Hbest=ltPartWallH(g,bestLowX);
+  var lowX=g.lowAtZero?it.x:(it.x+it.w), H=ltPartWallH(g,lowX);
+  var anywhere=(it.w<=g.len-2*LT_PART_CLR+LT_PART_EPS) && (need>Hbest+LT_PART_EPS);
+  if(corner ? anywhere : (need>H+LT_PART_EPS)){
+    var Hs=anywhere?Hbest:H;
+    var capped=(g.pitch>0 && g.slope<g.pitch-1e-9);
+    msgs.push((anywhere?((msgs.length?'It is also':(who+' is'))+' too tall for this partition anywhere: even 1\' from the building-side post the wall at its low (outer) side is only '):(who+' does not fit under the sloped partition: the wall is only '))+
+      _ltPartIn(Hs,false)+(anywhere?'':' tall at its low (outer) side')+' and it needs '+_ltPartIn(need,true)+
       (it.kind==='door' ? (' ('+_ltPartFt(it.h)+(it.sill>0?(' + '+_ltPartFt(it.sill)+' sill'):'')+' + 1\' header, the main gable end\'s clearance)')
                         : (' ('+_ltPartFt(it.sill)+' sill + '+_ltPartFt(it.h)+' window)'))+
-      '. Move it toward the building (the partition\'s '+hiSide+' side), pick a smaller size, or raise the low leg.';
+      (capped?(' — the lean-to roof can only reach the main eave ('+_ltPartFt(g.low+g.len*g.slope)+' at the building), not the '+_ltPartFt(g.low+g.len*g.pitch)+' its pitch would give, so the partition is that much lower'):'')+
+      (anywhere?'. Pick a smaller size or raise the low leg.':('. Move it toward the building (the partition\'s '+hiSide+' side), pick a smaller size, or raise the low leg.')));
   }
-  return '';
+  return msgs.join(' ');
 }
-// One entry's openings vs the rules (its own spacing included).
-function ltPartEntryCheck(ae,sizeOvr){
+// One entry's openings vs the rules (its own spacing included). sizeOvr /
+// qtyOvr: TRY a roll-up size / a qty (the size and qty lists).
+function ltPartEntryCheck(ae,sizeOvr,qtyOvr){
   var g=ltPartGeom(ae.closest('.lte')), dm=ltPartDims(ae,sizeOvr);
   if(!dm) return {items:[],msg:''};
-  var xs=ltPartLayout(ae,dm.w), items=[], msg='';
+  var xs=ltPartLayout(ae,dm.w,qtyOvr,!!qtyOvr), items=[], msg='';
   xs.forEach(function(x,i){
     var it={ae:ae,x:x,w:dm.w,h:dm.h,sill:dm.sill,kind:dm.kind,what:dm.what,n:xs.length,i:i};
     items.push(it);
@@ -6661,6 +6691,24 @@ function ltPartEntryCheck(ae,sizeOvr){
   });
   if(!msg){ var p=ltPartGapPairs(items,false)[0]; if(p) msg=ltPartGapMsg(p); }
   return {items:items,msg:msg};
+}
+// The OTHER partition openings of ae's lean-to, where they sit now.
+function ltPartOthers(ae){
+  var lte=ae.closest('.lte'), out=[];
+  if(!lte) return out;
+  lte.querySelectorAll('.lt-acc-e').forEach(function(o){
+    if(o===ae || ((o.querySelector('.lt-acc-loc')||{}).value)!=='partition') return;
+    out=out.concat(ltPartEntryCheck(o).items);
+  });
+  return out;
+}
+// Would this entry fit with a tried size / qty: its own rules AND 1' clear of
+// every other partition opening (others = ltPartOthers(ae)). '' = fits.
+function ltPartCandidateMsg(ae,sizeOvr,qtyOvr,others){
+  var c=ltPartEntryCheck(ae,sizeOvr,qtyOvr);
+  if(c.msg || !(others&&others.length)) return c.msg;
+  var p=ltPartGapPairs(c.items.concat(others),true)[0];
+  return p?ltPartGapMsg(p):'';
 }
 // Pairs of openings closer than 1' (or overlapping). crossOnly: only pairs
 // from different entries.
@@ -6705,10 +6753,14 @@ function _ltSetOpts(sel,opts,val){
   if(sel.value!==String(val)) sel.value=String(val);
 }
 // Roll-up size list on the partition: every PRICED size of the lean-to
-// catalogue (getValidRDPSizes), each marked fits / doesn't fit HERE.
+// catalogue (getValidRDPSizes), each marked fits / doesn't fit HERE — its own
+// rules (corners, header at the low jamb, its own qty) AND 1' clear of every
+// other partition opening. own: fits when the other openings are ignored.
 function ltPartRollupOptions(ae){
+  var others=ltPartOthers(ae);
   return getValidRDPSizes(9999,9999,'partition').map(function(v){
-    return {key:v.key,price:v.price,star:v.star,fits:!ltPartEntryCheck(ae,v.key).msg};
+    var own=!ltPartEntryCheck(ae,v.key).msg;
+    return {key:v.key,price:v.price,star:v.star,own:own,fits:own&&!ltPartCandidateMsg(ae,v.key,null,others)};
   });
 }
 // Build the partition size <select>. Sizes that don't fit where the door sits
@@ -6733,22 +6785,36 @@ function ltPartSizeSelect(ae,sel,fresh){
   var wmsg='';
   if(!fit.length){
     var g=ltPartGeom(ae.closest('.lte'));
-    wmsg='No priced roll-up size fits the storage partition at this position (1\' clear of each corner post, 1\' header at the door\'s low side — the partition is '+_ltPartIn(g.low,false)+' tall at the outer post, '+_ltPartIn(g.low+g.len*g.slope,false)+' at the building). Move it toward the building (the partition\'s '+(g.lowAtZero?'RIGHT':'LEFT')+' side), raise the low leg or widen the lean-to, or use a walk door / framed opening.';
+    if(list.some(function(v){return v.own;}))
+      wmsg='No priced roll-up size fits the storage partition at this position beside the other opening(s) on it (1\' between openings, a jamb post goes between them). Change this door\'s Position, move the other opening(s), or use a walk door / framed opening.';
+    else
+      wmsg='No priced roll-up size fits the storage partition at this position (1\' clear of each corner post, 1\' header at the door\'s low side — the partition is '+_ltPartIn(ltPartWallH(g,g.lowAtZero?0:g.len),false)+' tall at the outer post, '+_ltPartIn(ltPartWallH(g,g.lowAtZero?g.len:0),false)+' at the building). Move it toward the building (the partition\'s '+(g.lowAtZero?'RIGHT':'LEFT')+' side), raise the low leg or widen the lean-to, or use a walk door / framed opening.';
   }
   var ow=ae.querySelector('.lt-acc-warn');
   if(!wmsg){ if(ow) ow.remove(); }
   else if(!ow || ow.textContent!=='⚠ '+wmsg){ if(ow) ow.remove(); addLTAccWarn(ae,wmsg); }
 }
-// Partition qty: as many as fit with 1' at each corner and 1' between. Larger
-// counts stay in the list hidden + disabled so a saved / kept qty is never
-// silently cut (flagged instead); fresh = the door just came onto the partition.
+// Partition qty: only counts that fit where the entry's Position puts them —
+// 1' at each corner, 1' between, the header at each door's low jamb, and 1'
+// clear of the other partition openings (each count is tried in full, like the
+// sizes). 1 is always listed. Counts that don't fit stay in the list hidden +
+// disabled so a saved / kept qty is never silently cut (flagged instead);
+// fresh = the door just came onto the partition (drops to the largest count
+// that fits). A roll-up with no size yet: the old width-only count.
 function ltPartQtySelect(ae,qEl,fresh){
-  var dm=ltPartDims(ae), iw=(dm&&dm.w>0)?dm.w:ltAccItemWidth(ae), wl=ltAccWallLen(ae);
-  var max=(iw>0&&wl>0)?Math.max(1,Math.floor((wl-2*LT_PART_CLR+LT_PART_GAP)/(iw+LT_PART_GAP)+1e-9)):1;
-  max=Math.min(max,24);
-  var cur=parseInt(qEl.value)||1, pick=fresh?Math.min(cur,max):Math.min(cur,24);
+  var dm=ltPartDims(ae), ok=[], i;
+  if(dm&&dm.w>0&&dm.h>0){
+    var others=ltPartOthers(ae);
+    for(i=1;i<=24;i++) ok[i]=(i===1)||!ltPartCandidateMsg(ae,null,i,others);
+  } else {
+    var iw=ltAccItemWidth(ae), wl=ltAccWallLen(ae);
+    var max=(iw>0&&wl>0)?Math.max(1,Math.floor((wl-2*LT_PART_CLR+LT_PART_GAP)/(iw+LT_PART_GAP)+1e-9)):1;
+    for(i=1;i<=24;i++) ok[i]=(i<=max);
+  }
+  var pick=Math.min(parseInt(qEl.value)||1,24);
+  if(fresh){ while(pick>1 && !ok[pick]) pick--; }
   var opts=[];
-  for(var i=1;i<=24;i++) opts.push({v:i,dis:i>max,hid:i>max,t:i+(i<=max?'':' — ⚠ too many for this wall')});
+  for(i=1;i<=24;i++) opts.push({v:i,dis:!ok[i],hid:!ok[i],t:i+(ok[i]?'':' — ⚠ doesn\'t fit here')});
   _ltSetOpts(qEl,opts,pick);
 }
 // Red per-entry flag for partition openings that break a rule (and removal

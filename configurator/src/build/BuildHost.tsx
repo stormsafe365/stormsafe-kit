@@ -492,6 +492,10 @@ function readLeanTos(win: Window & { document: Document }): Array<{
       const t = strVal(ae, '.lt-acc-type');
       const oType = t === 'wtd' ? 'walkDoor' : t === 'win' ? 'window' : t === 'frameout' ? 'frameOut' : 'rollUpDoor';
       const locStr = strVal(ae, '.lt-acc-loc');
+      // Lean-to storage partition openings: priced by the program, but the 3D
+      // has no partition wall yet — skip them rather than mis-drawing them on
+      // the outer wall (the fallback below). accIndex stays the DOM index.
+      if (locStr === 'partition') return;
       const wall = ['outer', 'front', 'back'].includes(locStr) ? locStr : 'outer';
       // Qty is fit-based in the program now (as many as fit the wall) — mirror
       // its sanity ceiling instead of the old hardcoded 3.

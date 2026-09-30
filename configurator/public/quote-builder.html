@@ -862,6 +862,7 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
       <tr><td class="pk">Storage Partition</td><td class="pv" id="paew">—</td></tr>
       <tr><td class="pk">Insulation</td><td class="pv" id="pins">—</td></tr>
       <tr><td class="pk">Lean-Tos</td><td class="pv" id="plt">—</td></tr>
+      <tr id="ltstor-summary-row" style="display:none"><td class="pk" id="plts-k">Lean-To Storage Room</td><td class="pv" id="plts">—</td></tr>
       <tr><td class="pk">Additional Components</td><td class="pv" id="pac">—</td></tr>
       <tr id="sp-summary-row" style="display:none"><td class="pk">Side Panels</td><td class="pv" id="psp">—</td></tr>
       <tr id="overhang-summary-row" style="display:none"><td class="pk">1' Overhang</td><td class="pv" id="poh">—</td></tr>
@@ -6026,7 +6027,10 @@ function cciLtSideClosed(h,l,vertical){
 // CCI attached leans: dealer-handbook half-of-2W method, recalibrated
 // 2026-07-24 to CCI's manufacturer-corrected quotes — see the block comment
 // above CCI_LT_CERT_RATE for the formulas and the verified points.
-function ltUnit(el){
+// wallsOvr (optional, lean-to storage only): price the SAME lean-to with other
+// wall settings (a getLTWalls-shaped object from ltWallsAs). Every normal
+// caller passes one argument → walls come from getLTWalls(el), unchanged.
+function ltUnit(el, wallsOvr){
   var w=parseInt(el.querySelector('.ltw').value)||0;
   var l=parseInt(el.querySelector('.ltl2').value)||0;
   var typeEl=el.querySelector('.lt-type');
@@ -6037,7 +6041,7 @@ function ltUnit(el){
   if(isFree){ h=parseInt(el.querySelector('.lt-tall-h')&&el.querySelector('.lt-tall-h').value)||10; }
   else { h=isCont ? (parseFloat(el.querySelector('.lth-cont').value)||6) : (parseInt(el.querySelector('.lth').value)||6); }
   if(!w||!l) return {w:w,l:l,h:h,isFree:isFree,bp:0,heightAdj:0,encAdj:0,total:0};
-  var ltWalls2=getLTWalls(el);
+  var ltWalls2=wallsOvr||getLTWalls(el);
   var bp, heightAdj=0, encAdj;
   if(ACTIVE_MFR==='CCI' && !isFree){
     // ── CCI dealer-handbook method (manufacturer-corrected 2026-07-24):
@@ -6172,9 +6176,148 @@ function gLT(){
         }
       }
     });
-    t+=u.total+accAdj;
+    // Storage room (partition + the walls that close it) — $0 with Storage None.
+    t+=u.total+accAdj+ltStorage(el).total;
   });
   return t;
+}
+
+// ── LEAN-TO STORAGE ROOM (owner request 9/29/26) ─────────────────────────────
+// A partition wall across an ATTACHED lean-to closes off one end (Front or
+// Back, a length in ft) as a small storage room. Priced "like a closed lean-to
+// end" (owner decision) — every dollar comes from ltUnit's own wall pricing:
+//   Partition wall   = ONE closed end of this lean-to (same function, same
+//                      width / leg / panel orientation as its real end walls).
+//   Storage end wall = that end priced CLOSED, minus what the lean-to's own
+//                      setting for that end already charges ($0 if Closed).
+//   Outer wall       = the lean-to SIDE wall price for the storage length
+//                      (CCI: cciLtSideClosed at the storage length; CA: the
+//                      LT_SIDE_P closed rate) — $0 if the side is already Closed.
+// Nothing is charged twice: a Fully Enclosed lean-to adds the partition only.
+// Storage None (the default, and every quote saved before this) → all $0 and
+// no other function changes its output. Rep-facing "verify with CCI/CA" note
+// until the manufacturer confirms; never printed for the client.
+function ltWallsAs(front, back, side){
+  // Same shape + flat rates as getLTWalls (CA / free-standing read the *P fields).
+  return {
+    front:front, back:back, side:side, mode:'custom',
+    frontClosed:(front==='closed'), backClosed:(back==='closed'), sideClosed:(side==='closed'),
+    frontP:(LT_END_P[front]||0), backP:(LT_END_P[back]||0), sideP:(LT_SIDE_P[side]||0)
+  };
+}
+function ltStorOn(el){
+  var s=(el.querySelector('.lt-stor')||{}).value||'none';
+  var isFree=((el.querySelector('.lt-type')||{}).value==='freestanding');
+  return (s==='front'||s==='back')&&!isFree;
+}
+function ltStorage(el){
+  var r={on:false,valid:false,err:'',warn:'',end:'',len:0,w:0,l:0,h:0,endWas:'',sideWas:'',
+         partitionP:0,endP:0,outerP:0,total:0};
+  if(!ltStorOn(el)) return r;
+  r.on=true;
+  r.end=el.querySelector('.lt-stor').value;
+  r.len=parseFloat((el.querySelector('.lt-stor-len')||{}).value)||0;
+  var u=ltUnit(el);
+  r.w=u.w; r.l=u.l; r.h=u.h;
+  if(!u.w||!u.l){ r.err='Set the lean-to width and length first.'; return r; }
+  if(!(r.len>0)){ r.err='Enter the storage length.'; return r; }
+  if(r.len>=u.l){ r.err="Storage length must be LESS than the lean-to length ("+u.l+"')."; return r; }
+  var cur=getLTWalls(el);
+  r.endWas=cur[r.end]; r.sideWas=cur.side;
+  // Guard: ltWallsAs must reproduce this lean-to's own wall price exactly.
+  if(ltUnit(el, ltWallsAs(cur.front,cur.back,cur.side)).total!==u.total){
+    r.err='Storage price check failed — do not quote the storage room; report this.'; return r;
+  }
+  // Partition = one closed end of this lean-to.
+  r.partitionP=ltUnit(el, ltWallsAs('closed','open','open')).encAdj - ltUnit(el, ltWallsAs('open','open','open')).encAdj;
+  // Storage end closed — only what the current end setting doesn't already charge.
+  var withEnd=(r.end==='front') ? ltWallsAs('closed',cur.back,cur.side) : ltWallsAs(cur.front,'closed',cur.side);
+  r.endP=ltUnit(el, withEnd).encAdj - u.encAdj;
+  var warns=[];
+  if(r.endP<0){ warns.push('The '+r.end+' end setting already prices above a closed end — no end charge added.'); r.endP=0; }
+  // Outer wall along the storage length — lean-to side-wall price for that length.
+  if(cur.side!=='closed'){
+    r.outerP=(ACTIVE_MFR==='CCI' && !u.isFree) ? cciLtSideClosed(u.h, r.len, !ltPanelsHorizontal()) : (LT_SIDE_P.closed||0);
+    if(cur.side!=='open') warns.push('Side wall is set to a partial option — its partial price stays and the storage outer wall is added in full. Verify.');
+  }
+  r.warn=warns.join(' ');
+  if(!(r.partitionP>0)){ r.err='No closed-end price for this lean-to size — storage not priced.'; r.partitionP=r.endP=r.outerP=0; return r; }
+  r.valid=true;
+  r.total=r.partitionP+r.endP+r.outerP;
+  return r;
+}
+function gLTStorage(){
+  var t=0;
+  document.querySelectorAll('.lte').forEach(function(el){ t+=ltStorage(el).total; });
+  return t;
+}
+function _ltStorLenTxt(n){ return (Math.round(n*100)/100)+"'"; }
+// Quote-screen summary row (hidden unless a lean-to has a Storage Section).
+function _ltStorSummary(total){
+  var row=G('ltstor-summary-row'), v=G('plts'), k=G('plts-k'); if(!row) return;
+  var ok=[], bad=0;
+  document.querySelectorAll('.lte').forEach(function(el){ var s=ltStorage(el); if(s.on){ if(s.valid) ok.push(s); else bad++; } });
+  if(!ok.length && !bad){ row.style.display='none'; if(v){ v.textContent='—'; v.style.color=''; } return; }
+  row.style.display='';
+  if(k) k.textContent=(ok.length===1&&!bad) ? ('Lean-To Storage Room ('+_ltStorLenTxt(ok[0].len)+' at '+(ok[0].end==='front'?'Front':'Back')+')') : 'Lean-To Storage Rooms';
+  if(v){ v.textContent=bad ? ('⚠ '+bad+' not priced'+(total?' · '+fC(total):'')) : fC(total); v.style.color=bad?'#dc2626':''; }
+}
+// Print guard: a Storage Section that is switched on but not priced (no
+// length / too long) must not slip onto a client quote without its price.
+function ltStoragePrintBlock(){
+  var msg='';
+  document.querySelectorAll('.lte').forEach(function(el){ var s=ltStorage(el); if(!msg && s.on && !s.valid) msg=s.err; });
+  if(msg){ toast('Lean-to storage section is not priced: '+msg+' Fix it or set Storage Section to None.','err'); return true; }
+  return false;
+}
+// Revision-form signature of a lean-to's storage section (restore snapshot).
+function ltStorSig(el){ var s=ltStorage(el); return s.valid ? (s.end+':'+s.len+':'+s.total) : ''; }
+// Client-facing line (quote PDF / contract): no manufacturer, no "verify".
+function ltStorageLabel(s){
+  var endName=(s.end==='front'?'Front':'Back');
+  var parts=['Partition Wall'];
+  if(s.endP>0) parts.push('Closed '+endName+' End');
+  if(s.outerP>0) parts.push(_ltStorLenTxt(s.len)+' Outer Wall');
+  return 'Lean-To Storage Room ('+_ltStorLenTxt(s.len)+' at '+endName+' End): '+parts.join(' + ');
+}
+// Rep-only note under the Storage Section fields (never printed).
+function updateLTStorNote(entry){
+  var note=entry.querySelector('.lt-stor-note'); if(!note) return;
+  if(!ltStorOn(entry)){ note.style.display='none'; note.innerHTML=''; return; }
+  var s=ltStorage(entry);
+  note.style.display='block';
+  var mfr=(ACTIVE_MFR==='CCI'?'CCI':'CA');
+  if(!s.valid){
+    note.style.color='#9a3a14'; note.style.background='#fee2e2'; note.style.borderLeftColor='#dc2626';
+    note.innerHTML='<b>Storage room NOT priced:</b> '+s.err;
+    return;
+  }
+  var f$=function(n){ return n%1?fD(n):fC(n); }; // exact cents, like the printed rows
+  var endName=(s.end==='front'?'front':'back');
+  var endTxt=s.endP>0 ? ('+ '+endName+' end closed '+f$(s.endP)+(s.endWas&&s.endWas!=='open'?' (top-up from its current setting)':''))
+                      : ('+ '+endName+' end already closed $0');
+  var outTxt=s.outerP>0 ? ('+ '+_ltStorLenTxt(s.len)+' outer wall '+f$(s.outerP)) : '+ outer wall already closed $0';
+  note.style.color='#7c2d12'; note.style.background='#fff7ed'; note.style.borderLeftColor='#f59e0b';
+  note.innerHTML='<b>Storage room '+f$(s.total)+'</b>: partition '+f$(s.partitionP)+' (= a closed end of this lean-to) '+endTxt+' '+outTxt+'.'+
+    (s.warn?'<br>⚠ '+s.warn:'')+
+    '<br><b>⚠ Lean-to storage pricing is not confirmed by '+mfr+' yet — verify with '+mfr+' before the contract.</b> (Rep note — not printed.)';
+}
+// Sync the Storage Section UI (length row, partition wall option, doors &
+// windows section) to the entry's fields. UI only — never reprices.
+function applyLTStorage(entry){
+  var on=ltStorOn(entry);
+  var lenRow=entry.querySelector('.lt-stor-len-row'); if(lenRow) lenRow.style.display=on?'':'none';
+  entry.querySelectorAll('.lt-acc-loc option[value="partition"]').forEach(function(o){ o.disabled=!on; o.hidden=!on; });
+  var accSec=entry.querySelector('.lt-acc-section');
+  var mode=(entry.querySelector('.lt-wm')||{}).value||'open';
+  if(accSec) accSec.style.display=(mode==='open'&&!on)?'none':'block';
+  updateLTStorNote(entry);
+}
+function ltStorChange(entry){
+  if(!entry) return;
+  applyLTStorage(entry);
+  refreshLTAccSizes(entry); // partition-wall warnings follow the storage switch
+  rc();
 }
 
 // ── LEAN-TO ACCESSORY (door/window on enclosed lean-to) ──────────────────────
@@ -6236,6 +6379,16 @@ function updateLTAccSize(accEntry){
     var _showSf=_eaveLT&&_loc==='outer'&&_t!=='rollup'&&!_is45;
     _sfRow.style.display=_showSf?'':'none';
     if(!_showSf){ var _sfSel=accEntry.querySelector('.lt-acc-sf'); if(_sfSel) _sfSel.value='0'; }
+  }
+  // Storage partition opening while the lean-to has no Storage Section: it is
+  // still priced (never a silent price drop) — tell the rep to fix it.
+  accEntry.querySelectorAll('.lt-acc-pwarn').forEach(function(x){ x.remove(); });
+  if(((accEntry.querySelector('.lt-acc-loc')||{}).value==='partition') && !ltStorOn(lte)){
+    var _pw=document.createElement('div');
+    _pw.className='lt-acc-pwarn';
+    _pw.style.cssText='margin:4px 0;padding:5px 8px;background:#fee2e2;color:#991b1b;border-left:3px solid #dc2626;border-radius:0 4px 4px 0;font-size:10px;line-height:1.35';
+    _pw.textContent='⚠ This opening is on the Storage Partition Wall, but this lean-to has no Storage Section — it is still priced. Turn the storage section back on, pick another wall, or remove it.';
+    accEntry.insertBefore(_pw,accEntry.firstChild.nextSibling);
   }
   var typeEl=accEntry.querySelector('.lt-acc-type');
   var locEl=accEntry.querySelector('.lt-acc-loc');
@@ -6396,6 +6549,8 @@ function addLTAcc(entry){
     '<option value="outer">Outer Side Wall</option>'+
     '<option value="front">Front Gable End</option>'+
     '<option value="back">Back Gable End</option>'+
+    // Only offered while the lean-to has a Storage Section (applyLTStorage).
+    '<option value="partition"'+(ltStorOn(entry)?'':' disabled hidden')+'>Storage Partition Wall</option>'+
     '</select></div>'+
     // Side frames: outer wall of an eave-attached lean-to frames at the same
     // 4'/5' OC as the building — walk doors / windows / frame-outs landing on a
@@ -6535,7 +6690,7 @@ function applyLTWM(entry){
   var cr=entry.querySelector('.lt-custom-rows');
   if(cr) cr.style.display=(val==='custom')?'block':'none';
   var accSec=entry.querySelector('.lt-acc-section');
-  if(accSec) accSec.style.display=(val==='open')?'none':'block';
+  if(accSec) accSec.style.display=(val==='open'&&!ltStorOn(entry))?'none':'block'; // storage room: its partition doors live here
 }
 function ltWMClick(span,val){
   var entry=span.closest('.lte');
@@ -6548,7 +6703,7 @@ function ltWMClick(span,val){
   if(cr) cr.style.display=(val==='custom')?'block':'none';
   // Show accessories section when enclosed or custom
   var accSec=entry.querySelector('.lt-acc-section');
-  if(accSec) accSec.style.display=(val==='open')?'none':'block';
+  if(accSec) accSec.style.display=(val==='open'&&!ltStorOn(entry))?'none':'block'; // storage room: its partition doors live here
   rc();
 }
 
@@ -6743,6 +6898,18 @@ function aLT(){
     '<option value="closed">Closed</option>'+
     '</select></div>'+
     '</div>'+
+    // Storage section: a partition wall closes off one end of the lean-to.
+    '<div class="lt-stor-block" style="margin-top:6px">'+
+    '<div class="row" title="A partition wall across the lean-to closes off this end as a storage room (same Front/Back ends as the wall rows above)"><label>Storage Section</label>'+
+    '<select class="lt-stor" onchange="ltStorChange(this.closest(\'.lte\'))">'+
+    '<option value="none">None</option>'+
+    '<option value="front">At Front End</option>'+
+    '<option value="back">At Back End</option>'+
+    '</select></div>'+
+    '<div class="row lt-stor-len-row" style="display:none"><label>Storage Length (ft)</label>'+
+    '<input type="number" class="lt-stor-len" min="1" step="1" placeholder="e.g. 10" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
+    '<div class="lt-stor-note" style="display:none;margin-top:4px;border-left:3px solid #f59e0b;background:#fff7ed;color:#7c2d12;padding:4px 8px;border-radius:0 4px 4px 0;font-size:10px;line-height:1.4"></div>'+
+    '</div>'+
     '<div class="lt-conn-note enote" style="margin-top:4px;border-left:3px solid #34d399;background:#dcfce7;color:#065f46;padding:4px 8px;border-radius:0 4px 4px 0;font-size:10px">Select width, height &amp; pitch to see connection point.</div>'+
     '<div class="enote" style="margin-top:4px">Lean-to priced per sq ft. Height &amp; enclosure options add to base price.</div>'+
     '<div class="lt-acc-section" style="display:none;margin-top:8px;padding-top:8px;border-top:1px solid #1b2e3e">'+
@@ -6772,6 +6939,14 @@ function ltTypeChange(entry){
   var tallRow=entry.querySelector('.lt-tallside-row');
   if(lowRow) lowRow.style.display=isFree?'none':'';
   if(tallRow) tallRow.style.display=isFree?'':'none';
+  // Storage section is for ATTACHED lean-tos only (v1): a free-standing one
+  // drops it (and the rep sees any partition doors flagged).
+  var storBlk=entry.querySelector('.lt-stor-block');
+  if(storBlk) storBlk.style.display=isFree?'none':'';
+  if(isFree){
+    var storSel=entry.querySelector('.lt-stor');
+    if(storSel&&storSel.value!=='none'){ storSel.value='none'; applyLTStorage(entry); refreshLTAccSizes(entry); }
+  }
   // Update the connection note
   updateLTNote(entry);
 }
@@ -7043,6 +7218,7 @@ function rcManual(){
   ['pvw','psf','plp','pwi','paew','pins','pconn','poh','psh'].forEach(function(id){ var e=G(id); if(e) e.textContent='\u2014'; });
   var spRow=G('sp-summary-row'); if(spRow) spRow.style.display=sp?'':'none';
   var ohRow=G('overhang-summary-row'); if(ohRow) ohRow.style.display='none';
+  var lsRow=G('ltstor-summary-row'); if(lsRow) lsRow.style.display='none';
   var connBox=G('conn-fee-box'); if(connBox) connBox.style.display='none';
   // Discount / tax / deposit — identical math to rc()
   var disc=parseFloat(G('disc').value)||0;
@@ -7453,11 +7629,15 @@ function rc(){
   // Insulation
   var pinsEl=G('pins'); if(pinsEl) pinsEl.textContent=insulTotal?fC(insulTotal):'—';
   // Lean-tos and additional components
-  var pltEl=G('plt'); if(pltEl) pltEl.textContent=leanToTotal?fC(leanToTotal):'—';
+  // Lean-to storage rooms get their own row (the Lean-Tos row shows the rest,
+  // so the two still add up to what gLT charges). None → row hidden, Lean-Tos unchanged.
+  var ltStorTotal=gLTStorage(), ltLeanOnly=leanToTotal-ltStorTotal;
+  var pltEl=G('plt'); if(pltEl) pltEl.textContent=ltLeanOnly?fC(ltLeanOnly):'—';
+  _ltStorSummary(ltStorTotal);
   var connBox=G('conn-fee-box'); var pconnEl=G('pconn');
   if(connBox) connBox.style.display=connFeeTotal?'block':'none';
   if(pconnEl) pconnEl.textContent=connFeeTotal?fC(connFeeTotal):'—';
-  document.querySelectorAll('.lte').forEach(function(el){ updateLTHeightOptions(el); updateLTNote(el); });
+  document.querySelectorAll('.lte').forEach(function(el){ updateLTHeightOptions(el); updateLTNote(el); updateLTStorNote(el); });
   var pacEl=G('pac'); if(pacEl) pacEl.textContent=addCompTotal?fC(addCompTotal):'—';
   // Overhang summary row
   var pohEl=G('poh'); var ohRow=G('overhang-summary-row');
@@ -8628,6 +8808,13 @@ function collectQuoteData(){
     ['lts','ltw','ltl2','ltoff','lth','ltc','ltp','lt-type','lt-tall-h','lt-wm','lt-wall-front','lt-wall-back','lt-wall-side'].forEach(function(cls){
       var f=el.querySelector('.'+cls); if(f) d[cls]=f.value;
     });
+    // Storage section — saved only when switched on, so quotes without one
+    // save exactly as before (and restore as None everywhere).
+    var _lsSel=el.querySelector('.lt-stor');
+    if(_lsSel&&(_lsSel.value==='front'||_lsSel.value==='back')){
+      d['lt-stor']=_lsSel.value;
+      d['lt-stor-len']=(el.querySelector('.lt-stor-len')||{}).value||'';
+    }
     // Lean-to accessories (roll-up / walk / window / frame-out on the lean-to) + their offsets
     d.accs=[];
     el.querySelectorAll('.lt-acc-e').forEach(function(ae){
@@ -9305,6 +9492,12 @@ function restoreQuoteData(data){
     // Sync the Sides & Ends buttons + accessories-section visibility to the
     // restored enclosure — an enclosed lean-to must not reopen looking "Open".
     applyLTWM(el);
+    // Storage section (absent in older saves → stays None, priced exactly as before)
+    if(d['lt-stor']!==undefined){
+      var _lsR=el.querySelector('.lt-stor'); if(_lsR) _lsR.value=d['lt-stor'];
+      var _llR=el.querySelector('.lt-stor-len'); if(_llR&&d['lt-stor-len']!==undefined) _llR.value=d['lt-stor-len'];
+      applyLTStorage(el);
+    }
     // Restore lean-to accessories (doors / windows / frame-outs) with positions.
     // Order matters: set type + wall + qty FIRST so the size/chain/seal/offset
     // option lists are rebuilt before we set the saved values.
@@ -9395,6 +9588,7 @@ function restoreQuoteData(data){
     try{
       window._rvOrig={ tot:_rvNum(G('ptot').textContent), dep:_rvNum(G('pdep').textContent), dims:(G('bw').value+'x'+G('bl').value+'x'+G('bh').value) };
       document.querySelectorAll('.re,.we,.ne,.ace,.lte').forEach(function(el){ el.dataset.rvOrig='1'; });
+      document.querySelectorAll('.lte').forEach(function(el){ el.dataset.rvStor=ltStorSig(el); });
     }catch(e){}
   }, 900);
 
@@ -9405,6 +9599,7 @@ function _rvNum(t){ var n=parseFloat(String(t||'').replace(/[^0-9.-]/g,'')); ret
 
 async function printQuote(){
   if(!G('bw').value||!G('bl').value){ toast('Please select building dimensions first','err'); return; }
+  if(ltStoragePrintBlock()) return;
 
   // 3D-rendering option: capture the live modeler for the PDF. Open the print
   // window NOW (synchronous, inside the click gesture) so the popup isn't
@@ -9766,12 +9961,14 @@ async function printQuote(){
       // Printed line = EXACTLY what the pricing engine charges for this lean-to
       var lp=ltUnit(el).total;
     var ltStEl3=el.querySelector(".ltst"),ltIsCont3=ltStEl3&&ltStEl3.value==="cont"; var ltPitch3=el.querySelector(".ltp")?el.querySelector(".ltp").value:"2:12"; rows+=row((ltIsFree?"Free-Standing Single Slope":"Lean-To")+" ("+lw+"' \xD7 "+ll+"') — "+ls+" | "+_ltLegTxt(el)+ltPitch3+" Pitch",null,null,lp);
+      // Storage room: EXACTLY what gLT adds for it (partition + walls closing it)
+      var _lsQ=ltStorage(el); if(_lsQ.valid&&_lsQ.total) rows+=row('  '+ltStorageLabel(_lsQ),null,null,_lsQ.total);
       // Lean-to accessories
       el.querySelectorAll('.lt-acc-e').forEach(function(ae){
         var atype=ae.querySelector('.lt-acc-type')?ae.querySelector('.lt-acc-type').value:'rollup';
         var aqty=parseInt(ae.querySelector('.lt-acc-qty')?ae.querySelector('.lt-acc-qty').value:1)||1;
         var aloc=ae.querySelector('.lt-acc-loc')?ae.querySelector('.lt-acc-loc').value:'outer';
-        var alocLabel=aloc==='outer'?'Outer Wall':(aloc==='front'?'Front End':'Back End');
+        var alocLabel=aloc==='outer'?'Outer Wall':(aloc==='front'?'Front End':(aloc==='partition'?'Storage Partition':'Back End'));
         if(atype==='rollup'){
           var asz=ae.querySelector('.lt-acc-size')?ae.querySelector('.lt-acc-size').value:'9x8';
           // Merged Roll-Up tier — matches gLT (CCI = certified chart)
@@ -10379,6 +10576,7 @@ function _execWatermark(LOGO){
 }
 async function printContract(){
   if(!G('bw').value||!G('bl').value){ toast('Please select building dimensions first','err'); return; }
+  if(ltStoragePrintBlock()) return;
 
   // Open the print window NOW (inside the click gesture) so it isn't popup-
   // blocked, then capture the live 3D modeler before assembling — the contract's
@@ -10812,12 +11010,20 @@ async function printContract(){
       // Printed line = EXACTLY what the pricing engine charges for this lean-to
       var lp=ltUnit(el).total;
     var ltStEl3=el.querySelector(".ltst"),ltIsCont3=ltStEl3&&ltStEl3.value==="cont"; var ltPitch3=el.querySelector(".ltp")?el.querySelector(".ltp").value:"2:12"; row((ltIsFree?"Free-Standing Single Slope":"Lean-To")+" ("+lw+"' \xD7 "+ll+"') — "+ls+" | "+_ltLegTxt(el)+ltPitch3+" Pitch",null,null,lp);
+      // Storage room: EXACTLY what gLT adds for it (partition + walls closing it)
+      var _lsC=ltStorage(el);
+      if(_lsC.valid&&_lsC.total){
+        var _lsHl=window._rvHlCur;
+        if(!_lsHl&&_rvMode&&(el.dataset.rvStor||'')!==ltStorSig(el)) window._rvHlCur=true; // storage added/changed after the original
+        row('  '+ltStorageLabel(_lsC),null,null,_lsC.total);
+        window._rvHlCur=_lsHl;
+      }
       // Lean-to accessories
       el.querySelectorAll('.lt-acc-e').forEach(function(ae){
         var atype=ae.querySelector('.lt-acc-type')?ae.querySelector('.lt-acc-type').value:'rollup';
         var aqty=parseInt(ae.querySelector('.lt-acc-qty')?ae.querySelector('.lt-acc-qty').value:1)||1;
         var aloc=ae.querySelector('.lt-acc-loc')?ae.querySelector('.lt-acc-loc').value:'outer';
-        var alocLabel=aloc==='outer'?'Outer Wall':(aloc==='front'?'Front End':'Back End');
+        var alocLabel=aloc==='outer'?'Outer Wall':(aloc==='front'?'Front End':(aloc==='partition'?'Storage Partition':'Back End'));
         if(atype==='rollup'){
           var asz=ae.querySelector('.lt-acc-size')?ae.querySelector('.lt-acc-size').value:'9x8';
           // Merged Roll-Up tier — matches gLT (CCI = certified chart)
@@ -13732,6 +13938,7 @@ function textQuote(){
   if(doorLines.length){m+='\u{1F6AA} DOORS & WINDOWS\n';doorLines.forEach(function(d){m+='\u2022 '+d+'\n';});m+='\n';}
   if(insText!=='None')m+='\u2744\uFE0F Insulation: '+insText+'\n\n';
   if(aewP)m+='\u{1F3E0} '+aewLabel()+'\n\n';
+  document.querySelectorAll('.lte').forEach(function(el){ var _lsT=ltStorage(el); if(_lsT.valid&&_lsT.total) m+='\u{1F3E0} '+ltStorageLabel(_lsT)+'\n\n'; });
   m+='\u{1F3A8} COLORS\nRoof: '+roofColor+'\nWalls: '+wallColor+'\nTrim: '+trimColor+'\n\n';
   m+='\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n';
   m+='\u{1F4B0} TOTAL:  '+fD(tot-addDA)+'\n';

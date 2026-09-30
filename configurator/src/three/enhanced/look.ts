@@ -51,11 +51,14 @@ export const ENHANCED_LOOK = {
   /** Minimum camera far plane while enhanced (the ground reaches to the fog). */
   cameraFar: 1200,
 
-  /** Clean light blue-gray page background; the fog fades the ground into it. */
-  background: '#e9eef2',
+  /** Dark navy page background — owner 9/29/26 'make the background dark again'
+   *  (same #08121d as the classic look / brand dark). The fog fades the ground into it.
+   *  Building lighting is unchanged (still bright + even for PDFs). */
+  background: '#08121d',
   fog: { near: 480, far: 1150 },
-  /** Unlit light gray-green ground (renders exactly this color). */
-  ground: '#d9dcd6',
+  /** Unlit dark ground, a touch lighter than the background so the light
+   *  concrete slab (and the building on it) stands out (renders exactly this color). */
+  ground: '#101c2a',
   groundRadius: 2500,
 
   /** Strong, even sky/ground base: azimuth-independent, so every wall reads bright. */

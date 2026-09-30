@@ -112,6 +112,17 @@ export interface StructureModel {
   frameCount: number;
   framePositionsZ: number[];
   members: Member[];
+  /**
+   * PDF / CRM capture-framing proxy — set on TRUSS widths only (absent on bows
+   * and mono-slope, whose frame did not change). It is the frame exactly as it
+   * was drawn before the truss webs (c9ae93d): full-length knee braces and the
+   * peak collar tie, no chords / webs, clipped the same way. Frame renders it
+   * INVISIBLE and tags the drawn frame `captureIgnore`, so the capture fit
+   * (CaptureHook starts from the average of every mesh corner and stops after a
+   * few passes) frames every PDF view exactly as before the trusses. The
+   * visible drawing is `members`; the BOM never reads this.
+   */
+  captureMembers?: Member[];
   enclosure: Enclosure;
   /** z-range of the OPEN (carport) eave portion — null when fully enclosed. */
   openBayZ: { start: number; end: number } | null;
@@ -1034,7 +1045,9 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   // Ladder bents skip the knee brace — the deep column IS the reinforcement,
   // and a diagonal across the ladder reads as clutter. A knee brace that would
   // pierce a truss chord (CA box-eave lower chord) ends ON that chord.
-  const pushBent = (z: number) => {
+  // `preTruss` = the bent exactly as drawn before the truss webs (full knee
+  // braces + peak collar tie, no webs) — only for the capture-framing proxy.
+  const pushBent = (z: number, preTruss = false) => {
     pushLeg(-halfW, z);
     pushLeg(halfW, z);
     if (mono) {
@@ -1056,7 +1069,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         const foot: [number, number] = [sx, H - braceLen];
         let tip: [number, number] = [sx * (1 - tBrace), H + rise * tBrace];
         let tHit = 1;
-        for (const c of trussChords) {
+        for (const c of preTruss ? [] : trussChords) {
           const t = segCross2(foot, tip, c.a, c.b);
           if (t !== null && t < tHit) tHit = t;
         }
@@ -1064,11 +1077,20 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         members.push(member('brace', [foot[0], foot[1], z], [tip[0], tip[1], z]));
       }
     }
-    if (trussStyle === 'bow') members.push(member('brace', [-pbx, pby, z], [pbx, pby, z]));
-    for (const sg of trussSegs) members.push(member(sg.kind, [sg.a[0], sg.a[1], z], [sg.b[0], sg.b[1], z]));
+    if (preTruss || trussStyle === 'bow') members.push(member('brace', [-pbx, pby, z], [pbx, pby, z]));
+    if (!preTruss) for (const sg of trussSegs) members.push(member(sg.kind, [sg.a[0], sg.a[1], z], [sg.b[0], sg.b[1], z]));
   };
 
   for (const z of framePositionsZ) pushBent(z);
+  // Capture-framing proxy (StructureModel.captureMembers): the same bents as
+  // they were before the truss webs, built in the same order and lifted
+  // straight back out; everything pushed after the bents is shared.
+  const bentEnd = members.length;
+  let preTrussBents: Member[] | null = null;
+  if (trussStyle !== 'bow') {
+    for (const z of framePositionsZ) pushBent(z, true);
+    preTrussBents = members.splice(bentEnd);
+  }
 
   // --- Base rails (DOUBLED for double/ladder legs) ---
   // Eave (side) rails run the full length on both sides, CUT where a floor-level
@@ -1440,6 +1462,16 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       ),
       derivedLeanTos,
     ),
+    // Truss widths only: the pre-truss frame for the PDF capture fit, clipped
+    // exactly as before (no truss members, so the end-wall truss clip is moot).
+    ...(preTrussBents
+      ? {
+          captureMembers: clipFrameAtLeanToOpenings(
+            clipFrameAtEaveOpenings([...preTrussBents, ...members.slice(bentEnd)], config.openings ?? [], halfW, halfL),
+            derivedLeanTos,
+          ),
+        }
+      : {}),
     enclosure,
     openBayZ,
     eavePanelFt: { left: eavePanelFt.left, right: eavePanelFt.right },

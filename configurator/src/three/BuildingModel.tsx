@@ -160,7 +160,13 @@ export function BuildingModel() {
 
   return (
     <group>
-      <Frame members={structure.members} framingGauge={config.framingGauge} emphasize={showFrameProminent} look={renderStyle} />
+      <Frame
+        members={structure.members}
+        captureMembers={structure.captureMembers}
+        framingGauge={config.framingGauge}
+        emphasize={showFrameProminent}
+        look={renderStyle}
+      />
       <ShellGroup opacity={SHELL_OPACITY[viewMode]}>
         {/* The single renderStyle branch point for the building shell. */}
         {renderStyle === 'enhanced' ? (

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { resolveBuilding } from '../ruleEngine';
 import { deriveStructure, trussStyleFor, type Member } from '../geometry';
@@ -414,5 +416,85 @@ describe('drawing only', () => {
       expect(truss(s).length).toBeGreaterThan(0);
       expect(generateBOM(r, s)).toEqual(generateBOM(r, stripped));
     }
+  });
+});
+
+/**
+ * The PDF / CRM capture (CaptureHook) starts its camera fit from the average of
+ * every mesh corner and stops after a few passes, so adding the truss meshes
+ * (and dropping the collar tie) re-framed every 25'+ PDF view. Truss widths now
+ * carry the pre-truss frame as an invisible capture proxy and the drawn frame
+ * is capture-ignored, so the PDF framing is exactly what it was before.
+ */
+describe('PDF capture framing proxy (captureMembers)', () => {
+  const src = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
+  const nonBent = (ms: Member[]) => ms.filter((m) => m.kind !== 'brace' && m.kind !== 'chord' && m.kind !== 'web');
+  const lt: LeanTo = {
+    id: 'lt1',
+    type: 'attached',
+    attachedSide: 'Left Eave',
+    widthFt: 12,
+    lengthFt: 40,
+    lowLegHeightFt: 8,
+    roofPitch: '2:12',
+    enclosure: 'enclosed',
+    openings: [],
+  } as LeanTo;
+
+  it('bows and single slopes carry none (their frame did not change)', () => {
+    for (const mfr of ['CCI', 'CA'] as const) {
+      for (const w of [12, 18, 20, 24]) expect('captureMembers' in bld(w, mfr)).toBe(false);
+      expect('captureMembers' in bld(40, mfr, { monoDropFt: 3 })).toBe(false);
+    }
+  });
+
+  it('truss widths: the pre-truss frame (no webs / chords, full knee braces, the peak collar tie in every bent), all else identical', () => {
+    for (const mfr of ['CCI', 'CA'] as const) {
+      for (const w of [26, 30, 31, 32, 40, 42, 50, 51, 52, 60]) {
+        for (const legHeight of [12, 16]) {
+          const eaveDoor = opening({ type: 'rollUpDoor', side: 'left', offset: 20, width: 10, height: 10 });
+          const endDoor = opening({ type: 'rollUpDoor', side: 'front', offset: w / 2, width: 10, height: 13.5 });
+          for (const [openings, leanTos] of [
+            [[], []],
+            [[eaveDoor], []],
+            [[endDoor], []],
+            [[], [lt]],
+          ] as Array<[Opening[], LeanTo[]]>) {
+            const s = build({ width: w, manufacturer: mfr, legHeight }, openings, leanTos);
+            const cap = s.captureMembers;
+            expect(cap).toBeDefined();
+            if (!cap) continue;
+            expect(cap.some((m) => m.kind === 'chord' || m.kind === 'web')).toBe(false);
+            // legs, rafters, rails, ridge, purlins, girts, hat channels: same members, same order
+            expect(nonBent(cap)).toEqual(nonBent(s.members));
+            const pbx = Math.min(3, w / 4);
+            for (const z of s.framePositionsZ) {
+              const braces = cap.filter((m) => m.kind === 'brace' && inBent(m, z) && Math.max(Math.abs(m.start[0]), Math.abs(m.end[0])) <= w / 2 + 1e-6);
+              const collar = braces.filter((m) => isLevel(m) && near(Math.abs(m.start[0]), pbx, 1e-9) && near(Math.abs(m.end[0]), pbx, 1e-9));
+              expect(collar.length).toBe(1);
+              expect(collar[0].start[1]).toBeCloseTo(roofY(s, pbx), 9);
+              const knees = braces.filter((m) => !isLevel(m));
+              if (!openings.length && !leanTos.length) expect(knees.length).toBe(s.members.filter((m) => m.kind === 'brace' && inBent(m, z) && !isLevel(m)).length);
+              for (const k of knees) {
+                const tip = k.start[1] > k.end[1] ? k.start : k.end;
+                expect(tip[1]).toBeCloseTo(roofY(s, tip[0]), 9); // on the rafter, as before the trusses
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it('Frame draws the proxy invisible and keeps the drawn frame out of the capture fit; BuildingModel passes it', () => {
+    const frame = src('../../three/Frame.tsx');
+    expect(frame).toMatch(/const CAPTURE_IGNORE = \{ captureIgnore: true \};/);
+    expect(frame).toMatch(/<group userData=\{captureMembers \? CAPTURE_IGNORE : NO_TAG\}>\{members\.map\(renderMember\)\}<\/group>/);
+    expect(frame).toMatch(/\{captureMembers && <group visible=\{false\}>\{captureMembers\.map\(renderMember\)\}<\/group>\}/);
+    expect(src('../../three/BuildingModel.tsx')).toMatch(/captureMembers=\{structure\.captureMembers\}/);
+    // CaptureHook still skips captureIgnore subtrees and never checks visibility.
+    const hook = src('../../three/CaptureHook.tsx');
+    expect(hook).toMatch(/if \(isCaptureIgnored\(m\)\) return;/);
+    expect(hook).not.toMatch(/\.visible/);
   });
 });

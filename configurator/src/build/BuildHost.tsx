@@ -634,6 +634,11 @@ function syncFromBuilder(win: BuilderWindow) {
   const ohFt = ohSel && ohSel !== 'none' ? 1 : 0.5;
   if (ohFt !== st.roofOverhangFt) st.setRoofOverhang(ohFt);
 
+  // Manufacturer (VIEW-ONLY): framing looks differ by manufacturer (wide-span
+  // legs). Read from the program; the 3D never prices anything with it.
+  const mfr = (win as unknown as { ACTIVE_MFR?: string }).ACTIVE_MFR === 'CCI' ? 'CCI' : 'CA';
+  if (mfr !== st.manufacturer) st.setManufacturer(mfr);
+
   if (bt === 'gch') {
     const enc = num('gch-enc');
     if (enc && enc !== st.enclosedLengthFt) st.setEnclosedLength(enc);

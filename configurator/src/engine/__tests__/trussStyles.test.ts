@@ -24,23 +24,32 @@ const ladderRungs = (s: ReturnType<typeof deriveStructure>) => {
 };
 
 // Current rule (geometry.ts deriveStructure, same as the program's badges):
-// LADDER on every wide span (W >= 32, owner 9/29/26, both mfrs); DOUBLE when
-// H >= 15 on narrower buildings (owner 9/28/26: 14' is single); else SINGLE.
-describe('truss/leg styles — single, double (H>=15 up to 31w), ladder (every wide span W>=32)', () => {
+// By manufacturer (owner 9/29/26): CCI = LADDER on every wide span (W >= 32);
+// CA (sheet AD-1) = DOUBLE 32-51, LADDER 52+. Narrower buildings: DOUBLE when
+// H >= 15 (owner 9/28/26: 14' is single); else SINGLE. Unset mfr = CA rule.
+describe('truss/leg styles — single, double, ladder by manufacturer', () => {
   it('small build → 2 legs per bent (one post each side)', () => {
     const s = build({ width: 24, length: 30, legHeight: 12 });
     expect(legCount(s)).toBe(s.frameCount * 2);
   });
 
-  it('wide span (W>31) → LADDER legs: chords + rungs (owner 9/29/26)', () => {
-    const s = build({ width: 40, length: 40, legHeight: 12 });
+  it('CA wide span 40w → DOUBLE legs (CA sheet AD-1: 31-51 double post)', () => {
+    const s = build({ width: 40, length: 40, legHeight: 12, manufacturer: 'CA' });
+    expect(legCount(s)).toBe(s.frameCount * 4);
+    expect(ladderRungs(s).length).toBe(0);
+  });
+
+  it('CCI wide span 40w → LADDER legs: chords + rungs (CCI chart)', () => {
+    const s = build({ width: 40, length: 40, legHeight: 12, manufacturer: 'CCI' });
     expect(legCount(s)).toBe(s.frameCount * 4);
     expect(ladderRungs(s).length).toBeGreaterThan(0);
   });
 
-  it('32 ft wide (smallest wide span) → LADDER legs', () => {
-    const s = build({ width: 32, length: 40, legHeight: 12 });
-    expect(ladderRungs(s).length).toBeGreaterThan(0);
+  it('32 ft wide: CCI → LADDER, CA → DOUBLE', () => {
+    expect(ladderRungs(build({ width: 32, length: 40, legHeight: 12, manufacturer: 'CCI' })).length).toBeGreaterThan(0);
+    const ca = build({ width: 32, length: 40, legHeight: 12, manufacturer: 'CA' });
+    expect(ladderRungs(ca).length).toBe(0);
+    expect(legCount(ca)).toBe(ca.frameCount * 4);
   });
 
   it('30 ft wide at 12 ft → still SINGLE legs (not a wide span)', () => {
@@ -77,8 +86,8 @@ describe('truss/leg styles — single, double (H>=15 up to 31w), ladder (every w
     expect(ladderRungs(s).length).toBeGreaterThan(0);
   });
 
-  it('40w x 18h wide span → LADDER legs (owner 9/29/26)', () => {
-    const s = build({ width: 40, length: 40, legHeight: 18 });
+  it('40w x 18h: CCI → LADDER legs', () => {
+    const s = build({ width: 40, length: 40, legHeight: 18, manufacturer: 'CCI' });
     expect(legCount(s)).toBe(s.frameCount * 4);
     expect(ladderRungs(s).length).toBeGreaterThan(0);
   });
@@ -167,7 +176,7 @@ describe('eave framed openings cut double/ladder columns too', () => {
 
   it('wide-span ladder build (40w x 14h): a 20ft frame-out clears wall AND inner chord + rungs', () => {
     const s = build({
-      width: 40, length: 96, legHeight: 14,
+      width: 40, length: 96, legHeight: 14, manufacturer: 'CCI',
       openings: [{ id: 'fo1', type: 'frameOut', side: 'right', offset: 30, width: 20, height: 12, sillHeight: 0, customerSupplied: true } as never],
     });
     const halfL = s.length / 2;

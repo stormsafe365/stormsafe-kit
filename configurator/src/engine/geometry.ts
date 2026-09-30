@@ -139,13 +139,16 @@ const member = (kind: MemberKind, start: Vec3, end: Vec3): Member => ({
  * widths (8-20) never reach the width rules.
  */
 export type LegStyle = 'single' | 'double' | 'ladder';
-export function legStyleFor(widthFt: number, heightFt: number): LegStyle {
-  // Owner 9/29/26: every WIDE SPAN (32'+ wide) is framed with LADDER legs, CCI
-  // and CA ("its included in pricing - its how their framing is set up";
-  // CCI handbook p.23/p.27 commercial trusses). Narrower buildings: double legs
-  // from 15' tall, else single.
-  if (widthFt > 31) return 'ladder';
-  if (heightFt >= 15) return 'double';
+export function legStyleFor(widthFt: number, heightFt: number, mfr?: 'CCI' | 'CA'): LegStyle {
+  // Owner 9/29/26, by manufacturer (drawing/badge only — pricing already
+  // includes the framing):
+  //   CCI — every WIDE SPAN (32'+) has LADDER legs (CCI "Trusses and Bows"
+  //         chart / handbook p.23 + p.27 commercial trusses).
+  //   CA  — engineering sheet AD-1 (FBC 2023): 31'-51' = DOUBLE POST,
+  //         52'-60' = LADDER LEG. Unset manufacturer uses the CA rule.
+  // Narrower buildings (both): double legs from 15' tall, else single.
+  if (mfr === 'CCI' ? widthFt > 31 : widthFt >= 52) return 'ladder';
+  if (widthFt > 31 || heightFt >= 15) return 'double';
   return 'single';
 }
 
@@ -659,7 +662,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   // both price books: the 15' & 16' rows "include double legs + double base rail";
   // 14' and under are single legs.
   // (legStyleFor holds the rule, shared with the lean-to posts.)
-  const mainLegStyle = legStyleFor(W, H);
+  const mainLegStyle = legStyleFor(W, H, config.manufacturer);
   const doublePost = mainLegStyle === 'double';
   const ladderLeg = mainLegStyle === 'ladder';
   const LADDER_D = ladderDepth(H); // ladder column depth (inboard, X)

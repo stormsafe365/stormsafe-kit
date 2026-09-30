@@ -221,6 +221,12 @@ export interface BuildingConfig {
   /** Roof overhang past the wall plane on all sides (ft). 0.5 = 6", 1 = 12". */
   roofOverhangFt: number;
   /**
+   * The quote's manufacturer (VIEW-ONLY — synced from the pricing program's
+   * ACTIVE_MFR, never priced by the 3D). Drives manufacturer-specific framing
+   * looks, e.g. leg style on wide spans. Unset = CA rules.
+   */
+  manufacturer?: 'CCI' | 'CA';
+  /**
    * Free-standing single-slope (CCI fslean): total roof drop (ft) from the tall
    * internal-LEFT (-X) eave down to the low (+X) eave. 0 = normal gabled
    * building. When set, `legHeight` is the TALL side; the low side is

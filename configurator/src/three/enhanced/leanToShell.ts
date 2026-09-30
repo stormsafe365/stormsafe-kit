@@ -11,6 +11,7 @@ import {
   box,
   eaveTrim,
   edgeFrame,
+  lapOn,
   plumbAt,
   polygon,
   rakeTrim,
@@ -990,7 +991,8 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
           f1 = cornerKept(1) ? Math.min(c1, endHi - inset) : l1;
         }
         if (f1 - f0 > 1e-3) {
-          if (t0 >= y1 && t1 >= y1) localBox(roofTrim, f, f.mainFace, f.mainFace + f.out * T, y0, y1, f0, f1);
+          // (its back face lies on the main sheet: lapped, or it z-fights through it seen from inside the main building)
+          if (t0 >= y1 && t1 >= y1) aabb(roofTrim, f.P(f.mainFace, y0, f0), f.P(f.mainFace + f.out * T, y1, f1), lapOn(mw.plane));
           else {
             const topAt = (c: number) => Math.min(y1, t0 + ((c - c0) / (c1 - c0)) * (t1 - t0));
             slopedFace(f0, f1, topAt(f0), topAt(f1));

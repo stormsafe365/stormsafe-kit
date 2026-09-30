@@ -9,8 +9,10 @@ import { siteRects, type Footprint } from './enhanced/look';
  * more accurate and show the connection points to the footers, like the
  * anchors"). DRAWING ONLY — nothing here is priced; the quote's Foundation Type
  * (#foundation) reaches the 3D as the view-only BuildingConfig.foundation.
+ * Each manufacturer's OWN details (owner 9/30/26: CA builds use CA's plans,
+ * CCI builds keep CCI's); the quote's manufacturer is view-only too.
  *
- * Source: CCI "FOUNDATION/ANCHORING RECOMMENDATIONS (FL ONLY)" (3 pages):
+ * CCI — "FOUNDATION/ANCHORING RECOMMENDATIONS (FL ONLY)" (3 pages):
  *  - 1A  12'-30' wide, ENCLOSED or partially enclosed: 4" min slab with a
  *        MONOLITHIC thickened-edge footing under the base rail, 12" min wide,
  *        12" min below the adjacent ground + 2" above it (14" total), 2 #5
@@ -21,41 +23,76 @@ import { siteRects, type Footprint } from './enhanced/look';
  *  - 1   32'-60' (commercial): footing 18" wide x 16" (14" below ground + 2"),
  *        3 #5 continuous; TWO anchors side by side at each (doubled) leg, one
  *        through each base rail.
- *  - Base Rail Anchorage (ground / asphalt) and 1C: helical EYE anchor screwed
- *    in beside the base rail — OUTSIDE it, as 1C draws it (beyond the slab
- *    edge; the page-1 figure does not say which side) — with a 1/2"
- *    through-bolt through the rail + the eye, 2" washers.
- *  - Lean-to END lines of an enclosed / partially enclosed lean-to get the 1A
- *    thickened edge too (a drawing-only strip: the frame has no end rail).
+ *  - Base Rail Anchorage (ground / asphalt): helical ground anchor at each leg.
+ * CA — "Enclosed Generic Engineering" sheet CA-1 (FL, PE-stamped 3/1/19):
+ *  - Concrete Foundation / Base Rail Anchor Detail (new slab): 4" slab with a
+ *    thickened edge 12" wide x 12" deep (from the slab top), (2) #5 @ 6" O.C.
+ *    continuous; its inner face rises 4" before a 45 degree haunch to the slab
+ *    underside; 1/2" x 5-1/2" expansion anchor within 6" of each post / truss
+ *    ALONG THE SIDES and at EVERY OTHER END-WALL post.
+ *  - Concrete Foundation / Base Rail Anchor Detail (EXISTING slab): plain
+ *    slab, wedge anchor >= 2-1/2" embedment — drawn for an OPEN carport /
+ *    open lean-to (no thickened edge), like CCI 1B.
+ *  - Ground Anchor Base Rail Detail: 30" earth-auger ground anchor, 1/2" x
+ *    30" with a double 4" helix, within 6" of each post, 2" washers.
+ * Both makers' ground / gravel / asphalt anchor is drawn the way the OWNER
+ * ruled (9/30/26: "ontop the baserail, like in your shared photo" — the wedge
+ * anchor close-up): the anchor rod comes up THROUGH the base rail and is
+ * fastened on top with a 2" washer + nut. (Both plans draw it beside the rail
+ * with a horizontal bolt; the owner chose the on-top look.)
+ * Lean-to END lines of an enclosed / partially enclosed lean-to get the
+ * maker's thickened edge too (a drawing-only strip: the frame has no end rail).
  * Pure: a function of the derived StructureModel (members, lean-tos,
- * enclosure), the foundation type and the framing gauge (rail tube size).
+ * enclosure), the foundation type, the framing gauge (rail tube size) and the
+ * manufacturer ('CCI', else CA — as the program's ACTIVE_MFR maps it).
  */
 
+export type FoundationMaker = 'CCI' | 'CA';
+
 export const FOUNDATION = {
-  /** Slab thickness (4" minimum, 1A / 1B). The slab TOP stays at y = 0. */
+  /** Slab thickness (4" minimum, CCI 1A / 1B, CA-1). The slab TOP stays at y = 0. */
   slabT: 4 / 12,
   /** Slab / footing top sits 2" above the adjacent ground (1A, 1). */
   grade: 2 / 12,
   /** Slab edge this far past the base rail's OUTER face (anchor >= 3" / >= 6" from the edge). */
   edgePastRail: 0.5,
-  /** Thickened-edge footing sections (bottom width, total depth from the slab top, #5 bars). */
+  /**
+   * Thickened-edge footing sections: bottom width, total depth from the slab
+   * top, #5 bars; optional `step` (the inner face rises this far before the 45
+   * degree haunch), `barSpacing` (bars on center, centered in the width) and
+   * `barUp` (bar center above the bottom).
+   */
   sections: {
-    /** 1A: 12'-30' wide — 12" wide, 14" deep total, 2 #5 continuous. */
+    /** CCI 1A: 12'-30' wide — 12" wide, 14" deep total, 2 #5 continuous. */
     residential: { width: 1, depth: 14 / 12, bars: 2 },
-    /** 1: 32'-60' wide commercial — 18" wide, 16" deep total, 3 #5 continuous. */
+    /** CCI 1: 32'-60' wide commercial — 18" wide, 16" deep total, 3 #5 continuous. */
     commercial: { width: 1.5, depth: 16 / 12, bars: 3 },
+    /**
+     * CA-1 (every CA width — the only CA footing detail): 12" wide x 12" deep,
+     * (2) #5 @ 6" O.C. 3" up from the bottom; inner face 4" vertical, then a
+     * 4" x 4" haunch to the 4" slab.
+     */
+    ca: { width: 1, depth: 1, bars: 2, step: 4 / 12, barSpacing: 0.5, barUp: 0.25 },
   },
-  /** Main-building width from which the commercial section + paired anchors apply. */
+  /** CCI main-building width from which detail 1 (commercial section + paired anchors) applies. */
   commercialMinWidth: 32,
   /** #5 rebar diameter (5/8") and its concrete cover. */
   barDia: 5 / 8 / 12,
   barCover: 3 / 12,
-  /** Anchor distance along the rail from the leg's center (clear of the leg tube). */
+  /** Anchor distance along the rail from the leg's center (clear of the leg tube; both makers: within 6"). */
   anchorAlongRail: 0.33,
-  /** Wedge anchor embedment below the concrete surface (>= 2-1/2"). */
-  wedgeEmbed: 3 / 12,
-  /** Helical eye anchor: depth of the auger below the surface. */
-  eyeDepth: 3,
+  /** Wedge / expansion anchor embedment below the concrete surface: CCI >= 2-1/2" (drawn 3"); CA 1/2" x 5-1/2", 2-1/2". */
+  wedgeEmbed: { CCI: 3 / 12, CA: 2.5 / 12 },
+  /**
+   * Helical ground anchor (ground / gravel / asphalt), through the base rail:
+   * auger tip depth below the surface, helix plate radius, plate heights above
+   * the tip. CCI as drawn before (3 ft, 6" plates); CA-1: 30" earth auger with
+   * a double 4" helix (~2" of the 30" rod is the rail + nut above the surface).
+   */
+  helical: {
+    CCI: { depth: 3, helixR: 0.25, helixAt: [0.35, 0.8] },
+    CA: { depth: 28 / 12, helixR: 2 / 12, helixAt: [0.25, 0.6] },
+  },
   /** Gravel / asphalt / dirt pad: this far past the footprint. */
   padMargin: 2,
   /** Saw-cut control joints: panels no longer than this (ft). */
@@ -81,6 +118,12 @@ export interface FootingStrip {
   depth: number;
   /** #5 continuous bars. */
   bars: number;
+  /** Inner face rises this far vertically before the 45 degree haunch (CA 4"; 0 = haunch from the bottom corner, CCI). */
+  step: number;
+  /** Bars this far apart on center, centered in the width (CA 6" O.C.); null = spread across the width at 3" cover (CCI). */
+  barSpacing: number | null;
+  /** Bar center height above the bottom (CA 3"); null = 3" cover + the bar radius (CCI). */
+  barUp: number | null;
   /**
    * The strip meets a perpendicular strip at its r0 / r1 end: that end is
    * MITERED on the 45 degree plane through the slab corner (the thickened
@@ -98,7 +141,7 @@ export interface AnchorSpot {
   run: 'x' | 'z';
   /** Rail centerline across coordinate. */
   c: number;
-  /** Across direction toward the building interior (an eye anchor sits on the OPPOSITE, outer face — 1C). */
+  /** Across direction toward the building interior. */
   inward: 1 | -1;
 }
 
@@ -114,6 +157,8 @@ export interface SlabJoint {
 
 export interface FoundationLayout {
   type: FoundationType;
+  /** Whose details are drawn. */
+  maker: FoundationMaker;
   /** Half the base-rail tube height (the rail is centered on y = 0; its top is y = railHalf). */
   railHalf: number;
   /** Adjacent ground level (the slab / footing top is 2" above it). */
@@ -127,14 +172,23 @@ export interface FoundationLayout {
   footings: FootingStrip[];
   /** Footings sit under the slab (top = slab underside) or stand alone (top = y = 0). */
   footingTop: 'slab' | 'self';
-  anchor: 'wedge' | 'eye';
+  /** Wedge / expansion anchor into concrete, or a helical ground anchor (ground / gravel / asphalt). Both fasten ON TOP of the rail. */
+  anchor: 'wedge' | 'helical';
+  /** Wedge: embedment below the concrete surface. Helical: the auger tip's depth below the surface. */
+  anchorDepth: number;
+  /** Helical only: helix plate radius + plate heights above the tip. */
+  helix: { r: number; at: readonly number[] } | null;
   anchors: AnchorSpot[];
   joints: SlabJoint[];
   /** Main building is an OPEN carport (roof only) — detail 1B. */
   mainOpen: boolean;
 }
 
-type Section = { width: number; depth: number; bars: number };
+type Section = { width: number; depth: number; bars: number; step?: number; barSpacing?: number; barUp?: number };
+
+/** Plan reach of a section from its outer face: bottom width + the 45 degree haunch run. */
+export const sectionReach = (sec: Pick<Section, 'width' | 'depth' | 'step'>): number =>
+  sec.width + Math.max(0, sec.depth - FOUNDATION.slabT - (sec.step ?? 0));
 
 const EPS = 0.02;
 const isEnd = (v: EndSheeting) => v === 'open' || v === 'gableOnly';
@@ -246,16 +300,22 @@ export function slabJoints(rects: Footprint[]): SlabJoint[] {
   return out;
 }
 
+
 /**
  * The foundation drawing for a building: slab / pad, footing strips, anchors.
- * `foundation` unset = concrete (the program's '— select —').
+ * `foundation` unset = concrete (the program's '— select —'). `manufacturer`
+ * 'CCI' draws CCI's details; anything else CA's (the program maps every
+ * non-CCI ACTIVE_MFR to CA).
  */
 export function foundationLayout(
   s: StructureModel,
   foundation: FoundationType | undefined,
   gauge: FramingGauge,
+  manufacturer?: FoundationMaker,
 ): FoundationLayout {
   const type: FoundationType = foundation ?? 'concrete';
+  const maker: FoundationMaker = manufacturer === 'CCI' ? 'CCI' : 'CA';
+  const ca = maker === 'CA';
   const railHalf = railSizeFt(gauge) / 2;
   const e = railHalf + FOUNDATION.edgePastRail; // rail centerline -> slab edge
   const halfW = s.width / 2;
@@ -266,10 +326,18 @@ export function foundationLayout(
   const concrete = type === 'concrete';
   const footers = type === 'footers';
   const rails = groundRails(s.members);
-  const commercial = s.width >= FOUNDATION.commercialMinWidth;
-  const mainSection: Section = commercial ? FOUNDATION.sections.commercial : FOUNDATION.sections.residential;
+  // CCI detail 1 (32'-60'): the heavier section + paired anchors. CA's plan has
+  // ONE footing detail (CA-1) and anchors each post / truss, at every width.
+  const commercial = !ca && s.width >= FOUNDATION.commercialMinWidth;
+  const mainSection: Section = ca
+    ? FOUNDATION.sections.ca
+    : commercial
+      ? FOUNDATION.sections.commercial
+      : FOUNDATION.sections.residential;
+  const leanToSection: Section = ca ? FOUNDATION.sections.ca : FOUNDATION.sections.residential;
 
-  // ── Footing strips (concrete: not for an open carport / open lean-to — 1B; footers only: always) ──
+  // ── Footing strips (concrete: not for an open carport / open lean-to — CCI 1B,
+  // CA's existing-slab detail; footers only: always) ──
   const footings: FootingStrip[] = [];
   /** Deepest parallel base rail inboard of the line (doubled / ladder columns) within its run. */
   const railInset = (run: 'x' | 'z', c: number, out: number, r0: number, r1: number) => {
@@ -287,7 +355,22 @@ export function foundationLayout(
     // rail on this line (a doubled / ladder column's inner rail) bears on it
     // with 3" of concrete to spare. Under a slab the thickened edge is as drawn.
     if (footers) width = Math.max(width, e + railInset(run, c, out, r0, r1) + railHalf + FOUNDATION.barCover);
-    const strip: FootingStrip = { run, c, out, outer: c + out * e, r0, r1, width, depth: sec.depth, bars: sec.bars, miter0: false, miter1: false };
+    const strip: FootingStrip = {
+      run,
+      c,
+      out,
+      outer: c + out * e,
+      r0,
+      r1,
+      width,
+      depth: sec.depth,
+      bars: sec.bars,
+      step: sec.step ?? 0,
+      barSpacing: sec.barSpacing ?? null,
+      barUp: sec.barUp ?? null,
+      miter0: false,
+      miter1: false,
+    };
     footings.push(strip);
     return strip;
   };
@@ -314,10 +397,10 @@ export function foundationLayout(
     const out: 1 | -1 = c - ci >= 0 ? 1 : -1;
     const lo = Math.min(lt.spanStart, lt.spanEnd);
     const hi = Math.max(lt.spanStart, lt.spanEnd);
-    const sec = FOUNDATION.sections.residential;
+    const sec = leanToSection;
     const outerStrip = pushStrip(eave ? 'z' : 'x', c, out, lo - e, hi + e, sec);
-    // END lines of an enclosed / partially enclosed lean-to (1A): wherever an
-    // end wall comes down to the floor ('closed', or the inner 'halfEnd'), the
+    // END lines of an enclosed / partially enclosed lean-to: wherever an end
+    // wall comes down to the floor ('closed', or the inner 'halfEnd'), the
     // thickened edge runs along that slab edge too — from the main building's
     // footing (abutting its outer face, so it continues the main end footing
     // when the lean-to is flush with a closed main end) out to the lean-to's
@@ -335,7 +418,7 @@ export function foundationLayout(
     ] as const) {
       if (walls[end] !== 'closed' && walls[end] !== 'halfEnd') continue;
       const [r0, r1] = out > 0 ? [from, to] : [to, from];
-      if (r1 - r0 < sec.width + (sec.depth - FOUNDATION.slabT) + 0.5) continue; // too short to miter
+      if (r1 - r0 < sectionReach(sec) + 0.5) continue; // too short to miter
       const strip = pushStrip(eave ? 'x' : 'z', at, endOut, r0, r1, sec);
       if (out > 0) strip.miter1 = true;
       else strip.miter0 = true;
@@ -345,12 +428,14 @@ export function foundationLayout(
   }
 
   // ── Anchors: one per DRAWN leg / post standing on a base rail, plus the
-  // second rail's anchor at a commercial doubled leg (1). This follows the 3D
-  // frame's bents (ceil(L / spacing) + 1; no leg where a floor-level door cut
-  // it), NOT the program's priced ground-anchor count (2 x (floor(L / spacing)
-  // + 1)): the two agree only when the length divides evenly by the spacing
-  // and no leg is cut. Drawing only — nothing here is priced. ──
-  const anchor: 'wedge' | 'eye' = concrete || footers ? 'wedge' : 'eye';
+  // second rail's anchor at a CCI commercial doubled leg (1). This follows the
+  // 3D frame's bents (ceil(L / spacing) + 1; no leg where a floor-level door
+  // cut it), NOT the program's priced ground-anchor count (2 x (floor(L /
+  // spacing) + 1)): the two agree only when the length divides evenly by the
+  // spacing and no leg is cut. CA concrete / footers: every post along the
+  // SIDES but only EVERY OTHER END-WALL post (CA-1). Drawing only — nothing
+  // here is priced. Every anchor sits on the rail's top, within 6" of its post. ──
+  const anchor: 'wedge' | 'helical' = concrete || footers ? 'wedge' : 'helical';
   const feet = legFeet(s.members);
   const gableLeanTos = s.leanTos.filter((lt) => lt.attachedSide === 'Front Gable' || lt.attachedSide === 'Back Gable');
   const inSpan = (lt: LeanToStructure, v: number) =>
@@ -369,7 +454,13 @@ export function foundationLayout(
   const onRail = (run: 'x' | 'z', c: number, p: number, halfSpan: number) =>
     rails.some((r) => r.run === run && Math.abs(r.c - c) < EPS && p - halfSpan >= r.lo - 1e-6 && p + halfSpan <= r.hi + 1e-6);
 
-  const anchors: AnchorSpot[] = [];
+  interface Placed {
+    spot: AnchorSpot;
+    /** The main-building end rail line (its z) for an END-WALL post, else null. */
+    endLine: number | null;
+    pos: number;
+  }
+  const placed: Placed[] = [];
   const clear = 0.09; // washer radius + a hair: the washer must sit fully on the rail
   for (const f of feet) {
     const pr = preferredRun(f);
@@ -389,9 +480,9 @@ export function foundationLayout(
         !!railThrough(g, run),
     );
     if (partnerOut) {
-      // Detail 1 (32'-60'): one anchor per base rail at the leg — concrete /
-      // footers only, main building only. Otherwise the outer chord's anchor
-      // is the leg's one anchor.
+      // CCI detail 1 (32'-60'): one anchor per base rail at the leg — concrete /
+      // footers only, main building only. Otherwise (and always for CA: "each
+      // post / truss") the outer chord's anchor is the column's one anchor.
       const inMain = Math.abs(f.x) < halfW - EPS && Math.abs(f.z) <= halfL + EPS;
       if (!(anchor === 'wedge' && commercial && inMain)) continue;
     }
@@ -401,8 +492,29 @@ export function foundationLayout(
     if (dir === undefined) continue;
     const p = pos + dir * d;
     const inward: 1 | -1 = c > 0 ? -1 : 1;
-    anchors.push(run === 'z' ? { x: c, z: p, run, c, inward } : { x: p, z: c, run, c, inward });
+    // An END-WALL post: on a main-building gable-end rail, between the corners
+    // (the corner legs are side posts). The 3D frame draws no intermediate
+    // end-wall posts of its own; the ones drawn today are a gable lean-to's
+    // posts along a closed main end wall.
+    const endLine = run === 'x' && Math.abs(Math.abs(c) - halfL) < EPS && Math.abs(f.x) < halfW - EPS ? c : null;
+    placed.push({ spot: run === 'z' ? { x: c, z: p, run, c, inward } : { x: p, z: c, run, c, inward }, endLine, pos });
   }
+  // CA-1 (concrete / footers — the expansion anchor): EVERY OTHER end-wall
+  // post along each end line, counting from the -X corner post (anchored as a
+  // side post): the 2nd, 4th, ... intermediate posts. CA's ground anchor
+  // detail anchors each post, and CCI anchors every leg.
+  const skip = new Set<Placed>();
+  if (ca && anchor === 'wedge') {
+    const lines = new Set(placed.filter((q) => q.endLine !== null).map((q) => q.endLine));
+    for (const line of lines) {
+      const onLine = placed.filter((q) => q.endLine === line).sort((a, b) => a.pos - b.pos);
+      onLine.forEach((q, i) => {
+        if (i % 2 === 0) skip.add(q);
+      });
+    }
+  }
+  const anchors: AnchorSpot[] = placed.filter((q) => !skip.has(q)).map((q) => q.spot);
+  const helical = FOUNDATION.helical[maker];
 
   // ── Surfaces ──
   const slab = concrete ? rects.map((r) => grow(r, e)) : null;
@@ -414,6 +526,7 @@ export function foundationLayout(
 
   return {
     type,
+    maker,
     railHalf,
     gradeY,
     slab,
@@ -422,6 +535,8 @@ export function foundationLayout(
     footings,
     footingTop: concrete ? 'slab' : 'self',
     anchor,
+    anchorDepth: anchor === 'wedge' ? FOUNDATION.wedgeEmbed[maker] : helical.depth,
+    helix: anchor === 'helical' ? { r: helical.helixR, at: helical.helixAt } : null,
     anchors,
     joints: slab ? slabJoints(slab) : [],
     mainOpen,

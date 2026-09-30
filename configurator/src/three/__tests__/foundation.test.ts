@@ -5,25 +5,29 @@ import { resolveBuilding } from '@/engine/ruleEngine';
 import { deriveStructure, type StructureModel } from '@/engine/geometry';
 import { DEFAULT_CONFIG } from '@/config/constants';
 import type { FoundationType } from '@/types/building';
-import { FOUNDATION, foundationLayout, mainIsOpen, railSizeFt, slabJoints } from '../foundationLayout';
-import { anchorGeometry, eyeHardware, footingGeometry, footingSection, rebarGeometry, unionSolidGeometry } from '../foundationGeometry';
+import { FOUNDATION, foundationLayout, mainIsOpen, railSizeFt, sectionReach, slabJoints } from '../foundationLayout';
+import { anchorGeometry, barLayout, footingGeometry, footingSection, rebarGeometry, unionSolidGeometry } from '../foundationGeometry';
 
-// Foundation / anchoring DRAWING (owner 9/29/26) per the CCI "FOUNDATION/
-// ANCHORING RECOMMENDATIONS (FL ONLY)" details 1A / 1B / 1 / 1C.
+// Foundation / anchoring DRAWING (owner 9/29/26) per each manufacturer's own
+// FL details (owner 9/30/26): CCI "FOUNDATION/ANCHORING RECOMMENDATIONS (FL
+// ONLY)" 1A / 1B / 1 + Base Rail Anchorage; CA "Enclosed Generic Engineering"
+// sheet CA-1. Every anchor fastens ON TOP of the base rail (owner 9/30/26).
 
 const src = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 
 const build = (over: Record<string, unknown>) => {
   const resolved = resolveBuilding({ ...DEFAULT_CONFIG, openings: [], leanTos: [], trussSpacingFt: 5, ...over } as never);
-  return { s: deriveStructure(resolved), gauge: resolved.config.framingGauge };
+  return { s: deriveStructure(resolved), gauge: resolved.config.framingGauge, mfr: resolved.config.manufacturer };
 };
 const layoutOf = (over: Record<string, unknown>, f?: FoundationType) => {
-  const { s, gauge } = build(over);
-  return { s, l: foundationLayout(s, f, gauge) };
+  const { s, gauge, mfr } = build(over);
+  return { s, l: foundationLayout(s, f, gauge, mfr) };
 };
-const garage = { buildingType: 'garage', width: 24, length: 30, legHeight: 10 };
-const carport = { buildingType: 'carport', width: 24, length: 30, legHeight: 10 };
+const garage = { buildingType: 'garage', width: 24, length: 30, legHeight: 10, manufacturer: 'CCI' };
+const carport = { buildingType: 'carport', width: 24, length: 30, legHeight: 10, manufacturer: 'CCI' };
 const wide = { buildingType: 'garage', width: 40, length: 60, legHeight: 14, manufacturer: 'CA', trussSpacingFt: 4 };
+const caGarage = { ...garage, manufacturer: 'CA' };
+const caCarport = { ...carport, manufacturer: 'CA' };
 const leanTo = {
   ...garage,
   width: 30,
@@ -97,26 +101,28 @@ describe('foundation layout — concrete (details 1A / 1B / 1)', () => {
     expect(layoutOf({ ...carport, openEndGableSheeting: true }, 'concrete').l.footings.length).toBe(0);
   });
 
-  it('32-60 wide (CA 40x60x14 double legs): detail 1 footing 18" x 16", 3 #5, TWO anchors per leg', () => {
-    const { s, l } = layoutOf(wide, 'concrete');
+  it('CCI 32-60 wide (40x60x14, ladder legs): detail 1 footing 18" x 16", 3 #5, TWO anchors per leg', () => {
+    const { s, l } = layoutOf({ ...wide, manufacturer: 'CCI' }, 'concrete');
+    expect(l.maker).toBe('CCI');
     const eaves = l.footings.filter((f) => f.run === 'z');
     expect(eaves.length).toBe(2);
     for (const f of l.footings) {
       expect(f.width).toBe(1.5);
       expect(f.depth).toBeCloseTo(16 / 12);
       expect(f.bars).toBe(3);
+      expect(f.step).toBe(0);
     }
     expect(l.anchors.length).toBe(4 * legPositions(s));
-    // Side by side: same run position, one per rail (0.4 ft apart).
+    // Side by side: same run position, one per rail (the ladder column's two chords).
     const at = l.anchors.filter((a) => Math.abs(a.z - l.anchors[0].z) < 1e-6 && Math.sign(a.x) === Math.sign(l.anchors[0].x));
     expect(at.length).toBe(2);
-    expect(Math.abs(at[0].x - at[1].x)).toBeCloseTo(0.4);
-    // Both anchors land on the 18" footing.
+    expect(Math.abs(at[0].x - at[1].x)).toBeCloseTo(1.3);
+    // Both anchors land in the thickened edge (bottom width + haunch, in plan).
     const f = eaves.find((q) => Math.sign(q.c) === Math.sign(at[0].x))!;
     for (const a of at) {
       const u = (f.outer - a.x) * f.out;
       expect(u).toBeGreaterThan(0.25);
-      expect(u).toBeLessThan(f.width);
+      expect(u).toBeLessThan(sectionReach(f));
     }
   });
 
@@ -239,21 +245,119 @@ describe('foundation layout — footers / ground / gravel / asphalt', () => {
   });
 
   for (const t of ['ground', 'gravel', 'asphalt'] as const) {
-    it(`${t}: no slab, no footing, one helical eye anchor per drawn leg`, () => {
-      const { s, l } = layoutOf(wide, t);
-      expect(l.slab).toBeNull();
-      expect(l.pad!.length).toBe(1);
-      expect(l.padTop).toBe(0);
-      expect(l.footings).toEqual([]);
-      expect(l.anchor).toBe('eye');
-      expect(l.anchors.length).toBe(2 * legPositions(s));
-      // On the outer rail (the eye goes on its OUTER face — 1C; see the geometry test).
-      for (const a of l.anchors) {
-        expect(Math.abs(a.c)).toBeCloseTo(20);
-        expect(a.inward).toBe(a.c > 0 ? -1 : 1);
+    it(`${t}: no slab, no footing, one helical ground anchor per drawn leg, on the outer rail`, () => {
+      for (const mfr of ['CA', 'CCI'] as const) {
+        const { s, l } = layoutOf({ ...wide, manufacturer: mfr }, t);
+        expect(l.slab).toBeNull();
+        expect(l.pad!.length).toBe(1);
+        expect(l.padTop).toBe(0);
+        expect(l.footings).toEqual([]);
+        expect(l.anchor).toBe('helical');
+        expect(l.anchors.length).toBe(2 * legPositions(s));
+        for (const a of l.anchors) {
+          expect(Math.abs(a.c)).toBeCloseTo(20);
+          expect(a.inward).toBe(a.c > 0 ? -1 : 1);
+        }
       }
     });
   }
+
+  it('ground anchor per maker: CA 30" earth auger with a double 4" helix; CCI 3 ft, 6" plates', () => {
+    const ca = layoutOf(caGarage, 'ground').l;
+    expect(ca.maker).toBe('CA');
+    expect(ca.anchorDepth).toBeCloseTo(28 / 12); // 30" rod, ~2" of it through the rail + nut
+    expect(ca.helix).toEqual({ r: 2 / 12, at: [0.25, 0.6] });
+    const cci = layoutOf(garage, 'ground').l;
+    expect(cci.anchorDepth).toBe(3);
+    expect(cci.helix).toEqual({ r: 0.25, at: [0.35, 0.8] });
+    expect(layoutOf(garage, 'concrete').l.helix).toBeNull();
+  });
+});
+
+describe("foundation layout — CA's own details (sheet CA-1)", () => {
+  it('unset manufacturer draws CA (the program maps every non-CCI ACTIVE_MFR to CA)', () => {
+    const { s, gauge } = build(garage);
+    expect(foundationLayout(s, 'concrete', gauge).maker).toBe('CA');
+    expect(foundationLayout(s, 'concrete', gauge, 'CCI').maker).toBe('CCI');
+  });
+
+  it('enclosed on concrete: thickened edge 12" x 12", (2) #5 @ 6" O.C., 4" inner face + 45 degree haunch; 2-1/2" embedment', () => {
+    const { s, l } = layoutOf(caGarage, 'concrete');
+    expect(l.footings.length).toBe(4);
+    for (const f of l.footings) {
+      expect(f.width).toBe(1);
+      expect(f.depth).toBe(1);
+      expect(f.bars).toBe(2);
+      expect(f.step).toBeCloseTo(4 / 12);
+      const { us, y } = barLayout(f);
+      expect(us).toEqual([0.25, 0.75]); // 6" O.C., centered in the 12" width
+      expect(y).toBeCloseTo(-0.75); // 3" up from the bottom
+    }
+    const T = FOUNDATION.slabT;
+    const sec = footingSection(l.footings[0], 'underSlab', true);
+    expect(sec.length).toBe(5);
+    const expected = [[0, -T], [0, -1], [1, -1], [1, -1 + 4 / 12], [1 + 4 / 12, -T]];
+    sec.forEach((p, i) => {
+      expect(p[0]).toBeCloseTo(expected[i][0]);
+      expect(p[1]).toBeCloseTo(expected[i][1]);
+    });
+    expect(l.anchor).toBe('wedge');
+    expect(l.anchorDepth).toBeCloseTo(2.5 / 12);
+    // Side posts: every one (no intermediate end-wall posts are drawn on this building).
+    expect(l.anchors.length).toBe(2 * legPositions(s));
+  });
+
+  it('open carport: the existing-slab detail (plain slab, no thickened edge, 2-1/2" embedment)', () => {
+    const { s, l } = layoutOf(caCarport, 'concrete');
+    expect(l.mainOpen).toBe(true);
+    expect(l.slab!.length).toBe(1);
+    expect(l.footings).toEqual([]);
+    expect(l.anchorDepth).toBeCloseTo(2.5 / 12);
+    expect(l.anchors.length).toBe(2 * legPositions(s));
+  });
+
+  it('wide span (40x60x14 double legs): the same CA-1 section and ONE anchor per post / truss', () => {
+    const { s, l } = layoutOf(wide, 'concrete');
+    expect(l.footings.every((f) => f.width === 1 && f.depth === 1 && f.bars === 2 && f.barSpacing === 0.5)).toBe(true);
+    expect(l.anchors.length).toBe(2 * legPositions(s));
+    for (const a of l.anchors) expect(Math.abs(a.c)).toBeCloseTo(20); // the outer chord's rail
+  });
+
+  it('lean-tos use the CA-1 section too (outer strip + closed end lines)', () => {
+    const { l } = layoutOf({ ...leanTo, manufacturer: 'CA' }, 'concrete');
+    expect(l.footings.length).toBeGreaterThan(4);
+    expect(l.footings.every((f) => f.depth === 1 && f.step > 0)).toBe(true);
+  });
+
+  it('EVERY OTHER end-wall post on concrete / footers (CA-1); every post on ground; CCI every post', () => {
+    // A gable lean-to along a CLOSED main front wall: its posts there are the end wall's posts.
+    const cfg = {
+      buildingType: 'garage', width: 30, length: 40, legHeight: 12, trussSpacingFt: 5,
+      leanTos: [{ id: 'g', type: 'attached', attachedSide: 'Front Gable', widthFt: 12, lengthFt: 30, lowLegHeightFt: 10, roofPitch: '2:12', enclosure: 'enclosed', openings: [] }],
+    };
+    const endPosts = (s: StructureModel) =>
+      s.members.filter((m) => m.kind === 'leg' && Math.abs(m.start[1]) < 1e-6 && Math.abs(m.start[2] + 20) < 1e-6 && Math.abs(m.start[0]) < 15 - 1e-6).length;
+    const onEnd = (l: { anchors: { run: string; c: number; x: number }[] }) =>
+      l.anchors.filter((a) => a.run === 'x' && Math.abs(a.c + 20) < 1e-6 && Math.abs(a.x) < 15).length;
+    const ca = layoutOf({ ...cfg, manufacturer: 'CA' }, 'concrete');
+    const n = endPosts(ca.s);
+    expect(n).toBeGreaterThanOrEqual(4);
+    expect(onEnd(ca.l)).toBe(Math.floor(n / 2));
+    // Alternating along the wall: no two anchored end-wall posts are neighbours.
+    const xs = ca.l.anchors.filter((a) => a.run === 'x' && Math.abs(a.c + 20) < 1e-6 && Math.abs(a.x) < 15).map((a) => a.x).sort((a, b) => a - b);
+    const posts = ca.s.members
+      .filter((m) => m.kind === 'leg' && Math.abs(m.start[1]) < 1e-6 && Math.abs(m.start[2] + 20) < 1e-6 && Math.abs(m.start[0]) < 15 - 1e-6)
+      .map((m) => m.start[0])
+      .sort((a, b) => a - b);
+    const idx = xs.map((x) => posts.findIndex((p) => Math.abs(p - x) < 0.5));
+    expect(idx.every((i, k) => k === 0 || i - idx[k - 1] === 2)).toBe(true);
+    expect(onEnd(layoutOf({ ...cfg, manufacturer: 'CA' }, 'footers').l)).toBe(Math.floor(n / 2));
+    expect(onEnd(layoutOf({ ...cfg, manufacturer: 'CA' }, 'ground').l)).toBe(n);
+    expect(onEnd(layoutOf({ ...cfg, manufacturer: 'CCI' }, 'concrete').l)).toBe(n);
+    // Side posts are never thinned: the lean-to's outer posts + every main leg keep theirs.
+    const cci = layoutOf({ ...cfg, manufacturer: 'CCI' }, 'concrete').l;
+    expect(cci.anchors.length - ca.l.anchors.length).toBe(n - Math.floor(n / 2));
+  });
 });
 
 describe('foundation geometry', () => {
@@ -285,6 +389,22 @@ describe('foundation geometry', () => {
     }
   });
 
+  it("CA-1's stepped section: the end caps exactly cover the section (no folded fan over the step's inside corner)", () => {
+    const strip = { ...layoutOf(caGarage, 'concrete').l.footings[0], run: 'z' as const, c: 0, out: -1 as const, outer: 0, r0: 0, r1: 10, miter0: false, miter1: false };
+    const shoelace = (p: Array<[number, number]>) => Math.abs(p.reduce((s, [x, y], i) => s + x * p[(i + 1) % p.length][1] - p[(i + 1) % p.length][0] * y, 0)) / 2;
+    for (const [mode, haunch] of [['underSlab', true], ['full', true], ['full', false]] as const) {
+      const g = footingGeometry([strip], mode, haunch, 6);
+      const p = g.attributes.position.array as Float32Array;
+      let cap = 0;
+      for (let i = 0; i < p.length; i += 9) {
+        if (![2, 5, 8].every((k) => Math.abs(p[i + k]) < 1e-6)) continue; // triangles on the r0 = 0 cap
+        const [ax, ay, bx, by, cx, cy] = [p[i], p[i + 1], p[i + 3], p[i + 4], p[i + 6], p[i + 7]];
+        cap += Math.abs((bx - ax) * (cy - ay) - (cx - ax) * (by - ay)) / 2;
+      }
+      expect(cap).toBeCloseTo(shoelace(footingSection(strip, mode, haunch)), 5);
+    }
+  });
+
   it('the union slab has no internal faces (an eave lean-to adds only its outline)', () => {
     const one = unionSolidGeometry([{ x0: 0, x1: 10, z0: 0, z1: 10 }], 0, -1, 6);
     const two = unionSolidGeometry([{ x0: 0, x1: 10, z0: 0, z1: 10 }, { x0: 10, x1: 20, z0: 0, z1: 10 }], 0, -1, 6);
@@ -293,42 +413,51 @@ describe('foundation geometry', () => {
     expect(two.attributes.position.count).toBe(10 * 6);
   });
 
-  it('anchor hardware: above-surface parts sit on / beside the rail, embedment below', () => {
-    const { l } = layoutOf(garage, 'concrete');
-    const above = anchorGeometry(l).above!;
-    above.computeBoundingBox();
-    expect(above.boundingBox!.min.y).toBeGreaterThan(0);
-    const below = anchorGeometry(l).below!;
-    below.computeBoundingBox();
-    expect(below.boundingBox!.min.y).toBeLessThanOrEqual(-FOUNDATION.wedgeEmbed + 1e-6);
-    expect(below.boundingBox!.min.y).toBeGreaterThan(-FOUNDATION.slabT); // stays inside the 4" slab
-    const eye = anchorGeometry(layoutOf(garage, 'ground').l);
-    eye.below!.computeBoundingBox();
-    expect(eye.below!.boundingBox!.min.y).toBeLessThan(-2.5); // the helical rod
+  it('anchor hardware: above-surface parts sit on the rail, embedment below', () => {
+    for (const cfg of [garage, caGarage]) {
+      const { l } = layoutOf(cfg, 'concrete');
+      const above = anchorGeometry(l).above!;
+      above.computeBoundingBox();
+      expect(above.boundingBox!.min.y).toBeGreaterThan(0);
+      const below = anchorGeometry(l).below!;
+      below.computeBoundingBox();
+      expect(below.boundingBox!.min.y).toBeCloseTo(-l.anchorDepth);
+      expect(below.boundingBox!.min.y).toBeGreaterThan(-FOUNDATION.slabT); // stays inside the 4" slab
+    }
+    expect(layoutOf(garage, 'concrete').l.anchorDepth).toBeCloseTo(3 / 12); // CCI: >= 2-1/2", drawn 3"
+    expect(layoutOf(caGarage, 'concrete').l.anchorDepth).toBeCloseTo(2.5 / 12); // CA: 2-1/2"
+    const ground = anchorGeometry(layoutOf(garage, 'ground').l);
+    ground.below!.computeBoundingBox();
+    expect(ground.below!.boundingBox!.min.y).toBeLessThan(-2.5); // the helical rod
   });
 
   for (const gauge of ['14-gauge', '12-gauge'] as const) {
-    it(`eye anchor (${gauge} rail): OUTSIDE the rail (1C), eye + washers entirely above the surface`, () => {
-      const h = railSizeFt(gauge) / 2;
-      const one = { anchor: 'eye' as const, railHalf: h, anchors: [{ x: 12, z: 0, run: 'z' as const, c: 12, inward: -1 as const }] };
-      const { above, below } = anchorGeometry(one);
-      above!.computeBoundingBox();
-      const bb = above!.boundingBox!;
-      // Nothing drawn above the surface dips under y = 0 (the pad / dirt top); the rod stub starts at it.
-      expect(bb.min.y).toBeGreaterThanOrEqual(-1e-6);
-      const e = eyeHardware(h);
-      // Washers + eye clear the surface; the washers fit the rail's visible face.
-      expect(e.yb - e.washerR).toBeGreaterThan(0.001);
-      expect(e.yb - e.eyeR - e.rodR).toBeGreaterThan(0.001);
-      expect(e.yb + e.washerR).toBeLessThanOrEqual(h + 1e-9);
-      // The eye's hole clears the 1/2" bolt.
-      expect(e.eyeR - e.rodR).toBeGreaterThan(e.boltR);
-      // Outside: the eye + outer nut reach further out (+x) than the inner washer + nut reach in.
-      expect(bb.max.x - 12).toBeGreaterThan(12 - bb.min.x);
-      // The helical rod goes down on the rail's outer side.
-      below!.computeBoundingBox();
-      expect((below!.boundingBox!.min.x + below!.boundingBox!.max.x) / 2).toBeGreaterThan(12 + h);
-    });
+    for (const mfr of ['CCI', 'CA'] as const) {
+      it(`ground anchor (${mfr}, ${gauge} rail): ON TOP of the rail like the wedge anchor, the auger below grade`, () => {
+        const h = railSizeFt(gauge) / 2;
+        const spec = FOUNDATION.helical[mfr];
+        const spot = { x: 12, z: 0, run: 'z' as const, c: 12, inward: -1 as const };
+        const one = { anchor: 'helical' as const, railHalf: h, anchorDepth: spec.depth, helix: { r: spec.helixR, at: spec.helixAt }, anchors: [spot] };
+        const wedge = { anchor: 'wedge' as const, railHalf: h, anchorDepth: 3 / 12, helix: null, anchors: [spot] };
+        const { above, below } = anchorGeometry(one);
+        above!.computeBoundingBox();
+        const bb = above!.boundingBox!;
+        // Washer + nut + threaded end sit on the rail's top (y = h), centered on the rail —
+        // the exact hardware the concrete wedge anchor shows (visible from inside the building).
+        expect(bb.min.y).toBeCloseTo(h);
+        expect((bb.min.x + bb.max.x) / 2).toBeCloseTo(12);
+        expect(bb.max.x - bb.min.x).toBeLessThanOrEqual(railSizeFt(gauge) + 1e-6); // the 2" washer fits the rail top
+        const w = anchorGeometry(wedge).above!;
+        expect(Array.from(above!.attributes.position.array)).toEqual(Array.from(w.attributes.position.array));
+        // The rod comes up THROUGH the rail (its centerline) from the auger tip below grade.
+        below!.computeBoundingBox();
+        const b = below!.boundingBox!;
+        expect(b.min.y).toBeLessThan(-spec.depth + 0.01);
+        expect(b.max.y).toBeCloseTo(h);
+        expect((b.min.x + b.max.x) / 2).toBeCloseTo(12);
+        expect(b.max.x - b.min.x).toBeLessThanOrEqual(2 * spec.helixR + 0.01); // helix plates, centered on the rod
+      });
+    }
   }
 });
 
@@ -343,6 +472,10 @@ describe('foundation wiring (view-only, never priced)', () => {
     expect(host).toMatch(/st\.setFoundation\(foundation\)/);
     // Nothing is ever written back to the program's #foundation.
     expect(host).not.toMatch(/G\('foundation'\)[^;]*\.value\s*=/);
+  });
+
+  it("the drawing follows the quote's (view-only) manufacturer: CA's details for CA, CCI's for CCI", () => {
+    expect(model).toMatch(/foundationLayout\(structure, config\.foundation, config\.framingGauge, config\.manufacturer\)/);
   });
 
   it('site + details are capture-ignored in EVERY view; classic draws the details only off the exterior view', () => {

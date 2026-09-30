@@ -24,16 +24,16 @@ interface Props {
 }
 
 /**
- * The foundation's STRUCTURAL drawing (foundationLayout.ts — CCI FL
- * foundation/anchoring details): thickened-edge footings under the base
- * rails, their #5 continuous bars, and an anchor at every leg / post.
- * DRAWING ONLY.
+ * The foundation's STRUCTURAL drawing (foundationLayout.ts — the quote
+ * manufacturer's own FL foundation / anchoring details: CCI's, or CA's sheet
+ * CA-1): thickened-edge footings under the base rails, their #5 continuous
+ * bars, and the anchors at the legs / posts. DRAWING ONLY.
  *
  * What shows where:
  *  - EXTERIOR (enhanced only — the classic exterior is untouched): what is
- *    above the surface — the wedge anchor's washer + nut on the rail, or the
- *    eye anchor's eye, through-bolt, washers and nuts at the rail; with
- *    Footers Only, the footing strips' 2" above the ground (solid concrete).
+ *    above the surface — every anchor's 2" washer + nut ON TOP of the rail
+ *    (concrete wedge anchor and ground anchor alike); with Footers Only, the
+ *    footing strips' 2" above the ground (solid concrete).
  *  - STRUCTURE / CUTAWAY (both looks): everything — see-through concrete
  *    footings, the bars inside them, the anchors' embedment / helical rods.
  *    (EnhancedSite ghosts the ground + slab in the same views.)
@@ -74,7 +74,16 @@ export function FoundationDetails({ layout, look, viewMode }: Props) {
   // Footings under an enhanced slab start at its underside; everywhere else
   // (footers only, the classic look) the footing carries its own top at y = 0.
   const underSlab = layout.footingTop === 'slab' && enhanced;
-  const key = JSON.stringify([underSlab, layout.footingTop, layout.anchor, layout.railHalf, layout.footings, layout.anchors]);
+  const key = JSON.stringify([
+    underSlab,
+    layout.footingTop,
+    layout.anchor,
+    layout.anchorDepth,
+    layout.helix,
+    layout.railHalf,
+    layout.footings,
+    layout.anchors,
+  ]);
   const geo = useMemo(() => {
     const footing = layout.footings.length
       ? footingGeometry(layout.footings, underSlab ? 'underSlab' : 'full', layout.footingTop === 'slab', ENHANCED_LOOK.slab.tileFt)

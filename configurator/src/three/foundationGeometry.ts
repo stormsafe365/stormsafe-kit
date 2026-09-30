@@ -95,19 +95,29 @@ export function unionSolidGeometry(rects: Footprint[], top: number, bottom: numb
 /**
  * Footing cross-section in (u, y): u = distance INWARD from the outer face.
  *  - 'underSlab': the thickened edge below a 4" slab — outer face from the
- *    slab underside down, the bottom `width` wide, then a 45 degree haunch up
- *    to the slab underside (details 1A / 1). The slab draws the top 4".
+ *    slab underside down, the bottom `width` wide, then (after the inner face
+ *    rises `step`: CA-1's 4"; CCI 0) a 45 degree haunch up to the slab
+ *    underside (CCI 1A / 1, CA-1). The slab draws the top 4".
  *  - 'full': a stand-alone section whose top is y = 0 — a plain strip (footers
  *    only) or, with `haunch`, the thickened edge with its slab band (classic
  *    Structure view, where no slab is drawn).
+ * Star-shaped from its first point (the fan end caps rely on it), also with
+ * the step's inside corner.
  */
-export function footingSection(f: Pick<FootingStrip, 'width' | 'depth'>, mode: 'underSlab' | 'full', haunch: boolean): Array<[number, number]> {
+export function footingSection(
+  f: Pick<FootingStrip, 'width' | 'depth'> & { step?: number },
+  mode: 'underSlab' | 'full',
+  haunch: boolean,
+): Array<[number, number]> {
   const T = FOUNDATION.slabT;
   const D = f.depth;
   const W = f.width;
-  if (mode === 'underSlab') return [[0, -T], [0, -D], [W, -D], [W + (D - T), -T]];
-  if (haunch) return [[0, 0], [0, -D], [W, -D], [W + (D - T), -T], [W + (D - T), 0]];
-  return [[0, 0], [0, -D], [W, -D], [W, 0]];
+  const st = Math.min(Math.max(0, f.step ?? 0), D - T);
+  const H = D - T - st; // haunch run (45 degrees)
+  if (!(mode === 'underSlab' || haunch)) return [[0, 0], [0, -D], [W, -D], [W, 0]];
+  const inner: Array<[number, number]> = st > 1e-9 ? [[W, -D], [W, -D + st], [W + H, -T]] : [[W, -D], [W + H, -T]];
+  if (mode === 'underSlab') return [[0, -T], [0, -D], ...inner];
+  return [[0, 0], [0, -D], ...inner, [W + H, 0]];
 }
 
 /** World point of section point (u, y) on a strip at run coordinate r. */
@@ -158,17 +168,33 @@ function placed(g: THREE.BufferGeometry, axis: 'x' | 'y' | 'z', at: V3, tilt = 0
   return g;
 }
 
-/** #5 continuous bars in every footing strip (3" cover), as one mesh. */
+/**
+ * Bar positions in a strip's section: u (from the outer face) of each bar and
+ * the bars' center height. CA-1: (2) #5 @ 6" O.C. centered, 3" up; CCI: spread
+ * across the width at 3" cover.
+ */
+export function barLayout(f: Pick<FootingStrip, 'width' | 'depth' | 'bars' | 'barSpacing' | 'barUp'>): { us: number[]; y: number } {
+  const r = FOUNDATION.barDia / 2;
+  const cover = FOUNDATION.barCover;
+  const y = f.barUp == null ? -f.depth + cover + r : -f.depth + f.barUp;
+  const n = f.bars;
+  const sp = f.barSpacing;
+  const us =
+    n <= 1
+      ? [f.width / 2]
+      : sp
+        ? Array.from({ length: n }, (_, i) => f.width / 2 + (i - (n - 1) / 2) * sp)
+        : Array.from({ length: n }, (_, i) => cover + r + (i * (f.width - 2 * (cover + r))) / (n - 1));
+  return { us, y };
+}
+
+/** #5 continuous bars in every footing strip, as one mesh. */
 export function rebarGeometry(strips: FootingStrip[]): THREE.BufferGeometry | null {
   const parts: THREE.BufferGeometry[] = [];
   const r = FOUNDATION.barDia / 2;
   const cover = FOUNDATION.barCover;
   for (const f of strips) {
-    const y = -f.depth + cover + r;
-    const us =
-      f.bars <= 1
-        ? [f.width / 2]
-        : Array.from({ length: f.bars }, (_, i) => cover + r + (i * (f.width - 2 * (cover + r))) / (f.bars - 1));
+    const { us, y } = barLayout(f);
     for (const u of us) {
       // A free end keeps 3" cover; at a mitered corner the bar runs to the
       // corner plane (+ its radius), meeting the perpendicular strip's bar as an L.
@@ -189,43 +215,22 @@ export function rebarGeometry(strips: FootingStrip[]): THREE.BufferGeometry | nu
 const nut = (axis: 'x' | 'y' | 'z', at: V3) => placed(new THREE.CylinderGeometry(0.045, 0.045, 0.04, 6), axis, at);
 /** 2" washer (the details' "2" WASHERS"). */
 const washer = (axis: 'x' | 'y' | 'z', at: V3) => placed(new THREE.CylinderGeometry(1 / 12, 1 / 12, 0.012, 20), axis, at);
+/** 1/2" rod / bolt (both makers' anchors: 1/2" wedge anchor, 1/2" ground anchor rod / bolt). */
 const rod = (axis: 'x' | 'y' | 'z', at: V3, len: number, r = 0.021) => placed(new THREE.CylinderGeometry(r, r, len, 10), axis, at);
-/** A washer (20 sides) or hex nut (6 sides) of radius r, thickness t, its axis along `axis`. */
-const disc = (axis: 'x' | 'y' | 'z', at: V3, r: number, t: number, sides: number) => placed(new THREE.CylinderGeometry(r, r, t, sides), axis, at);
 
 /**
- * Eye-anchor through-bolt hardware for a rail whose VISIBLE face (above
- * y = 0) is `h` tall: a real 2-1/2" TS rail's hardware — 1/2" bolt, 2"
- * washers, 1/2" hex nut, a 3/4" rod forged into an eye with a 0.8" hole —
- * scaled to that face, the bolt at its mid-height. Every part stays above
- * y = 0: the washer's and the eye's lowest points are yb - washerR and
- * yb - eyeR - rodR (both > 0).
+ * Anchor hardware, split into what shows ABOVE the surface and what is
+ * embedded BELOW it (only the Structure / Cutaway views draw that).
+ * EVERY anchor fastens ON TOP of the base rail (owner 9/30/26: "ontop the
+ * baserail, like in your shared photo"): a 2" washer on the rail's top, a hex
+ * nut and the threaded end — the same visible hardware for the concrete wedge
+ * anchor and the ground anchor, seen from inside an enclosed building too.
+ * Below: the wedge anchor's shank + expansion clip in the concrete (its
+ * embedment: CCI 3", CA 2-1/2"); the ground anchor's rod straight down through
+ * the rail to the auger tip, with its two helix plates (CCI 3 ft / 6" plates;
+ * CA 30" / double 4" helix).
  */
-export function eyeHardware(h: number) {
-  const k = Math.min(1, h / (2.5 / 12)); // visible face / real rail height
-  const inch = (v: number) => (v / 12) * k;
-  const rodR = inch(0.375);
-  return {
-    yb: h / 2,
-    boltR: inch(0.25),
-    washerR: inch(1),
-    washerT: Math.max(inch(0.12), 0.006),
-    nutR: inch(0.433),
-    nutT: inch(0.44),
-    rodR,
-    /** Eye centerline radius: a 0.8" hole (clears the 1/2" bolt) + the rod. */
-    eyeR: inch(0.4) + rodR,
-  };
-}
-
-/**
- * Anchor hardware, split into what shows ABOVE the surface (nut / washer /
- * bolt stub on the rail; the eye, through-bolt, washers and nuts at the rail)
- * and what is embedded BELOW it (the wedge anchor's shank + expansion clip in
- * the concrete; the helical anchor's rod + two helix plates in the ground),
- * which only the Structure / Cutaway views draw.
- */
-export function anchorGeometry(layout: Pick<FoundationLayout, 'anchor' | 'anchors' | 'railHalf'>): {
+export function anchorGeometry(layout: Pick<FoundationLayout, 'anchor' | 'anchors' | 'railHalf' | 'anchorDepth' | 'helix'>): {
   above: THREE.BufferGeometry | null;
   below: THREE.BufferGeometry | null;
 } {
@@ -233,59 +238,28 @@ export function anchorGeometry(layout: Pick<FoundationLayout, 'anchor' | 'anchor
   const below: THREE.BufferGeometry[] = [];
   const h = layout.railHalf;
   for (const a of layout.anchors) {
-    const P = (acrossOff: number, y: number, runOff = 0): V3 =>
-      a.run === 'z' ? [a.c + acrossOff, y, a.z + runOff] : [a.x + runOff, y, a.c + acrossOff];
-    const ax: 'x' | 'z' = a.run === 'z' ? 'x' : 'z'; // across axis
+    const P = (y: number): V3 => [a.x, y, a.z];
+    // On the rail's top (the rail is drawn centered on y = 0, its top at h).
+    const top = h;
+    above.push(washer('y', P(top + 0.006)));
+    above.push(nut('y', P(top + 0.012 + 0.02)));
+    above.push(rod('y', P(top + 0.052 + 0.015), 0.03));
+    const depth = layout.anchorDepth;
     if (layout.anchor === 'wedge') {
-      // Wedge / expansion anchor straight down through the rail's top (1A / 1B / 1).
-      const top = h;
-      above.push(washer('y', P(0, top + 0.006)));
-      above.push(nut('y', P(0, top + 0.012 + 0.02)));
-      above.push(rod('y', P(0, top + 0.052 + 0.015), 0.03));
-      const embed = FOUNDATION.wedgeEmbed;
-      below.push(rod('y', P(0, (top - embed) / 2), top + embed));
-      below.push(rod('y', P(0, -embed + 0.045), 0.07, 0.027)); // expansion clip
+      // Wedge / expansion anchor straight down through the rail into the concrete.
+      below.push(rod('y', P((top - depth) / 2), top + depth));
+      below.push(rod('y', P(-depth + 0.045), 0.07, 0.027)); // expansion clip
     } else {
-      // Helical eye anchor beside the rail (Base Rail Anchorage / 1C), OUTSIDE
-      // it as 1C draws it: through-bolt across the rail — inner nut, 2" washer,
-      // rail, 2" washer, the anchor's eye, outer nut — and the anchor rod
-      // straight down from the eye into the ground.
-      // The rail is drawn centered on y = 0 (half below the surface), so only
-      // its top half (h) shows. The hardware is sized to that visible face in
-      // a real 2-1/2" TS rail's proportions (1/2" bolt, 2" washers, 3/4" rod
-      // forged into the eye), so the eye and the washers stay ENTIRELY above
-      // the surface (never cut off by the pad / dirt) and read like the detail.
-      const s = -a.inward; // outward
-      const e = eyeHardware(h);
-      const { yb } = e;
-      const inner = -(h + e.washerT + e.nutT); // inner nut's outer face
-      const outer = h + e.washerT + 2 * e.rodR + e.nutT; // outer nut's outer face
-      const stub = e.boltR; // bolt end past each nut
-      above.push(rod(ax, P(s * ((inner + outer) / 2), yb), outer - inner + 2 * stub, e.boltR));
-      above.push(disc(ax, P(-s * (h + e.washerT / 2), yb), e.washerR, e.washerT, 20));
-      above.push(disc(ax, P(-s * (h + e.washerT + e.nutT / 2), yb), e.nutR, e.nutT, 6));
-      above.push(disc(ax, P(s * (h + e.washerT / 2), yb), e.washerR, e.washerT, 20));
-      const eyeC = h + e.washerT + e.rodR; // eye (and rod) centerline, across
-      const eye = new THREE.TorusGeometry(e.eyeR, e.rodR, 8, 20);
-      if (ax === 'x') eye.rotateY(Math.PI / 2);
-      const eyeAt = P(s * eyeC, yb);
-      eye.translate(eyeAt[0], eyeAt[1], eyeAt[2]);
-      above.push(eye);
-      above.push(disc(ax, P(s * (h + e.washerT + 2 * e.rodR + e.nutT / 2), yb), e.nutR, e.nutT, 6));
-      // The rod: from the bottom of the eye (above the surface) down to y = 0
-      // shows in every view; its 3 ft auger with two helix plates is embedded.
-      const rodTop = yb - e.eyeR;
-      above.push(rod('y', P(s * eyeC, rodTop / 2), rodTop, e.rodR));
-      const depth = FOUNDATION.eyeDepth;
-      below.push(rod('y', P(s * eyeC, -depth / 2), depth, e.rodR));
-      for (const k of [0.35, 0.8]) {
-        below.push(placed(new THREE.CylinderGeometry(0.25, 0.25, 0.015, 20), 'y', P(s * eyeC, -depth + k), 0.14));
+      // Helical ground anchor: the rod comes up through the rail from the auger.
+      below.push(rod('y', P((top - depth) / 2), top + depth));
+      const hx = layout.helix ?? { r: 0.25, at: [0.35, 0.8] };
+      for (const k of hx.at) {
+        below.push(placed(new THREE.CylinderGeometry(hx.r, hx.r, 0.015, 20), 'y', P(-depth + k), 0.14));
       }
     }
   }
   const merge = (parts: THREE.BufferGeometry[]) => {
     if (!parts.length) return null;
-    // Torus + cylinders share position / normal / uv, all indexed.
     const m = mergeGeometries(parts, false);
     parts.forEach((p) => p.dispose());
     return m;

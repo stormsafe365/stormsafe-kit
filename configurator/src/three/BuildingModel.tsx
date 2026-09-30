@@ -159,10 +159,11 @@ export function BuildingModel() {
   const viewMode = useEditorStore((s) => s.viewMode);
   const renderStyle = useEditorStore((s) => s.renderStyle);
   const showFrameProminent = viewMode !== 'exterior';
-  // Foundation drawing (view-only Foundation Type; CCI FL foundation details).
+  // Foundation drawing (view-only Foundation Type) per the quote manufacturer's
+  // own FL details: CCI's for CCI, CA's sheet CA-1 for CA (view-only too).
   const foundation = useMemo(
-    () => foundationLayout(structure, config.foundation, config.framingGauge),
-    [structure, config.foundation, config.framingGauge],
+    () => foundationLayout(structure, config.foundation, config.framingGauge, config.manufacturer),
+    [structure, config.foundation, config.framingGauge, config.manufacturer],
   );
 
   return (

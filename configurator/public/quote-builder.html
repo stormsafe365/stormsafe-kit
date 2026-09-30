@@ -5499,6 +5499,14 @@ function ropUnit(sz){
   var _p=String(sz||'').split('x');
   return ((parseFloat(_p[0])||0)>=12||(parseFloat(_p[1])||0)>=12)?(window._opener12||1200):(window._opener||1100);
 }
+// The roll-up unit price gRUD bills — the PDF and contract door rows print
+// this same price, so the rows add up to the Building Amount.
+// Free-standing building (Sensei FS catalog): standard roll-up is a flat
+// $750 (no size editor in Sensei; larger/certified sizes — verify w/ CCI).
+function rudBilledUnit(dtype, sz){
+  if(G('btype').value==='fslean') return 750;
+  return getDoorPrice(dtype, sz);
+}
 function gRUD(){
   var t=0, sf=0;
   var els=document.querySelectorAll('.re');
@@ -5509,10 +5517,7 @@ function gRUD(){
     var qty=parseInt(el.querySelector('.rqt').value)||0;
     var loc=el.querySelector('.rloc').value;
     var ea=(loc==='Left Eave Side'||loc==='Right Eave Side');
-    var unitPrice=getDoorPrice(dtype,sz);
-    // Free-standing building (Sensei FS catalog): standard roll-up is a flat
-    // $750 (no size editor in Sensei; larger/certified sizes — verify w/ CCI).
-    if(G('btype').value==='fslean') unitPrice=750;
+    var unitPrice=rudBilledUnit(dtype,sz);
     t+=unitPrice*qty;
     // Chain hoist add-on: only for sizes that don't already include a chain hoist.
     // (Legacy 'standard' = never has chain hoist included.
@@ -9632,7 +9637,7 @@ async function printQuote(){
       var _rawLbl=planDisplayNames2[planType]||planType;
       // Strip pricing tier text from the label (e.g. "As Built Stamped Plans — $400 (≤40W) / $500 (>40W) / $750 (com)" → "As Built Stamped Plans")
       planDisplayName=_rawLbl.split(' — ')[0].split(' - ')[0];
-      var planCostStr2=(planType==='Master Files')?'$0 (included)':('$'+planCost);
+      var planCostStr2=(planType==='Master Files'&&!planCost)?'$0 (included)':('$'+planCost);
       plansHTML='<div class="qplans"><strong>Engineered Plans Required:</strong> '+planDisplayName+' &mdash; <strong>'+planCostStr2+'</strong>, Invoiced separately by the engineering firm after deposit is placed. Not included in the building total above.</div>';
     }
   } else if(perm==='no'){
@@ -9715,7 +9720,8 @@ async function printQuote(){
     var _wQ=parseInt(w)||0;
     var _gchL=G('gch-left')?G('gch-left').value:'open';
     var _gchR=G('gch-right')?G('gch-right').value:'open';
-    var _rC=(_gchR==='closed'), _lC=(_gchL==='closed');
+    // gWalls bills a GCH's eave sides only once the enclosed length is set
+    var _rC=(_encLQ>0&&_gchR==='closed'), _lC=(_encLQ>0&&_gchL==='closed');
     var _sideP=scLookup(wallH, lv, _wQ);
     if(_rC && _lC) rows+=row('Each Side Closed ('+wallStyle+')',2,_sideP,_sideP*2);
     else if(_lC)   rows+=row('Left Eave Side Closed ('+wallStyle+')',1,_sideP,_sideP);
@@ -9774,7 +9780,7 @@ async function printQuote(){
             (dtype==='rollup' && doorHasChainIncluded(dtype, sz)))
                                                  typeLabel='Roll-Up w/ Chain Hoist';
     else                                         typeLabel='Roll Up Door';
-    var unitP=getDoorPrice(dtype,sz);
+    var unitP=rudBilledUnit(dtype,sz); // = the price gRUD billed
     if(unitP) rows+=row(sz+' '+typeLabel,qty,unitP,unitP*qty);
     var hoistEl=el.querySelector('.rch');
     var _showHoist = hoistEl && parseInt(hoistEl.value)>0 &&
@@ -10746,7 +10752,8 @@ async function printContract(){
     var _wQ=parseInt(w)||0;
     var _gchL=G('gch-left')?G('gch-left').value:'open';
     var _gchR=G('gch-right')?G('gch-right').value:'open';
-    var _rC=(_gchR==='closed'), _lC=(_gchL==='closed');
+    // gWalls bills a GCH's eave sides only once the enclosed length is set
+    var _rC=(_encLQ>0&&_gchR==='closed'), _lC=(_encLQ>0&&_gchL==='closed');
     var _sideP=scLookup(wallH, lv, _wQ);
     if(_rC && _lC) row('Each Side Closed ('+wallStyle+')',2,_sideP,_sideP*2);
     else if(_lC)   row('Left Eave Side Closed ('+wallStyle+')',1,_sideP,_sideP);
@@ -10799,7 +10806,7 @@ async function printContract(){
     else if(dtype==='hiimpact') typeLabel='Hi-Impact Roll-Up';
     else if(dtype==='chain' || (dtype==='rollup' && doorHasChainIncluded(dtype, sz))) typeLabel='Roll-Up w/ Chain Hoist';
     else typeLabel='Roll Up Door';
-    var unitP=getDoorPrice(dtype,sz);
+    var unitP=rudBilledUnit(dtype,sz); // = the price gRUD billed
     if(unitP) row(sz+' '+typeLabel,qty,unitP,unitP*qty);
     var hoistEl=el.querySelector('.rch');
     var _showHoist = hoistEl && parseInt(hoistEl.value)>0 && (dtype==='standard' || (dtype==='rollup' && !doorHasChainIncluded(dtype, sz)));
@@ -10970,7 +10977,7 @@ async function printContract(){
   window._rvHlCur=false;
   var rowsHTML='';
   lineItems.forEach(function(it){
-    var amtStr=it.amt===0?'<span style="color:#15803d;font-weight:800">INCLUDED</span>':(it.amt<0?'\u2212'+fC(-it.amt):fC(it.amt));
+    var amtStr=it.amt===0?'<span style="color:#15803d;font-weight:800">INCLUDED</span>':(it.amt<0?'\u2212'+(it.amt%1?fD(-it.amt):fC(-it.amt)):(it.amt%1?fD(it.amt):fC(it.amt)));
     rowsHTML+='<tr'+(it.hl?' style="background:#fff4dc"':'')+'>'+
       '<td class="li-desc">'+(it.hl?'<span style="display:inline-block;background:#f59e0b;color:#7c2d12;font-size:6pt;font-weight:900;letter-spacing:.5px;border-radius:3px;padding:1px 5px;margin-right:6px">NEW</span>':'')+it.desc+'</td>'+
       '<td class="li-c">'+(it.qty!==null?it.qty:'—')+'</td>'+

@@ -2,8 +2,8 @@ import { useMemo, useRef, useState } from 'react';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import type { Opening, OpeningType, WallSide } from '@/types/building';
-import { COMPONENT_OUTSET, SHEET_OUTSET, openingWorldTransform, type StructureModel, type Vec3 } from '@/engine/geometry';
+import type { LeanToOpening, Opening, OpeningType, WallSide } from '@/types/building';
+import { COMPONENT_OUTSET, SHEET_OUTSET, openingWorldTransform, type LeanToStructure, type StructureModel, type Vec3 } from '@/engine/geometry';
 import { clampOffset, checkCollision } from '@/engine/layout';
 import { TRUSS_CLEARANCE_FT } from '@/config/constants';
 import { useBuildingStore } from '@/store/useBuildingStore';
@@ -630,6 +630,139 @@ function SpacingOverlay({ openings, structure }: { openings: Opening[]; structur
         .map((side) => (
           <WallSpacing key={side} side={side as WallSide} openings={openings.filter((o) => o.side === side)} structure={structure} />
         ))}
+      {(structure.leanTos ?? []).map((lt) => (
+        <LeanToSpacing key={lt.id} lt={lt} structure={structure} />
+      ))}
+    </group>
+  );
+}
+
+function ltSizeLabel(o: LeanToOpening): string {
+  if (o.type === 'walkDoor' || o.type === 'window') return `${Math.round(o.widthFt * 12)}"x${Math.round(o.heightFt * 12)}"`;
+  return `${ftIn(o.widthFt)}x${ftIn(o.heightFt)}`;
+}
+
+/**
+ * Spacing overlay for each LEAN-TO (owner 9/29/26: "it should reflect all
+ * dimensions of the lean-to, not just the main building"). On the lean-to end
+ * facing the camera: LOW LEG height, HIGH SIDE (connection) height, width out
+ * from the building and roof pitch. When its outer side faces the camera: its
+ * length, roof-edge length with overhang, and where it starts/stops along a
+ * longer building wall. Plus every lean-to door/window/roll-up/frame-out size,
+ * the gaps between them and sill heights, on each lean-to wall facing the
+ * camera. Wall positions mirror LeanToSiding's placement math (outer-wall
+ * offsets from spanStart; end-wall offsets from the across-minimum edge).
+ */
+function LeanToSpacing({ lt, structure }: { lt: LeanToStructure; structure: StructureModel }) {
+  const camera = useThree((st) => st.camera);
+  const eaveAtt = lt.attachedSide === 'Left Eave' || lt.attachedSide === 'Right Eave';
+  const inA = eaveAtt ? lt.inner.x : lt.inner.z; // at the building (high side)
+  const outA = eaveAtt ? lt.outer.x : lt.outer.z; // free edge (low leg)
+  const dirA = Math.sign(outA - inA) || 1; // away from the building
+  const s0 = lt.spanStart, s1 = lt.spanEnd;
+  const lh = lt.lowLegHeightFt, hh = lt.peakHeightFt;
+  const W = Math.abs(outA - inA), L = Math.abs(s1 - s0);
+  const minA = Math.min(inA, outA);
+  const oh = structure.roofOverhangFt ?? 0;
+  // main-building extent along the lean-to's run axis
+  const runMin = eaveAtt ? -structure.length / 2 : -structure.width / 2;
+  const runMax = -runMin;
+  // local (across, run, up) → world
+  const P = (a: number, r: number, y: number): Vec3 => (eaveAtt ? [a, y, r] : [r, y, a]);
+
+  const [face, setFace] = useState('outer,front');
+  useFrame(() => {
+    const camA = eaveAtt ? camera.position.x : camera.position.z;
+    const camR = eaveAtt ? camera.position.z : camera.position.x;
+    const f = [
+      (camA - outA) * dirA > 0 ? 'outer' : '',
+      camR < s0 ? 'front' : '',
+      camR > s1 ? 'back' : '',
+    ].filter(Boolean).join(',');
+    if (f !== face) setFace(f);
+  });
+  const sees = (k: string) => face.split(',').includes(k);
+  const seeFront = sees('front'), seeBack = sees('back'), seeOuter = sees('outer');
+  // Dimension the END you can see (front if both/neither).
+  const endR = seeBack && !seeFront ? s1 : s0;
+  const endOut = endR === s0 ? -1 : 1;
+  const OFF = 0.6;
+  const rEnd = endR + endOut * OFF;
+  const pitch = W > 0 ? Math.round(((hh - lh) / W) * 12 * 2) / 2 : 0;
+  const r3 = (v: number) => Math.round(v * 1000) / 1000;
+
+  // Gap chain + size chips + sills along one lean-to wall.
+  //   along(t) → world point at position t (0..len) along the wall, height y.
+  function wallChain(key: string, items: LeanToOpening[], len: number, along: (t: number, y: number) => Vec3, capAt: (t: number) => number) {
+    const sorted = [...items].sort((a, b) => a.offsetFt - b.offsetFt);
+    const stops = Array.from(new Set([0, len, ...sorted.flatMap((o) => [r3(o.offsetFt - o.widthFt / 2), r3(o.offsetFt + o.widthFt / 2)])]))
+      .filter((v) => v >= -0.01 && v <= len + 0.01)
+      .sort((a, b) => a - b);
+    const isOpening = (a: number, b: number) =>
+      sorted.some((o) => Math.abs(o.offsetFt - o.widthFt / 2 - a) < 0.02 && Math.abs(o.offsetFt + o.widthFt / 2 - b) < 0.02);
+    const gapY = Math.min(1.3, lh * 0.25);
+    const gaps: Array<[number, number]> = [];
+    for (let i = 0; i < stops.length - 1; i++) {
+      const a = stops[i], b = stops[i + 1];
+      if (b - a > 0.05 && !isOpening(a, b)) gaps.push([a, b]);
+    }
+    return (
+      <group key={key}>
+        {sorted.length > 0 && gaps.map(([a, b], i) => (
+          <Measure key={`g${i}`} a={along(a, gapY)} b={along(b, gapY)} mid={along((a + b) / 2, gapY)} label={ftIn(b - a)} />
+        ))}
+        {sorted.map((o) => {
+          const top = o.sillFt + o.heightFt;
+          const chipY = Math.min(capAt(o.offsetFt) - 0.3, top + 0.6);
+          const Lft = o.offsetFt - o.widthFt / 2;
+          return (
+            <group key={o.id}>
+              <Chip3D at={along(o.offsetFt, chipY)} label={ltSizeLabel(o)} />
+              {o.sillFt > 0.1 && (
+                <Measure a={along(Lft - 0.2, 0)} b={along(Lft - 0.2, o.sillFt)} mid={along(Lft - 0.2, o.sillFt / 2)} label={`sill ${ftIn(o.sillFt)}`} vertical />
+              )}
+            </group>
+          );
+        })}
+      </group>
+    );
+  }
+  // local wall height at an across position (low at the outer edge, high at the building)
+  const endHeightAt = (acrossFromMin: number) => {
+    const a = minA + acrossFromMin;
+    return lh + (hh - lh) * (W > 0 ? Math.abs(a - outA) / W : 0);
+  };
+  const outerOps = lt.openings.filter((o) => o.wall === 'outer');
+  const frontOps = lt.openings.filter((o) => o.wall === 'front');
+  const backOps = lt.openings.filter((o) => o.wall === 'back');
+
+  // Behind the building (none of its walls face the camera) → show nothing; the
+  // labels draw on top of everything and would float through the main walls.
+  if (!seeFront && !seeBack && !seeOuter) return null;
+  return (
+    <group>
+      {/* End facing the camera: low leg, high side, width, pitch */}
+      <Measure a={P(outA + dirA * OFF, rEnd, 0)} b={P(outA + dirA * OFF, rEnd, lh)} mid={P(outA + dirA * OFF, rEnd, lh * 0.55)} label={`${ftIn(lh)} low leg`} vertical />
+      <Measure a={P(inA + dirA * 1.2, rEnd - endOut * 0.6 + endOut * 1.4, 0)} b={P(inA + dirA * 1.2, rEnd - endOut * 0.6 + endOut * 1.4, hh)} mid={P(inA + dirA * 1.2, rEnd - endOut * 0.6 + endOut * 1.4, hh * 0.62)} label={`${ftIn(hh)} high side`} vertical />
+      <Measure a={P(inA, rEnd, 0.3)} b={P(outA, rEnd, 0.3)} mid={P((inA + outA) / 2, rEnd, 0.3)} label={`${ftIn(W)} lean-to W`} />
+      {pitch > 0 && <Chip3D at={P((inA + outA) / 2, rEnd, (lh + hh) / 2 + 0.55)} label={`${pitch}:12 pitch`} />}
+
+      {/* Outer side facing the camera: length, roof edge, where it sits on the building */}
+      {seeOuter && (
+        <>
+          <Measure a={P(outA + dirA * OFF, s0, 0.3)} b={P(outA + dirA * OFF, s1, 0.3)} mid={P(outA + dirA * OFF, (s0 + s1) / 2, 0.3)} label={`${ftIn(L)} lean-to L`} />
+          <Measure a={P(outA + dirA * (OFF + oh), s0 - oh, lh + 0.45)} b={P(outA + dirA * (OFF + oh), s1 + oh, lh + 0.45)} mid={P(outA + dirA * (OFF + oh), (s0 + s1) / 2, lh + 0.45)} label={`${ftIn(L + 2 * oh)} roof`} />
+          {s0 - runMin > 0.05 && (
+            <Measure a={P(outA + dirA * OFF, runMin, 0.3)} b={P(outA + dirA * OFF, s0, 0.3)} mid={P(outA + dirA * OFF, (runMin + s0) / 2, 0.3)} label={`${ftIn(s0 - runMin)} no lean-to`} />
+          )}
+          {runMax - s1 > 0.05 && (
+            <Measure a={P(outA + dirA * OFF, s1, 0.3)} b={P(outA + dirA * OFF, runMax, 0.3)} mid={P(outA + dirA * OFF, (s1 + runMax) / 2, 0.3)} label={`${ftIn(runMax - s1)} no lean-to`} />
+          )}
+          {wallChain('outer', outerOps, L, (t, y) => P(outA + dirA * 0.22, s0 + t, y), () => lh)}
+        </>
+      )}
+      {seeFront && wallChain('front', frontOps, W, (t, y) => P(minA + t, s0 - 0.22, y), endHeightAt)}
+      {seeBack && wallChain('back', backOps, W, (t, y) => P(minA + t, s1 + 0.22, y), endHeightAt)}
     </group>
   );
 }

@@ -180,3 +180,39 @@ describe('storage section — BuildHost reads it from the PROGRAM (ltStorage, th
     expect(readLeanToStorage({}, el)).toBeUndefined();
   });
 });
+
+describe('storage section — CCI frame-step lengths land on a lean-to bent (Sensei 9/30/26: OC × k)', () => {
+  // The program offers CCI storage lengths OC × k (k = 1 .. floor(L/OC) − 1), OC = the
+  // main's frame spacing. On a full-length eave lean-to the partition then sits on an
+  // existing bent: no extra members, same post guides as without storage.
+  const cases: Array<{ width: number; length: number; oc: number }> = [
+    { width: 30, length: 40, oc: 4 },
+    { width: 24, length: 40, oc: 5 },
+    { width: 24, length: 40, oc: 4 },
+    { width: 30, length: 50, oc: 4 },
+  ];
+  for (const c of cases) {
+    it(`${c.width}x${c.length} at ${c.oc}' OC: every offered length, front and back`, () => {
+      const over = { width: c.width, length: c.length, trussSpacingFt: c.oc };
+      const plain = build(leanTo({ lengthFt: c.length }), over);
+      for (let k = 1; k <= Math.floor(c.length / c.oc) - 1; k++) {
+        for (const end of ['front', 'back'] as const) {
+          const s = build(leanTo({ lengthFt: c.length, storage: { end, lengthFt: c.oc * k } }), over);
+          const st = s.leanTos[0].storage as LeanToStorageSpan;
+          expect(st.lengthFt).toBe(c.oc * k);
+          const at = end === 'front' ? c.oc * k : c.length - c.oc * k; // partition, ft from the lean-to front
+          expect(s.leanTos[0].trussOffsets).toContain(at);
+          if (end === 'front' || c.length % c.oc === 0) {
+            // On a main frame line: the partition uses that bent.
+            expect(s.leanTos[0].trussOffsets).toEqual(plain.leanTos[0].trussOffsets);
+            expect(s.members.length).toBe(plain.members.length);
+          } else {
+            // Main length not a multiple of OC (short last bay): frames run from the FRONT, so a
+            // BACK storage line gets its own partition bent (unchanged engine rule).
+            expect(s.members.length).toBeGreaterThan(plain.members.length);
+          }
+        }
+      }
+    });
+  }
+});

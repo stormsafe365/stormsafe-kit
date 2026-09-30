@@ -59,6 +59,29 @@ describe('price lock (quote-builder.html)', () => {
     }
   });
 
+  it('revision baseline: saved totals on sold orders, on unsold quotes only while the lock holds', () => {
+    const PL = load() as unknown as { on: boolean; st: unknown; rvBaseline: () => unknown };
+    const saved = { total: 44448, deposit: 5222, balance: 39226 };
+    expect(PL.rvBaseline()).toBeNull(); // nothing reopened
+    PL.st = { requested: true, saved, sold: false, ok: true, choice: 'keep' }; PL.on = true;
+    expect(PL.rvBaseline()).toEqual(saved);
+    PL.st = { requested: true, saved, sold: false, ok: true, choice: 'today' }; PL.on = false;
+    expect(PL.rvBaseline()).toBeNull(); // unsold + "Update to today's pricing": a normal contract, not REVISED
+    PL.st = { requested: true, saved, sold: false, ok: false, choice: 'keep' }; PL.on = true;
+    expect(PL.rvBaseline()).toBeNull(); // unsold, lock not holding
+    PL.st = { requested: true, saved, sold: true, ok: false, choice: 'today' }; PL.on = false;
+    expect(PL.rvBaseline()).toEqual(saved); // sold: the deposit was paid on the saved price
+  });
+
+  it('free-upgrade thresholds ride on the held price in all four pricing paths; Reset drops the lock', () => {
+    expect(/function gThrAdj\(\)\{ return \(window\.PriceLock&&window\.PriceLock\.on\)\?gHold\(\):0; \}/.test(html)).toBe(true);
+    expect((html.match(/\+gThrAdj\(\)/g) || []).length).toBe(4); // rc, printQuote, printContract, textQuote
+    expect(/var thrPre=preSheetSub\+gThrAdj\(\);/.test(html)).toBe(true);
+    expect(/\? thrPre\*0\.10 : 0;/.test(html)).toBe(true);
+    expect(/function resetAll\(\)\{[\s\S]{0,400}?if\(window\.PriceLock\) PriceLock\.reset\(\);\s*window\._rvOrig=null;/.test(html)).toBe(true);
+    expect(/preSheetSub\*0\.10/.test(html.slice(html.indexOf('function textQuote(')))).toBe(false); // the old ReferenceError
+  });
+
   it('refuses totals it cannot reproduce (e.g. a deposit clamped at $0)', () => {
     const PL = load();
     const p = { disc: 0, tax: 7, agx: false, depPct: 17, adType: 'dollar', adVal: 5000 };

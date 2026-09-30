@@ -7035,6 +7035,11 @@ function rcManual(){
   var addl=_ip('ip-addl');
   for(var ci=1; ci<=3; ci++){ addl+=_ip('ip-cust'+ci+'-a'); }
   var sub=base+leg+framing+pitch+walls+rud+wtd+win+sp+lt+addl;
+  // Manufacturer Adjustment is part of the pre-discount subtotal in INPUT mode
+  // too, exactly like the engine path; the screen now bills what the PDF and
+  // contract always did (owner 9/30/26).
+  var adjP=gAdj();
+  sub+=adjP;
   function setT(id,v){ var e=G(id); if(e) e.textContent = v ? fC(v) : '\u2014'; }
   setT('pb',base); setT('plg',leg); setT('pfr',framing); setT('ppch',pitch);
   setT('pwl',walls); setT('prd',rud); setT('pwd',wtd); setT('pwn',win);
@@ -7044,27 +7049,18 @@ function rcManual(){
   var spRow=G('sp-summary-row'); if(spRow) spRow.style.display=sp?'':'none';
   var ohRow=G('overhang-summary-row'); if(ohRow) ohRow.style.display='none';
   var connBox=G('conn-fee-box'); if(connBox) connBox.style.display='none';
-  // Discount / tax / deposit — identical math to rc()
-  var disc=parseFloat(G('disc').value)||0;
-  var tax=parseFloat(G('tax').value)||0;
-  var agEx=(G('agx')&&G('agx').value==='yes');
-  var da=Math.round(sub*(disc/100));
-  var ad=sub-da;
-  var ta=agEx?0:Math.round(ad*(tax/100));
-  var tot=ad+ta;
-  var grossDep=Math.round(ad*((window._depPct||17)/100));
-  var addDiscVal=parseFloat(G('add-disc')?G('add-disc').value:0)||0;
-  var addDiscType=G('add-disc-type')?G('add-disc-type').value:'dollar';
-  var addDiscAmount=addDiscType==='pct'?Math.round(grossDep*(addDiscVal/100)):addDiscVal;
-  var dep=Math.max(0, grossDep-addDiscAmount);
-  var bal=tot-grossDep;
-  var adjTot=tot-addDiscAmount;
-  // Same published snapshot as rc() (textQuote reads it). No engine sheeting in
-  // INPUT mode: the 26GA wording follows the rep's sheeting select.
-  window._qTotals={mode:'input', sub:sub, disc:disc, da:da, ad:ad, tax:tax, ta:ta, tot:tot, agEx:agEx,
-    grossDep:grossDep, addDiscVal:addDiscVal, addDiscType:addDiscType, addDiscAmount:addDiscAmount,
-    dep:dep, bal:bal, adjTot:adjTot, preSheetSub:null, sheetFree:false, sheetUpgrade:0,
-    sheet26:((G('btype')&&G('btype').value==='widespan')||(G('sheeting-upgrade')&&G('sheeting-upgrade').value==='upgrade'))};
+  qAdjRow(adjP);
+  // Discount / tax / deposit — the SAME money pass as rc() (qMoney)
+  var M=qMoney(sub);
+  var disc=M.disc, tax=M.tax, agEx=M.agEx, da=M.da, ad=M.ad, ta=M.ta, tot=M.tot;
+  var dep=M.dep, bal=M.bal, adjTot=M.adjTot;
+  var pl=qPlan(sub);
+  // Same published snapshot as rc() (textQuote / printQuote / printContract read
+  // it). No engine sheeting in INPUT mode: the 26GA wording follows the rep's
+  // sheeting select. Line amounts: the manual rows (manualLineItems) + adjP.
+  window._qTotals=Object.assign({mode:'input', preSheetSub:null, sheetFree:false, sheetUpgrade:0,
+    sheet26:((G('btype')&&G('btype').value==='widespan')||(G('sheeting-upgrade')&&G('sheeting-upgrade').value==='upgrade')),
+    adjP:adjP, sidePanelP:sp}, M, pl);
   G('dlbl').textContent='Discount ('+disc+'%)';
   G('tlbl').textContent=agEx?'Sales Tax (EXEMPT)':'Sales Tax ('+tax+'%)';
   G('pds').textContent=da?('-'+fC(da)):'\u2014';
@@ -7080,6 +7076,8 @@ function rcManual(){
     else { pbalSplitEl.style.display='none'; }
   }
   var mobTot=G('mob-total'); if(mobTot) mobTot.textContent=adjTot?('\u2014 '+fD(adjTot)):'';
+  // Plan note from THIS subtotal (it used to keep the last engine pass's figure).
+  qPlanNote(pl);
   if(typeof sy==='function') sy();
   if(G('building-panel') && G('building-panel').style.display==='block' && typeof renderBuildingViews==='function') renderBuildingViews();
 }
@@ -7103,6 +7101,109 @@ function gAdj(){
 function gAdjLabel(){
   var n=(G('adj-note')&&G('adj-note').value?G('adj-note').value:'').replace(/^\s+|\s+$/g,'').replace(/[<>]/g,'');
   return 'Manufacturer Adjustment'+(n?' — '+n:'');
+}
+// ══ ONE SOURCE OF TRUTH FOR QUOTE TOTALS (owner 9/30/26) ═══════════════════
+// The screen (rc / rcManual), the text quote, the PDF quote and the contract
+// all price from the SAME pass: rc() publishes window._qTotals (every priced
+// line, the 26GA / fastener decisions, subtotal, discount, tax, deposit,
+// additional discount, balance and plans fee) and textQuote / printQuote /
+// printContract call rc() first and read it — they carry no price math of
+// their own, so they can never disagree with the screen again.
+//
+// Discount, tax, deposit, additional discount and balance from a pre-discount
+// subtotal. Used by rc(), rcManual() and the contract's honored-subtotal path.
+function qMoney(sub){
+  var disc=parseFloat(G('disc').value)||0;
+  var tax=parseFloat(G('tax').value)||0;
+  var agEx=(G('agx')&&G('agx').value==='yes');
+  var da=Math.round(sub*(disc/100));
+  var ad=sub-da;
+  var ta=agEx?0:Math.round(ad*(tax/100));
+  var tot=ad+ta;
+  var grossDep=Math.round(ad*((window._depPct||17)/100));
+  var addDiscVal=parseFloat(G('add-disc')?G('add-disc').value:0)||0;
+  var addDiscType=G('add-disc-type')?G('add-disc-type').value:'dollar';
+  var addDiscAmount=addDiscType==='pct'?Math.round(grossDep*(addDiscVal/100)):addDiscVal;
+  var dep=Math.max(0, grossDep - addDiscAmount);
+  // Balance always anchored to the UNDISCOUNTED deposit so it never increases when a discount is applied.
+  // Customer pays: dep + bal = (grossDep - addDiscAmount) + (tot - grossDep) = tot - addDiscAmount
+  var bal=tot-grossDep;
+  return {sub:sub, disc:disc, da:da, ad:ad, tax:tax, ta:ta, tot:tot, agEx:agEx, grossDep:grossDep,
+    addDiscVal:addDiscVal, addDiscType:addDiscType, addDiscAmount:addDiscAmount,
+    dep:dep, bal:bal, adjTot:tot-addDiscAmount}; // adjTot = the on-screen Grand Total (#ptot)
+}
+// Engineered-plans fee for a subtotal — the one formula the plan note, the text
+// quote, the PDF and the contract all show.
+function qPlan(sub){
+  if(!G('perm')||G('perm').value!=='yes') return {planType:'', planCost:0};
+  var plansSel=G('plans-sel');
+  var planType=plansSel?plansSel.value:MFR().defaultPlan;
+  var pt=G('pt')?G('pt').value:'';
+  return {planType:planType, planCost:MFR().planCostFn(planType,sub,pt==='com'||pt==='rc2r')};
+}
+// On-screen plan note (#plnote) for a qPlan() result — engine AND INPUT mode.
+function qPlanNote(pl){
+  var pn=G('plnote'); if(!pn) return;
+  var perm=G('perm').value;
+  if(perm==='yes'){
+    if(pl.planType==='No Permit Required'){
+      pn.textContent='No permit required for this county.';
+      pn.className='anote';
+    } else {
+      var planDisplay2=MFR().planDisplayFn(pl.planType,pl.planCost); pn.textContent='Engineering Plans: '+planDisplay2+' | Invoiced separately after deposit. Not included in total above.';
+      pn.className='pnote';
+    }
+  } else if(perm==='no'||perm==='verify'){
+    pn.textContent= perm==='verify' ? 'Customer will check if plans are required.' : 'No engineered plans required for this order.';
+    pn.className='anote';
+  } else {
+    pn.textContent='';
+    pn.className='';
+  }
+}
+// Manufacturer Adjustment: checkbox + fields reflect the persisted state
+// (restoreQuoteData sets the hidden input) and the Section-13 summary row
+// shows the amount — engine AND INPUT mode.
+function qAdjRow(adjP){
+  var _adjH=G('adj-on-h'), _adjCb=G('adj-on'), _adjF=G('adj-fields');
+  var _adjOn=!!(_adjH&&_adjH.value==='yes');
+  if(_adjCb&&_adjCb.checked!==_adjOn)_adjCb.checked=_adjOn;
+  if(_adjF)_adjF.classList.toggle('hidden',!_adjOn);
+  var adjRowEl=G('adj-summary-row'); var padjEl=G('padj'); var padjK=G('padj-k');
+  if(adjRowEl) adjRowEl.style.display=adjP?'':'none';
+  if(padjEl) padjEl.textContent=adjP?(adjP<0?'−'+fC(-adjP):fC(adjP)):'—';
+  if(padjK) padjK.textContent=gAdjLabel();
+}
+// Wording shared by the PDF, the contract and the text quote.
+function overhangLabel(v){
+  return v==='eaves'?'1\' Overhang — Eaves Only':(v==='gables'?'1\' Overhang — Gables Only':'1\' Overhang — Eaves + Gables');
+}
+function sidePanelDesc(){
+  var spBt=G('btype').value;
+  var spDesc='Side Panels';
+  var spCfgD=getSidePanelConfig();
+  var spLbl=function(v){ for(var i=0;i<SIDE_CLOSURE_OPTS.length;i++){ if(SIDE_CLOSURE_OPTS[i].v===v) return SIDE_CLOSURE_OPTS[i].t; } return v; };
+  var spParts=[];
+  if(spCfgD.left.val && spCfgD.left.val!=='open')   spParts.push('Left: '+spLbl(spCfgD.left.val));
+  if(spCfgD.right.val && spCfgD.right.val!=='open') spParts.push('Right: '+spLbl(spCfgD.right.val));
+  if(spParts.length) spDesc='Side Panels - '+spParts.join(', ')+(spBt==='gch'?' (open section)':'');
+  return spDesc;
+}
+// Free-standing lean-to walls (priced by fsWalls(), not the Section-4 wall rows).
+function fsWallsDesc(){
+  var m=G('fs-walls-mode')?G('fs-walls-mode').value:'open';
+  var vert=(G('fs-orient')&&G('fs-orient').value==='vertical')?' (Vertical)':'';
+  if(m==='enclosed') return 'Free-Standing Walls — Fully Enclosed'+vert;
+  var lbl=function(id){ var e=G(id); return (e&&e.selectedIndex>=0)?e.options[e.selectedIndex].text.replace(/\s*\(\+\$[\d,]+\)/,''):'—'; };
+  return 'Free-Standing Walls — Front: '+lbl('fs-wf')+', Back: '+lbl('fs-wb')+', Tall Side: '+lbl('fs-wt')+', Low Side: '+lbl('fs-wl2')+vert;
+}
+// Revision state (window._rvOrig "as ordered" snapshot / _rvForce) belongs to
+// ONE reopened quote. Cleared on every reset and every quote load so a later
+// quote's contract can never show the previous order's "Original Deposit — Paid".
+function _rvClear(){
+  if(window._rvSnapT){ clearTimeout(window._rvSnapT); window._rvSnapT=null; }
+  window._rvOrig=null; window._rvForce=false;
+  document.querySelectorAll('[data-rv-orig]').forEach(function(el){ delete el.dataset.rvOrig; });
 }
 // Carport: a Wall Options eave-row choice IS a Side Panels choice — copy it
 // into the priced sp-left/sp-right select before repricing (values match;
@@ -7400,26 +7501,25 @@ function rc(){
   var perm=G('perm').value, co=G('county').textContent, pt=G('pt').value;
 
   var fastenerP=(G('fastener-add')&&G('fastener-add').checked&&!fastenerFree)?150:0;
-  var sub=base+leg+framingUpgrade+ocUpgrade+pitchUpgrade+walls+vertWallUpg+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+aewP+leanToTotal+connFeeTotal+addCompTotal+insulTotal+fastenerP+overhangP+sidePanelP+gAnchors()+adjP;
-  var da=Math.round(sub*(disc/100));
-  var ad=sub-da;
-  var ta=agEx?0:Math.round(ad*(tax/100));
-  var tot=ad+ta;
-  var grossDep=Math.round(ad*((window._depPct||17)/100));
-  var addDiscVal=parseFloat(G('add-disc')?G('add-disc').value:0)||0;
-  var addDiscType=G('add-disc-type')?G('add-disc-type').value:'dollar';
-  var addDiscAmount=addDiscType==='pct'?Math.round(grossDep*(addDiscVal/100)):addDiscVal;
-  var dep=Math.max(0, grossDep - addDiscAmount);
-  // Balance always anchored to the UNDISCOUNTED deposit so it never increases when a discount is applied.
-  // Customer pays: dep + bal = (grossDep - addDiscAmount) + (tot - grossDep) = tot - addDiscAmount
-  var bal=tot-grossDep;
-  // Publish the totals this pass JUST computed — the single source of truth for
-  // textQuote() (it used to re-do the price math and drifted). Read-only
-  // snapshot: nothing here reprices. adjTot = the on-screen Grand Total (#ptot).
-  window._qTotals={mode:'engine', sub:sub, disc:disc, da:da, ad:ad, tax:tax, ta:ta, tot:tot, agEx:agEx,
-    grossDep:grossDep, addDiscVal:addDiscVal, addDiscType:addDiscType, addDiscAmount:addDiscAmount,
-    dep:dep, bal:bal, adjTot:tot-addDiscAmount, preSheetSub:preSheetSub, sheetFree:sheetFree,
-    sheetUpgrade:sheetUpgrade, sheet26:(bt3==='widespan'||sheetFree||sheetUpgrade>0)};
+  var anchorP=gAnchors(), anchorLegs=gAnchorLegs();
+  var sub=base+leg+framingUpgrade+ocUpgrade+pitchUpgrade+walls+vertWallUpg+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+aewP+leanToTotal+connFeeTotal+addCompTotal+insulTotal+fastenerP+overhangP+sidePanelP+anchorP+adjP;
+  var M=qMoney(sub);
+  var da=M.da, ad=M.ad, ta=M.ta, tot=M.tot, grossDep=M.grossDep;
+  var addDiscVal=M.addDiscVal, addDiscType=M.addDiscType, addDiscAmount=M.addDiscAmount;
+  var dep=M.dep, bal=M.bal;
+  var pl=qPlan(sub);
+  // Publish what this pass JUST priced — the single source of truth for the
+  // text quote, the PDF quote and the contract (they call rc() and read this;
+  // none of them re-does the price math). Read-only snapshot: nothing here
+  // reprices. Every priced line is included so the documents itemize exactly
+  // what the Building Amount charges.
+  window._qTotals=Object.assign({mode:'engine',
+    base:base, leg:leg, walls:walls, vertWallUpg:vertWallUpg, rud:rud, wtd:wtd, win:win, sf:sf, lapP:lapP,
+    framingUpgrade:framingUpgrade, ocUpgrade:ocUpgrade, cb12x4:(_cbR!=null), pitchUpgrade:pitchUpgrade, pitchSelVal:pitchSelVal,
+    wainP:wainP, adjP:adjP, aewP:aewP, leanToTotal:leanToTotal, connFeeTotal:connFeeTotal, addCompTotal:addCompTotal,
+    insulTotal:insulTotal, overhangP:overhangP, sidePanelP:sidePanelP, anchors:anchorP, anchorLegs:anchorLegs,
+    preSheetSub:preSheetSub, sheetFree:sheetFree, sheetUpgrade:sheetUpgrade, fastenerFree:fastenerFree, fastenerP:fastenerP,
+    sheet26:(bt3==='widespan'||sheetFree||sheetUpgrade>0)}, M, pl);
 
   G('dlbl').textContent='Discount ('+disc+'%)';
   // Deposit label and SS discount note
@@ -7483,17 +7583,8 @@ function rc(){
   if(pspEl) pspEl.textContent=sidePanelP?fC(sidePanelP):'—';
   // Update side panel note
   updateSidePanelNote();
-  // Manufacturer Adjustment: checkbox + fields reflect the persisted state
-  // (restoreQuoteData sets the hidden input; this keeps the UI in step).
-  var _adjH=G('adj-on-h'), _adjCb=G('adj-on'), _adjF=G('adj-fields');
-  var _adjOn=!!(_adjH&&_adjH.value==='yes');
-  if(_adjCb&&_adjCb.checked!==_adjOn)_adjCb.checked=_adjOn;
-  if(_adjF)_adjF.classList.toggle('hidden',!_adjOn);
-  // Manufacturer Adjustment summary row (Section 13)
-  var adjRowEl=G('adj-summary-row'); var padjEl=G('padj'); var padjK=G('padj-k');
-  if(adjRowEl) adjRowEl.style.display=adjP?'':'none';
-  if(padjEl) padjEl.textContent=adjP?(adjP<0?'−'+fC(-adjP):fC(adjP)):'—';
-  if(padjK) padjK.textContent=gAdjLabel();
+  // Manufacturer Adjustment: checkbox/fields + summary row (Section 13)
+  qAdjRow(adjP);
   // Insulation show/hide detail
   var insulSel2=G('insul-sel');
   var insulDetail=G('insul-detail');
@@ -7547,26 +7638,8 @@ function rc(){
     }
   }
 
-  // Plans note
-  var pn=G('plnote');
-  if(perm==='yes'){
-    var plansSel=G('plans-sel');
-    var planType=plansSel?plansSel.value:MFR().defaultPlan;
-    var pp=MFR().planCostFn(planType,sub,pt==='com'||pt==='rc2r');
-    if(planType==='No Permit Required'){
-      pn.textContent='No permit required for this county.';
-      pn.className='anote';
-    } else {
-      var planDisplay2=MFR().planDisplayFn(planType,pp); pn.textContent='Engineering Plans: '+planDisplay2+' | Invoiced separately after deposit. Not included in total above.';
-      pn.className='pnote';
-    }
-  } else if(perm==='no'||perm==='verify'){
-    pn.textContent= perm==='verify' ? 'Customer will check if plans are required.' : 'No engineered plans required for this order.';
-    pn.className='anote';
-  } else {
-    pn.textContent='';
-    pn.className='';
-  }
+  // Plans note (same fee the text quote, PDF and contract print)
+  qPlanNote(pl);
 
   // Wainscot: keep the Section-11 checkbox in sync with the (hidden) wain value
   // (covers page load / restore), then show/hide the wainscot color dropdown.
@@ -8585,6 +8658,11 @@ function collectQuoteData(){
   // Active manufacturer (CA / CCI) — drives pricing tables + every per-mfr
   // dropdown. Was never saved, so reloads reverted to the CA default.
   data.mfr = ACTIVE_MFR;
+  // INPUT (manual pricing) quotes: remember the mode and every manual price so
+  // a reopened INPUT quote comes back in INPUT mode with its saved numbers (it
+  // used to reopen repriced by the engine).
+  data.inputMode = !!INPUT_MODE;
+  document.querySelectorAll('input[id^="ip-"]').forEach(function(el){ data.fields[el.id]=el.value; });
 
   // Also capture span/div display fields
   ['city','county','state','pitch','cert-req','sc'].forEach(function(id){
@@ -9177,6 +9255,18 @@ function restoreQuoteData(data){
   if(!data||!data.fields) return;
   var f = data.fields;
 
+  // A load starts a NEW quote context: drop any revision snapshot of the quote
+  // that was open before (and one still pending from an earlier load), so this
+  // quote's contract can never carry the previous order's "Original Deposit —
+  // Paid". This quote's own as-ordered snapshot is taken again below.
+  _rvClear();
+  // Pricing mode comes from the saved quote: leave INPUT mode first (it used to
+  // survive a load and price an engine quote from stale manual numbers) and
+  // clear the manual prices; a saved INPUT quote re-enters it at the end.
+  var _wasInput=INPUT_MODE;
+  if(_wasInput) exitInputMode();
+  document.querySelectorAll('input[id^="ip-"]').forEach(function(el){ el.value=''; });
+
   // Step 0: restore manufacturer FIRST. switchMfr() rebuilds the pricing tables
   // and every per-manufacturer dropdown (walk-door/window types, widths, colors,
   // hi-impact options). Doing this before the fields/components below ensures
@@ -9184,7 +9274,10 @@ function restoreQuoteData(data){
   // quote reloads as CA and e.g. a hi-impact walk door silently reverts.
   if(data.mfr && MANUFACTURERS[data.mfr]){
     var mfrSel=G('mfr-sel'); if(mfrSel) mfrSel.value=data.mfr;
-    if(data.mfr!==ACTIVE_MFR) switchMfr(data.mfr);
+    if(data.mfr!==ACTIVE_MFR || _wasInput) switchMfr(data.mfr);
+  } else if(_wasInput){
+    var mfrSel0=G('mfr-sel'); if(mfrSel0) mfrSel0.value=ACTIVE_MFR;
+    switchMfr(ACTIVE_MFR); // badge + selector back to the engine manufacturer
   }
 
   // Step 1: restore building type, then width, then length in correct sequence
@@ -9230,7 +9323,9 @@ function restoreQuoteData(data){
   var fcb=G('fastener-add'); if(fcb) fcb.checked=!!f.fastenerAdd;
 
   // Step 5: Clear and restore roll-up doors
-  var rdl=G('rdl'); if(rdl) rdl.innerHTML='';
+  // (#rl is the roll-up list; the old '#rdl' id never existed, so loading a
+  // quote over another one kept the previous quote's roll-up doors and priced them.)
+  var rdl=G('rl'); if(rdl) rdl.innerHTML='';
   (data.doors||[]).forEach(function(d){
     aRUD();
     var entries=document.querySelectorAll('.re.entry');
@@ -9401,11 +9496,16 @@ function restoreQuoteData(data){
   try{ if(typeof _prevOcWidth!=='undefined') _prevOcWidth=parseInt(G('bw').value)||0; doBld(); }catch(e){}
   rc();
   var _suE=G('sheeting-upgrade'); if(_suE) delete _suE.dataset.restored;
+  // A quote saved in INPUT (manual pricing) mode comes back in INPUT mode with
+  // its saved manual prices (restored in Step 2) — not repriced by the engine.
+  if(data.inputMode){ var _msI=G('mfr-sel'); if(_msI) _msI.value='INPUT'; enterInputMode(); }
   // Snapshot the AS-ORDERED totals for the Revision Form: after the restore has
   // fully repriced, remember total + deposit. Later edits (adding a door, etc.)
   // are then diffed against this by printRevisionForm - discount and tax ride
   // along automatically because both numbers come from the same engine.
-  setTimeout(function(){
+  // (Timer kept so a reset / another load before it fires can cancel it.)
+  window._rvSnapT=setTimeout(function(){
+    window._rvSnapT=null;
     try{
       window._rvOrig={ tot:_rvNum(G('ptot').textContent), dep:_rvNum(G('pdep').textContent), dims:(G('bw').value+'x'+G('bl').value+'x'+G('bh').value) };
       document.querySelectorAll('.re,.we,.ne,.ace,.lte').forEach(function(el){ el.dataset.rvOrig='1'; });
@@ -9435,6 +9535,13 @@ async function printQuote(){
     } catch(e){ console.warn('3D capture failed, falling back to 2D elevations', e); }
   }
 
+  // ONE source of truth: re-run the SAME pricing pass the screen shows (rc()
+  // hands off to rcManual() in INPUT mode) and itemize + total from what it
+  // just published. No private copy of the price math here any more.
+  rc();
+  var T=window._qTotals;
+  if(!T){ try{ pwin.close(); }catch(e){} toast('Could not price this build — check the form and try again','err'); return; }
+
   var cn=G('cn').value||'—', cp=G('cp').value||'—', ce=G('ce').value||'—';
   var city=G('city').textContent, county=G('county').textContent;
   var location=(city!=='—')?(city+', '+county+', FL'):'—';
@@ -9462,7 +9569,7 @@ async function printQuote(){
 
   var fuValP=G('framing-upgrade')?G('framing-upgrade').value:'14';
   var framingGA=fuValP==='12'?'12 Gauge':'14 Gauge';
-  var sheetFreeGA=(preSheetP>=10000&&bt2!=='widespan');
+  var sheetFreeGA=!!T.sheetFree; // the screen's free-26GA decision
   var sheetGA=bt2==='widespan'?'26-Gauge':(G('sheeting-upgrade').value==='upgrade'?(sheetFreeGA?'26-Gauge (Included)':'26-Gauge'):'29GA / 26GA roof');
 
   // Plans
@@ -9477,86 +9584,47 @@ async function printQuote(){
   var needsLift=(parseInt(h)||6)>14||bt2==='widespan';
   document.querySelectorAll('.rlift').forEach(function(el){if(el.style.display!=='none') needsLift=true;});
 
-  // ── PRICING ──
-  var base=gBase(), leg=gLeg(), walls=gWalls();
-  var vertWallUpgP=gVertUpgrade();
-  var rd=gRUD(), wd=gWTD(), wn=gWIN();
-  var rud=rd.rud, wtd=wd.wtd, win=wn.win, sf=rd.sf+wd.sf+wn.sf;
+  // ── PRICING ── every amount is the one the screen just billed (T = rc()'s
+  // published pass): the priced lines, the 26GA free/upgrade decision and
+  // amount, the fastener, the subtotal (incl. the Manufacturer Adjustment),
+  // discount, tax, deposit, additional discount, balance and the plans fee.
+  var isInputQ=(T.mode==='input');
+  var base=T.base, leg=T.leg, walls=T.walls;
+  var vertWallUpgP=T.vertWallUpg;
+  var rud=T.rud, wtd=T.wtd, win=T.win, sf=T.sf;
   var lv=parseInt(l)||0;
-  var lapP=G('lap').value==='yes'?Math.round(base*0.10):0;
+  var lapP=T.lapP;
   var bt3p=bt2;
-  var fuPrint=G('framing-upgrade')?G('framing-upgrade').value:'14';
-  var framingUpgP=0;
-  if(fuPrint==='12'){
-    if(bt3p==='widespan'){
-      var GA12CP=[20,25,30,35,40,44,48,52],GA12VP=[360,480,600,720,840,1560,1680,1800];
-      var gcip=0; for(var gip=0;gip<GA12CP.length;gip++){if(GA12CP[gip]<=lv)gcip=gip;else break;}
-      framingUpgP=GA12VP[gcip];
-    } else {
-      var GA12SP=[20,25,30,35,40];
-      var wPQ=parseInt(G('bw').value)||0;
-      var GA12SPV=wPQ<=24?[210,240,270,300,330]:[360,480,600,720,840];
-      var gcisp=0; for(var gisp=0;gisp<GA12SP.length;gisp++){if(GA12SP[gisp]<=lv)gcisp=gisp;else break;}
-      if(ACTIVE_MFR==='CCI' && wPQ>24){framingUpgP=cci12GA(lv);}
-      else if(lv>40){var ga12rp=(GA12SPV[4]-GA12SPV[3])/5;framingUpgP=(ACTIVE_MFR==='CCI')?cciUnitSum(lv,GA12SPV):Math.round(GA12SPV[4]+ga12rp*(lv-40));}
-      else{framingUpgP=GA12SPV[gcisp];}
-    }
-  }
+  var framingUpgP=T.framingUpgrade;
   var wallsVert=G('ws').value==='Vertical';
-  // 4' OC spacing upgrade for PDF (≤24' wide only)
   var wPrint=parseInt(G('bw').value)||0;
-  var ocSpacingPrint=G('oc-spacing')?G('oc-spacing').value:'5oc';
-  var ocUpgradeP=0;
-  if(ACTIVE_MFR!=='CA' && ocSpacingPrint==='4oc' && wPrint<=24 && bt3p!=='widespan'){
-    var OC4SP=[20,25,30,35,40], OC4VP=[300,325,350,375,400];
-    var ocip=0; for(var oip=0;oip<OC4SP.length;oip++){if(OC4SP[oip]<=lv)ocip=oip;else break;}
-    if(lv>40){ ocUpgradeP=cciUnitSum(lv,OC4VP); }
-    else { ocUpgradeP=OC4VP[ocip]; }
-  }
-  var _cbP=cciCombo12x4((G('framing-upgrade')?G('framing-upgrade').value:'14'), ocSpacingPrint, wPrint, bt3p, lv);
-  window._cb12x4=(_cbP!=null);
-  if(_cbP!=null){ framingUpgP=_cbP; ocUpgradeP=0; }
-  // Pitch upgrade for PDF
-  var pitchSelValP = G('pitch-sel') ? G('pitch-sel').value : 'standard';
-  var pitchUpgradeP = MFR().pitchUpgradeFn(base, wPrint||0, lv||0, pitchSelValP);
-  var wainP=gWainscot();
-  var aewP=gAddEndWall();
-  var leanToPr=gLT(), addCompPr=gAC(), insulPr=gInsul();
+  var ocUpgradeP=T.ocUpgrade;
+  window._cb12x4=!!T.cb12x4;
+  var pitchSelValP=T.pitchSelVal;
+  var pitchUpgradeP=T.pitchUpgrade;
+  var wainP=T.wainP;
+  var aewP=T.aewP;
+  var leanToPr=T.leanToTotal, addCompPr=T.addCompTotal, insulPr=T.insulTotal;
   // Lean-to connection fees — printed as their own rows below AND part of the
-  // Building Amount. (They were missing from the printed subtotal while the
-  // on-screen price included them, so a quote with lean-tos under-billed by
-  // the whole connection fee.)
-  var connFeePr=gConnectionFees();
-  var anchorLegsQ=gAnchorLegs(), anchorPr=gAnchors();
-  // Overhang for PDF
-  var overhangPQ=0;
+  // Building Amount.
+  var connFeePr=T.connFeeTotal;
+  var anchorLegsQ=T.anchorLegs, anchorPr=T.anchors;
   var ohSelP=G('overhang-sel');
-  if(ohSelP && ACTIVE_MFR==='CCI' && ohSelP.value!=='none' && MFR().overhang){
-    var ohBkP=MFR().overhangBucket(wPrint||0);
-    var ohRP=MFR().overhang[ohBkP]||{ends:0,sides:0};
-    if(ohSelP.value==='eaves') overhangPQ=ohRP.sides;
-    else if(ohSelP.value==='gables') overhangPQ=ohRP.ends;
-    else if(ohSelP.value==='both') overhangPQ=ohRP.sides+ohRP.ends;
-  }
-  var sidePanelPQ=gSidePanels();
-  var preSheetP=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+wainP+aewP+leanToPr+addCompPr+insulPr+overhangPQ+sidePanelPQ;
-  var sheetFreeP=(ACTIVE_MFR!=='CA'&&preSheetP>=(window._freeThresh||10000)&&bt3p!=='widespan');
-  var sheetUpgrade=(!sheetFreeP && G('sheeting-upgrade').value==='upgrade' && bt3p!=='widespan') ? preSheetP*0.10 : 0;
-  // Fastener free: any building where full pre-fastener subtotal >= $10k (no widespan exclusion)
-  var subPreFastenerP=preSheetP+sheetUpgrade;
-  var fastenerFreeP=(window._fastenerAlwaysFree||subPreFastenerP>=(window._freeThresh||10000));
-  var disc=parseFloat(G('disc').value)||0;
-  var tax=parseFloat(G('tax').value)||0;
-  var agEx=(G('agx')&&G('agx').value==='yes');
-  var fastenerPQ=(G('fastener-add')&&G('fastener-add').checked&&!fastenerFreeP)?150:0;
-  var sub=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+aewP+leanToPr+connFeePr+addCompPr+insulPr+fastenerPQ+overhangPQ+sidePanelPQ+anchorPr;
-  if(INPUT_MODE) sub=manualSubtotal();
-  var adjPQ=gAdj(); sub+=adjPQ;
+  var overhangPQ=T.overhangP;
+  var sidePanelPQ=T.sidePanelP;
+  var sheetFreeP=T.sheetFree;
+  var sheetUpgrade=T.sheetUpgrade;
+  var fastenerFreeP=T.fastenerFree;
+  var disc=T.disc;
+  var tax=T.tax;
+  var agEx=T.agEx;
+  var fastenerPQ=T.fastenerP;
+  var sub=T.sub; // Building Amount — incl. the Manufacturer Adjustment (engine and INPUT mode)
+  var adjPQ=T.adjP;
 
-  // Build plans HTML now that sub is computed (CCI Site Specific = 5% of retail)
+  // Plans HTML (CCI Site Specific = 5% of retail) — fee from the screen's pass
   if(perm==='yes'){
-    var pt2=G('pt')?G('pt').value:'';
-    planCost=MFR().planCostFn(planType,sub,(pt2==='com'||pt2==='rc2r'));
+    planCost=T.planCost;
     if(planType==='No Permit Required'){
       plansHTML='<div class="qplans">No permit required for this county.</div>';
     } else {
@@ -9572,14 +9640,14 @@ async function printQuote(){
   } else if(perm==='verify'){
     plansHTML='<div class="qplans">Customer will verify if plans are required.</div>';
   }
-  var da=Math.round(sub*(disc/100)), ad=sub-da;
-  var ta=agEx?0:Math.round(ad*(tax/100)), tot=ad+ta;
-  var addDiscPrint=parseFloat(G('add-disc')?G('add-disc').value:0)||0;
-  var addDiscTypePrint=G('add-disc-type')?G('add-disc-type').value:'dollar';
-  var grossDepP=Math.round(ad*((window._depPct||17)/100));
-  var addDiscAmountPrint=addDiscTypePrint==='pct'?Math.round(grossDepP*(addDiscPrint/100)):addDiscPrint;
-  var dep=Math.max(0, grossDepP - addDiscAmountPrint);
-  var bal=tot-grossDepP; // anchored to undiscounted deposit — balance never increases when discount applied
+  var da=T.da, ad=T.ad;
+  var ta=T.ta, tot=T.tot;
+  var addDiscPrint=T.addDiscVal;
+  var addDiscTypePrint=T.addDiscType;
+  var grossDepP=T.grossDep;
+  var addDiscAmountPrint=T.addDiscAmount;
+  var dep=T.dep;
+  var bal=T.bal; // anchored to undiscounted deposit — balance never increases when discount applied
 
   // ── LINE ITEM ROWS ──
   function row(desc,qty,unit,amt){
@@ -9681,6 +9749,8 @@ async function printQuote(){
     rows+=row('FREE-STANDING LEAN-TO (Single Slope) — NOT a carport',null,null,0);
     rows+=row('Tall side '+(parseInt(G('bh').value)||0)+"' / Low side "+fsLowSide()+"' — "+fsPitch()+':12 pitch',null,null,0);
     if(fsCert()>0) rows+=row('170 MPH + 4ft Wind Certification (included in base)',null,null,0);
+    // fslean walls are priced by fsWalls() (in the Building Amount) — itemize them
+    if(walls) rows+=row(fsWallsDesc(),null,null,walls);
   }
   if(lapP) rows+=row('Lap Siding — Horizontal Walls (+10%)',null,null,lapP);
   if(wainP) rows+=row('Wainscot',null,null,wainP);
@@ -9867,20 +9937,11 @@ async function printQuote(){
   });
   // 1' Overhang (CCI only)
   if(overhangPQ>0){
-    var ohLbl=ohSelP.value==='eaves'?'1\' Overhang — Eaves Only':(ohSelP.value==='gables'?'1\' Overhang — Gables Only':'1\' Overhang — Eaves + Gables');
-    rows+=row(ohLbl,null,null,overhangPQ);
+    rows+=row(overhangLabel(ohSelP.value),null,null,overhangPQ);
   }
   // Side Panels
   if(sidePanelPQ>0){
-    var spBt=G('btype').value;
-    var spDesc='Side Panels';
-    var spCfgD=getSidePanelConfig();
-    var spLbl=function(v){ for(var i=0;i<SIDE_CLOSURE_OPTS.length;i++){ if(SIDE_CLOSURE_OPTS[i].v===v) return SIDE_CLOSURE_OPTS[i].t; } return v; };
-    var spParts=[];
-    if(spCfgD.left.val && spCfgD.left.val!=='open')   spParts.push('Left: '+spLbl(spCfgD.left.val));
-    if(spCfgD.right.val && spCfgD.right.val!=='open') spParts.push('Right: '+spLbl(spCfgD.right.val));
-    if(spParts.length) spDesc='Side Panels - '+spParts.join(', ')+(spBt==='gch'?' (open section)':'');
-    rows+=row(spDesc,null,null,sidePanelPQ);
+    rows+=row(sidePanelDesc(),null,null,sidePanelPQ);
   }
 
   var LOGO='data:image/png;base64,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';
@@ -9970,7 +10031,7 @@ async function printQuote(){
   '<thead><tr>'+
   '<th class="qp-bdh">Building Description</th><th class="c qp-col">Qty</th><th class="c qp-col">Qty Price</th><th class="r qp-col">Price</th>'+
   '</tr></thead>'+
-  '<tbody>'+(INPUT_MODE?(function(){var r='';manualLineItems().forEach(function(it){r+=row(it.desc,null,null,it.amt);});return r;})():rows)+'</tbody>'+
+  '<tbody>'+(isInputQ?(function(){var r='';manualLineItems().forEach(function(it){r+=row(it.desc,null,null,it.amt);});if(adjPQ) r+=row(gAdjLabel(),null,null,adjPQ);return r;})():rows)+'</tbody>'+
   '</table>'+
 
   '<div class="qtot-box">'+
@@ -10406,6 +10467,11 @@ async function printContract(){
     if(typeof _capC === 'function'){ imgs3D = await _capC(); }
   } catch(e){ console.warn('3D capture failed for contract, using 2D elevations', e); }
 
+  // ONE source of truth: the SAME pricing pass the screen shows (see printQuote).
+  rc();
+  var T=window._qTotals;
+  if(!T){ try{ pw.close(); }catch(e){} toast('Could not price this build — check the form and try again','err'); return; }
+
   // ── StormSafe logo (pulled from printQuote's source to avoid duplicating the 8KB base64) ──
   function _getLogo(){
     try{
@@ -10480,76 +10546,41 @@ async function printContract(){
   var todayLong=now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
   var orderNum='SS-'+now.getFullYear()+'-'+String(Date.now()).slice(-5);
 
-  // ── PRICING (mirror of printQuote logic) ──
-  var base=gBase(), leg=gLeg(), walls=gWalls();
-  var vertWallUpgP=gVertUpgrade();
-  var rd=gRUD(), wd=gWTD(), wn2=gWIN();
-  var rud=rd.rud, wtd=wd.wtd, win=wn2.win, sf=rd.sf+wd.sf+wn2.sf;
+  // ── PRICING ── every amount is the one the screen just billed (T = rc()'s
+  // published pass) — same lines, 26GA/fastener decisions and totals as the PDF.
+  var isInputC=(T.mode==='input');
+  var base=T.base, leg=T.leg, walls=T.walls;
+  var vertWallUpgP=T.vertWallUpg;
+  var rud=T.rud, wtd=T.wtd, win=T.win, sf=T.sf;
   var lv=parseInt(l)||0;
-  var lapP=G('lap').value==='yes'?Math.round(base*0.10):0;
+  var lapP=T.lapP;
   var bt3p=bt2;
-  var framingUpgP=0;
-  if(fuValP==='12'){
-    if(bt3p==='widespan'){
-      var GA12CP=[20,25,30,35,40,44,48,52],GA12VP=[360,480,600,720,840,1560,1680,1800];
-      var gcip=0; for(var gip=0;gip<GA12CP.length;gip++){if(GA12CP[gip]<=lv)gcip=gip;else break;}
-      framingUpgP=GA12VP[gcip];
-    } else {
-      var GA12SP=[20,25,30,35,40];
-      var wPQ=parseInt(G('bw').value)||0;
-      var GA12SPV=wPQ<=24?[210,240,270,300,330]:[360,480,600,720,840];
-      var gcisp=0; for(var gisp=0;gisp<GA12SP.length;gisp++){if(GA12SP[gisp]<=lv)gcisp=gisp;else break;}
-      if(ACTIVE_MFR==='CCI' && wPQ>24){framingUpgP=cci12GA(lv);}
-      else if(lv>40){var ga12rp=(GA12SPV[4]-GA12SPV[3])/5;framingUpgP=(ACTIVE_MFR==='CCI')?cciUnitSum(lv,GA12SPV):Math.round(GA12SPV[4]+ga12rp*(lv-40));}
-      else{framingUpgP=GA12SPV[gcisp];}
-    }
-  }
+  var framingUpgP=T.framingUpgrade;
   var wallsVert=G('ws').value==='Vertical';
   var wPrint=parseInt(G('bw').value)||0;
-  var ocSpacingPrint=G('oc-spacing')?G('oc-spacing').value:'5oc';
-  var ocUpgradeP=0;
-  if(ACTIVE_MFR!=='CA' && ocSpacingPrint==='4oc' && wPrint<=24 && bt3p!=='widespan'){
-    var OC4SP=[20,25,30,35,40], OC4VP=[300,325,350,375,400];
-    var ocip=0; for(var oip=0;oip<OC4SP.length;oip++){if(OC4SP[oip]<=lv)ocip=oip;else break;}
-    if(lv>40){ ocUpgradeP=cciUnitSum(lv,OC4VP); }
-    else { ocUpgradeP=OC4VP[ocip]; }
-  }
-  var _cbP=cciCombo12x4((G('framing-upgrade')?G('framing-upgrade').value:'14'), ocSpacingPrint, wPrint, bt3p, lv);
-  window._cb12x4=(_cbP!=null);
-  if(_cbP!=null){ framingUpgP=_cbP; ocUpgradeP=0; }
-  var pitchSelValP=G('pitch-sel')?G('pitch-sel').value:'standard';
-  var pitchUpgradeP=MFR().pitchUpgradeFn(base, wPrint||0, lv||0, pitchSelValP);
-  var wainP=gWainscot();
-  var aewP=gAddEndWall();
-  var leanToPr=gLT(), addCompPr=gAC(), insulPr=gInsul();
+  var ocUpgradeP=T.ocUpgrade;
+  window._cb12x4=!!T.cb12x4;
+  var pitchSelValP=T.pitchSelVal;
+  var pitchUpgradeP=T.pitchUpgrade;
+  var wainP=T.wainP;
+  var aewP=T.aewP;
+  var leanToPr=T.leanToTotal, addCompPr=T.addCompTotal, insulPr=T.insulTotal;
   // Lean-to connection fees — printed as their own rows below AND part of the
-  // Building Amount. (They were missing from the printed subtotal while the
-  // on-screen price included them, so a quote with lean-tos under-billed by
-  // the whole connection fee.)
-  var connFeePr=gConnectionFees();
-  var anchorLegsQ=gAnchorLegs(), anchorPr=gAnchors();
-  var overhangPQ=0;
+  // Building Amount.
+  var connFeePr=T.connFeeTotal;
+  var anchorLegsQ=T.anchorLegs, anchorPr=T.anchors;
   var ohSelP=G('overhang-sel');
-  if(ohSelP && ACTIVE_MFR==='CCI' && ohSelP.value!=='none' && MFR().overhang){
-    var ohBkP=MFR().overhangBucket(wPrint||0);
-    var ohRP=MFR().overhang[ohBkP]||{ends:0,sides:0};
-    if(ohSelP.value==='eaves') overhangPQ=ohRP.sides;
-    else if(ohSelP.value==='gables') overhangPQ=ohRP.ends;
-    else if(ohSelP.value==='both') overhangPQ=ohRP.sides+ohRP.ends;
-  }
-  var sidePanelPQ=gSidePanels();
-  var preSheetP=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+wainP+aewP+leanToPr+addCompPr+insulPr+overhangPQ+sidePanelPQ;
-  var sheetFreeP=(ACTIVE_MFR!=='CA'&&preSheetP>=(window._freeThresh||10000)&&bt3p!=='widespan');
-  var sheetUpgrade=(!sheetFreeP && G('sheeting-upgrade').value==='upgrade' && bt3p!=='widespan')?preSheetP*0.10:0;
-  var subPreFastenerP=preSheetP+sheetUpgrade;
-  var fastenerFreeP=(window._fastenerAlwaysFree||subPreFastenerP>=(window._freeThresh||10000));
-  var disc=parseFloat(G('disc').value)||0;
-  var tax=parseFloat(G('tax').value)||0;
-  var agEx=(G('agx')&&G('agx').value==='yes');
-  var fastenerPQ=(G('fastener-add')&&G('fastener-add').checked&&!fastenerFreeP)?150:0;
-  var sub=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+aewP+leanToPr+connFeePr+addCompPr+insulPr+fastenerPQ+overhangPQ+sidePanelPQ+anchorPr;
-  if(INPUT_MODE) sub=manualSubtotal();
-  var adjPC=gAdj(); sub+=adjPC;
+  var overhangPQ=T.overhangP;
+  var sidePanelPQ=T.sidePanelP;
+  var sheetFreeP=T.sheetFree;
+  var sheetUpgrade=T.sheetUpgrade;
+  var fastenerFreeP=T.fastenerFree;
+  var disc=T.disc;
+  var tax=T.tax;
+  var agEx=T.agEx;
+  var fastenerPQ=T.fastenerP;
+  var sub=T.sub; // Building Subtotal — incl. the Manufacturer Adjustment (engine and INPUT mode)
+  var adjPC=T.adjP;
 
   // ── Honor signed pricing (contract reissue) ───────────────────────────────
   // Reissuing a contract for an already-signed order (e.g. adding colors after
@@ -10562,7 +10593,10 @@ async function printContract(){
   var honorAmtC=parseFloat(G('ct-honor')?G('ct-honor').value:0)||0;
   var honorRefC=(G('ct-honor-ref')&&G('ct-honor-ref').value?G('ct-honor-ref').value:'').replace(/^\s+|\s+$/g,'');
   var honorAdjC=0;
-  if(honorAmtC>0){ honorAdjC=Math.round(honorAmtC-sub); sub=Math.round(honorAmtC); }
+  // Money + plans come from the screen's pass (T); an honored signed subtotal
+  // reruns the SAME money/plans helpers on that subtotal (contract only).
+  var MC=T, plC={planType:T.planType, planCost:T.planCost};
+  if(honorAmtC>0){ honorAdjC=Math.round(honorAmtC-sub); sub=Math.round(honorAmtC); MC=qMoney(sub); plC=qPlan(sub); }
 
   // ── Engineered Plans + Permit Service (both invoiced separately by engineering firm) ──
   // Show on contract only when "permit required" is Yes. Permitting service is optional.
@@ -10570,10 +10604,7 @@ async function printContract(){
   var _permSvcC  = G('permit-svc') ? G('permit-svc').value : 'none';
   var _planCostC = 0, _planLabelC = '', _hasPlansC = false;
   if(permVal === 'yes' && _planTypeC && _planTypeC !== 'No Permit Required'){
-    if(typeof MFR === 'function' && MFR().planCostFn){
-      var _ptC = G('pt') ? G('pt').value : '';
-      _planCostC = MFR().planCostFn(_planTypeC, sub, (_ptC==='com' || _ptC==='rc2r'));
-    }
+    _planCostC = plC.planCost;
     var _lblMap = (typeof MFR === 'function' && MFR().planLabels) ? MFR().planLabels : {};
     var _rawLbl2 = _lblMap[_planTypeC] || _planTypeC;
     _planLabelC = _rawLbl2.split(' — ')[0].split(' - ')[0];
@@ -10586,17 +10617,17 @@ async function printContract(){
   var _permSvcLblC = _svcDefC ? (_svcDefC.lbl||'') : '';
   var _hasPermSvcC = (_permSvcAmtC > 0);
 
-  var sheetFreeGA=(preSheetP>=10000&&bt2!=='widespan');
+  var sheetFreeGA=!!T.sheetFree; // the screen's free-26GA decision
   var sheetGA=bt2==='widespan'?'26-Gauge':(G('sheeting-upgrade').value==='upgrade'?(sheetFreeGA?'26-Gauge (Included)':'26-Gauge'):'29GA / 26GA roof');
 
-  var da=Math.round(sub*(disc/100)), ad=sub-da;
-  var ta=agEx?0:Math.round(ad*(tax/100)), tot=ad+ta;
-  var addDiscPrint=parseFloat(G('add-disc')?G('add-disc').value:0)||0;
-  var addDiscTypePrint=G('add-disc-type')?G('add-disc-type').value:'dollar';
-  var grossDepP=Math.round(ad*((window._depPct||17)/100));
-  var addDiscAmountPrint=addDiscTypePrint==='pct'?Math.round(grossDepP*(addDiscPrint/100)):addDiscPrint;
-  var dep=Math.max(0, grossDepP - addDiscAmountPrint);
-  var bal=tot-grossDepP;
+  var da=MC.da, ad=MC.ad;
+  var ta=MC.ta, tot=MC.tot;
+  var addDiscPrint=MC.addDiscVal;
+  var addDiscTypePrint=MC.addDiscType;
+  var grossDepP=MC.grossDep;
+  var addDiscAmountPrint=MC.addDiscAmount;
+  var dep=MC.dep;
+  var bal=MC.bal;
   var showAD=(G('add-disc-show')&&G('add-disc-show').value==='show');
 
   // ── COLLECT WALL ITEMS for floor plan & elevations ──
@@ -10749,6 +10780,8 @@ async function printContract(){
     row('FREE-STANDING LEAN-TO (Single Slope) — NOT a carport',null,null,0);
     row('Tall side '+(parseInt(G('bh').value)||0)+"' / Low side "+fsLowSide()+"' — "+fsPitch()+':12 pitch',null,null,0);
     if(fsCert()>0) row('170 MPH + 4ft Wind Certification (included in base)',null,null,0);
+    // fslean walls are priced by fsWalls() (in the Building Subtotal) — itemize them
+    if(walls) row(fsWallsDesc(),null,null,walls);
   }
   if(lapP) row('Lap Siding — Horizontal Walls (+10%)',null,null,lapP);
   if(wainP) row('Wainscot',null,null,wainP);
@@ -10918,6 +10951,11 @@ async function printContract(){
       if(_sfN2>0){var _sfP2=window._sf_dw||150;row('  Side Frame',_sfN2,_sfP2,_sfN2*_sfP2);}
     }
   });
+  window._rvHlCur=false;
+  // 1' Overhang (CCI only) + Side Panels — billed in the Building Subtotal, so
+  // itemized here too (same rows as the PDF quote; they were missing).
+  if(overhangPQ>0) row(overhangLabel(ohSelP.value),null,null,overhangPQ);
+  if(sidePanelPQ>0) row(sidePanelDesc(),null,null,sidePanelPQ);
   if(insulPr){
     var iSel=G('insul-sel');
     row((iSel&&iSel.value==='roof-walls'?'Fully Insulated — Roof & Walls':'Insulation — Roof Only'),null,null,insulPr);
@@ -10925,7 +10963,7 @@ async function printContract(){
   if(anchorPr) row('Mobile Home Anchors — Ground Install',anchorLegsQ,ANCHOR_UNIT,anchorPr);
 
   // ── Build line items HTML ──
-  if(INPUT_MODE){ lineItems.length=0; manualLineItems().forEach(function(it){ lineItems.push({desc:it.desc, qty:null, unit:null, amt:it.amt}); }); }
+  if(isInputC){ lineItems.length=0; manualLineItems().forEach(function(it){ lineItems.push({desc:it.desc, qty:null, unit:null, amt:it.amt}); }); if(adjPC) lineItems.push({desc:gAdjLabel(), qty:null, unit:null, amt:adjPC}); }
   if(honorAdjC!==0){
     lineItems.push({desc:'<strong>Price Adjustment \u2014 Honoring Signed Agreement'+(honorRefC?' '+_esc(honorRefC):'')+'</strong><br><span style="font-size:6.5pt;color:#64748b">Current chart pricing honored at the original signed contract amount</span>', qty:null, unit:null, amt:honorAdjC});
   }
@@ -11903,6 +11941,7 @@ function toast(msg,type){
 }
 
 function resetAll(){
+  _rvClear(); // a new quote never inherits the previous one's revision state
   ['cn','cp','ce','rep','notes'].forEach(function(id){ G(id).value=''; });
   G('disc').value='0'; G('tax').value='6';
   G('city').textContent='—'; G('county').textContent='—'; G('state').textContent='FL';
@@ -13712,6 +13751,12 @@ function textQuote(){
     var ltSide=ltFree?'':((el.querySelector('.lts')||{}).value||'');
     ltLines.push((ltFree?'Free-Standing Lean-To ':'Lean-To ')+lw+'\' \u00D7 '+ll+'\''+(ltSide?' ('+ltSide+')':''));
   });
+  // Overhang, side panels and ground anchors: one short wording line each when
+  // this build is priced with them (no prices) \u2014 same wording as the PDF rows.
+  var optLines=[];
+  if(T.overhangP>0) optLines.push(overhangLabel(G('overhang-sel').value));
+  if(T.sidePanelP>0) optLines.push(T.mode==='input'?'Side Panels':sidePanelDesc()); // INPUT: a typed side-panel price, no panel config
+  if(T.anchors>0) optLines.push('Mobile Home Anchors \u2014 Ground Install');
   var doorLines=[];
   document.querySelectorAll('.re').forEach(function(el){var sz=el.querySelector('.rsz').value,qty=parseInt(el.querySelector('.rqt').value)||1;var loc=el.querySelector('.rloc').value.replace(' Gable End','').replace(' Eave Side','');doorLines.push(qty+'x '+sz+' Roll-Up ('+loc+')');});
   document.querySelectorAll('.we').forEach(function(el){var qty=parseInt(el.querySelector('.wqt').value)||1;var loc=el.querySelector('.wloc').value.replace(' Gable End','').replace(' Eave Side','');doorLines.push(qty+'x Walk Door ('+loc+')');});
@@ -13720,20 +13765,10 @@ function textQuote(){
   if(iSel&&iSel.value==='roof')insText='Roof Only';else if(iSel&&iSel.value==='roof-walls')insText='Roof + Walls';
   var planLine='';
   if(G('perm').value==='yes'){
-    var planType=G('plans-sel')?G('plans-sel').value:MFR().defaultPlan;var pt2=G('pt')?G('pt').value:'';
-    // Plans-fee subtotal, still no price math of its own here:
-    //  - INPUT mode: manual line items + the manufacturer adjustment, the exact
-    //    expression printQuote() uses (rcManual's screen total leaves the
-    //    adjustment out, so here the plans line can sit on a different base than TOTAL).
-    //  - Engine mode: T.sub, the subtotal rc() just priced (incl. the adjustment),
-    //    the same number the on-screen plan note uses. printQuote() re-derives its
-    //    own engine subtotal; it equals T.sub except where the screen and the PDF
-    //    already disagree (rc() counts the lean-to connection fee in the 26GA and
-    //    fastener base/threshold and never gives fslean free 26GA; printQuote()
-    //    does neither), and then this line follows the screen, like TOTAL does.
-    var planSub=INPUT_MODE?(manualSubtotal()+gAdj()):T.sub;
-    var planCost=MFR().planCostFn(planType,planSub,(pt2==='com'||pt2==='rc2r'));
-    if(planType!=='No Permit Required')planLine='\n\u{1F4CB} Eng. Plans: '+planType+' \u2014 $'+planCost+' (invoiced separately)';
+    // Plans fee from the same pass as TOTAL (T.planCost \u2014 the fee the screen's
+    // plan note, the PDF and the contract show, priced on T.sub).
+    var planType=T.planType;
+    if(planType!=='No Permit Required')planLine='\n\u{1F4CB} Eng. Plans: '+planType+' \u2014 $'+T.planCost+' (invoiced separately)';
   }
 
   var m='\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n';
@@ -13747,6 +13782,7 @@ function textQuote(){
   m+=roofStyle+' Roof \u2022 '+wallStyle+' Walls \u2022 '+pitch+'\n';
   m+=(fuVal==='12'?'12GA':'14GA')+' Framing \u2022 '+(T.sheet26?'26GA':'Standard Sheeting')+'\n';
   ltLines.forEach(function(s){m+='\u2022 '+s+'\n';});
+  optLines.forEach(function(s){m+='\u2022 '+s+'\n';});
   m+='\n';
   if(doorLines.length){m+='\u{1F6AA} DOORS & WINDOWS\n';doorLines.forEach(function(d){m+='\u2022 '+d+'\n';});m+='\n';}
   if(insText!=='None')m+='\u2744\uFE0F Insulation: '+insText+'\n\n';

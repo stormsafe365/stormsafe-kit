@@ -6221,6 +6221,7 @@ function ltStorage(el){
   r.w=u.w; r.l=u.l; r.h=u.h;
   if(!u.w||!u.l){ r.err='Set the lean-to width and length first.'; return r; }
   if(!(r.len>0)){ r.err='Enter the storage length.'; return r; }
+  if(r.len<1 || Math.floor(r.len)!==r.len){ r.err="Storage length must be whole feet, 1' or more."; return r; }
   if(r.len>=u.l){ r.err="Storage length must be LESS than the lean-to length ("+u.l+"')."; return r; }
   var cur=getLTWalls(el);
   r.endWas=cur[r.end]; r.sideWas=cur.side;
@@ -6262,12 +6263,35 @@ function _ltStorSummary(total){
   if(k) k.textContent=(ok.length===1&&!bad) ? ('Lean-To Storage Room ('+_ltStorLenTxt(ok[0].len)+' at '+(ok[0].end==='front'?'Front':'Back')+')') : 'Lean-To Storage Rooms';
   if(v){ v.textContent=bad ? ('⚠ '+bad+' not priced'+(total?' · '+fC(total):'')) : fC(total); v.style.color=bad?'#dc2626':''; }
 }
-// Print guard: a Storage Section that is switched on but not priced (no
-// length / too long) must not slip onto a client quote without its price.
-function ltStoragePrintBlock(){
+// Openings on a lean-to's Storage Partition Wall that must not reach a client
+// document: on a lean-to with NO Storage Section (orphan), or with no price
+// for the chosen size. '' = fine. Only 'partition' openings are looked at, so
+// a lean-to without storage openings always returns ''.
+function ltPartitionIssue(el){
   var msg='';
-  document.querySelectorAll('.lte').forEach(function(el){ var s=ltStorage(el); if(!msg && s.on && !s.valid) msg=s.err; });
+  el.querySelectorAll('.lt-acc-e').forEach(function(ae){
+    if(msg || ((ae.querySelector('.lt-acc-loc')||{}).value!=='partition')) return;
+    if(!ltStorOn(el)){ msg='A door/window is on the Storage Partition Wall, but that lean-to has no Storage Section. Turn the storage section back on, move it to another wall, or remove it.'; return; }
+    var t=(ae.querySelector('.lt-acc-type')||{}).value||'rollup', up=0, what='opening';
+    if(t==='rollup'){ var _sz=ae.querySelector('.lt-acc-size'); up=getDoorPrice('rollup',_sz?_sz.value:'9x8'); what='roll-up door'+(_sz&&_sz.value?' ('+_sz.value+')':' (no size)'); }
+    else if(t==='wtd'){ var _wh=(ae.querySelector('.lt-acc-wtd-hi')||{}).value||'std'; up=MFR().wtdPrices[_wh]||window._wtd_std||400; what='walk door'; }
+    else if(t==='win'){ var _nh=(ae.querySelector('.lt-acc-win-hi')||{}).value||'std'; up=MFR().winPrices[_nh]||window._win_std||200; what='window'; }
+    else if(t==='frameout'){ up=ltAccFoUnitPrice(ae,'partition'); what='framed opening'; }
+    if(!(up>0)) msg='The '+what+' on the Storage Partition Wall has no price for that size. Pick a priced size or another opening.';
+  });
+  return msg;
+}
+// Print guard (quote PDF, contract, text quote): a Storage Section that is
+// switched on but not priced (no length / bad length), or a partition opening
+// that is orphaned or unpriced, must not slip onto a client document.
+function ltStoragePrintBlock(){
+  var msg='', pmsg='';
+  document.querySelectorAll('.lte').forEach(function(el){
+    var s=ltStorage(el); if(!msg && s.on && !s.valid) msg=s.err;
+    if(!pmsg) pmsg=ltPartitionIssue(el);
+  });
   if(msg){ toast('Lean-to storage section is not priced: '+msg+' Fix it or set Storage Section to None.','err'); return true; }
+  if(pmsg){ toast('Lean-to storage: '+pmsg,'err'); return true; }
   return false;
 }
 // Revision-form signature of a lean-to's storage section (restore snapshot).
@@ -6301,6 +6325,8 @@ function updateLTStorNote(entry){
   note.innerHTML='<b>Storage room '+f$(s.total)+'</b>: partition '+f$(s.partitionP)+' (= a closed end of this lean-to) '+endTxt+' '+outTxt+'.'+
     (s.warn?'<br>⚠ '+s.warn:'')+
     '<br><b>⚠ Lean-to storage pricing is not confirmed by '+mfr+' yet — verify with '+mfr+' before the contract.</b> (Rep note — not printed.)';
+  var _pi=ltPartitionIssue(entry);
+  if(_pi) note.innerHTML+='<br><b style="color:#991b1b">⚠ '+_pi+' The quote, contract and text quote are blocked until this is fixed.</b>';
 }
 // Sync the Storage Section UI (length row, partition wall option, doors &
 // windows section) to the entry's fields. UI only — never reprices.
@@ -6358,7 +6384,13 @@ function getValidRDPSizes(lt_w, lt_h, loc){
       if(dw>lt_w-2) ok=false;
       if(dh>lt_h-1) ok=false;
     }
-    if(ok) valid.push({key:k,price:getDoorPrice('rollup',k),star:doorHasChainIncluded('rollup',k)});
+    if(!ok) return;
+    var _rp=getDoorPrice('rollup',k);
+    // Storage partition wall: PRICED sizes only. CA prices from its catalog
+    // (smallest 8x8), so the RDP_STD 6x6-10x7 keys come back $0 there.
+    // Outer/front/back walls are left exactly as they were.
+    if(loc==='partition' && !(_rp>0)) return;
+    valid.push({key:k,price:_rp,star:doorHasChainIncluded('rollup',k)});
   });
   return valid;
 }
@@ -6387,7 +6419,7 @@ function updateLTAccSize(accEntry){
     var _pw=document.createElement('div');
     _pw.className='lt-acc-pwarn';
     _pw.style.cssText='margin:4px 0;padding:5px 8px;background:#fee2e2;color:#991b1b;border-left:3px solid #dc2626;border-radius:0 4px 4px 0;font-size:10px;line-height:1.35';
-    _pw.textContent='⚠ This opening is on the Storage Partition Wall, but this lean-to has no Storage Section — it is still priced. Turn the storage section back on, pick another wall, or remove it.';
+    _pw.textContent='⚠ This opening is on the Storage Partition Wall, but this lean-to has no Storage Section — it is still priced, and the quote, contract and text quote are blocked until it is fixed. Turn the storage section back on, pick another wall, or remove it.';
     accEntry.insertBefore(_pw,accEntry.firstChild.nextSibling);
   }
   var typeEl=accEntry.querySelector('.lt-acc-type');
@@ -6403,7 +6435,9 @@ function updateLTAccSize(accEntry){
     var cur=sizeEl.value;
     if(valid.length===0){
       sizeEl.innerHTML='<option value="" disabled selected>No size fits — adjust lean-to dimensions or location</option>';
-      addLTAccWarn(accEntry,'Lean-to is too small for any roll-up door at this location. Increase '+(loc==='outer'?'low-leg height':'lean-to width')+' or change location.');
+      addLTAccWarn(accEntry, loc==='partition'
+        ? 'No priced roll-up size fits the storage partition (door width up to lean-to width − 2\', height up to low leg − 1\'). Raise the low leg or widen the lean-to, or use a walk door / framed opening.'
+        : 'Lean-to is too small for any roll-up door at this location. Increase '+(loc==='outer'?'low-leg height':'lean-to width')+' or change location.');
     } else {
       sizeEl.innerHTML=valid.map(function(v){return '<option value="'+v.key+'">'+v.key+(v.star?' ★':'')+' — '+fC(v.price)+'</option>';}).join('');
       if(valid.some(function(v){return v.key===cur;})) sizeEl.value=cur;
@@ -13876,6 +13910,7 @@ setTimeout(function(){try{updateMiniPreview();}catch(e){}},200);
 // ══ TEXT QUOTE TO CLIENT ══════════════════════════════════════════════════
 function textQuote(){
   if(!G('bw').value||!G('bl').value){toast('Set dimensions first','err');return;}
+  if(ltStoragePrintBlock()) return; // same lean-to storage guard as the quote PDF / contract
   var cn=G('cn').value||'Client',w=G('bw').value,l=G('bl').value,h=G('bh').value;
   var roofStyle=G('rs').value,wallStyle=G('ws').value,pitch=G('pitch')?G('pitch').textContent:'3:12';
   var sqft=getSqFt();

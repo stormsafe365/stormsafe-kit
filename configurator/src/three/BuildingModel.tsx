@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useResolvedBuilding } from '@/engine/useResolvedBuilding';
 import { swatchHex } from '@/config/colors';
@@ -16,6 +16,8 @@ import { EnhancedRoof } from './enhanced/EnhancedRoof';
 import { EnhancedTrim } from './enhanced/EnhancedTrim';
 import { EnhancedLeanTos } from './enhanced/EnhancedLeanTos';
 import { LeanToSpacingOverlay } from './LeanToSpacing';
+import { foundationLayout } from './foundationLayout';
+import { FoundationDetails } from './FoundationDetails';
 
 /** Shell opacity per view mode (exterior fully solid; structure/cutaway ghost). */
 const SHELL_OPACITY: Record<ViewMode, number> = {
@@ -157,6 +159,11 @@ export function BuildingModel() {
   const viewMode = useEditorStore((s) => s.viewMode);
   const renderStyle = useEditorStore((s) => s.renderStyle);
   const showFrameProminent = viewMode !== 'exterior';
+  // Foundation drawing (view-only Foundation Type; CCI FL foundation details).
+  const foundation = useMemo(
+    () => foundationLayout(structure, config.foundation, config.framingGauge),
+    [structure, config.foundation, config.framingGauge],
+  );
 
   return (
     <group>
@@ -171,10 +178,17 @@ export function BuildingModel() {
         {/* Spacing button: lean-to walls too (both looks; renders nothing while Spacing is off). */}
         <LeanToSpacingOverlay leanTos={structure.leanTos} overhangFt={structure.roofOverhangFt} />
       </ShellGroup>
-      {/* ENHANCED ground + slab + soft contact decals: outside ShellGroup (never
-          ghosted), capture-ignored, and absent in classic. Last child, so the
-          classic Frame / ShellGroup keep their slots and never remount. */}
-      {renderStyle === 'enhanced' && <EnhancedSite structure={structure} />}
+      {/* ENHANCED ground + slab / pad (by Foundation Type) + soft contact decals:
+          outside ShellGroup (it ghosts ITSELF in Structure / Cutaway), capture-
+          ignored, and absent in classic. After ShellGroup, so the classic
+          Frame / ShellGroup keep their slots and never remount. */}
+      {renderStyle === 'enhanced' && <EnhancedSite structure={structure} layout={foundation} />}
+      {/* Footings, #5 bars and anchors (FoundationDetails): enhanced always
+          (exterior = only what is above the surface); classic ONLY in
+          Structure / Cutaway, so the classic exterior stays untouched. */}
+      {(renderStyle === 'enhanced' || viewMode !== 'exterior') && (
+        <FoundationDetails layout={foundation} look={renderStyle} viewMode={viewMode} />
+      )}
     </group>
   );
 }

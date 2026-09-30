@@ -3,6 +3,7 @@ import type {
   BuildingConfig,
   BuildingType,
   ExposureCategory,
+  FoundationType,
   FramingGauge,
   LeanTo,
   LeanToOpening,
@@ -51,6 +52,8 @@ export interface BuildingStore extends BuildingConfig {
   setManufacturer: (m: 'CCI' | 'CA') => void;
   /** View-only: the program's roof style (Regular / Boxed Eave / Vertical). */
   setRoofStyle: (r: 'Regular' | 'Boxed Eave' | 'Vertical') => void;
+  /** View-only: the quote's Foundation Type (drawing of the slab / footings / anchors). */
+  setFoundation: (f: FoundationType) => void;
   /** Free-standing single-slope drop (ft, tall −X eave → low +X eave); 0 = gabled. */
   setMonoDrop: (ft: number) => void;
   setColor: (target: keyof BuildingConfig['colors'], code: string) => void;
@@ -139,6 +142,7 @@ export const useBuildingStore = create<BuildingStore>((set) => ({
   setRoofOverhang: (ft) => set(() => ({ roofOverhangFt: ft === 1 ? 1 : 0.5 })),
   setManufacturer: (m) => set(() => ({ manufacturer: m })),
   setRoofStyle: (r) => set(() => ({ roofStyle: r })),
+  setFoundation: (f) => set(() => ({ foundation: f })),
   setMonoDrop: (ft) => set(() => ({ monoDropFt: Math.max(0, ft) })),
 
   setColor: (target, code) => set((s) => ({ colors: { ...s.colors, [target]: code } })),

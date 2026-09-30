@@ -27,7 +27,7 @@ function mulberry32(seed: number) {
  * slab material color (#d2d2cc) by a few percent instead of darkening it, and
  * the seeded PRNG makes the pattern identical on every load.
  */
-export function createConcreteTexture(): THREE.CanvasTexture {
+export function createConcreteTexture(opts: { broom?: boolean } = {}): THREE.CanvasTexture {
   const N = 256;
   const c = document.createElement('canvas');
   c.width = c.height = N;
@@ -42,6 +42,84 @@ export function createConcreteTexture(): THREE.CanvasTexture {
     x.beginPath();
     x.arc(rnd() * N, rnd() * N, r, 0, Math.PI * 2);
     x.fill();
+  }
+  if (opts.broom) {
+    // Faint broom / float finish: fine, slightly wavy streaks along canvas X
+    // (world X on the slab top), a few percent darker, seamless in X. Very
+    // subtle — the renders stay clean for PDFs.
+    const rb = mulberry32(0xb2004f);
+    for (let i = 0; i < 520; i++) {
+      const y0 = rb() * N;
+      const len = 30 + rb() * 120;
+      const x0 = rb() * N;
+      const g = Math.round(150 + rb() * 60);
+      x.strokeStyle = `rgba(${g},${g},${g - 3},${(0.035 + rb() * 0.045).toFixed(3)})`;
+      x.lineWidth = 0.6 + rb() * 0.8;
+      const wob = (rb() - 0.5) * 1.6;
+      for (const dx of [0, -N, N]) {
+        x.beginPath();
+        x.moveTo(x0 + dx, y0);
+        x.quadraticCurveTo(x0 + dx + len / 2, y0 + wob, x0 + dx + len, y0 + wob * 0.4);
+        x.stroke();
+      }
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  return t;
+}
+
+/**
+ * Gravel / asphalt / compacted-dirt surface, one seamless 256 px tile of
+ * WHITE-based speckle that modulates the pad material's color (like the
+ * concrete tile), seeded so captures repeat:
+ *  - gravel: dense 1-3 px stones, light and dark;
+ *  - asphalt: fine aggregate glints on a near-uniform base;
+ *  - dirt: soft blotches + a few pebbles.
+ */
+export function createGroundSurfaceTexture(kind: 'gravel' | 'asphalt' | 'dirt'): THREE.CanvasTexture {
+  const N = kind === 'gravel' ? 512 : 256; // gravel: crisper stones close up
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const x = c.getContext('2d')!;
+  x.fillStyle = '#ffffff';
+  x.fillRect(0, 0, N, N);
+  const rnd = mulberry32(kind === 'gravel' ? 0x6a7e1 : kind === 'asphalt' ? 0xa5f417 : 0xd127);
+  /** An irregular stone / speckle (ellipse), repeated across the tile edges it overlaps so the tile stays seamless. */
+  const dot = (px: number, py: number, r: number, style: string) => {
+    x.fillStyle = style;
+    const rx = r * (0.75 + rnd() * 0.5);
+    const ry = r * (0.75 + rnd() * 0.5);
+    const rot = rnd() * Math.PI;
+    const xs = [0, ...(px - r < 0 ? [N] : []), ...(px + r > N ? [-N] : [])];
+    const ys = [0, ...(py - r < 0 ? [N] : []), ...(py + r > N ? [-N] : [])];
+    for (const dx of xs) for (const dy of ys) {
+      x.beginPath();
+      x.ellipse(px + dx, py + dy, rx, ry, rot, 0, Math.PI * 2);
+      x.fill();
+    }
+  };
+  if (kind === 'dirt') {
+    for (let i = 0; i < 320; i++) {
+      const g = Math.round(200 + rnd() * 55);
+      dot(rnd() * N, rnd() * N, 6 + rnd() * 24, `rgba(${g},${g - 5},${g - 12},0.1)`);
+    }
+    for (let i = 0; i < 900; i++) {
+      const g = Math.round(165 + rnd() * 90);
+      dot(rnd() * N, rnd() * N, 0.4 + rnd() * 0.9, `rgba(${g},${g - 3},${g - 8},0.3)`);
+    }
+  } else if (kind === 'gravel') {
+    for (let i = 0; i < 20000; i++) {
+      const g = Math.round(120 + rnd() * 135);
+      dot(rnd() * N, rnd() * N, 1.4 + rnd() * 3.6, `rgba(${g},${g - 2},${g - 6},0.75)`);
+    }
+  } else {
+    for (let i = 0; i < 3000; i++) {
+      const g = Math.round(175 + rnd() * 80);
+      dot(rnd() * N, rnd() * N, 0.5 + rnd() * 1.1, `rgba(${g},${g},${g},0.35)`);
+    }
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -68,7 +146,14 @@ function rectDistance(r: Footprint, x: number, z: number): number {
  * Mapping (for a PlaneGeometry rotated -PI/2 about X, flipY on): canvas
  * column -> world +X, canvas row -> world +Z.
  */
-export function createContactTexture(plane: Footprint, rects: Footprint[], fade: number, A: number): THREE.CanvasTexture {
+export function createContactTexture(
+  plane: Footprint,
+  rects: Footprint[],
+  fade: number,
+  A: number,
+  /** Optional mask: pixels outside every clip rectangle stay clear (a decal on a slab never overhangs its edge). */
+  clip?: Footprint[],
+): THREE.CanvasTexture {
   const pw = Math.max(plane.x1 - plane.x0, 1e-3);
   const pl = Math.max(plane.z1 - plane.z0, 1e-3);
   const W2 = Math.max(32, Math.min(1024, Math.round(pw * 8)));
@@ -85,7 +170,8 @@ export function createContactTexture(plane: Footprint, rects: Footprint[], fade:
       const wx = plane.x0 + ((i + 0.5) / W2) * pw;
       let d = Infinity;
       for (const r of rects) d = Math.min(d, rectDistance(r, wx, wz));
-      const f = d >= fade ? 0 : 1 - d / fade;
+      let f = d >= fade ? 0 : 1 - d / fade;
+      if (clip && !clip.some((r) => wx >= r.x0 && wx <= r.x1 && wz >= r.z0 && wz <= r.z1)) f = 0;
       const p = (j * W2 + i) * 4;
       px[p] = 20;
       px[p + 1] = 24;

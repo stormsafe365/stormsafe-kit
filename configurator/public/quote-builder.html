@@ -850,6 +850,7 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
       <tr><td class="pk">Base Building Price</td><td class="pv" id="pb">—</td></tr>
       <tr><td class="pk">Leg Height Upgrade</td><td class="pv" id="plg">—</td></tr>
       <tr><td class="pk">12GA Framing Upgrade</td><td class="pv" id="pfr">—</td></tr>
+      <tr id="oc-summary-row" style="display:none"><td class="pk">4' OC Framing Spacing Upgrade</td><td class="pv" id="poc">—</td></tr>
       <tr><td class="pk" id="ppl">Roof Pitch Upgrade</td><td class="pv" id="ppch">—</td></tr>
       <tr><td class="pk">Enclosed Walls</td><td class="pv" id="pwl">—</td></tr>
       <tr><td class="pk" id="pvwl">Vertical Wall Upgrade</td><td class="pv" id="pvw">—</td></tr>
@@ -867,6 +868,7 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
       <tr><td class="pk">Additional Components</td><td class="pv" id="pac">—</td></tr>
       <tr id="sp-summary-row" style="display:none"><td class="pk">Side Panels</td><td class="pv" id="psp">—</td></tr>
       <tr id="overhang-summary-row" style="display:none"><td class="pk">1' Overhang</td><td class="pv" id="poh">—</td></tr>
+      <tr id="anchor-summary-row" style="display:none"><td class="pk">Mobile Home Anchors — Ground Install</td><td class="pv" id="panc">—</td></tr>
       <tr id="adj-summary-row" style="display:none"><td class="pk" id="padj-k">Manufacturer Adjustment</td><td class="pv" id="padj">—</td></tr>
       <tr class="dr"><td class="pk" id="dlbl">Discount (0%)</td><td class="pv" id="pds">—</td></tr>
       <tr class="ad"><td class="pk">Building Price (After Discount)</td><td class="pv" id="pad">—</td></tr>
@@ -6390,8 +6392,10 @@ function ltStorage(el){
     var vert=!ltPanelsHorizontal();
     r.outerP=isCCI ? cciLtSideClosed(u.h, r.len, vert) : (LT_SIDE_P.closed||0);
     if(isNaN(r.outerP)){ r.err=cciLtShortSideMsg('Storage',u.h,vert)+'.'; r.partitionP=r.endP=r.outerP=0; return r; }
-    // A partial side keeps storage = end + S(storage length), like Sensei; the
+    // CCI: a partial side keeps storage = end + S(storage length), like Sensei; the
     // partial itself is priced on the open run beside the storage (ltUnit).
+    // CA / free-standing: the flat partial stays in full and the outer wall is added on top.
+    if(!isCCI && cur.side!=='open') warns.push('Side wall is set to a partial option — its partial price stays and the storage outer wall is added in full. Verify.');
   }
   // Side Closed → storage = the end only (Sensei, once the length is re-picked).
   r.warn=warns.join(' ');
@@ -7830,9 +7834,10 @@ function rcManual(){
   setT('psp',sp); setT('plt',lt); setT('pac',addl);
   var _pltK=G('plt-k'); if(_pltK) _pltK.textContent='Lean-Tos';
   // Categories that don't exist in INPUT mode (folded into the fields above / custom lines)
-  ['pvw','psf','plp','pwi','paew','pins','pconn','poh','psh'].forEach(function(id){ var e=G(id); if(e) e.textContent='\u2014'; });
+  ['pvw','psf','plp','pwi','paew','pins','pconn','poh','psh','poc','panc'].forEach(function(id){ var e=G(id); if(e) e.textContent='\u2014'; });
   var spRow=G('sp-summary-row'); if(spRow) spRow.style.display=sp?'':'none';
   var ohRow=G('overhang-summary-row'); if(ohRow) ohRow.style.display='none';
+  ['oc-summary-row','anchor-summary-row'].forEach(function(id){ var e=G(id); if(e) e.style.display='none'; });
   var lsRow=G('ltstor-summary-row'); if(lsRow) lsRow.style.display='none';
   var connBox=G('conn-fee-box'); if(connBox) connBox.style.display='none';
   // Discount / tax / deposit — identical math to rc()
@@ -7858,6 +7863,7 @@ function rcManual(){
   G('ptot').textContent=adjTot?fD(adjTot):'\u2014';
   G('pdep').textContent=dep?fD(dep):'\u2014';
   G('pbal').textContent=(bal&&adjTot)?fD(bal):'\u2014';
+  window._rcTot={sub:sub, da:da, ad:ad, ta:ta, tot:tot, adjTot:adjTot, dep:dep, bal:bal, addDiscAmount:addDiscAmount, addDiscVal:addDiscVal, addDiscType:addDiscType, sheetFree:!!window._sheetFree};
   var pdepLbl=G('pdep-label'); if(pdepLbl) pdepLbl.textContent='Deposit Due Now ('+(window._depPct||17)+'%)';
   var pbalSplitEl=G('pbal-split-note');
   if(pbalSplitEl){
@@ -8190,7 +8196,8 @@ function rc(){
   var perm=G('perm').value, co=G('county').textContent, pt=G('pt').value;
 
   var fastenerP=(G('fastener-add')&&G('fastener-add').checked&&!fastenerFree)?150:0;
-  var sub=base+leg+framingUpgrade+ocUpgrade+pitchUpgrade+walls+vertWallUpg+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+aewP+leanToTotal+connFeeTotal+addCompTotal+insulTotal+fastenerP+overhangP+sidePanelP+gAnchors()+adjP;
+  var anchorP=gAnchors();
+  var sub=base+leg+framingUpgrade+ocUpgrade+pitchUpgrade+walls+vertWallUpg+rud+wtd+win+sf+lapP+sheetUpgrade+wainP+aewP+leanToTotal+connFeeTotal+addCompTotal+insulTotal+fastenerP+overhangP+sidePanelP+anchorP+adjP;
   var da=Math.round(sub*(disc/100));
   var ad=sub-da;
   var ta=agEx?0:Math.round(ad*(tax/100));
@@ -8228,6 +8235,12 @@ function rc(){
   // Framing upgrade display
   var pfrEl=G('pfr'); if(pfrEl) pfrEl.textContent=framingUpgrade?fC(framingUpgrade):'—';
   var framingNoteEl=G('framing-note'); if(framingNoteEl) framingNoteEl.classList.toggle('hidden',!framingUpgrade);
+  // 4' OC (main + attached leans) and ground anchors get their own rows, so the
+  // breakdown adds up to the Building Price like the quote PDF / contract rows.
+  var ocRowEl=G('oc-summary-row'); if(ocRowEl) ocRowEl.style.display=ocUpgrade?'':'none';
+  var pocEl=G('poc'); if(pocEl) pocEl.textContent=ocUpgrade?fC(ocUpgrade):'—';
+  var ancRowEl=G('anchor-summary-row'); if(ancRowEl) ancRowEl.style.display=anchorP?'':'none';
+  var pancEl=G('panc'); if(pancEl) pancEl.textContent=anchorP?fC(anchorP):'—';
   // Pitch upgrade display — show which manufacturer's formula is applied
   var ppchEl=G('ppch'); if(ppchEl) ppchEl.textContent=pitchUpgrade?fC(pitchUpgrade):'—';
   var pplEl=G('ppl'); if(pplEl) pplEl.textContent='Roof Pitch Upgrade'+(pitchUpgrade?' '+pitchSelVal+' Pitch ('+ACTIVE_MFR+')':'');
@@ -8329,6 +8342,8 @@ function rc(){
   G('ptot').textContent=adjTot?fD(adjTot):'—';
   G('pdep').textContent=dep?fD(dep):'—';
   G('pbal').textContent=(bal&&adjTot)?fD(bal):'—';
+  // The text quote reads its money from here, so it always equals the screen.
+  window._rcTot={sub:sub, da:da, ad:ad, ta:ta, tot:tot, adjTot:adjTot, dep:dep, bal:bal, addDiscAmount:addDiscAmount, addDiscVal:addDiscVal, addDiscType:addDiscType, sheetFree:sheetFree};
   // Show split-payment note when remaining balance > $15,000
   var pbalSplitEl=G('pbal-split-note');
   if(pbalSplitEl){
@@ -10318,12 +10333,13 @@ async function printQuote(){
   var wPrint=parseInt(G('bw').value)||0;
   var ocSpacingPrint=G('oc-spacing')?G('oc-spacing').value:'5oc';
   var ocUpgradeP=0;
-  if(ACTIVE_MFR!=='CA' && ocSpacingPrint==='4oc' && wPrint<=24 && bt3p!=='widespan'){
+  // Same gate as rc: a free-standing (fslean) main's 4' OC is already in its base (fsCert "170 MPH + 4ft"), never added here.
+  if(ACTIVE_MFR!=='CA' && ocSpacingPrint==='4oc' && wPrint<=24 && bt3p!=='widespan' && bt3p!=='fslean'){
     var OC4SP=[20,25,30,35,40], OC4VP=[300,325,350,375,400];
     var ocip=0; for(var oip=0;oip<OC4SP.length;oip++){if(OC4SP[oip]<=lv)ocip=oip;else break;}
     if(lv>40){ ocUpgradeP=cciUnitSum(lv,OC4VP); }
     else { ocUpgradeP=OC4VP[ocip]; }
-    if(bt3p!=='fslean') ocUpgradeP+=cciOC4Leans(); // same as rc (which skips fslean mains): each attached lean adds the 4' OC column at its length
+    ocUpgradeP+=cciOC4Leans(); // like rc: each attached lean adds the 4' OC column at its length
   }
   var _cbP=cciCombo12x4((G('framing-upgrade')?G('framing-upgrade').value:'14'), ocSpacingPrint, wPrint, bt3p, lv);
   window._cb12x4=(_cbP!=null);
@@ -10351,8 +10367,10 @@ async function printQuote(){
     else if(ohSelP.value==='both') overhangPQ=ohRP.sides+ohRP.ends;
   }
   var sidePanelPQ=gSidePanels();
-  var preSheetP=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+wainP+aewP+leanToPr+addCompPr+insulPr+overhangPQ+sidePanelPQ;
-  var sheetFreeP=(ACTIVE_MFR!=='CA'&&preSheetP>=(window._freeThresh||10000)&&bt3p!=='widespan');
+  // Free-26GA threshold base = rc's preSheetSub (incl. the lean-to connection fee; never on fslean),
+  // so a build the screen gives free 26GA isn't charged the +10% here.
+  var preSheetP=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+wainP+aewP+leanToPr+connFeePr+addCompPr+insulPr+overhangPQ+sidePanelPQ;
+  var sheetFreeP=(ACTIVE_MFR!=='CA'&&preSheetP>=(window._freeThresh||10000)&&bt3p!=='widespan'&&bt3p!=='fslean');
   var sheetUpgrade=(!sheetFreeP && G('sheeting-upgrade').value==='upgrade' && bt3p!=='widespan') ? preSheetP*0.10 : 0;
   // Fastener free: any building where full pre-fastener subtotal >= $10k (no widespan exclusion)
   var subPreFastenerP=preSheetP+sheetUpgrade;
@@ -11323,12 +11341,13 @@ async function printContract(){
   var wPrint=parseInt(G('bw').value)||0;
   var ocSpacingPrint=G('oc-spacing')?G('oc-spacing').value:'5oc';
   var ocUpgradeP=0;
-  if(ACTIVE_MFR!=='CA' && ocSpacingPrint==='4oc' && wPrint<=24 && bt3p!=='widespan'){
+  // Same gate as rc: a free-standing (fslean) main's 4' OC is already in its base (fsCert "170 MPH + 4ft"), never added here.
+  if(ACTIVE_MFR!=='CA' && ocSpacingPrint==='4oc' && wPrint<=24 && bt3p!=='widespan' && bt3p!=='fslean'){
     var OC4SP=[20,25,30,35,40], OC4VP=[300,325,350,375,400];
     var ocip=0; for(var oip=0;oip<OC4SP.length;oip++){if(OC4SP[oip]<=lv)ocip=oip;else break;}
     if(lv>40){ ocUpgradeP=cciUnitSum(lv,OC4VP); }
     else { ocUpgradeP=OC4VP[ocip]; }
-    if(bt3p!=='fslean') ocUpgradeP+=cciOC4Leans(); // same as rc (which skips fslean mains): each attached lean adds the 4' OC column at its length
+    ocUpgradeP+=cciOC4Leans(); // like rc: each attached lean adds the 4' OC column at its length
   }
   var _cbP=cciCombo12x4((G('framing-upgrade')?G('framing-upgrade').value:'14'), ocSpacingPrint, wPrint, bt3p, lv);
   window._cb12x4=(_cbP!=null);
@@ -11354,8 +11373,10 @@ async function printContract(){
     else if(ohSelP.value==='both') overhangPQ=ohRP.sides+ohRP.ends;
   }
   var sidePanelPQ=gSidePanels();
-  var preSheetP=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+wainP+aewP+leanToPr+addCompPr+insulPr+overhangPQ+sidePanelPQ;
-  var sheetFreeP=(ACTIVE_MFR!=='CA'&&preSheetP>=(window._freeThresh||10000)&&bt3p!=='widespan');
+  // Free-26GA threshold base = rc's preSheetSub (incl. the lean-to connection fee; never on fslean),
+  // so a build the screen gives free 26GA isn't charged the +10% here.
+  var preSheetP=base+leg+framingUpgP+ocUpgradeP+pitchUpgradeP+walls+vertWallUpgP+rud+wtd+win+sf+lapP+wainP+aewP+leanToPr+connFeePr+addCompPr+insulPr+overhangPQ+sidePanelPQ;
+  var sheetFreeP=(ACTIVE_MFR!=='CA'&&preSheetP>=(window._freeThresh||10000)&&bt3p!=='widespan'&&bt3p!=='fslean');
   var sheetUpgrade=(!sheetFreeP && G('sheeting-upgrade').value==='upgrade' && bt3p!=='widespan')?preSheetP*0.10:0;
   var subPreFastenerP=preSheetP+sheetUpgrade;
   var fastenerFreeP=(window._fastenerAlwaysFree||subPreFastenerP>=(window._freeThresh||10000));
@@ -14521,39 +14542,18 @@ function textQuote(){
   var roofColor=(crEl.value&&crEl.selectedIndex>0)?crEl.options[crEl.selectedIndex].text.split('(')[0].trim():'TBD';
   var wallColor=(cwEl.value&&cwEl.selectedIndex>0)?cwEl.options[cwEl.selectedIndex].text.split('(')[0].trim():'TBD';
   var trimColor=(ctEl.value&&ctEl.selectedIndex>0)?ctEl.options[ctEl.selectedIndex].text.split('(')[0].trim():'TBD';
-  var disc=parseFloat(G('disc').value)||0;
-  var tax=parseFloat(G('tax').value)||0;
-  var agEx=(G('agx')&&G('agx').value==='yes');
-  var base=gBase(),leg=gLeg(),walls2=gWalls(),vertU=gVertUpgrade();
-  var rd=gRUD(),wd=gWTD(),wn=gWIN();
-  var bt3=G('btype').value,lv=parseInt(l)||0,wv=parseInt(w)||0;
+  // Money comes from the same recalc as the screen (rc → window._rcTot), so the
+  // text TOTAL / deposit / balance always equal the on-screen price. It used to
+  // rebuild its own subtotal, which left out the lean-to connection fee, ground
+  // anchors, overhang and side panels (and threw on a paid 26GA upgrade).
+  rc();
+  var T=window._rcTot||{};
+  var bt3=G('btype').value;
   var fuVal=G('framing-upgrade')?G('framing-upgrade').value:'14';
-  var framingUpgP=0;
-  if(fuVal==='12'){if(bt3==='widespan'){var GA12C2=[20,25,30,35,40,44,48,52],GA12V2=[360,480,600,720,840,1560,1680,1800];var gci2=0;for(var gi2=0;gi2<GA12C2.length;gi2++){if(GA12C2[gi2]<=lv)gci2=gi2;else break;}framingUpgP=GA12V2[gci2];}else{var GA12S2=[20,25,30,35,40];var GA12SV2=wv<=24?[210,240,270,300,330]:[360,480,600,720,840];var gcis2=0;for(var gis2=0;gis2<GA12S2.length;gis2++){if(GA12S2[gis2]<=lv)gcis2=gis2;else break;}if(ACTIVE_MFR==='CCI'&&wv>24){framingUpgP=cci12GA(lv);}else if(lv>40){var ga12r2=(GA12SV2[4]-GA12SV2[3])/5;framingUpgP=Math.round(GA12SV2[4]+ga12r2*(lv-40));}else{framingUpgP=GA12SV2[gcis2];}}}
-  var pitchSelVal=G('pitch-sel')?G('pitch-sel').value:'standard';
-  var pitchUpgrade=MFR().pitchUpgradeFn(base, wv||0, lv||0, pitchSelVal);
-  var lapP=G('lap').value==='yes'?Math.round(base*0.10):0;
-  var wallsVert=G('ws').value==='Vertical';
-  var wainP=gWainscot();
   var aewP=gAddEndWall();
-  var ltP=gLT(),acP=gAC(),insP=gInsul();
-  var ocSel2=G('oc-spacing'),ocVal2=ocSel2?ocSel2.value:'5oc',ocU=0;
-  if(ACTIVE_MFR!=='CA'&&ocVal2==='4oc'&&wv<=24&&bt3!=='widespan'){var OC4S2=[20,25,30,35,40],OC4V2=[300,325,350,375,400];var oci2=0;for(var oi2=0;oi2<OC4S2.length;oi2++){if(OC4S2[oi2]<=lv)oci2=oi2;else break;}if(lv>40){ocU=cciUnitSum(lv,OC4V2);}else{ocU=OC4V2[oci2];}if(bt3!=='fslean')ocU+=cciOC4Leans();}
-  var _cbT=cciCombo12x4((G('framing-upgrade')?G('framing-upgrade').value:'14'), ocVal2, wv, bt3, lv); if(_cbT!=null){ framingUpgP=_cbT; ocU=0; }
-  var preSheet=base+leg+framingUpgP+ocU+pitchUpgrade+walls2+vertU+rd.rud+wd.wtd+wn.win+rd.sf+wd.sf+wn.sf+lapP+wainP+aewP+ltP+acP+insP;
-  var sheetFree=(ACTIVE_MFR!=='CA'&&preSheet>=(window._freeThresh||10000)&&bt3!=='widespan');
-  var sheetU=(!sheetFree&&G('sheeting-upgrade').value==='upgrade'&&bt3!=='widespan')?preSheetSub*0.10:0;
-  var fastenerFree=((preSheet+sheetU)>=(window._freeThresh||10000));
-  var fastenerP=(G('fastener-add')&&G('fastener-add').checked&&!fastenerFree)?150:0;
-  var sub=preSheet+sheetU+fastenerP+gAdj();
-  var da=Math.round(sub*(disc/100)),ad=sub-da;
-  var ta=agEx?0:Math.round(ad*(tax/100)),tot=ad+ta;
-  var grossDep=Math.round(ad*((window._depPct||17)/100));
-  var addDV=parseFloat(G('add-disc')?G('add-disc').value:0)||0;
-  var addDT=G('add-disc-type')?G('add-disc-type').value:'dollar';
-  var addDA=addDT==='pct'?Math.round(grossDep*(addDV/100)):addDV;
-  var dep=Math.max(0,grossDep-addDA);
-  var bal=tot-grossDep;
+  var sheetFree=!!T.sheetFree;
+  var sub=T.sub||0, tot=T.tot||0, dep=T.dep||0, bal=T.bal||0;
+  var addDA=T.addDiscAmount||0, addDV=T.addDiscVal||0, addDT=T.addDiscType||'dollar';
   var doorLines=[];
   document.querySelectorAll('.re').forEach(function(el){var sz=el.querySelector('.rsz').value,qty=parseInt(el.querySelector('.rqt').value)||1;var loc=el.querySelector('.rloc').value.replace(' Gable End','').replace(' Eave Side','');doorLines.push(qty+'x '+sz+' Roll-Up ('+loc+')');});
   document.querySelectorAll('.we').forEach(function(el){var qty=parseInt(el.querySelector('.wqt').value)||1;var loc=el.querySelector('.wloc').value.replace(' Gable End','').replace(' Eave Side','');doorLines.push(qty+'x Walk Door ('+loc+')');});

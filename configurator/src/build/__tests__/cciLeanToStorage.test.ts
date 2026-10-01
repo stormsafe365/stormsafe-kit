@@ -117,6 +117,9 @@ function sideAs(o, v){
 function senseiNote(o){ setMain(o); return ltSenseiDiffers(mkEl(o)); }
 function oc4Leans(leans, mw){ setMain({mw:mw||24, oc:4}); _LTS=leans.map(mkEl); var t=cciOC4Leans(); _LTS=[]; return t; }
 function anchors(found, truss){ _G.foundation.value=found; _TRUSS=truss; var r={legs:gAnchorLegs(), total:gAnchors(), unit:ANCHOR_UNIT}; _TRUSS=0; _G.foundation.value='concrete'; return r; }
+// Storage under another manufacturer (CA): the CA lean base price isn't under test here.
+function ltBasePrice(){ return 0; }
+function storAs(mfr, o){ var was=ACTIVE_MFR; ACTIVE_MFR=mfr; try{ setMain(o); return ltStorage(mkEl(o)); } finally { ACTIVE_MFR=was; } }
 `;
 type Stor = { valid: boolean; err: string; warn: string; total: number; partitionP: number; endP: number; outerP: number; len: number };
 type Unit = { total: number; encAdj: number; err?: string; jTrim?: number };
@@ -129,6 +132,8 @@ type Ctx = {
   senseiNote: (o: Record<string, unknown>) => string;
   anchors: (found: string, truss: number) => { legs: number; total: number; unit: number };
   cciCombo12x4: (fu: string, oc: string, w: number, bt: string, l: number) => number | null;
+  storAs: (mfr: string, o: Record<string, unknown>) => Stor;
+  LT_SIDE_P: Record<string, number>;
 };
 const ctx = vm.createContext({ Math, console }) as unknown as Ctx;
 vm.runInContext(code, ctx as unknown as vm.Context);
@@ -427,5 +432,24 @@ describe('item-7 rep note and the 12GA + 4\' OC combo', () => {
   });
   it('round-3 checks counted', () => {
     expect(r3Checks).toBe(330);
+  });
+});
+
+describe('storage + partial side caution: CA / free-standing keep it, CCI has none (Sensei prices the CCI partial on the open run)', () => {
+  const CAUTION = 'Side wall is set to a partial option — its partial price stays and the storage outer wall is added in full. Verify.';
+  it.each(['q1', 'q2', 'q3', '1panel', '2panel', '3panel'])('CA side %s + storage → caution; flat partial stays, outer wall added in full', (side) => {
+    const s = ctx.storAs('CA', { w: 12, l: 40, h: 10, back: 'closed', side, stor: 'back', slen: 12 });
+    expect(s.valid).toBe(true);
+    expect(s.warn).toBe(CAUTION);
+    expect(s.outerP).toBe(ctx.LT_SIDE_P.closed);
+  });
+  it('CA side Open or Closed + storage → no caution', () => {
+    expect(ctx.storAs('CA', { w: 12, l: 40, h: 10, back: 'closed', side: 'open', stor: 'back', slen: 12 }).warn).toBe('');
+    expect(ctx.storAs('CA', { w: 12, l: 40, h: 10, back: 'closed', side: 'closed', stor: 'back', slen: 12 }).warn).toBe('');
+  });
+  it('CCI attached side 1/2 Closed + storage → no caution', () => {
+    const s = ctx.storAs('CCI', { w: 12, l: 40, h: 10, back: 'closed', side: 'q2', stor: 'back', slen: 10 });
+    expect(s.valid).toBe(true);
+    expect(s.warn).toBe('');
   });
 });

@@ -52,7 +52,7 @@ export function inStorageSegment(opening: { offsetFt?: number }, storage: LeanTo
  * is drawn in its place — an empty bay. A frame-out therefore ALWAYS renders on
  * its wall; only the sheeting-dependent fixtures follow the wall closure.
  *
- * `side`: open | closed | q1 | q2 | q3 | 1panel | 2panel | 3panel
+ * `side`: open | closed | q1 | q2 | q3 | 1panel … 5panel
  * `front`/`back`: gable-end values; fixtures need a fully 'closed' end.
  * Storage section: a 'partition' opening renders while the lean-to has one;
  * an 'outer' opening whose centre is on the closed storage stretch renders

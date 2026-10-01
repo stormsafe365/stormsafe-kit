@@ -236,7 +236,7 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
 export type GableVal = 'open' | 'halfEnd' | 'gable' | 'q1' | 'q2' | 'q3' | 'closed';
 /** Roof-down band coverage for the fractional end closures. */
 const GABLE_BAND_FRAC: Partial<Record<GableVal, number>> = { q1: 0.25, q2: 0.5, q3: 0.75 };
-export type SideVal = string; // open | closed | q1 | q2 | q3 | 1panel | 2panel | 3panel
+export type SideVal = string; // open | closed | q1 | q2 | q3 | 1panel … 5panel (CCI: 4 / 5 panels at 13'+ / 16' lean heights)
 
 /** Resolved lean-to walls (+ its storage section, when it has one). */
 export interface LtWalls {

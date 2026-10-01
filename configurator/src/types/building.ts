@@ -126,7 +126,7 @@ export interface LeanTo {
     // roof; q1/q2/q3 = roof-down band covering 1/4, 1/2, 3/4 of the end.
     front: 'open' | 'halfEnd' | 'gable' | 'q1' | 'q2' | 'q3' | 'closed';
     back: 'open' | 'halfEnd' | 'gable' | 'q1' | 'q2' | 'q3' | 'closed';
-    side: 'open' | '1panel' | '2panel' | '3panel' | 'q1' | 'q2' | 'q3' | 'closed'; // q1 = 1/4, q2 = 1/2, q3 = 3/4
+    side: 'open' | '1panel' | '2panel' | '3panel' | '4panel' | '5panel' | 'q1' | 'q2' | 'q3' | 'closed'; // q1 = 1/4, q2 = 1/2, q3 = 3/4
   };
   /** Doors / windows / roll-ups placed on the lean-to's walls. */
   openings?: LeanToOpening[];

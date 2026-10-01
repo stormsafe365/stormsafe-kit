@@ -141,4 +141,46 @@ describe('price lock (quote-builder.html)', () => {
     expect(PL.invert({ total: m.adjTot, deposit: m.dep, balance: m.bal }, p)).toBeNull();
     expect(PL.invert({ total: 12345.67, deposit: 1, balance: 2 }, { ...p, adVal: 0 })).toBeNull();
   });
+
+  it('names the 9/30/26 lean-to / lean 4\' OC / $70 anchor changes on older quotes (no unexplained drift)', () => {
+    // the rules the notice and the customer rows name
+    const PL = load() as unknown as { RULES: Record<string, { commit: string; date: string; text: string }> };
+    for (const id of ['lean-walls', 'lean-oc4', 'anchor-70']) {
+      expect(PL.RULES[id], id).toBeTruthy();
+      expect(PL.RULES[id].commit).toMatch(/c87e523/);
+      expect(PL.RULES[id].date).toBe('9/30/26');
+    }
+    // rc() publishes the lean part of the 4' OC line; the main-building framing model leaves it out
+    expect(html.includes('ocLean=cciOC4Leans(); ocUpgrade+=ocLean;')).toBe(true);
+    expect(html.includes('if(_cbR!=null){ framingUpgrade=_cbR; ocUpgrade=0; ocLean=0; }')).toBe(true);
+    expect(html.includes('ocUpgrade:ocUpgrade, ocLean:ocLean,')).toBe(true);
+    expect(src.includes('r2(rcl.framingUpgrade+rcl.ocUpgrade-(+rcl.ocLean||0))')).toBe(true);
+    // the detectors run only for prices saved by an older program (never on a v3 snapshot)
+    expect(src.includes("if(src!=='snapshot' && rcl && !rcl.manual && !anyLeanStorage()){")).toBe(true);
+    expect(src.includes('rcl, S.src);')).toBe(true);
+  });
+
+  it('old CCI lean-to wall formula (before c87e523) reproduces the CCI-corrected points', () => {
+    // Tables from the page itself; the DOM-side helpers are stubbed with their chart values.
+    const SC = vm.runInNewContext('(' + (html.match(/var SC=(\{[^\n]*\});/) || [])[1] + ')');
+    const VERT_SIDE = vm.runInNewContext('(' + ((html.match(/var VERT_SIDE = (\{[\s\S]*?\});/) || [])[1] || '').replace(/\/\/[^\n]*/g, '') + ')');
+    const LT_SIDE_P = vm.runInNewContext('(' + (html.match(/var LT_SIDE_P = (\{[^\n]*\});/) || [])[1] + ')');
+    const mk = (u: { w: number; l: number; h: number }, walls: { front: string; back: string; side: string }, horizontal: boolean) => {
+      const mod = { exports: {} as unknown };
+      vm.runInNewContext(src, { module: mod, Date, Math, JSON, parseFloat, parseInt, isNaN, isFinite, String, Number,
+        SC, VERT_SIDE, LT_SIDE_P, ltUnit: () => u, getLTWalls: () => walls, ltPanelsHorizontal: () => horizontal,
+        ecLookup: (w: number, h: number) => (w === 24 && h === 10 ? 1435 : w === 24 && h === 12 ? 1435 : NaN),
+        vertEndUpcharge: (w: number) => (w === 24 ? 715 : NaN) });
+      return (mod.exports as { _ltEncPre: (el: unknown) => number })._ltEncPre({});
+    };
+    // 12x60 at 10', horizontal: ends 1,435/2 = 717.50 -> $718 each (whole dollars then), side SC[10][30] = $1,085
+    expect(mk({ w: 12, l: 60, h: 10 }, { front: 'closed', back: 'closed', side: 'closed' }, true)).toBe(718 + 718 + 1085);
+    // 12x60 at 12', vertical: side SC[12][30] + VERT_SIDE.mid[30] = $1,900; Gable Only $112.50; 1/2 end of (1,435+715)/2
+    expect(mk({ w: 12, l: 60, h: 12 }, { front: 'gable', back: 'q2', side: 'closed' }, false)).toBe(112.5 + Math.round(2150 / 2 * 0.5) + 1900);
+    // 12x100 at 12', vertical: past the 40' column, $54/ft per $2,560 -> $3,100 (CCI-corrected)
+    expect(mk({ w: 12, l: 100, h: 12 }, { front: 'open', back: 'open', side: 'closed' }, false)).toBe(3100);
+    // partial / panel sides were flat rates
+    expect(mk({ w: 12, l: 40, h: 10 }, { front: 'open', back: 'open', side: 'q2' }, true)).toBe(350);
+    expect(mk({ w: 12, l: 40, h: 10 }, { front: 'open', back: 'open', side: '2panel' }, true)).toBe(200);
+  });
 });

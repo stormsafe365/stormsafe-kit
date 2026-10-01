@@ -19,7 +19,7 @@ import { Viewport } from '@/components/Viewport';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import type { BuildingType, EndSheeting, OpeningType, WallOverrides, WallSide } from '@/types/building';
-import { leanToWalkDoorLook, leanToWindowLook, type ProgramTypeRow } from './leanToAccessory';
+import { leanToWalkDoorLook, leanToWindowLook, readLeanToStorage, type ProgramTypeRow } from './leanToAccessory';
 
 // Cache-bust the pricing iframe on the WEB (CRM embed) so a redeploy shows up
 // without a hard refresh. Skipped for the packaged desktop app, where the page
@@ -276,6 +276,12 @@ type BuilderWindow = Window & {
   getTrussInfo?: () => { spacing: number; count: number } | null;
   rc?: (...a: unknown[]) => unknown;
   updatePosSection?: (entry: Element, qty: number, label?: string) => void;
+  /**
+   * Program's storage-PARTITION layout (quote-builder ltPartLayout): the left
+   * edges (ft from the partition's left end) of an entry's openings — the same
+   * spots its gable-end fit rules check, so the 3D draws them exactly there.
+   */
+  ltPartLayout?: (entry: Element, widthFt: number, qty?: number) => number[];
   __ssWrapped?: boolean;
   __ssViewHooked?: boolean;
   __ssOpenSig?: string;
@@ -353,6 +359,21 @@ function writeBackLeanToOpening(win: BuilderWindow, id: string | null) {
   const allOpenings = useBuildingStore.getState().leanTos.flatMap((lt) => lt.openings ?? []);
   const fns = win as unknown as { updLTAccPos?: (el: Element) => void; rebuildLTAccOffsets?: (el: Element) => void };
 
+  // Storage partition: the items NOT dragged keep the program's own spots
+  // (ltPartLayout, read before the row switches to Custom offset) — not the
+  // 3D's keep-on-the-wall display spot, which differs for an item that
+  // doesn't fit (flagged) and would otherwise be written back as its position.
+  let partXs: number[] | null = null;
+  const locEl = entry.querySelector('.lt-acc-loc') as HTMLSelectElement | null;
+  if (locEl?.value === 'partition' && typeof win.ltPartLayout === 'function') {
+    try {
+      const xs = win.ltPartLayout(entry, siblings[0].width, siblings.length);
+      if (Array.isArray(xs) && xs.length === siblings.length && xs.every((x) => Number.isFinite(x))) partXs = xs;
+    } catch {
+      partXs = null;
+    }
+  }
+
   // Switch the row to explicit custom offsets and (re)build the per-item inputs.
   const posEl = entry.querySelector('.lt-acc-pos') as HTMLSelectElement | null;
   if (posEl && posEl.value !== 'offset') {
@@ -367,7 +388,10 @@ function writeBackLeanToOpening(win: BuilderWindow, id: string | null) {
     const op = allOpenings.find((o) => o.id === sib.oid);
     const input = offEls[sib.itemIndex];
     if (!op || !input) continue;
-    const pos = Math.max(0, Math.round((op.offsetFt - op.widthFt / 2) * 12) / 12); // nearest inch
+    const pos =
+      partXs && sib.oid !== id && Number.isFinite(partXs[sib.itemIndex])
+        ? partXs[sib.itemIndex] // not dragged: where the program has it
+        : Math.max(0, Math.round((op.offsetFt - op.widthFt / 2) * 12) / 12); // nearest inch
     input.value = String(Number(pos.toFixed(3)));
     input.dispatchEvent(new Event('input', { bubbles: true }));
     wrote = true;
@@ -387,6 +411,10 @@ function writeBackLeanToOpening(win: BuilderWindow, id: string | null) {
  *   - `.lt-tall-h` = tall leg height (ft, for attached slope)
  *   - `.ltp` = roof pitch (e.g., "2:12", "3:12")
  *   - `.lt-wm` = wall mode / enclosure (open/enclosed/custom)
+ *   - `.lt-stor` / `.lt-stor-len` = storage section (none/front/back) + its
+ *     length (ft). VIEW-ONLY: drawn only when the program itself prices it
+ *     (its own ltStorage(el).valid — a pure read), so the 3D never shows a
+ *     storage room the quote doesn't charge for.
  */
 /** A lean-to accessory as the 3D reads it (doorStyle / impact / color: VIEW-ONLY look fields). */
 interface LeanToOpeningRead {
@@ -402,7 +430,8 @@ interface LeanToOpeningRead {
   impact?: boolean;
 }
 
-function readLeanTos(win: Window & { document: Document }): Array<{
+/** A lean-to as the 3D reads it from the program. */
+interface LeanToRead {
   type: 'attached' | 'freestanding';
   attachedSide?: 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable';
   widthFt: number;
@@ -414,20 +443,12 @@ function readLeanTos(win: Window & { document: Document }): Array<{
   enclosure: 'open' | 'enclosed' | 'custom';
   customWalls?: { front: string; back: string; side: string };
   openings?: Array<LeanToOpeningRead>;
-}> {
-  const out: Array<{
-    type: 'attached' | 'freestanding';
-    attachedSide?: 'Left Eave' | 'Right Eave' | 'Front Gable' | 'Back Gable';
-    widthFt: number;
-    lengthFt: number;
-    offsetFt?: number;
-    lowLegHeightFt: number;
-    tallLegHeightFt?: number;
-    roofPitch: string;
-    enclosure: 'open' | 'enclosed' | 'custom';
-    customWalls?: { front: string; back: string; side: string };
-    openings?: Array<LeanToOpeningRead>;
-  }> = [];
+  /** VIEW-ONLY storage section (only present when the program prices one). */
+  storage?: { end: 'front' | 'back'; lengthFt: number };
+}
+
+function readLeanTos(win: Window & { document: Document }): LeanToRead[] {
+  const out: LeanToRead[] = [];
 
   const strVal = (el: Element, sel: string) => {
     const e = el.querySelector(sel) as HTMLInputElement | null;
@@ -484,6 +505,8 @@ function readLeanTos(win: Window & { document: Document }): Array<{
     const customBack = strVal(el, '.lt-wall-back') || 'open';
     const customSide = strVal(el, '.lt-wall-side') || 'open';
     const customWalls = enclosure === 'custom' ? { front: customFront, back: customBack, side: customSide } : undefined;
+    // Storage section (attached only; the program's own validity + length).
+    const storage = type === 'attached' ? readLeanToStorage(win, el) : undefined;
 
     // ── Lean-to accessories (doors / windows / roll-ups) → openings ──
     // Each `.lt-acc-e` entry: type + size + which wall + position + quantity.
@@ -492,7 +515,13 @@ function readLeanTos(win: Window & { document: Document }): Array<{
       const t = strVal(ae, '.lt-acc-type');
       const oType = t === 'wtd' ? 'walkDoor' : t === 'win' ? 'window' : t === 'frameout' ? 'frameOut' : 'rollUpDoor';
       const locStr = strVal(ae, '.lt-acc-loc');
-      const wall = ['outer', 'front', 'back'].includes(locStr) ? locStr : 'outer';
+      // Lean-to storage PARTITION openings sit on the storage section's
+      // partition wall. With no (priced) storage section there is no wall to
+      // hang them on — skip them rather than mis-drawing them on the outer
+      // wall (the fallback below); the program flags + blocks printing that
+      // orphan. accIndex stays the DOM index.
+      if (locStr === 'partition' && !storage) return;
+      const wall = ['outer', 'front', 'back', 'partition'].includes(locStr) ? locStr : 'outer';
       // Qty is fit-based in the program now (as many as fit the wall) — mirror
       // its sanity ceiling instead of the old hardcoded 3.
       const qty = Math.max(1, Math.min(24, parseInt(strVal(ae, '.lt-acc-qty'), 10) || 1));
@@ -502,6 +531,10 @@ function readLeanTos(win: Window & { document: Document }): Array<{
       let doorStyle: LeanToOpeningRead['doorStyle'];
       let impact: boolean | undefined;
       if (oType === 'rollUpDoor') {
+        // Storage partition roll-up with NO size (no priced size fits where it
+        // sits — the program flags it and blocks printing): nothing to draw,
+        // rather than a made-up 9x8 the quote doesn't have.
+        if (wall === 'partition' && !strVal(ae, '.lt-acc-size')) return;
         const sz = (strVal(ae, '.lt-acc-size') || '9x8').toLowerCase().split('x');
         w = parseFloat(sz[0]) || 9;
         h = parseFloat(sz[1]) || 8;
@@ -534,12 +567,26 @@ function readLeanTos(win: Window & { document: Document }): Array<{
         const ltSill = parseFloat(strVal(ae, '.lt-acc-fo-sill'));
         sill = foType.includes('Window') ? (Number.isFinite(ltSill) && ltSill >= 0 ? ltSill : 4.16667) : 0;
       }
-      // Wall the opening sits on determines the run length it's positioned along.
+      // Wall the opening sits on determines the run length it's positioned along
+      // (the partition runs across the lean-to like an end wall: its width —
+      // the program's ltAccWallLen).
       const wallLen = wall === 'outer' ? lengthFt : widthFt;
       const offEls = Array.from(ae.querySelectorAll('.lt-acc-off')) as HTMLInputElement[];
+      // Storage partition: the program's own layout (its gable-end fit rules
+      // check exactly these spots). Outer / end walls keep the mapping below.
+      let partXs: number[] | null = null;
+      if (wall === 'partition' && typeof (win as BuilderWindow).ltPartLayout === 'function') {
+        try {
+          const xs = (win as BuilderWindow).ltPartLayout!(ae, w, qty);
+          if (Array.isArray(xs) && xs.length === qty && xs.every((x) => Number.isFinite(x))) partXs = xs;
+        } catch {
+          partXs = null;
+        }
+      }
       for (let i = 0; i < qty; i++) {
         let center: number;
-        if (pos === 'offset' && offEls[i]) center = (parseFloat(offEls[i].value) || 0) + w / 2;
+        if (partXs) center = partXs[i] + w / 2;
+        else if (pos === 'offset' && offEls[i]) center = (parseFloat(offEls[i].value) || 0) + w / 2;
         else if (pos === 'center' && qty === 1) center = wallLen / 2;
         else if (pos === 'left') center = w / 2 + 1 + i * (w + 1.5);
         else if (pos === 'right') center = wallLen - (w / 2 + 1) - i * (w + 1.5);
@@ -563,6 +610,9 @@ function readLeanTos(win: Window & { document: Document }): Array<{
       enclosure,
       customWalls,
       openings: ltOpenings,
+      // Only a lean-to with a priced storage section gets the key (no-storage
+      // signature + store entry unchanged).
+      ...(storage ? { storage } : {}),
     });
   });
 
@@ -838,6 +888,7 @@ function syncFromBuilder(win: BuilderWindow) {
         enclosure: lt.enclosure,
         customWalls: lt.customWalls as any, // per-wall settings (front/back/side)
         openings: lt.openings as any, // lean-to doors/windows/roll-ups
+        ...(lt.storage ? { storage: lt.storage } : {}), // VIEW-ONLY storage section
       });
     }
   }

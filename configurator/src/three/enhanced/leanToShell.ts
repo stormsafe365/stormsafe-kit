@@ -1,7 +1,7 @@
 import { SHEET_OUTSET, type LeanToStructure, type StructureModel } from '@/engine/geometry';
 import { rendersLeanToFixture } from '@/engine/leanToFixtures';
 import type { BuildingColors, LeanToOpening, Opening, PanelOrientation, Wainscot } from '@/types/building';
-import { eaveSurfaces, gableOutline, gableSurfaces, resolveWalls, sideWallPolys, type GableVal, type SideVal } from '../LeanToSiding';
+import { eaveSurfaces, gableOutline, gableSurfaces, resolveWalls, sideBandHeight, sideWallPolys, type LtWalls } from '../LeanToSiding';
 import { clipHalf, cutHoles, polyArea, type P2 } from '../polyCut';
 import { litFromRight, sheetOrientation, type V3 } from './materials';
 import {
@@ -47,7 +47,12 @@ import {
  *    classic outlines (gableOutline: closed trapezoid, gable-only triangle,
  *    half end, q1/q2/q3 roof-down bands),
  *  - openings at the classic positions (outer: spanStart + offset; ends: the
- *    lower world across-coordinate + offset), filtered by rendersLeanToFixture.
+ *    lower world across-coordinate + offset), filtered by rendersLeanToFixture;
+ *  - a STORAGE SECTION (LeanToStructure.storage, view-only): its end wall is
+ *    closed (resolveWalls), an open / partial outer wall gets a closed
+ *    floor-to-roof stretch along the storage length, and the partition is one
+ *    more end-type wall ('partition') across the lean-to at storage.runAt,
+ *    its face toward the open part, cut around its openings like an end.
  *
  * What changes vs classic (the Phase 5 recipe):
  *  - outward faces, world-feet UVs, per-wall rib flip from each face's real +u;
@@ -203,7 +208,7 @@ export interface LeanToFrame {
   /** Inner edge of the lean-to roof (the main wall face when flush). */
   roofInner: number;
   flush: boolean;
-  walls: { side: SideVal; front: GableVal; back: GableVal };
+  walls: LtWalls;
   /** Local (a, y, r) -> world. */
   P: (a: number, y: number, r: number) => V3;
   /** Roof normal (up). */
@@ -274,7 +279,7 @@ function leanToFrame(lt: LeanToStructure, m: MainCtx): LeanToFrame | null {
 
 // ── Lean-to walls ───────────────────────────────────────────────────────────
 
-type LtWallId = 'outer' | 'front' | 'back';
+type LtWallId = 'outer' | 'front' | 'back' | 'partition';
 
 interface LtWall {
   id: LtWallId;
@@ -285,13 +290,34 @@ interface LtWall {
   holes: WallHole[];
   /** Wainscot line (0 = none). */
   wainscotY: number;
+  /**
+   * The outline polygons that carry the wainscot (default: all of them). An
+   * open / partial outer wall with a storage section: only its closed storage
+   * stretch.
+   */
+  wainscotOutline?: P2[][];
 }
 
 /** Plane of an end wall ('front' = the spanStart end). */
 function endPlane(f: LeanToFrame, id: 'front' | 'back'): PlaneRef {
   const dir = id === 'front' ? -1 : 1;
   const at = id === 'front' ? f.r0 - SO : f.r1 + SO;
+  return runPlane(f, at, dir);
+}
+
+/** A wall across the lean-to at run coordinate `at`, its face looking along the run in direction `dir`. */
+function runPlane(f: LeanToFrame, at: number, dir: -1 | 1): PlaneRef {
   return f.eave ? { along: 'x', at, n: [0, 0, dir], u: [dir, 0, 0] } : { along: 'z', at, n: [dir, 0, 0], u: [0, 0, -dir] };
+}
+
+/**
+ * Plane of the storage PARTITION: SO off its framing line (storage.runAt)
+ * toward the open part of the lean-to, face looking at it — an end wall of
+ * the open part.
+ */
+function partitionPlane(f: LeanToFrame): PlaneRef | null {
+  const st = f.walls.storage;
+  return st ? runPlane(f, st.runAt + st.faces * SO, st.faces) : null;
 }
 
 function leanToWalls(f: LeanToFrame, overhangFt: number, wainscotFt: number, vertical: boolean): LtWall[] {
@@ -302,15 +328,34 @@ function leanToWalls(f: LeanToFrame, overhangFt: number, wainscotFt: number, ver
   const flip = (p: PlaneRef) => vertical && litFromRight(p.n, p.u);
 
   // Outer long wall: closed = floor to roof, partial = the classic eave-down band.
-  if (f.walls.side !== 'open') {
+  // A storage section closes its stretch of an open / partial outer wall floor
+  // to roof (its own outline polygon, the only one with wainscot); the rest of
+  // the wall keeps its setting.
+  const st = f.walls.storage;
+  const storSeg = st && f.walls.side !== 'closed' ? st : null;
+  if (f.walls.side !== 'open' || storSeg) {
     const top = wallTop(f, f.wallFace);
     let yBot = 0;
-    if (f.walls.side !== 'closed') {
+    if (f.walls.side === 'open') yBot = Infinity;
+    else if (f.walls.side !== 'closed') {
       const geo = f.eave ? eaveSurfaces(lt, overhangFt, f.walls) : gableSurfaces(lt, overhangFt, f.walls);
       const band = sideWallPolys(geo, f.walls.side, f.lh, []);
       yBot = band.length ? Math.min(...band.flatMap((p) => p.corners.map((c) => c[1]))) : Infinity;
     }
-    if (top - yBot > 0.02) {
+    const outline: P2[][] = [];
+    let wainscotOutline: P2[][] | undefined;
+    if (!storSeg) {
+      if (top - yBot > 0.02) outline.push([[f.r0, yBot], [f.r1, yBot], [f.r1, top], [f.r0, top]]);
+    } else {
+      const s0 = f.r0 + storSeg.segStart;
+      const s1 = f.r0 + storSeg.segEnd;
+      const [b0, b1] = storSeg.end === 'front' ? [s1, f.r1] : [f.r0, s0];
+      if (top - yBot > 0.02 && b1 - b0 > 0.02) outline.push([[b0, yBot], [b1, yBot], [b1, top], [b0, top]]);
+      const seg: P2[] = [[s0, 0], [s1, 0], [s1, top], [s0, top]];
+      outline.push(seg);
+      wainscotOutline = [seg];
+    }
+    if (outline.length) {
       const plane: PlaneRef = f.eave
         ? { along: 'z', at: f.wallFace, n: [f.out, 0, 0], u: [0, 0, -f.out] }
         : { along: 'x', at: f.wallFace, n: [0, 0, f.out], u: [f.out, 0, 0] };
@@ -318,9 +363,10 @@ function leanToWalls(f: LeanToFrame, overhangFt: number, wainscotFt: number, ver
         id: 'outer',
         plane,
         flip: flip(plane),
-        outline: [[[f.r0, yBot], [f.r1, yBot], [f.r1, top], [f.r0, top]]],
+        outline,
         holes: shown.filter((o) => o.wall === 'outer').map((o) => hole(o, f.r0 + o.offsetFt)),
-        wainscotY: f.walls.side === 'closed' && wainscotFt > 0 && wainscotFt < top - 0.02 ? wainscotFt : 0,
+        wainscotY: (f.walls.side === 'closed' || storSeg) && wainscotFt > 0 && wainscotFt < top - 0.02 ? wainscotFt : 0,
+        ...(wainscotOutline ? { wainscotOutline } : {}),
       });
     }
   }
@@ -344,6 +390,27 @@ function leanToWalls(f: LeanToFrame, overhangFt: number, wainscotFt: number, ver
       holes: shown.filter((o) => o.wall === id).map((o) => hole(o, minA + o.offsetFt)),
       wainscotY: v === 'closed' && wainscotFt > 0 && wainscotFt < minTop - 0.02 ? wainscotFt : 0,
     });
+  }
+
+  // Storage PARTITION: the closed end-wall outline across the lean-to at the
+  // partition (low leg at the outer wall up to the connection at the main
+  // wall), topped just under the roof, cut around its openings.
+  const pPlane = partitionPlane(f);
+  if (pPlane) {
+    const raw = gableOutline('closed', f.inner, f.outer, f.lh, f.connH).map(([a, y]): P2 => [a, y]);
+    const poly = clipHalf(raw, (p) => wallTop(f, p[0]) - p[1]);
+    if (Math.abs(polyArea(poly)) >= 1e-3) {
+      const cs = poly.map((p) => p[0]);
+      const minTop = Math.min(wallTop(f, Math.min(...cs)), wallTop(f, Math.max(...cs)));
+      walls.push({
+        id: 'partition',
+        plane: pPlane,
+        flip: flip(pPlane),
+        outline: [poly],
+        holes: shown.filter((o) => o.wall === 'partition').map((o) => hole(o, minA + o.offsetFt)),
+        wainscotY: wainscotFt > 0 && wainscotFt < minTop - 0.02 ? wainscotFt : 0,
+      });
+    }
   }
   return walls;
 }
@@ -676,6 +743,29 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
     aabb(e, f.P(a0, y0, r0), f.P(a1, y1, r1));
   /** Keep a corner plate under the roof over its across extent [a0, a1]. */
   const under = (f: LeanToFrame, a0: number, a1: number) => Math.min(wallTop(f, a0), wallTop(f, a1));
+  /**
+   * Inside corner where a wall across the lean-to (an end wall part-way along
+   * the main wall, or the storage partition) meets the main wall's sheeting:
+   * its sheet plane at run ePlane, face looking along the run in `dir`.
+   */
+  const insideCorner = (f: LeanToFrame, end: LtWall, ePlane: number, dir: -1 | 1) => {
+    const mw = mainWallFor(layout, f);
+    const a = mw ? sheetSpanAt(mw, ePlane) : null;
+    const b = spanAt(end.outline, f.mainFace);
+    if (a && b) {
+      const y0 = Math.max(a[0], b[0]);
+      const y1 = Math.min(a[1], b[1], under(f, f.mainFace, f.mainFace + f.out * cw));
+      if (y1 - y0 >= SHELL.minCornerFt) {
+        addZone(end, { c0: f.mainFace, c1: f.mainFace + f.out * cw, y0, y1 });
+        // The main-wall plate sits on top of the main base trim.
+        const yB = y0 < EPS ? SHELL.baseHeight : y0;
+        plates.push(() => {
+          localBox(wallTrim, f, f.mainFace, f.mainFace + f.out * cw, y0, y1, ePlane + dir * L, ePlane + dir * T);
+          if (y1 - yB > 0.05) localBox(wallTrim, f, f.mainFace + f.out * L, f.mainFace + f.out * T, yB, y1, ePlane + dir * L, ePlane + dir * cw);
+        });
+      }
+    }
+  };
 
   // ── Corner plates (collected first: their zones break the base / bottom / Z trims) ──
   const plates: (() => void)[] = [];
@@ -721,22 +811,42 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
         continue;
       }
       // Inside corner: this end wall meets the main wall part-way along it.
-      const mw = mainWallFor(layout, f);
-      const a = mw ? sheetSpanAt(mw, ePlane) : null;
-      const b = spanAt(end.outline, f.mainFace);
-      if (a && b) {
-        const y0 = Math.max(a[0], b[0]);
-        const y1 = Math.min(a[1], b[1], under(f, f.mainFace, f.mainFace + f.out * cw));
-        if (y1 - y0 >= SHELL.minCornerFt) {
-          addZone(end, { c0: f.mainFace, c1: f.mainFace + f.out * cw, y0, y1 });
-          // The main-wall plate sits on top of the main base trim.
-          const yB = y0 < EPS ? SHELL.baseHeight : y0;
+      insideCorner(f, end, ePlane, dir);
+    }
+
+    // Storage PARTITION (its face looks along the run toward the open part):
+    // an inside corner where it meets the main wall (same as an end wall
+    // part-way along it) and, when the outer wall is open / partial, an
+    // OUTSIDE corner where the closed storage stretch ends at it — a two-plate
+    // L like an end corner; on a partial wall its outer-wall plate stops under
+    // the eave-down band, which carries on past the partition.
+    const st = f.walls.storage;
+    const part = wallOf(md, 'partition');
+    if (st && part) {
+      const dir = st.faces;
+      const ePlane = st.runAt + dir * SO;
+      if (side && f.walls.side !== 'closed') {
+        const b = spanAt(part.outline, f.outer);
+        const top = under(f, f.wallFace - f.out * cw, f.wallFace + f.out * T);
+        const ySide = Math.min(top, f.walls.side === 'open' ? top : f.lh - sideBandHeight(f.walls.side, f.lh));
+        const yEnd = b ? Math.min(b[1], top) : 0;
+        if (ySide >= SHELL.minCornerFt) {
+          addZone(side, { c0: ePlane - dir * cw, c1: ePlane, y0: 0, y1: ySide });
+          plates.push(() => localBox(wallTrim, f, f.wallFace + f.out * L, f.wallFace + f.out * T, 0, ySide, ePlane - dir * cw, ePlane + dir * L));
+        }
+        if (b && yEnd - b[0] >= SHELL.minCornerFt) {
+          addZone(part, { c0: f.wallFace - f.out * cw, c1: f.wallFace + f.out * T, y0: b[0], y1: yEnd });
+          // Below the band the partition plate wraps the corner (to the outer
+          // face, like an end corner); behind a partial band it stops just
+          // inside the band (never poking through the sheeting).
+          const yWrap = Math.max(b[0], Math.min(yEnd, ySide));
           plates.push(() => {
-            localBox(wallTrim, f, f.mainFace, f.mainFace + f.out * cw, y0, y1, ePlane + dir * L, ePlane + dir * T);
-            if (y1 - yB > 0.05) localBox(wallTrim, f, f.mainFace + f.out * L, f.mainFace + f.out * T, yB, y1, ePlane + dir * L, ePlane + dir * cw);
+            if (yWrap - b[0] > 0.02) localBox(wallTrim, f, f.wallFace - f.out * cw, f.wallFace + f.out * T, b[0], yWrap, ePlane + dir * L, ePlane + dir * T);
+            if (yEnd - yWrap > 0.02) localBox(wallTrim, f, f.wallFace - f.out * cw, f.wallFace - f.out * L, yWrap, yEnd, ePlane + dir * L, ePlane + dir * T);
           });
         }
       }
+      insideCorner(f, part, ePlane, dir);
     }
   }
   // Junction of two lean-tos wrapping a main corner: inside corner between their end walls.
@@ -774,7 +884,7 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
           uv,
         );
       for (const poly of w.outline) {
-        const parts: { pts: P2[]; wainscot: boolean }[] = w.wainscotY
+        const parts: { pts: P2[]; wainscot: boolean }[] = w.wainscotY && (!w.wainscotOutline || w.wainscotOutline.includes(poly))
           ? [
               { pts: clipHalf(poly, (p) => w.wainscotY - p[1]), wainscot: true },
               { pts: clipHalf(poly, (p) => p[1] - w.wainscotY), wainscot: false },
@@ -834,7 +944,7 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
         const cuts = w.holes
           .filter((h) => h.y0 < w.wainscotY + 0.08 && h.y1 > w.wainscotY - 0.08)
           .map((h): [number, number] => [h.c - h.w / 2, h.c + h.w / 2]);
-        for (const [c0, c1] of chordAt(w.outline, w.wainscotY))
+        for (const [c0, c1] of chordAt(w.wainscotOutline ?? w.outline, w.wainscotY))
           for (const [a, b] of subtractRanges(c0, c1, [...cuts, ...zoneGaps(w, w.wainscotY)]))
             plate(a, b, w.wainscotY - zt.below, w.wainscotY - zt.below + zt.face, zt.standoff, zt.standoff + T);
       }
@@ -1019,6 +1129,7 @@ export function leanToBatchKey(inp: LeanToShellInput): string {
       lt.enclosure,
       lt.customWalls ?? null,
       (lt.openings ?? []).map((o) => [o.type, o.wall, o.widthFt, o.heightFt, o.sillFt, o.offsetFt]),
+      lt.storage ?? null,
     ]),
     s.width,
     s.length,

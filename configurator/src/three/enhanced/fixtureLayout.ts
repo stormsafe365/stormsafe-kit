@@ -1,4 +1,5 @@
 import { COMPONENT_OUTSET, SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
+import { inStorageSegment, type LeanToWallSettings } from '@/engine/leanToFixtures';
 import type { BuildingColors, LeanToOpening, Opening, WallSide } from '@/types/building';
 import { sheetSpanAt, shellLayout } from './shellGeometry';
 
@@ -118,11 +119,17 @@ export function mainOpeningsSheeted(structure: StructureModel, openings: Opening
   return out;
 }
 
-/** Lean-to opening: sheeting surrounds it only on a fully CLOSED wall (never a frame-out). */
+/**
+ * Lean-to opening: sheeting surrounds it only on a fully CLOSED wall (never a
+ * frame-out). A storage section's partition is always closed, and so is the
+ * storage stretch of the outer wall.
+ */
 export function leanToOpeningSheeted(
-  o: Pick<LeanToOpening, 'type' | 'wall'>,
-  walls: { side: string; front: string; back: string },
+  o: Pick<LeanToOpening, 'type' | 'wall'> & { offsetFt?: number },
+  walls: LeanToWallSettings,
 ): boolean {
   if (o.type === 'frameOut') return false;
-  return (o.wall === 'outer' ? walls.side : walls[o.wall]) === 'closed';
+  if (o.wall === 'partition') return !!walls.storage;
+  if (o.wall === 'outer') return walls.side === 'closed' || inStorageSegment(o, walls.storage);
+  return walls[o.wall] === 'closed';
 }

@@ -84,6 +84,11 @@ describe('sideWallPolys — lean-to sidewall hangs from the eave (low-leg top)',
     expect(yRange('3panel', 2)).toEqual({ min: 0, max: 2 });
   });
 
+  it('CCI 4 Panels (12 ft) on a 13 ft wall / 5 Panels (15 ft) on a 16 ft wall → that many feet down from the eave', () => {
+    expect(yRange('4panel', 13)).toEqual({ min: 1, max: 13 });
+    expect(yRange('5panel', 16)).toEqual({ min: 1, max: 16 });
+  });
+
   it('every partial closure stays anchored at the eave (top === lh)', () => {
     for (const side of ['q1', 'q2', 'q3', '1panel', '2panel', '3panel', 'closed']) {
       expect(yRange(side, 10).max).toBe(10);

@@ -60,3 +60,21 @@ export function leanToWindowLook(
     color: row?.color === 'black' ? LEAN_TO_BLACK : undefined,
   };
 }
+
+/**
+ * The lean-to's storage section as the PROGRAM prices it — its own
+ * ltStorage(el) (a pure read of the entry's fields), so the 3D draws a storage
+ * room exactly when the quote charges one (never for a blank / invalid length,
+ * a free-standing lean-to or None). Exported for tests.
+ */
+export function readLeanToStorage(win: unknown, el: Element): { end: 'front' | 'back'; lengthFt: number } | undefined {
+  const fn = (win as { ltStorage?: (e: Element) => { valid?: boolean; end?: string; len?: number } }).ltStorage;
+  if (typeof fn !== 'function') return undefined;
+  try {
+    const s = fn(el);
+    if (!s || !s.valid || (s.end !== 'front' && s.end !== 'back') || !(Number(s.len) > 0)) return undefined;
+    return { end: s.end, lengthFt: Number(s.len) };
+  } catch {
+    return undefined;
+  }
+}

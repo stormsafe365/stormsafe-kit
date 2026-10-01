@@ -652,8 +652,10 @@ function SpacingOverlay({ openings, structure }: { openings: Opening[]; structur
  * facing the camera: LOW LEG height, HIGH SIDE (connection) height, width out
  * from the building and roof pitch. When its outer side faces the camera: its
  * length, roof-edge length with overhang, and where it starts/stops along a
- * longer building wall. Lean-to door/window/roll-up/frame-out sizes, gaps and
- * sills on lean-to walls are drawn by LeanToSpacing.tsx (render-upgrade P7).
+ * longer building wall — plus, with a storage section, the storage length
+ * (end wall -> partition). Lean-to door/window/roll-up/frame-out sizes, gaps and
+ * sills on lean-to walls (incl. the storage partition) are drawn by
+ * LeanToSpacing.tsx (render-upgrade P7).
  */
 function LeanToSpacing({ lt, structure }: { lt: LeanToStructure; structure: StructureModel }) {
   const camera = useThree((st) => st.camera);
@@ -690,6 +692,9 @@ function LeanToSpacing({ lt, structure }: { lt: LeanToStructure; structure: Stru
   const OFF = 0.6;
   const rEnd = endR + endOut * OFF;
   const pitch = W > 0 ? Math.round(((hh - lh) / W) * 12 * 2) / 2 : 0;
+  // Storage length line: at the slab like "lean-to L", one step further out
+  // from the wall (clear of the wall's gap chain, sill heights and door chips).
+  const STOR_OFF = OFF + 1.2;
   // Behind the building (none of its walls face the camera) → show nothing; the
   // labels draw on top of everything and would float through the main walls.
   if (!seeFront && !seeBack && !seeOuter) return null;
@@ -711,6 +716,15 @@ function LeanToSpacing({ lt, structure }: { lt: LeanToStructure; structure: Stru
           )}
           {runMax - s1 > 0.05 && (
             <Measure a={P(outA + dirA * OFF, s1, 0.3)} b={P(outA + dirA * OFF, runMax, 0.3)} mid={P(outA + dirA * OFF, (s1 + runMax) / 2, 0.3)} label={`${ftIn(runMax - s1)} no lean-to`} />
+          )}
+          {/* Storage section: its length along the outer wall, end wall -> partition. */}
+          {lt.storage && (
+            <Measure
+              a={P(outA + dirA * STOR_OFF, s0 + lt.storage.segStart, 0.3)}
+              b={P(outA + dirA * STOR_OFF, s0 + lt.storage.segEnd, 0.3)}
+              mid={P(outA + dirA * STOR_OFF, s0 + (lt.storage.segStart + lt.storage.segEnd) / 2, 0.3)}
+              label={`${ftIn(lt.storage.lengthFt)} storage`}
+            />
           )}
         </>
       )}

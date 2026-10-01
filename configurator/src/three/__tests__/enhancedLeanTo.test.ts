@@ -265,6 +265,25 @@ describe('enhanced lean-to — roof + trim', () => {
     expect(trimFaceAt(batchesOf(cp.cfg, cp.s), 0, xFace, () => true)).toBe(false);
   });
 
+  it('the wall flashing\'s back face is lapped SHELL.trimLift off the main sheet (no z-fight seen from inside the main building)', () => {
+    for (const attachedSide of ['Left Eave', 'Front Gable'] as const) {
+      const { cfg, s } = build([leanTo({ attachedSide, lengthFt: attachedSide === 'Left Eave' ? 30 : 24 })]);
+      const lt = s.leanTos[0];
+      const [axis, face, along, half] =
+        attachedSide === 'Left Eave' ? ([0, s.width / 2 + SO, 2, s.length / 2] as const) : ([2, -(s.length / 2 + SO), 0, s.width / 2] as const);
+      const out = attachedSide === 'Left Eave' ? 1 : -1;
+      const band = (t: Tri) => centroid(t)[1] > lt.peakHeightFt - 0.1 && centroid(t)[1] < lt.peakHeightFt + 0.4;
+      const ts = allTris(batchesOf(cfg, s), surface('trim')).filter(band);
+      // nothing lies in the main sheet's plane over the sheet (past the main corner, e.g. a rake end, is not over it);
+      // the flashing's back face (facing into the building) sits trimLift out
+      const onSheet = (t: Tri) => t.p.every((p) => Math.abs(p[axis] - face) < 1e-6) && Math.abs(centroid(t)[along]) < half;
+      expect(ts.some(onSheet)).toBe(false);
+      expect(ts.some((t) => t.n[axis] === -out && t.p.every((p) => Math.abs(p[axis] - (face + out * SHELL.trimLift)) < 1e-6))).toBe(true);
+      // ... and its outer face is still T proud of the sheet
+      expect(ts.some((t) => t.n[axis] === out && t.p.every((p) => Math.abs(p[axis] - (face + out * T)) < 1e-6))).toBe(true);
+    }
+  });
+
   it('corner L trims only where two sheeted edges meet; base trim only where a sheet meets the slab', () => {
     const open = build([leanTo({ enclosure: 'open' })]);
     const ob = batchesOf(open.cfg, open.s);

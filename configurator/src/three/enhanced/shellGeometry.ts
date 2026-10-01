@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ROOF_LIFT, SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
 import type { BuildingColors, Opening, PanelOrientation, Wainscot, WallSide } from '@/types/building';
+import { TRIM_LIFT } from '../lappedBox';
 import { eaveDownBand, stripsAround, type LocalRect } from '../Siding';
 import { litFromRight, materialKey, sheetOrientation, type EnhancedMaterialSpec, type V3 } from './materials';
 
@@ -40,6 +41,10 @@ import { litFromRight, materialKey, sheetOrientation, type EnhancedMaterialSpec,
  *    raw bottom edge of eave-hung bands / gable-only sheets, and the wainscot
  *    Z-trim (classic WainscotCap rules: broken around every opening that
  *    crosses the wainscot line).
+ *  - trim plates lapped onto a sheet (base, bottom, corner) keep every face
+ *    seen from outside where it is, but their back face (the one lying on the
+ *    sheet) sits SHELL.trimLift inside the plate, never in the sheet's plane:
+ *    see lapOn().
  */
 
 // ── Constants (feet; HANDOFF Step 1 / lab v20 unless noted) ────────────────
@@ -53,6 +58,13 @@ export const SHELL = {
   wallTopGap: 0.07,
   /** Bent trim metal thickness (26 ga). */
   trimT: 0.025,
+  /**
+   * A wall-lapped trim plate's back face sits this far off the sheet, inside
+   * the plate; its outer face and edges stay put (lapOn). In the sheet's plane
+   * it z-fought through the sheet seen from inside: the dark hatched stripe
+   * above the base rail (owner 9/30/26). See ../lappedBox.ts.
+   */
+  trimLift: TRIM_LIFT,
   /** Ridge cap: inverted V at the roof pitch. `lift` = gap over the roof skin (lab 0.015; 0.03 keeps the rake tops inside the cap). */
   ridgeCap: { halfWidth: 0.33, thickness: 0.025, hem: 0.04, lift: 0.03, endOverrun: 0.03 },
   /** Rake L: face 0.25 (0.2 below / 0.05 above the roof), leg 0.14 on the panel. */
@@ -148,16 +160,37 @@ export interface Frame3 {
 const WORLD: Frame3 = { o: [0, 0, 0], x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
 const at = (f: Frame3, l: V3): V3 => add(f.o, add(scale(f.x, l[0]), add(scale(f.y, l[1]), scale(f.z, l[2]))));
 
-/** A box (plate) centered at local `c` with local size `s`, 6 outward faces. */
-export function box(e: Emitter, f: Frame3, c: V3, s: V3) {
+/**
+ * The face of a plate that lies ON a wall sheet: local `axis`, on its `sign`
+ * side (the face's outward normal is sign x axis), drawn `by` inside the plate.
+ */
+export interface LappedFace {
+  axis: 0 | 1 | 2;
+  sign: -1 | 1;
+  by: number;
+}
+
+/**
+ * A box (plate) centered at local `c` with local size `s`, 6 outward faces.
+ * `lapped`: that one face is drawn `lapped.by` inside the box (the other five,
+ * and so everything seen from outside, are computed exactly as without it),
+ * and the `lapped.by` recess it leaves along the four side faces is lined with
+ * inward-facing strips, so where no sheet covers it (a bottom trim below its
+ * sheet's edge, a corner plate past the sheet's end) a grazing ray into the
+ * recess meets trim, never the background. The strips stand at right angles to
+ * the sheet (never in its plane) and face into the box (culled from outside).
+ */
+export function box(e: Emitter, f: Frame3, c: V3, s: V3, lapped?: LappedFace) {
   const ax = [f.x, f.y, f.z];
   for (let k = 0; k < 3; k++) {
     const i = (k + 1) % 3;
     const j = (k + 2) % 3;
     for (const sg of [-1, 1]) {
+      const inset = lapped && lapped.axis === k && lapped.sign === sg ? lapped.by : 0;
       const corner = (a: number, b: number): V3 => {
         const l: [number, number, number] = [c[0], c[1], c[2]];
         l[k] += (sg * s[k]) / 2;
+        if (inset) l[k] -= sg * inset;
         l[i] += (a * s[i]) / 2;
         l[j] += (b * s[j]) / 2;
         return at(f, l);
@@ -165,14 +198,48 @@ export function box(e: Emitter, f: Frame3, c: V3, s: V3) {
       polygon(e, [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)], scale(ax[k], sg));
     }
   }
+  if (!lapped) return;
+  // Recess lining: on each side face, the strip within `by` of the lapped face, facing into the box.
+  const a = lapped.axis;
+  const edge = c[a] + (lapped.sign * s[a]) / 2; // where the lapped face would have been
+  const inner = edge - lapped.sign * lapped.by; // where it is drawn
+  for (const k of [0, 1, 2] as const) {
+    if (k === a) continue;
+    const j = 3 - a - k; // the remaining axis
+    for (const sg of [-1, 1]) {
+      const corner = (ta: number, tb: number): V3 => {
+        const l: [number, number, number] = [c[0], c[1], c[2]];
+        l[k] += (sg * s[k]) / 2;
+        l[a] = ta;
+        l[j] += (tb * s[j]) / 2;
+        return at(f, l);
+      };
+      polygon(e, [corner(edge, -1), corner(inner, -1), corner(inner, 1), corner(edge, 1)], scale(ax[k], -sg));
+    }
+  }
 }
 
-/** Axis-aligned box from two corners. */
-export function aabb(e: Emitter, a: V3, b: V3) {
+/** Axis-aligned box from two corners (`lapped`: see box; axes are world axes). */
+export function aabb(e: Emitter, a: V3, b: V3, lapped?: LappedFace) {
   const lo: V3 = [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.min(a[2], b[2])];
   const hi: V3 = [Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.max(a[2], b[2])];
   if (hi[0] - lo[0] < 1e-6 || hi[1] - lo[1] < 1e-6 || hi[2] - lo[2] < 1e-6) return;
-  box(e, WORLD, [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2], sub(hi, lo));
+  box(e, WORLD, [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2], sub(hi, lo), lapped);
+}
+
+/**
+ * The back face of a trim plate lapped onto the sheet of `plane` (world
+ * axis-aligned): the face toward the building, drawn SHELL.trimLift inside the
+ * plate. The sheet is a zero-thickness DoubleSide plane; a plate face in that
+ * plane ties with it in the depth buffer, and from inside the building the
+ * trim color z-fights through the sheet (a dark hatched band that changes
+ * with the camera). Off the plane the sheet always wins from inside, and from
+ * outside that face is a back face behind the plate's outer face, so the
+ * outside look is unchanged.
+ */
+export function lapOn(plane: Pick<PlaneRef, 'along' | 'n'>): LappedFace {
+  const axis = plane.along === 'z' ? 0 : 2;
+  return { axis, sign: plane.n[axis] > 0 ? -1 : 1, by: SHELL.trimLift };
 }
 
 /**
@@ -1072,22 +1139,26 @@ export function trimBatches(inp: ShellInput & { trimColor: string }, layout: She
   const zoneGaps = (w: ShellWall, y: number): [number, number][] =>
     zones.filter((z) => z.wall === w.plane.id && y >= z.y0 - EPS && y <= z.y1 + EPS).map((z) => [z.c0, z.c1]);
 
-  /** A plate on a wall: along-axis [c0, c1], height [y0, y1], `o0..o1` out from the sheet face. */
-  const plate = (w: ShellWall, c0: number, c1: number, y0: number, y1: number, o0: number, o1: number) =>
-    aabb(e, wallPoint(w.plane, c0, y0, o0), wallPoint(w.plane, c1, y1, o1));
+  /**
+   * A plate on a wall: along-axis [c0, c1], height [y0, y1], `o0..o1` out from
+   * the sheet face. `lapped` (o0 = 0: the plate lies on the sheet): its back
+   * face is drawn SHELL.trimLift off the sheet (lapOn).
+   */
+  const plate = (w: ShellWall, c0: number, c1: number, y0: number, y1: number, o0: number, o1: number, lapped = false) =>
+    aabb(e, wallPoint(w.plane, c0, y0, o0), wallPoint(w.plane, c1, y1, o1), lapped ? lapOn(w.plane) : undefined);
 
   for (const w of layout.walls) {
     // Base trim: floor-level openings (sill <= 0.1) and corner plates break it.
     const floorCuts = w.holes.filter((h) => h.y0 <= SHELL.floorSillFt).map((h): [number, number] => [h.c - h.w / 2, h.c + h.w / 2]);
     for (const run of w.base)
       for (const [a, b] of subtractRanges(run.c0, run.c1, [...floorCuts, ...zoneGaps(w, 0)]))
-        plate(w, a, b, 0, SHELL.baseHeight, 0, T);
+        plate(w, a, b, 0, SHELL.baseHeight, 0, T, true);
 
     // Bottom trim on a hanging sheet's raw bottom edge (broken where an opening crosses it).
     const bt = SHELL.bottomTrim;
     for (const run of w.bottom) {
       const cuts = w.holes.filter((h) => h.y0 < run.y - EPS && h.y1 > run.y + EPS).map((h): [number, number] => [h.c - h.w / 2, h.c + h.w / 2]);
-      for (const [a, b] of subtractRanges(run.c0, run.c1, [...cuts, ...zoneGaps(w, run.y)])) plate(w, a, b, run.y - bt.below, run.y + bt.above, 0, T);
+      for (const [a, b] of subtractRanges(run.c0, run.c1, [...cuts, ...zoneGaps(w, run.y)])) plate(w, a, b, run.y - bt.below, run.y + bt.above, 0, T, true);
     }
 
     // Wainscot Z-trim (classic WainscotCap crossing rule: +-0.08 around the line).
@@ -1102,12 +1173,15 @@ export function trimBatches(inp: ShellInput & { trimColor: string }, layout: She
   }
 
   // Corner L: the side plate stops at the end wall's face; the end plate wraps
-  // the corner by one plate thickness (covers the side plate's edge).
+  // the corner by one plate thickness (covers the side plate's edge). Both lie
+  // on their sheets: back faces lapped (lapOn).
   const cw = SHELL.cornerWidth;
   for (const k of layout.corners) {
-    const xw = Math.abs(layout.walls.find((w) => w.plane.id === k.side)!.plane.at);
-    aabb(e, [k.sx * xw, k.y0, k.zw - k.zs * cw], [k.sx * (xw + T), k.y1, k.zw]);
-    aabb(e, [k.sx * (xw - cw), k.y0, k.zw], [k.sx * (xw + T), k.y1, k.zw + k.zs * T]);
+    const side = layout.walls.find((w) => w.plane.id === k.side)!;
+    const end = layout.walls.find((w) => w.plane.id === k.end)!;
+    const xw = Math.abs(side.plane.at);
+    aabb(e, [k.sx * xw, k.y0, k.zw - k.zs * cw], [k.sx * (xw + T), k.y1, k.zw], lapOn(side.plane));
+    aabb(e, [k.sx * (xw - cw), k.y0, k.zw], [k.sx * (xw + T), k.y1, k.zw + k.zs * T], lapOn(end.plane));
   }
   return set.build();
 }

@@ -1,8 +1,35 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { ROOF_LIFT, SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
 import type { Opening, Wainscot, WallSide } from '@/types/building';
+import { lappedBoxGeometry } from './lappedBox';
 import { SteelMember } from './SteelMember';
+
+/**
+ * A corner-flashing face lying ON a wall sheet: the classic trim box, but its
+ * back face (local `axis`, `sign` side) sits TRIM_LIFT inside the plate
+ * instead of in the sheet's plane, where it z-fought through the sheet seen
+ * from inside (dark hatched band beside the corner leg). Every face seen from
+ * outside is the plain box's.
+ */
+function LappedTrimBox({
+  pos,
+  size,
+  axis,
+  sign,
+  material,
+}: {
+  pos: [number, number, number];
+  size: [number, number, number];
+  axis: 0 | 1 | 2;
+  sign: -1 | 1;
+  material: THREE.Material;
+}) {
+  const [sx, sy, sz] = size;
+  const geometry = useMemo(() => lappedBoxGeometry([sx, sy, sz], axis, sign), [sx, sy, sz, axis, sign]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return <mesh position={pos} geometry={geometry} material={material} castShadow receiveShadow />;
+}
 
 interface TrimProps {
   structure: StructureModel;
@@ -92,12 +119,16 @@ export function Trim({ structure, color, wainscot, openings }: TrimProps) {
         const sz = z < 0 ? -1 : 1;
         const endClosed =
           (z === -halfL && enclosure.front === 'closed') || (z === halfL && enclosure.back === 'closed');
-        // face on the side wall
+        // face on the side wall (lies on the side sheet: back face -X side for sx = +1)
         if (!sideIsOpen)
-          corners.push(<Box key={`cs${k++}`} pos={[sx * (halfW + out + tt / 2), cH / 2, sz * (halfL - f / 2)]} size={[tt, cH, f]} />);
-        // face on the end wall
+          corners.push(
+            <LappedTrimBox key={`cs${k++}`} pos={[sx * (halfW + out + tt / 2), cH / 2, sz * (halfL - f / 2)]} size={[tt, cH, f]} axis={0} sign={sx < 0 ? 1 : -1} material={mat} />,
+          );
+        // face on the end wall (lies on the end sheet)
         if (endClosed)
-          corners.push(<Box key={`ce${k++}`} pos={[sx * (halfW - f / 2), cH / 2, sz * (halfL + out + tt / 2)]} size={[f, cH, tt]} />);
+          corners.push(
+            <LappedTrimBox key={`ce${k++}`} pos={[sx * (halfW - f / 2), cH / 2, sz * (halfL + out + tt / 2)]} size={[f, cH, tt]} axis={2} sign={sz < 0 ? 1 : -1} material={mat} />,
+          );
         // beveled fold across the corner notch (caps the side sheeting edge)
         if (!sideIsOpen)
           corners.push(
@@ -128,7 +159,9 @@ export function Trim({ structure, color, wainscot, openings }: TrimProps) {
     for (const sx of [-1, 1] as const) {
       const panelFt = sx < 0 ? structure.eavePanelFt.left : structure.eavePanelFt.right;
       if (panelFt > 0.01) continue; // paneled extension → continuous wall, no trim
-      corners.push(<Box key={`ps${pk++}`} pos={[sx * (halfW + out + tt / 2), H / 2, pz - (openSign * f) / 2]} size={[tt, H, f]} />);
+      corners.push(
+        <LappedTrimBox key={`ps${pk++}`} pos={[sx * (halfW + out + tt / 2), H / 2, pz - (openSign * f) / 2]} size={[tt, H, f]} axis={0} sign={sx < 0 ? 1 : -1} material={mat} />,
+      );
       corners.push(<Box key={`pe${pk++}`} pos={[sx * (halfW - f / 2), H / 2, pz + openSign * (out / 2 + tt / 2)]} size={[f, H, tt]} />);
       corners.push(<Box key={`pb${pk++}`} pos={[sx * (halfW + out / 2), H / 2, pz + openSign * (out / 2)]} size={[out * 1.5, H, tt]} rotY={Math.atan2(-openSign, -sx)} />);
     }

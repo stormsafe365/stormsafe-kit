@@ -338,6 +338,45 @@ describe('enhanced shell — wall trim', () => {
     for (const c of gl.corners) expect(c.y1).toBeLessThan(gl.roof.topAt(Math.abs(g.s.width / 2 + SHEET_OUTSET)) - SHELL.roofUnderGap);
   });
 
+  it('lapped trims: no base / bottom / corner trim face lies on a sheet (no z-fight seen from inside); outer faces stay T proud', () => {
+    const T = SHELL.trimT;
+    const cases = [
+      build({ wainscot: { enabled: true, heightFt: 3 } }), // base + corner plates + Z-trim
+      build({ buildingType: 'carport', openings: [], eavePanelFt: { left: 3, right: 3 } }), // bottom trim on hanging bands
+      build({ wallOverrides: { leftOpen: false, rightOpen: false, front: 'gableOnly' }, openings: [] }), // bottom trim under a gable-only sheet
+    ];
+    let lapped = 0;
+    for (const { cfg, s } of cases) {
+      const inp = input(cfg, s);
+      const lay = shellLayout(inp);
+      const sheet = allTris(wallBatches(inp, lay));
+      const trim = allTris(trimBatches(inp, lay));
+      expect(trim.length).toBeGreaterThan(0);
+      for (const t of trim) {
+        // the centroid and points near each corner: none may be covered by a sheet triangle (same plane, inside it)
+        const c = centroid(t);
+        const probes: V3[] = [c, ...t.p.map((p) => [0, 1, 2].map((k) => c[k] + 0.9 * (p[k] - c[k])) as unknown as V3)];
+        for (const q of probes) expect(covers(sheet, q)).toBe(false);
+      }
+      for (const w of lay.walls) {
+        const ax = w.plane.along === 'z' ? 0 : 2;
+        const inward = -Math.sign(w.plane.n[ax]);
+        // back faces (normal pointing into the building) SHELL.trimLift off this sheet
+        lapped += trim.filter((t) => t.n[ax] === inward && t.p.every((p) => Math.abs(p[ax] - (w.plane.at + w.plane.n[ax] * SHELL.trimLift)) < 1e-6)).length;
+      }
+    }
+    expect(lapped).toBeGreaterThan(0);
+    // outside unchanged: the left base trim's outer face is still T off the sheet, from the slab up to baseHeight
+    const { cfg, s } = cases[0];
+    const ts = allTris(trimBatches(input(cfg, s)));
+    const x = -(s.width / 2 + SHEET_OUTSET + T);
+    expect(covers(ts, [x, 0.01, 0])).toBe(true);
+    expect(covers(ts, [x, SHELL.baseHeight - 0.01, 0])).toBe(true);
+    // ... and the plate still spans the full thickness at its top (the top face runs from the sheet to the outer face)
+    const top = ts.filter((t) => t.n[1] === 1 && t.p.every((p) => Math.abs(p[1] - SHELL.baseHeight) < 1e-6) && t.p.every((p) => p[0] < -s.width / 2));
+    expect(Math.max(...top.flatMap((t) => t.p.map((p) => p[0])))).toBeCloseTo(-(s.width / 2 + SHEET_OUTSET), 6);
+  });
+
   it('wainscot Z-trim breaks around an opening that crosses the line (never across a roll-up)', () => {
     const openings: Opening[] = [{ id: 'r', type: 'rollUpDoor', side: 'front', offset: 12, width: 10, height: 8, sillHeight: 0 }];
     const { cfg, s } = build({ openings, wainscot: { enabled: true, heightFt: 3 } });

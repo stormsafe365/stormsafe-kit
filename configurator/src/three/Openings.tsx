@@ -4,7 +4,8 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Opening, OpeningType, WallSide } from '@/types/building';
 import { COMPONENT_OUTSET, SHEET_OUTSET, openingWorldTransform, type LeanToStructure, type StructureModel, type Vec3 } from '@/engine/geometry';
-import { clampOffset, checkCollision } from '@/engine/layout';
+import { checkCollision } from '@/engine/layout';
+import { OPENING_ID_KEY, clampWallCenter, openingIdsUnder, pressBelongsToSmaller } from '@/engine/wallFit';
 import { cciCenterClearanceFt } from '@/engine/clearance';
 import { TRUSS_CLEARANCE_FT } from '@/config/constants';
 import { useBuildingStore } from '@/store/useBuildingStore';
@@ -131,6 +132,7 @@ function DraggableOpening({
   const raycaster = useThree((s) => s.raycaster);
   const controls = useThree((s) => s.controls) as { enabled: boolean } | null;
   const dragRef = useRef(false);
+  const rootRef = useRef<THREE.Group>(null);
 
   // Click-to-open animation (Sensei-style): walk door swings open on its
   // hinges, roll-up/garage door rolls up, window's lower sash slides up. A
@@ -268,6 +270,21 @@ function DraggableOpening({
     // gets it, like a press on bare wall. Taken: `dragging` is set here, before
     // InteriorWalk's own canvas listener runs, so the look-around never starts
     // (lookPressStarts).
+    // Overlapping openings (an old saved quote / a flagged typed spot): the press
+    // goes to the SMALLER opening under the pointer (the window inside a framed
+    // opening), not to whichever mesh sits in front. Not stopped here, so that
+    // opening (the same ray goes through it: openingIdsUnder) takes it. Owner 10/5/26.
+    {
+      const p = e.point.clone();
+      rootRef.current?.parent?.worldToLocal(p); // the building frame the openings are placed in
+      const under = openingIdsUnder(e.intersections);
+      const sibs = useBuildingStore
+        .getState()
+        .openings.filter((o) => o.side === opening.side && o.id !== opening.id && under.has(o.id))
+        .map((o) => ({ offset: o.offset, width: o.width, sill: o.sillHeight, height: o.height }));
+      const self = { offset: opening.offset, width: opening.width, sill: opening.sillHeight, height: opening.height };
+      if (pressBelongsToSmaller(self, worldToOffset(opening.side, p, structure), p.y, sibs)) return;
+    }
     if (!partTakesPress({ inside: useEditorStore.getState().interiorView, room: interiorRoom(structure), span: openingSpan(opening, structure) })) return;
     e.stopPropagation();
     selectOpening(opening.id);
@@ -285,14 +302,25 @@ function DraggableOpening({
       if (!dragRef.current) return;
       moved = Math.max(moved, Math.hypot(ev.clientX - sx, ev.clientY - sy));
       if (moved < CLICK_DRAG_THRESHOLD_PX) return; // not a drag yet — a click stays a click (opens/closes)
-      if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
       const rect = gl.domElement.getBoundingClientRect();
       const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
       const ny = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(new THREE.Vector2(nx, ny), camera);
       const hit = new THREE.Vector3();
       if (raycaster.ray.intersectPlane(wallPlane, hit)) {
-        updateOpening(oid, { offset: clampOffset(worldToOffset(oside, hit, structure), ow, wall) });
+        // No-overlap rule (owner 10/2/26): never onto / within 1' of another
+        // opening on this wall, never within 1' of a corner post — the nearest
+        // spot that keeps the rule (the program checks the same spots).
+        const st = useBuildingStore.getState();
+        const cur = st.openings.find((o) => o.id === oid);
+        const curOff = cur?.offset ?? opening.offset;
+        const sibs = st.openings.filter((o) => o.side === oside && o.id !== oid).map((o) => ({ offset: o.offset, width: o.width }));
+        const off = clampWallCenter(worldToOffset(oside, hit, structure), ow, wall.spanFt, sibs, curOff);
+        // No new valid spot: nothing moves and nothing is written back (the
+        // program keeps — and flags, if it clashes — the spot it has).
+        if (Math.abs(off - curOff) < 1e-9) return;
+        if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
+        updateOpening(oid, { offset: off });
       }
     };
     const up = () => {
@@ -312,7 +340,7 @@ function DraggableOpening({
   if (enhanced) {
     // Same wall transform, same onDown (drag / click / write-back); only the look differs.
     return (
-      <group>
+      <group ref={rootRef} userData={{ [OPENING_ID_KEY]: opening.id }}>
         <group position={pos} rotation={[0, rotY, 0]}>
           <EnhancedFixture
             type={opening.type}
@@ -344,7 +372,7 @@ function DraggableOpening({
   const pm = panelMat!; // classic: always built
 
   return (
-    <group>
+    <group ref={rootRef} userData={{ [OPENING_ID_KEY]: opening.id }}>
       <group position={pos} rotation={[0, rotY, 0]}>
         {/* Proud jamb / header / sill trim — floor-mounted doors omit the sill.
             A 45° angle-cut roll-up shortens the jambs to the cut, runs a flat

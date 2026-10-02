@@ -86,8 +86,28 @@ export const ENHANCED_LOOK = {
    */
   env: { zenith: 0x7fa9dc, horizon: 0xe6ecf2, nadir: 0xa3a59d, intensity: 0.25 },
 
-  /** 4" slab, light concrete, 2 ft past the footprint (incl. lean-tos). Top at y = 0. */
-  slab: { thickness: 0.33, margin: 2, color: '#d2d2cc', roughness: 0.92, tileFt: 6 },
+  /**
+   * Light concrete (slab + footings). The slab itself follows the quote's
+   * Foundation Type and the CCI details (foundationLayout.ts): 4" thick, top
+   * at y = 0, 2" above the ground, its edge 6" past the base rails (incl.
+   * lean-tos). Faint broom finish + saw-cut control joints.
+   */
+  slab: { color: '#d2d2cc', roughness: 0.92, tileFt: 6, joint: '#8d8d86' },
+  /** Non-concrete surfaces under the building (subtle; 2 ft past the footprint). */
+  pads: {
+    gravel: { color: '#a29e95', roughness: 1, tileFt: 3 },
+    asphalt: { color: '#3b3f45', roughness: 0.95, tileFt: 4 },
+    dirt: { color: '#6d645a', roughness: 1, tileFt: 6 },
+  },
+  /**
+   * Structure / Cutaway: the ground and slab / pad go see-through so the
+   * footings, #5 bars and anchor embedment read like the CCI sections
+   * (opacity per view; exterior = solid).
+   */
+  ghost: {
+    structure: { ground: 0.3, surface: 0.26, footing: 0.6 },
+    cutaway: { ground: 0.22, surface: 0.2, footing: 0.55 },
+  },
 
   /**
    * Very soft contact shading (owner override: no cast shadows). Each decal

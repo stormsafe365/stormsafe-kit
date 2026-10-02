@@ -18,7 +18,7 @@ import { useEffect, useRef } from 'react';
 import { Viewport } from '@/components/Viewport';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
-import type { BuildingType, EndSheeting, OpeningType, WallOverrides, WallSide } from '@/types/building';
+import type { BuildingType, EndSheeting, FoundationType, OpeningType, WallOverrides, WallSide } from '@/types/building';
 import { leanToWalkDoorLook, leanToWindowLook, readLeanToStorage, type ProgramTypeRow } from './leanToAccessory';
 import { NO_STORAGE, partitionLocationAllowed, readMainStorage } from './mainStorage';
 import { spreadAutoOverlaps } from '@/engine/autoSpread';
@@ -768,6 +768,14 @@ function syncFromBuilder(win: BuilderWindow) {
   // legs). Read from the program; the 3D never prices anything with it.
   const mfr = (win as unknown as { ACTIVE_MFR?: string }).ACTIVE_MFR === 'CCI' ? 'CCI' : 'CA';
   if (mfr !== st.manufacturer) st.setManufacturer(mfr);
+
+  // Foundation Type (VIEW-ONLY): the 3D DRAWS the slab / footings / anchors the
+  // quote's foundation calls for (CCI FL foundation & anchoring details) and
+  // never prices anything with it. '' (— select —) = concrete, the default.
+  const fv = val('foundation');
+  const foundation: FoundationType =
+    fv === 'footers' || fv === 'gravel' || fv === 'asphalt' || fv === 'ground' ? fv : 'concrete';
+  if (foundation !== (st.foundation ?? 'concrete')) st.setFoundation(foundation);
 
   if (bt === 'gch') {
     const enc = num('gch-enc');

@@ -19,6 +19,12 @@ export type ExposureCategory = 'B' | 'C' | 'D';
  */
 export type BuildingType = 'carport' | 'garage' | 'utility';
 
+/**
+ * The program's Foundation Type (#foundation): concrete slab, footers only,
+ * gravel, asphalt, or directly to the ground. VIEW-ONLY in the 3D.
+ */
+export type FoundationType = 'concrete' | 'footers' | 'gravel' | 'asphalt' | 'ground';
+
 /** For a utility/hybrid build, which end is the open (carport) bay. */
 export type OpenEnd = 'front' | 'back';
 
@@ -259,6 +265,13 @@ export interface BuildingConfig {
   manufacturer?: 'CCI' | 'CA';
   /** The program's roof style (VIEW-ONLY — Spacing's CCI center-clearance chart differs Regular vs Boxed Eave/Vertical). */
   roofStyle?: 'Regular' | 'Boxed Eave' | 'Vertical';
+  /**
+   * The quote's Foundation Type (VIEW-ONLY — synced from the program's
+   * #foundation select, never priced by the 3D). Drives the DRAWING of the
+   * slab / footings / anchors per the CCI FL foundation & anchoring details.
+   * Unset (the program's '— select —') = concrete.
+   */
+  foundation?: FoundationType;
   /**
    * Free-standing single-slope (CCI fslean): total roof drop (ft) from the tall
    * internal-LEFT (-X) eave down to the low (+X) eave. 0 = normal gabled

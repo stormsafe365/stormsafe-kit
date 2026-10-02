@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useResolvedBuilding } from '@/engine/useResolvedBuilding';
 import { swatchHex } from '@/config/colors';
@@ -17,6 +17,8 @@ import { EnhancedTrim } from './enhanced/EnhancedTrim';
 import { EnhancedLeanTos } from './enhanced/EnhancedLeanTos';
 import { LeanToSpacingOverlay } from './LeanToSpacing';
 import { StoragePartitionGhost } from './StoragePartitionGhost';
+import { foundationLayout } from './foundationLayout';
+import { FoundationDetails } from './FoundationDetails';
 
 /** Shell opacity per view mode (exterior fully solid; structure/cutaway ghost). */
 const SHELL_OPACITY: Record<ViewMode, number> = {
@@ -158,6 +160,12 @@ export function BuildingModel() {
   const viewMode = useEditorStore((s) => s.viewMode);
   const renderStyle = useEditorStore((s) => s.renderStyle);
   const showFrameProminent = viewMode !== 'exterior';
+  // Foundation drawing (view-only Foundation Type) per the quote manufacturer's
+  // own FL details: CCI's for CCI, CA's sheet CA-1 for CA (view-only too).
+  const foundation = useMemo(
+    () => foundationLayout(structure, config.foundation, config.framingGauge, config.manufacturer),
+    [structure, config.foundation, config.framingGauge, config.manufacturer],
+  );
 
   return (
     <group>
@@ -178,10 +186,11 @@ export function BuildingModel() {
         {/* Spacing button: lean-to walls too (both looks; renders nothing while Spacing is off). */}
         <LeanToSpacingOverlay leanTos={structure.leanTos} overhangFt={structure.roofOverhangFt} />
       </ShellGroup>
-      {/* ENHANCED ground + slab + soft contact decals: outside ShellGroup (never
-          ghosted), capture-ignored, and absent in classic. Last child, so the
-          classic Frame / ShellGroup keep their slots and never remount. */}
-      {renderStyle === 'enhanced' && <EnhancedSite structure={structure} />}
+      {/* ENHANCED ground + slab / pad (by Foundation Type) + soft contact decals:
+          outside ShellGroup (it ghosts ITSELF in Structure / Cutaway), capture-
+          ignored, and absent in classic. After ShellGroup, so the classic
+          Frame / ShellGroup keep their slots and never remount. */}
+      {renderStyle === 'enhanced' && <EnhancedSite structure={structure} layout={foundation} />}
       {/* Storage room (garage / carport): its partition stays readable in the
           ghosted Structure / Cutaway views. Exterior + GCH: renders nothing.
           After EnhancedSite so no earlier child changes slot. */}
@@ -192,6 +201,12 @@ export function BuildingModel() {
         edgeColor={trimHex}
         viewMode={viewMode}
       />
+      {/* Footings, #5 bars and anchors (FoundationDetails): enhanced always
+          (exterior = only what is above the surface); classic ONLY in
+          Structure / Cutaway, so the classic exterior stays untouched. */}
+      {(renderStyle === 'enhanced' || viewMode !== 'exterior') && (
+        <FoundationDetails layout={foundation} look={renderStyle} viewMode={viewMode} />
+      )}
     </group>
   );
 }

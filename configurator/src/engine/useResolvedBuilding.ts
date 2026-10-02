@@ -50,6 +50,7 @@ function selectConfig(s: ReturnType<typeof useBuildingStore.getState>): Building
     roofOverhangFt: s.roofOverhangFt,
     manufacturer: s.manufacturer,
     roofStyle: s.roofStyle,
+    foundation: s.foundation,
     monoDropFt: s.monoDropFt ?? 0,
     colors: s.colors,
     wainscot: s.wainscot,

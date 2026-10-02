@@ -7077,6 +7077,14 @@ function ltPartDims(ae,sizeOvr){
 // simQty (a qty being TRIED for the qty list): Custom-offset items that have no
 // input yet sit where rebuildLTAccOffsets would put them (item i at i*5 ft).
 function ltPartLayout(ae,w,qtyOvr,simQty){
+  // No-overlap model (ovlModel): where the partition's openings really sit — the
+  // spots below unless an Auto one clashed and had to be re-spaced. A size / qty
+  // being TRIED (lists) keeps the entry's own spots.
+  if(!simQty){ try { var _mx=ovlEntryXs(ae,w,(qtyOvr!=null?qtyOvr:null)); if(_mx) return _mx; } catch(e){} }
+  return ltPartLayoutLegacy(ae,w,qtyOvr,simQty);
+}
+// The partition's own spots per the entry's Position setting (as before 10/2/26).
+function ltPartLayoutLegacy(ae,w,qtyOvr,simQty){
   var g=ltPartGeom(ae.closest('.lte'));
   var n=qtyOvr||parseInt((ae.querySelector('.lt-acc-qty')||{}).value)||1;
   var pos=(ae.querySelector('.lt-acc-pos')||{}).value||'auto';
@@ -7375,6 +7383,7 @@ function addLTAcc(entry){
   list.appendChild(d);
   updateLTAccSize(d);
   rc();
+  ovlAfterAdd(d); // no-overlap: room on its wall?
 }
 function updLTAccType(sel){
   var e=sel.closest('.lt-acc-e');
@@ -8896,6 +8905,7 @@ function aRUD(){
   updateRUDSizes(d.querySelector('.rdtype'));
   updatePosSection(d, 1);
   rc();
+  ovlAfterAdd(d); // no-overlap: room on its wall?
 }
 
 // Compute maximum allowed door height based on building wall height + door location + quantity
@@ -9270,6 +9280,585 @@ function togglePosSide(btn){
   rc();
 }
 
+// ══ OPENING FIT — NO TWO OPENINGS MAY OVERLAP ON ANY WALL (owner 10/2/26) ══════
+// Owner: "Components & framed openings cant overlap so our program shouldn't
+// even allow them to overlap." ONE per-wall occupancy model (ovlModel) that every
+// placement path reads: getPosItems (every elevation / PDF / contract / spacing
+// page / the 3D main walls), runTrussChecks (side-frame pricing), the lean-to
+// walls (ltAccXs: 3D + 2D; ltPartLayout: the storage partition), the qty lists,
+// the add buttons, the wall pickers, the flags and the print guard.
+// RULES — the program's EXISTING numbers, nothing new:
+//   * 1' clear of each corner post: LT_PART_CLR (the Storage Partition Wall's
+//     "main gable end keeps 1' clear of each corner"), the same 1' each side as
+//     getMaxDoorWidth (roll-ups: W - 2 / L - 2) and getValidRDPSizes' lean-to
+//     end-wall door width (lt_w - 2).
+//   * 1' between openings: LT_PART_GAP ("a jamb post goes between them"), the
+//     ~1' per opening refreshLTAccQty fits, the max(1, ...) gap runTrussChecks
+//     spaces lean-to openings with.
+//   * Footprint = the opening width the program already draws and prices with
+//     (getPosItems itemW, ltPartDims): a framed opening's jamb posts / a door's
+//     trim live in that 1'. Horizontal span only — two openings sharing any
+//     run of wall clash whatever their heights (the partition precedent).
+//   * Same tolerance as the partition: LT_PART_EPS (0.01 ft).
+// PLACEMENT: a wall where no Auto opening breaks a rule keeps the program's own
+// Auto spots EXACTLY (same formula, same numbers) — so a quote without a clash
+// places, draws and PRICES to the cent as before. Only when an Auto opening
+// clashes are that wall's Auto openings re-spread TOGETHER, in the order they
+// were added, into the free stretches (1' from each corner and from every typed
+// opening, evenly spaced — the same equal-gap rule Auto always used for one
+// entry, now for the whole wall); if they can't all fit they stay where Auto put
+// them and are flagged. Typed positions (and a reopened
+// quote's saved Auto spots — data-ovl-keep) are NEVER moved: flagged instead.
+// The add buttons / wall pickers / qty lists refuse what can't fit; a clash that
+// remains blocks the quote PDF, contract (not the Executed Copy), revised
+// layout, text quote and send-to-client (ovlPrintBlock) — like
+// ltStoragePrintBlock. Nothing here changes a price input.
+// Pure helpers first (ovlClear .. ovlLayoutWall): no DOM, unit-tested from the
+// HTML (openingFit.test.ts lifts them with a quote-aware scan — no quote marks
+// inside their bodies).
+var OVL_CLR=1, OVL_GAP=1, OVL_EPS=0.01;
+// Clear distance between two spans {x,w} (negative = they overlap).
+function ovlClear(a,b){ return Math.max(b.x-(a.x+a.w), a.x-(b.x+b.w)); }
+// Rule breaks on one wall of length len: corner (closer than 1 ft to an end, or
+// past it) and pair (closer than 1 ft to another opening, or overlapping).
+function ovlIssues(len,sp){
+  var out=[], i, j, s, lo, hi, g;
+  for(i=0;i<sp.length;i++){
+    s=sp[i]; if(!(s.w>0) || !isFinite(s.x)) continue;
+    lo=s.x; hi=len-(s.x+s.w);
+    if(lo<OVL_CLR-OVL_EPS || hi<OVL_CLR-OVL_EPS) out.push({k:'corner', a:i, b:null, end:(lo<=hi?0:1), gap:Math.min(lo,hi)});
+  }
+  for(i=0;i<sp.length;i++){
+    if(!(sp[i].w>0) || !isFinite(sp[i].x)) continue;
+    for(j=i+1;j<sp.length;j++){
+      if(!(sp[j].w>0) || !isFinite(sp[j].x)) continue;
+      g=ovlClear(sp[i],sp[j]);
+      if(g<OVL_GAP-OVL_EPS) out.push({k:'pair', a:i, b:j, gap:g});
+    }
+  }
+  return out;
+}
+// Free stretches [lo,hi] a movable opening may occupy on a wall of length len
+// once the kept spans stay put: 1 ft from each corner, 1 ft from every kept span.
+function ovlFree(len,fixed){
+  var iv=[[OVL_CLR,len-OVL_CLR]], f, k, s, a, b, nx, p;
+  for(f=0;f<fixed.length;f++){
+    s=fixed[f]; if(!(s.w>0) || !isFinite(s.x)) continue;
+    a=s.x-OVL_GAP; b=s.x+s.w+OVL_GAP; nx=[];
+    for(k=0;k<iv.length;k++){
+      p=iv[k];
+      if(b<=p[0] || a>=p[1]){ nx.push(p); continue; }
+      if(a>p[0]) nx.push([p[0],a]);
+      if(b<p[1]) nx.push([b,p[1]]);
+    }
+    iv=nx;
+  }
+  return iv.filter(function(q){ return q[1]>=q[0]; });
+}
+// Pack widths ws (in this order, left to right) into the stretches iv with 1 ft
+// between neighbours, each stretch spread evenly (equal extra space before,
+// between and after). Of all order-keeping splits it takes the one with the
+// widest smallest gap. Returns the left edges, or null when they cannot fit.
+// One stretch [1, len-1] gives exactly the program Auto equal spacing.
+function ovlPack(iv,ws){
+  var m=iv.length, n=ws.length, NEG=-Infinity, best=[], from=[], j, k, k2, k0, sum, cnt, val, len, extra, xs=[], x, slot;
+  if(!n) return [];
+  for(j=0;j<=m;j++){ best.push([]); from.push([]); for(k=0;k<=n;k++){ best[j].push(NEG); from[j].push(-1); } }
+  best[0][0]=Infinity;
+  for(j=0;j<m;j++){
+    len=iv[j][1]-iv[j][0];
+    for(k=0;k<=n;k++){
+      if(best[j][k]===NEG) continue;
+      sum=0;
+      for(k2=k;k2<=n;k2++){
+        cnt=k2-k;
+        if(cnt>0){
+          sum+=ws[k2-1]; extra=len-sum-(cnt-1)*OVL_GAP;
+          if(extra<-OVL_EPS) break;
+          val=Math.min(best[j][k],Math.max(0,extra)/(cnt+1));
+        } else val=best[j][k];
+        if(val>best[j+1][k2]){ best[j+1][k2]=val; from[j+1][k2]=k; }
+      }
+    }
+  }
+  if(best[m][n]===NEG) return null;
+  for(k=0;k<n;k++) xs.push(0);
+  k=n;
+  for(j=m;j>0;j--){
+    k0=from[j][k]; cnt=k-k0;
+    if(cnt>0){
+      len=iv[j-1][1]-iv[j-1][0]; sum=0;
+      for(k2=k0;k2<k;k2++) sum+=ws[k2];
+      slot=Math.max(0,len-sum-(cnt-1)*OVL_GAP)/(cnt+1);
+      x=iv[j-1][0]+slot;
+      for(k2=k0;k2<k;k2++){ xs[k2]=x; x+=ws[k2]+OVL_GAP+slot; }
+    }
+    k=k0;
+  }
+  return xs;
+}
+// Lay out ONE wall. items (oldest entry first): {w, x, fixed} where x is the
+// typed spot (fixed) or the program Auto spot. Returns {xs, moved[], re, fit}.
+// A wall where no movable item breaks a rule comes back untouched (re false,
+// every x exactly as given). Otherwise every movable item is spread again, in
+// order, around the fixed ones; fit false = they cannot all fit (left as given).
+function ovlLayoutWall(len,items){
+  var n=items.length, xs=[], moved=[], i, res, fixed=[], mov=[], sp=[], bad=false, px;
+  for(i=0;i<n;i++){ xs.push(items[i].x); moved.push(false); }
+  res={xs:xs, moved:moved, re:false, fit:true};
+  for(i=0;i<n;i++){
+    if(!(items[i].w>0) || !isFinite(items[i].x)) continue;
+    sp.push({x:items[i].x,w:items[i].w,f:!!items[i].fixed});
+    if(items[i].fixed) fixed.push({x:items[i].x,w:items[i].w}); else mov.push(i);
+  }
+  if(!mov.length) return res;
+  ovlIssues(len,sp).forEach(function(is){ if(!sp[is.a].f || (is.b!=null && !sp[is.b].f)) bad=true; });
+  if(!bad) return res;
+  px=ovlPack(ovlFree(len,fixed), mov.map(function(k){ return items[k].w; }));
+  if(!px){ res.fit=false; return res; }
+  mov.forEach(function(k,j){ if(Math.abs(px[j]-xs[k])>1e-9){ xs[k]=px[j]; moved[k]=true; } });
+  res.re=true;
+  return res;
+}
+
+// ── DOM side: every opening entry → its wall + Auto / typed spots ─────────────
+var OVL_MAIN_WALL={'Front Gable End':'front','Back Gable End':'back','Left Eave Side':'left','Right Eave Side':'right','Partition Wall':'partition'};
+var OVL_LT_WALL={outer:'Outer Side Wall',front:'Front Gable End',back:'Back Gable End',partition:'Storage Partition Wall'};
+// _ovlRestoring: restoreQuoteData is running (no add / pick refusals, ever).
+// _ovlRestoreOld: the quote being restored was saved before this rule — its
+// openings are all kept where they were saved (data-ovl-keep).
+var _ovlUidN=0, _ovlSeqN=0, _ovlRestoring=0, _ovlRestoreOld=false, _ovlInternal=0, _ovlCache=null;
+// Runtime id (never saved) + age (data-ovl-seq, saved): the older entry keeps its
+// Auto spot when two clash. Assigned the first time the model sees an entry.
+function _ovlTag(el){
+  if(!el._ovlUid) el._ovlUid=++_ovlUidN;
+  var s=parseInt(el.dataset.ovlSeq)||0;
+  if(!s){ s=++_ovlSeqN; el.dataset.ovlSeq=String(s); }
+  else if(s>_ovlSeqN) _ovlSeqN=s;
+  return el._ovlUid;
+}
+// Feet-inches to the inch for messages (a minus sign for a spot past a corner).
+function _ovlFt(ft){ var i=Math.round(ft*12); return (i<0?'−':'')+_dimFtIn(Math.abs(i)/12); }
+// A main-building framed opening's size (ft) — the derivation every elevation
+// collector and the 3D readOpenings use. null = not an opening on a wall: the
+// 45° angle and the Double-Tubed End are charges, not openings.
+function ovlFoDims(el,comp){
+  comp=String(comp||'');
+  if(comp.indexOf('Framed Opening')!==0) return null;
+  if(comp.indexOf('45°')>=0 || comp.indexOf('Double-Tubed')>=0) return null;
+  var w=2.5, h=2.5, yo=foSillFt(el), wm;
+  if(comp.indexOf('(Custom Size)')>=0){ var s=foCustomFeet(el); w=s.w; h=s.h; yo=(comp.indexOf('Window')>=0)?foSillFt(el):0; }
+  else if(comp.indexOf('Garage Door')>=0 || comp.indexOf('Side Opening')>=0){ wm=comp.match(/(\d+)' Wide/); w=wm?parseInt(wm[1]):10; h=8; yo=0; }
+  else if(comp.indexOf('Double Door')>=0){ w=6; h=6.67; yo=0; }
+  else if(comp.indexOf('Walk-Through')>=0){ w=3; h=6.67; yo=0; }
+  return {w:w,h:h,yo:yo};
+}
+// One main-building entry (.re/.we/.ne/.ace) as the model reads it. ov: try a
+// change first — {loc, qty, comp}. Spots follow getPosItems exactly: typed
+// value (From Left / From Right, flipped on the Left Eave) or the program Auto
+// spot (that entry's own equal spacing). x is in getPosItems' frame.
+function ovlMainDesc(el,ov){
+  ov=ov||{};
+  var v=function(s){ var e=el.querySelector(s); return e?e.value:''; };
+  var W=parseInt(G('bw').value)||30, L=parseInt(G('bl').value)||40;
+  var loc, qty, w, h=0, yo=0, kind, what;
+  if(el.classList.contains('re')){
+    var sz=(v('.rsz')||'10x8').split('x'); w=parseFloat(sz[0])||10; h=parseFloat(sz[1])||8;
+    loc=v('.rloc'); qty=parseInt(v('.rqt'))||1; kind='rollup'; what=_ovlFt(w)+' × '+_ovlFt(h)+' roll-up door';
+  } else if(el.classList.contains('we')){ loc=v('.wloc'); qty=parseInt(v('.wqt'))||1; w=3; h=6.67; kind='wtd'; what='walk door'; }
+  else if(el.classList.contains('ne')){ loc=v('.nloc'); qty=parseInt(v('.nqt'))||1; w=2.5; h=2.5; yo=winSillFt(el); kind='win'; what='window'; }
+  else if(el.classList.contains('ace')){
+    var comp=(ov.comp!=null)?ov.comp:v('.act');
+    if(ov.comp==null){ var lr=el.querySelector('.fo-loc-row'); if(!lr || lr.classList.contains('hidden')) return null; }
+    var fd=ovlFoDims(el,comp); if(!fd) return null;
+    w=fd.w; h=fd.h; yo=fd.yo; loc=v('.fo-loc'); qty=parseInt(v('.acq'))||1; kind='fo'; what=_ovlFt(w)+' framed opening';
+  } else return null;
+  if(ov.loc!=null) loc=ov.loc;
+  if(ov.qty!=null) qty=ov.qty;
+  var wall=OVL_MAIN_WALL[loc]; if(!wall || !(w>0)) return null;
+  var eave=(wall==='left'||wall==='right'), len=eave?L:W, flip=(loc==='Left Eave Side');
+  var rows=el.querySelectorAll('.pos-section .pos-row'), xs=[], typed=[], sp=(len-qty*w)/(qty+1), i, x, r, inp, sb, sv, eff;
+  for(i=0;i<qty;i++){
+    x=null; r=rows[i];
+    if(r){
+      inp=r.querySelector('input'); sb=r.querySelector('.pos-toggle button.active');
+      sv=sb?sb.dataset.side:'left'; eff=flip?(sv==='left'?'right':'left'):sv;
+      if(inp && inp.value!==''){ var p=parseFloat(inp.value); if(isFinite(p)) x=(eff==='right')?(len-p-w):p; }
+    }
+    typed.push(x!==null);
+    xs.push(x!==null?x:(sp*(i+1)+w*i));
+  }
+  var uid=_ovlTag(el);
+  return {el:el, uid:uid, seq:parseInt(el.dataset.ovlSeq)||0, keep:el.dataset.ovlKeep==='1', wall:'m:'+wall, name:'the '+loc, len:len,
+    frame:eave?(flip?'back':'front'):'left', w:w, h:h, yo:yo, kind:kind, what:what, qty:qty, xs:xs, typed:typed};
+}
+// A lean-to accessory's program spots on an outer / end wall — runTrussChecks'
+// own layout (it prices the side frames from it) on the wall's real length.
+function ovlLtLegacyXs(ae,pos,w,n,len,sim){
+  var xs=[], i, x;
+  if(pos==='offset'){
+    var offs=Array.prototype.map.call(ae.querySelectorAll('.lt-acc-off'),function(e){ return parseFloat(e.value)||0; });
+    for(i=0;i<n;i++) xs.push(offs[i]!==undefined?offs[i]:(sim?i*5:(offs.length?offs[offs.length-1]:0)));
+    return xs;
+  }
+  var tot=w*n, gap, sx;
+  if(pos==='center'){ gap=Math.max(1,len*0.03); sx=(len-(tot+gap*(n-1)))/2; }
+  else if(pos==='left'){ gap=Math.max(1,len*0.03); sx=Math.max(1,len*0.04); }
+  else if(pos==='right'){ gap=Math.max(1,len*0.03); sx=len-(tot+gap*(n-1))-Math.max(1,len*0.04); }
+  else { gap=Math.max(1,(len-tot)/(n+1)); sx=gap; }
+  for(i=0,x=sx;i<n;i++,x+=w+gap) xs.push(x);
+  return xs;
+}
+// One lean-to accessory (.lt-acc-e). Offsets run "ft from left" like the typed
+// Custom offsets (the 3D, the 2D and runTrussChecks all read them that way).
+// The storage partition keeps its own layout (ltPartLayoutLegacy) and rules.
+function ovlLtDesc(ae,ov,ltLen){
+  ov=ov||{};
+  var lte=ae.closest('.lte'); if(!lte) return null;
+  var v=function(s){ var e=ae.querySelector(s); return e?e.value:''; };
+  var t=v('.lt-acc-type')||'rollup', loc=(ov.loc!=null)?ov.loc:(v('.lt-acc-loc')||'outer');
+  if(!OVL_LT_WALL[loc]) loc='outer';
+  var qty=(ov.qty!=null)?ov.qty:(parseInt(v('.lt-acc-qty'))||1);
+  var dm=ltPartDims(ae); if(!dm) return null; // the 45° cut is a charge
+  var w=dm.w;
+  if(t==='rollup' && !(w>0)){ if(loc==='partition') return null; w=9; }
+  if(!(w>0)) return null;
+  var what=(t==='rollup')?(_ovlFt(w)+' × '+_ovlFt(parseFloat(String(v('.lt-acc-size')||'9x8').split('x')[1])||8)+' roll-up door'):(t==='frameout')?(_ovlFt(w)+' framed opening'):dm.what;
+  if(!lte._ovlUid) lte._ovlUid=++_ovlUidN;
+  var lk=lte._ovlUid+':'+(loc==='outer'?'o':'w'), len=ltLen?ltLen[lk]:undefined; // one read per lean-to per scan
+  if(len===undefined){ len=(loc==='outer')?(parseFloat((lte.querySelector('.ltl2')||{}).value)||0):getLTDims(lte).w; if(ltLen) ltLen[lk]=len; }
+  var pos=v('.lt-acc-pos')||'auto';
+  var xs=(loc==='partition')?ltPartLayoutLegacy(ae,w,qty,!!ov.sim):ovlLtLegacyXs(ae,pos,w,qty,len,!!ov.sim);
+  var fs=((lte.querySelector('.lt-type')||{}).value==='freestanding'), side=(lte.querySelector('.lts')||{}).value||'';
+  if(!lte._ovlUid) lte._ovlUid=++_ovlUidN;
+  var uid=_ovlTag(ae);
+  return {el:ae, uid:uid, seq:parseInt(ae.dataset.ovlSeq)||0, keep:ae.dataset.ovlKeep==='1', wall:'l'+lte._ovlUid+':'+loc,
+    name:'the '+OVL_LT_WALL[loc]+' of the '+(fs?'free-standing':side)+' lean-to', len:len, frame:'left', lt:true, part:(loc==='partition'),
+    w:w, kind:t, what:what, qty:qty, xs:xs, typed:xs.map(function(){ return pos==='offset'; })};
+}
+function ovlDesc(el,ov,ltLen){
+  if(el.classList.contains('lt-acc-e')) return ovlLtDesc(el,ov,ltLen);
+  return ovlMainDesc(el,ov);
+}
+// Every opening entry, from the entry lists only (#rl, #wl, #nl, #ltl, #acl —
+// page order; a whole-document query on this large page costs ms per call).
+function ovlScan(){
+  var ds=[], ltLen={};
+  [['rl','.re'],['wl','.we'],['nl','.ne'],['ltl','.lt-acc-e'],['acl','.ace']].forEach(function(p){
+    var box=G(p[0]);
+    (box||document).querySelectorAll(p[1]).forEach(function(el){ var d=ovlDesc(el,null,ltLen); if(d) ds.push(d); });
+  });
+  return ds;
+}
+function _ovlSig(ds){
+  return ds.map(function(d){ return [d.uid,d.seq,d.keep?1:0,d.wall,d.name,d.len,d.w,d.qty,d.xs.join(','),d.typed.join(','),d.what].join('|'); }).join(';');
+}
+// Lay out one wall {len, ds} — oldest entry first (lowest data-ovl-seq).
+function ovlWallSolve(Wl){
+  var ds=Wl.ds.slice().sort(function(a,b){ return (a.seq-b.seq)||(a.uid-b.uid); }), items=[];
+  ds.forEach(function(d){ for(var i=0;i<d.qty;i++) items.push({w:d.w, x:d.xs[i], fixed:!!(d.typed[i]||d.keep), g:d.uid, d:d, i:i}); });
+  var lay=ovlLayoutWall(Wl.len,items);
+  items.forEach(function(it,k){ it.x=lay.xs[k]; it.moved=lay.moved[k]; });
+  Wl.items=items; Wl.fit=lay.fit; Wl.re=lay.re; Wl.issues=ovlIssues(Wl.len,items);
+  return Wl;
+}
+function ovlBuild(ds){
+  var m={walls:{}, keys:[], ent:{}, ds:ds};
+  ds.forEach(function(d){
+    var Wl=m.walls[d.wall];
+    if(!Wl){ Wl=m.walls[d.wall]={key:d.wall, name:d.name, len:d.len, frame:d.frame, lt:!!d.lt, part:!!d.part, ds:[]}; m.keys.push(d.wall); }
+    Wl.ds.push(d);
+  });
+  m.keys.forEach(function(k){
+    var Wl=ovlWallSolve(m.walls[k]);
+    Wl.items.forEach(function(it){ var e=m.ent[it.d.uid]||(m.ent[it.d.uid]={d:it.d, wall:Wl, items:[]}); e.items[it.i]=it; });
+  });
+  return m;
+}
+// The model — rebuilt only when an opening, its wall or the building size changes.
+// Inside one rc() pass nothing moves an opening (rc only prices / draws / sets
+// side-frame counts), so the pass reads the model once (_ovlPassModel); outside a
+// pass every call re-reads the entries and reuses the model when nothing changed.
+var _ovlPassDepth=0, _ovlPassModel=null;
+function ovlModel(){
+  if(_ovlPassDepth && _ovlPassModel) return _ovlPassModel;
+  var ds=ovlScan(), sig=(parseInt(G('bw').value)||30)+'x'+(parseInt(G('bl').value)||40)+'#'+_ovlSig(ds);
+  var m=_ovlCache;
+  if(!m || m.sig!==sig){ m=ovlBuild(ds); m.sig=sig; _ovlCache=m; }
+  if(_ovlPassDepth) _ovlPassModel=m;
+  return m;
+}
+function _ovlEnt(el,m){ m=m||ovlModel(); return (el && el._ovlUid && m.ent[el._ovlUid])||null; }
+// getPosItems / runTrussChecks: where the model put each AUTO item it had to move
+// off a clash ([x | null per item]). null = keep the program's own Auto formula
+// (the wall has no clash, so it places and prices exactly as before).
+function ovlAutoXs(el,w,faceW){
+  var e=_ovlEnt(el); if(!e) return null;
+  if(Math.abs(e.d.w-w)>1e-6 || Math.abs(e.wall.len-faceW)>1e-6) return null;
+  if(!e.items.some(function(it){ return it && it.moved; })) return null;
+  return e.items.map(function(it){ return (it && it.moved)?it.x:null; });
+}
+// Every item of an entry where the model has it (left edges, the wall's frame).
+// null = not in the model, or a different size / qty asked for.
+function ovlEntryXs(el,w,qty){
+  var e=_ovlEnt(el); if(!e) return null;
+  if(qty!=null && qty!==e.d.qty) return null;
+  if(w!=null && Math.abs(e.d.w-w)>1e-6) return null;
+  return e.items.map(function(it){ return it.x; });
+}
+// True when the model re-spaced this entry's wall (runTrussChecks then prices the
+// lean-to openings from the model's spots).
+function ovlWallMoved(el){ var e=_ovlEnt(el); return !!(e && e.wall.items.some(function(it){ return it.moved; })); }
+// Lean-to accessory left edges for the 3D (BuildHost readLeanTos) and the 2D views.
+function ltAccXs(ae){
+  if(((ae.querySelector('.lt-acc-loc')||{}).value)==='partition'){ var dm=ltPartDims(ae); return (dm&&dm.w>0)?ltPartLayout(ae,dm.w):null; }
+  return ovlEntryXs(ae);
+}
+
+// ── Messages ──────────────────────────────────────────────────────────────────
+function _ovlNm(it){ return 'the '+it.d.what+(it.d.qty>1?(' #'+(it.i+1)):''); }
+function _ovlSpan(Wl,it){
+  var a=(Wl.frame==='back')?(Wl.len-it.x-it.w):it.x;
+  return _ovlFt(a)+'–'+_ovlFt(a+it.w)+' '+(Wl.frame==='left'?'from the left':'from the front gable');
+}
+function _ovlEnd(Wl,end){
+  if(Wl.frame==='left') return end?'right':'left';
+  if(Wl.frame==='front') return end?'back':'front';
+  return end?'front':'back';
+}
+function _ovlCap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+// What one issue means for the item `self` (one of its two ends).
+function _ovlIssueMsg(Wl,is,selfIdx){
+  var me=Wl.items[selfIdx];
+  if(is.k==='corner'){
+    var end=_ovlEnd(Wl,is.end);
+    return _ovlCap(_ovlNm(me))+' ('+_ovlSpan(Wl,me)+') '+(is.gap<-OVL_EPS?('runs past the '+end+' end of '+Wl.name):('is only '+_ovlFt(Math.max(0,is.gap))+' from the '+end+' corner of '+Wl.name))+
+      ' — keep 1\' clear of each corner post.';
+  }
+  var other=Wl.items[is.a===selfIdx?is.b:is.a];
+  return _ovlCap(_ovlNm(me))+' ('+_ovlSpan(Wl,me)+') '+(is.gap<-OVL_EPS?'overlaps ':('is only '+_ovlFt(Math.max(0,is.gap))+' from '))+_ovlNm(other)+' at '+_ovlSpan(Wl,other)+' on '+Wl.name+
+    ' — keep 1\' between openings (a jamb post goes between them).';
+}
+// Length the openings of a wall need with the rule spacing (1' at each corner + between).
+function _ovlNeed(items){ var n=0, s=0; items.forEach(function(it){ if(it.w>0){ n++; s+=it.w; } }); return n?(s+(n+1)*OVL_GAP):0; }
+// uid → message for every entry with a rule break (lean-to storage partitions
+// excluded: ltPartFitAll flags and blocks those with their slope rules too).
+function ovlMessages(m){
+  var out={};
+  m.keys.forEach(function(k){
+    var Wl=m.walls[k]; if(Wl.part && Wl.lt) return;
+    if(!Wl.issues.length) return;
+    var room='';
+    if(!Wl.fit) room='Not enough room on '+Wl.name+': its openings need '+_ovlFt(_ovlNeed(Wl.items))+' (1\' at each corner and between openings) and the wall is '+_ovlFt(Wl.len)+'. ';
+    // Worst clash first (the biggest overlap), so each entry names its worst one.
+    Wl.issues.slice().sort(function(p,q){ return p.gap-q.gap; }).forEach(function(is){
+      [is.a,is.b].forEach(function(ix){
+        if(ix==null) return;
+        var d=Wl.items[ix].d;
+        if(out[d.uid]) return;
+        out[d.uid]=((!Wl.items[ix].fixed && room)?room:'')+_ovlIssueMsg(Wl,is,ix);
+      });
+    });
+  });
+  return out;
+}
+// Any movable (Auto, not kept) item on the wall breaking a rule.
+function _ovlBadMovable(Wl){
+  return Wl.issues.some(function(is){ return !Wl.items[is.a].fixed || (is.b!=null && !Wl.items[is.b].fixed); });
+}
+// TRY a change on one entry (ov: {loc, qty, comp}) — bump: it becomes the newest
+// entry (it fits around what is already there); unkeep: it is being placed
+// again. ok = no Auto opening on that wall breaks a rule afterwards.
+function ovlTry(el,ov,m){
+  m=m||ovlModel();
+  var o={}, k; for(k in ov) o[k]=ov[k]; o.sim=true;
+  var d=ovlDesc(el,o); if(!d) return {ok:true, msg:''};
+  if(ov.bump) d.seq=_ovlSeqN+1;
+  if(ov.unkeep) d.keep=false;
+  var others=(m.walls[d.wall]?m.walls[d.wall].ds:[]).filter(function(x){ return x.uid!==d.uid; });
+  var Wl=ovlWallSolve({key:d.wall, name:d.name, len:d.len, frame:d.frame, lt:!!d.lt, part:!!d.part, ds:others.concat([d])});
+  var ok=!_ovlBadMovable(Wl);
+  var res={ok:ok, msg:'', wall:Wl, d:d};
+  if(!ok){
+    var mine=Wl.items.filter(function(it){ return it.d===d; }), rest=Wl.items.filter(function(it){ return it.d!==d && it.w>0; });
+    var add=0; mine.forEach(function(it){ add+=it.w+OVL_GAP; });
+    var what=mine.length>1?(mine.length+' × '+d.what+'s'):('one '+d.what);
+    if(!rest.length) res.msg='Won\'t fit on '+d.name+': '+what+' need'+(mine.length>1?'':'s')+' '+_ovlFt(add+OVL_GAP)+' with 1\' at each corner and between openings, and the wall is '+_ovlFt(d.len)+'.';
+    else {
+      var used=_ovlNeed(rest);
+      res.msg='Won\'t fit on '+d.name+': '+(used+add>d.len+OVL_EPS
+        ? ('the openings already there take '+_ovlFt(used)+' of its '+_ovlFt(d.len)+' (1\' at each corner and between openings), and '+what+' need'+(mine.length>1?'':'s')+' '+_ovlFt(add)+' more.')
+        : ('no open stretch there is wide enough for '+what+' with 1\' clear on each side.'));
+    }
+  }
+  return res;
+}
+
+// ── UI: flags, qty lists, refusals ────────────────────────────────────────────
+var OVL_ENTRY_SEL='.re,.we,.ne,.ace,.lt-acc-e';
+var OVL_LOC_SEL='.rloc,.wloc,.nloc,.fo-loc,.lt-acc-loc';
+var OVL_QTY_SEL='.rqt,.wqt,.nqt,.acq,.lt-acc-qty';
+// rc() hook: red flag on every entry that breaks a rule, the qty lists offer only
+// counts that fit, and the current wall / qty / component are remembered so a
+// refused pick can go back. Never changes a value — never changes a price.
+function ovlRefresh(){
+  var m=ovlModel(), msgs=ovlMessages(m);
+  document.querySelectorAll(OVL_ENTRY_SEL).forEach(function(el){
+    var e=el._ovlUid?m.ent[el._ovlUid]:null, msg=e?(msgs[e.d.uid]||''):'';
+    var box=el.querySelector(':scope > .ovl-warn');
+    if(!msg){ if(box) box.remove(); }
+    else {
+      if(!box){
+        box=document.createElement('div'); box.className='ovl-warn';
+        box.style.cssText='margin:4px 0;padding:5px 8px;background:#fee2e2;color:#991b1b;border-left:3px solid #dc2626;border-radius:0 4px 4px 0;font-size:10.5px;line-height:1.35';
+        el.insertBefore(box,el.firstChild?el.firstChild.nextSibling:null);
+      }
+      var kept=e.d.keep, fix=kept?_ovlRespaceFits(e.wall):false;
+      var html='⚠ '+_ovlEsc(msg)+' Still priced; the quote, contract, revised layout, text quote and send-to-client are blocked until it is fixed (type another position, lower the quantity or pick another wall).'+
+        (kept?(' Reopened quote: its openings stay where they were saved'+(fix?'.':' — and there is not room for all of them on this wall even re-spaced.')):'')+
+        (fix?' <span class="ovl-respace" onclick="ovlRespace(this)" style="display:inline-block;margin-top:3px;padding:1px 7px;border:1px solid #dc2626;border-radius:4px;cursor:pointer;font-weight:700;color:#991b1b;background:#fff">Re-space this wall automatically</span>':'');
+      if(box.innerHTML!==html) box.innerHTML=html;
+    }
+    var ls=el.querySelector(OVL_LOC_SEL); if(ls) ls.dataset.ovlPrev=ls.value;
+    var qs=el.querySelector(OVL_QTY_SEL); if(qs) qs.dataset.ovlPrev=qs.value;
+    var as=el.querySelector('.act'); if(as){ var lr=el.querySelector('.fo-loc-row'); as.dataset.ovlPrev=as.value; as.dataset.ovlPlaced=(lr&&!lr.classList.contains('hidden'))?'1':''; }
+    // Qty list: lower counts always; higher only when they fit beside the rest.
+    if(qs && !(e && e.d.lt && e.d.part)){
+      var cur=parseInt(qs.value)||1;
+      Array.prototype.forEach.call(qs.options,function(o){
+        var n=parseInt(o.value)||0, ok=!e || n<=cur || ovlTry(el,{qty:n,bump:true,unkeep:true},m).ok;
+        if(o.hidden!==!ok) o.hidden=!ok;
+        if(o.disabled!==!ok) o.disabled=!ok;
+      });
+    }
+  });
+}
+function _ovlEsc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// Would letting the model re-space this wall's saved (kept) Auto openings clear
+// every clash on it? (Typed spots still stay put.)
+function _ovlRespaceFits(Wl){
+  var ds=Wl.ds.map(function(d){ var c={}, k; for(k in d) c[k]=d[k]; c.keep=false; return c; });
+  var t=ovlWallSolve({key:Wl.key, name:Wl.name, len:Wl.len, frame:Wl.frame, lt:Wl.lt, part:Wl.part, ds:ds});
+  return !_ovlBadMovable(t);
+}
+// The flag's button on a reopened quote: let the model re-space that wall.
+function ovlRespace(btn){
+  var el=btn.closest(OVL_ENTRY_SEL), e=_ovlEnt(el); if(!e) return;
+  e.wall.ds.forEach(function(d){ delete d.el.dataset.ovlKeep; });
+  rc();
+}
+// A wall picker / qty / component change that can't fit is refused BEFORE the
+// entry's own handler runs (it would re-filter sizes etc. for the new wall).
+function _ovlRefuse(e,sel,prev,msg){
+  sel.value=prev;
+  e.stopImmediatePropagation(); e.preventDefault();
+  toast(msg,'err');
+}
+function _ovlHasOpt(sel,v){ return Array.prototype.some.call(sel.options,function(o){ return o.value===v; }); }
+// A wall left open (no sheeting) is never picked to take a new opening that
+// had no room on its first wall.
+function _ovlWallOpen(el,loc){
+  if(el.classList.contains('lt-acc-e')){
+    var lte=el.closest('.lte'); if(!lte || loc==='partition') return false;
+    var lw=getLTWalls(lte); return ((loc==='outer')?lw.side:(loc==='front')?lw.front:lw.back)==='open';
+  }
+  var id={'Front Gable End':'wfg','Back Gable End':'wbg','Left Eave Side':'wle','Right Eave Side':'wre'}[loc];
+  return !!(id && G(id) && G(id).value==='Open');
+}
+document.addEventListener('change',function(e){
+  if(_ovlInternal || _ovlRestoring) return;
+  var t=e.target; if(!t || !t.matches || !t.closest) return;
+  var el=t.closest(OVL_ENTRY_SEL); if(!el) return;
+  try {
+    var prev=t.dataset.ovlPrev;
+    if(t.matches(OVL_LOC_SEL)){
+      if(prev==null || prev===t.value || !_ovlHasOpt(t,prev)) return; // its wall is gone (partition removed): nothing to go back to
+      if(!ovlDesc(el,{loc:t.value})) return;                           // not an opening on a wall (yet)
+      var cur=_ovlEnt(el);
+      if(cur && cur.d.typed.some(function(x){ return x; })){ el.dataset.ovlSeq=String(++_ovlSeqN); delete el.dataset.ovlKeep; return; } // typed: flagged, never refused
+      var r=ovlTry(el,{loc:t.value,bump:true,unkeep:true});
+      if(!r.ok) return _ovlRefuse(e,t,prev,r.msg);
+      el.dataset.ovlSeq=String(++_ovlSeqN); delete el.dataset.ovlKeep;
+    } else if(t.matches(OVL_QTY_SEL)){
+      var n=parseInt(t.value)||1, p=parseInt(prev)||0;
+      if(!p || n<=p) return;
+      if(!ovlDesc(el,{qty:n})) return;
+      var rq=ovlTry(el,{qty:n,bump:true,unkeep:true});
+      if(!rq.ok){
+        var fit=p; for(var k=n-1;k>p;k--){ if(ovlTry(el,{qty:k,bump:true,unkeep:true}).ok){ fit=k; break; } }
+        return _ovlRefuse(e,t,prev,'Only '+fit+' fit'+(fit===1?'s':'')+' here. '+rq.msg);
+      }
+      el.dataset.ovlSeq=String(++_ovlSeqN); delete el.dataset.ovlKeep; // re-placed: no longer a saved spot
+    } else if(t.matches('.act')){
+      // A component becoming a framed opening = a NEW opening on its wall.
+      if(!ovlFoDims(el,t.value)) return;
+      if(t.dataset.ovlPlaced==='1' && ovlFoDims(el,prev)) return; // framed opening → another size: re-spaced or flagged, never refused
+      var fl=el.querySelector('.fo-loc'); if(!fl) return;
+      var ra=ovlTry(el,{comp:t.value,bump:true,unkeep:true});
+      if(ra.ok){ el.dataset.ovlSeq=String(++_ovlSeqN); return; }
+      var alt=Array.prototype.filter.call(fl.options,function(o){ return !o.disabled && o.value!==fl.value && !_ovlWallOpen(el,o.value) && ovlTry(el,{comp:t.value,loc:o.value,bump:true,unkeep:true}).ok; })[0];
+      if(alt){
+        var from=fl.value; fl.value=alt.value; fl.dataset.ovlPrev=alt.value; el.dataset.ovlSeq=String(++_ovlSeqN);
+        toast('No room on the '+from+' — the new '+_ovlFt(ovlFoDims(el,t.value).w)+' framed opening went on the '+alt.value+' (change its Wall Location if needed).','ok');
+        return;
+      }
+      if(prev==null) return;
+      return _ovlRefuse(e,t,prev,'Not added — '+ra.msg);
+    }
+  } catch(err){ console.warn('opening fit check failed:', err); }
+},true);
+// After an add button made a new entry (default wall, qty 1): keep it if it fits
+// there, else put it on the first wall that has room (said so), else take it
+// back out and say why. Never during a quote restore.
+function ovlAfterAdd(el){
+  if(_ovlRestoring || !el || !el.parentNode) return;
+  try {
+    if(!ovlDesc(el)) return;
+    var r=ovlTry(el,{}); if(r.ok) return;
+    var sel=el.querySelector(OVL_LOC_SEL); if(!sel) return;
+    var from=sel.value;
+    var alt=Array.prototype.filter.call(sel.options,function(o){ return !o.disabled && !o.hidden && o.value!==from && !_ovlWallOpen(el,o.value) && ovlTry(el,{loc:o.value}).ok; })[0];
+    if(alt){
+      _ovlInternal++;
+      try { sel.value=alt.value; sel.dispatchEvent(new Event('change',{bubbles:true})); } finally { _ovlInternal--; }
+      toast('No room on '+r.d.name+' — the new '+r.d.what+' went on '+ovlDesc(el).name+' (change its location if needed).','ok');
+      return;
+    }
+    el.remove(); rc();
+    toast('Not added — '+r.msg,'err');
+  } catch(err){ console.warn('opening fit check failed:', err); }
+}
+// Print guard (quote PDF, contract, revised layout, text quote, send to client):
+// any opening that overlaps / crowds another or a corner stops the document.
+function ovlPrintIssue(){
+  var m=ovlModel(), msgs=ovlMessages(m);
+  for(var k=0;k<m.keys.length;k++){
+    var Wl=m.walls[m.keys[k]]; if(Wl.part && Wl.lt) continue;
+    for(var i=0;i<Wl.issues.length;i++){ var d=Wl.items[Wl.issues[i].a].d; if(msgs[d.uid]) return msgs[d.uid]; }
+  }
+  return '';
+}
+function ovlPrintBlock(){
+  var msg=''; try { msg=ovlPrintIssue(); } catch(e){ console.warn('opening fit check failed:', e); }
+  if(!msg) return false;
+  toast('Openings clash — fix it first: '+msg,'err');
+  return true;
+}
+// Save / restore: each entry's age (data-ovl-seq) and, for a reopened quote's
+// openings, the keep mark — so a reopened quote lays out (and prices) exactly as
+// it was saved. A quote saved before this rule (no data.ovl) keeps EVERY opening
+// where it was (flagged if it clashes, never moved).
+function _ovlSave(el,d){
+  var s=parseInt(el.dataset.ovlSeq)||0; if(s) d.ovlSeq=s;
+  if(el.dataset.ovlKeep==='1') d.ovlKeep=1;
+}
+function _ovlApply(el,d){
+  if(!el || !el.dataset) return;
+  if(_ovlRestoreOld || (d && d.ovlKeep)) el.dataset.ovlKeep='1'; else delete el.dataset.ovlKeep;
+  var s=d?(parseInt(d.ovlSeq)||0):0;
+  if(s){ el.dataset.ovlSeq=String(s); if(s>_ovlSeqN) _ovlSeqN=s; }
+}
+
 function getPosItems(entry, qty, itemW, faceW, itemH, type, extraH){
   // Read position inputs from pos-section
   var sec = entry.querySelector('.pos-section');
@@ -9281,6 +9870,7 @@ function getPosItems(entry, qty, itemW, faceW, itemH, type, extraH){
   var locEl = entry.querySelector('.wloc, .nloc, .rloc, .fo-loc');
   var isLeftEave = locEl && locEl.value === 'Left Eave Side';
   var items = [];
+  var _ovlXs; // no-overlap model: Auto items it moved off a clash (undefined = not asked yet)
   for(var i=0;i<qty;i++){
     var row = rows[i];
     var x = null;
@@ -9294,6 +9884,12 @@ function getPosItems(entry, qty, itemW, faceW, itemH, type, extraH){
         var pos = parseFloat(inp.value);
         x = effectiveSide==='right' ? faceW - pos - itemW : pos;
       }
+    }
+    if(x===null){
+      // Auto: the program's equal spacing — unless that spot clashes with
+      // another opening on this wall, then the no-overlap model's spot (ovlModel).
+      if(_ovlXs===undefined){ try { _ovlXs=ovlAutoXs(entry,itemW,faceW); } catch(e){ _ovlXs=null; } }
+      if(_ovlXs && _ovlXs[i]!=null) x=_ovlXs[i];
     }
     if(x===null){
       // Auto space
@@ -9360,6 +9956,7 @@ function aWTD(){
   G('wl').appendChild(d);
   updatePosSection(d, 1);
   rc();
+  ovlAfterAdd(d); // no-overlap: room on its wall?
 }
 
 // Sill height (ft) for a manufacturer WINDOW row (.ne) — adjustable per row
@@ -9400,6 +9997,7 @@ function aWIN(){
   G('nl').appendChild(d);
   updatePosSection(d, 1);
   rc();
+  ovlAfterAdd(d); // no-overlap: room on its wall?
 }
 
 function chkEv(sel, sfCls){
@@ -9727,6 +10325,8 @@ function collectQuoteData(){
   // rule overrides, session price edits, price-lock hold fields. Stays pure:
   // no pricing snapshot here (PriceLock.snapshot() is added by the savers).
   var data = { version: 3, savedAt: new Date().toISOString(), fields: {} };
+  // No-overlap rule (ovlModel, 10/2/26): saved with it — reopens laid out the same.
+  data.ovl = 1;
 
   // Simple fields by ID
   var simpleIds = [
@@ -9790,6 +10390,7 @@ function collectQuoteData(){
       var inp=row.querySelector('input'); var btn=row.querySelector('.pos-toggle button.active');
       pos.push({val:inp?inp.value:'', side:btn?btn.dataset.side:'left'});
     }); d.positions=pos;
+    _ovlSave(el,d);
     data.doors.push(d);
   });
 
@@ -9804,6 +10405,7 @@ function collectQuoteData(){
       var inp=row.querySelector('input'); var btn=row.querySelector('.pos-toggle button.active');
       pos.push({val:inp?inp.value:'', side:btn?btn.dataset.side:'left'});
     }); d.positions=pos;
+    _ovlSave(el,d);
     data.wtds.push(d);
   });
 
@@ -9818,6 +10420,7 @@ function collectQuoteData(){
       var inp=row.querySelector('input'); var btn=row.querySelector('.pos-toggle button.active');
       pos.push({val:inp?inp.value:'', side:btn?btn.dataset.side:'left'});
     }); d.positions=pos;
+    _ovlSave(el,d);
     data.windows.push(d);
   });
 
@@ -9843,6 +10446,7 @@ function collectQuoteData(){
         var f=ae.querySelector('.'+cls); if(f) a[cls]=f.value;
       });
       a.offs=Array.prototype.map.call(ae.querySelectorAll('.lt-acc-off'),function(i){return i.value;});
+      _ovlSave(ae,a);
       d.accs.push(a);
     });
     data.leantos.push(d);
@@ -9862,6 +10466,7 @@ function collectQuoteData(){
       var inp=row.querySelector('input'); var btn=row.querySelector('.pos-toggle button.active');
       pos.push({val:inp?inp.value:'', side:btn?btn.dataset.side:'left'});
     }); d.positions=pos;
+    _ovlSave(el,d);
     data.addcomps.push(d);
   });
 
@@ -10117,6 +10722,7 @@ function printRevisionForm(){
 async function printRevisedLayout(){
   if(!G('bw').value||!G('bl').value){ toast('Please select building dimensions first','err'); return; }
   if(ltStoragePrintBlock()) return; // its 3D views would show a storage partition door that can't fit
+  if(ovlPrintBlock()) return; // openings that overlap / crowd each other (no-overlap rule)
   var pwin=window.open('','_blank');
   if(!pwin){ toast('Popup blocked — please allow popups','err'); return; }
   try { pwin.document.write('<!doctype html><html><body style="margin:0;background:#fff;color:#94a3b8;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;font-size:15px">Generating revised layout…</body></html>'); } catch(e){}
@@ -10424,6 +11030,15 @@ function _ensureLocOpt(sel, v){
 //                      priced like a brand-new quote (PriceLock.freshen)
 //   unpriced:true      a program file / quote-log entry with no saved price: rep note only
 function restoreQuoteData(data, opts){
+  // No-overlap rule (ovlModel): nothing is refused or relocated while a quote
+  // is rebuilt, and a quote saved before the rule (no data.ovl) keeps every
+  // opening exactly where it was saved (flagged if it clashes, never moved).
+  var _ovlPrevOld=_ovlRestoreOld;
+  _ovlRestoring++; _ovlRestoreOld=!(data && data.ovl);
+  try { return _restoreQuoteDataImpl(data, opts); }
+  finally { _ovlRestoring--; _ovlRestoreOld=_ovlPrevOld; }
+}
+function _restoreQuoteDataImpl(data, opts){
   opts=opts||{};
   // Kill switch: window.SS_PRICE_LOCK=false reopens at today's pricing, as before 9/30/26.
   if(window.SS_PRICE_LOCK===false && opts.lock) opts={ status:opts.status, legacyTotals:opts.legacyTotals };
@@ -10530,6 +11145,7 @@ function restoreQuoteData(data, opts){
     var r45El=el.querySelector('.r45'); if(r45El&&d.r45!==undefined) r45El.value=d.r45;
     var rcoEl=el.querySelector('.rco'); if(rcoEl&&d.rco!==undefined) rcoEl.value=d.rco;
     var qty=parseInt(d.rqt)||1;
+    _ovlApply(el,d); // no-overlap: saved age / keep mark
     updatePosSection(el,qty);
     var rows=el.querySelectorAll('.pos-section .pos-row');
     (d.positions||[]).forEach(function(p,i){
@@ -10555,6 +11171,7 @@ function restoreQuoteData(data, opts){
       if(v!==undefined) fld.value = v;
     });
     var qty=parseInt(d.wqt)||1;
+    _ovlApply(el,d); // no-overlap: saved age / keep mark
     updatePosSection(el,qty);
     var rows=el.querySelectorAll('.pos-section .pos-row');
     (d.positions||[]).forEach(function(p,i){
@@ -10580,6 +11197,7 @@ function restoreQuoteData(data, opts){
       if(v!==undefined) fld.value = v;
     });
     var qty=parseInt(d.nqt)||1;
+    _ovlApply(el,d); // no-overlap: saved age / keep mark
     updatePosSection(el,qty);
     var rows=el.querySelectorAll('.pos-section .pos-row');
     (d.positions||[]).forEach(function(p,i){
@@ -10618,6 +11236,7 @@ function restoreQuoteData(data, opts){
     (d.accs||[]).forEach(function(a){
       addLTAcc(el);
       var aes=el.querySelectorAll('.lt-acc-e'); var ae=aes[aes.length-1];
+      _ovlApply(ae,a); // no-overlap: saved age / keep mark
       var tEl=ae.querySelector('.lt-acc-type'); if(tEl&&a['lt-acc-type']!==undefined){ tEl.value=a['lt-acc-type']; updLTAccType(tEl); }
       // Framed-opening subtype + W/H BEFORE qty: the fit-based qty list is
       // computed from the opening width, so restore the real width first or a
@@ -10646,6 +11265,7 @@ function restoreQuoteData(data, opts){
     aAC();
     var entries=document.querySelectorAll('.ace.entry');
     var el=entries[entries.length-1];
+    _ovlApply(el,d); // no-overlap: saved age / keep mark
     var actEl=el.querySelector('.act'); if(actEl&&d.act){ actEl.value=d.act; updACPrice(actEl); }
     var acqEl=el.querySelector('.acq'); if(acqEl&&d.acq) acqEl.value=d.acq;
     var acpEl=el.querySelector('.acp'); if(acpEl&&d.acp) acpEl.value=d.acp;
@@ -10757,6 +11377,7 @@ function _rvNum(t){ var n=parseFloat(String(t||'').replace(/[^0-9.-]/g,'')); ret
 async function printQuote(){
   if(!G('bw').value||!G('bl').value){ toast('Please select building dimensions first','err'); return; }
   if(ltStoragePrintBlock()) return;
+  if(ovlPrintBlock()) return; // openings that overlap / crowd each other (no-overlap rule)
 
   // 3D-rendering option: capture the live modeler for the PDF. Open the print
   // window NOW (synchronous, inside the click gesture) so the popup isn't
@@ -11713,6 +12334,7 @@ async function printContract(){
   // record of the signed order, so it is never blocked).
   if(!EXEC_COPY && window.PriceLock && PriceLock.contractBlocked()){ PriceLock.showGate(); return; }
   if(ltStoragePrintBlock()) return;
+  if(!EXEC_COPY && ovlPrintBlock()) return; // openings that overlap / crowd each other (the Executed Copy records the signed order)
 
   // Open the print window NOW (inside the click gesture) so it isn't popup-
   // blocked, then capture the live 3D modeler before assembling — the contract's
@@ -13635,14 +14257,16 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
     s+='<line x1="'+(x0-3)+'" y1="'+oy+'" x2="'+(x1+3)+'" y2="'+oy+'" stroke="'+bldShade(wC,-20)+'" stroke-width="1.5"/>';
     // ── LEAN-TO ACCESSORIES (doors/windows on closed end face) ──────────────
     if(ltEndClosed && lt.accessories && lt.accessories.length){
-      var faceAccItems=[];
+      var faceAccItems=[], faceAccXs=[];
       lt.accessories.forEach(function(acc){
         if(acc.loc !== (lt.viewEnd||'front')) return;
         for(var qi=0;qi<acc.qty;qi++){
+          var _n0=faceAccItems.length;
           if(acc.type==='rollup'){var sz=(acc.size||'9x8').split('x');faceAccItems.push({type:'rollup',w:parseFloat(sz[0])||9,h:parseFloat(sz[1])||8,color:acc.color});}
           else if(acc.type==='wtd'){faceAccItems.push({type:'wtd',w:3,h:6.67});}
           else if(acc.type==='win'){faceAccItems.push({type:'win',w:2.5,h:2.5});}
           else if(acc.type==='frameout'&&(acc.foType||'').indexOf('45')<0){faceAccItems.push({type:'frameout',w:acc.w||10,h:acc.h||10,sill:acc.sill||0});}
+          if(faceAccItems.length>_n0) faceAccXs.push(acc.xs?acc.xs[qi]:null);
         }
       });
       if(faceAccItems.length){
@@ -13684,7 +14308,10 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
             s+='<rect x="'+(ix-1.5)+'" y="'+(fy-1.5)+'" width="'+(iw+3)+'" height="'+(fh+3)+'" fill="none" stroke="'+tC+'" stroke-width="2"/>';
           }
         }
-        if(posMode==='offset'){
+        if(faceAccXs.length===faceAccItems.length && faceAccXs.every(function(v){ return v!=null && isFinite(v); })){
+          // Where the openings really sit (ltAccXs — the no-overlap model the 3D uses).
+          faceAccItems.forEach(function(item,i){ _renderFaceItem(item, x0+faceAccXs[i]*sc); });
+        } else if(posMode==='offset'){
           faceAccItems.forEach(function(item,i){
             var offVal=offsArr[i]!==undefined?offsArr[i]:(offsArr[offsArr.length-1]||0);
             _renderFaceItem(item, x0+offVal*sc);
@@ -14398,7 +15025,11 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
         var ePos=acc.pos||'auto';
         var eOffs=acc.offs||[0];
         var eTotal=entryItems.reduce(function(sm,a){return sm+a.w*sc;},0);
-        if(ePos==='offset'){
+        if(acc.xs && acc.xs.length===entryItems.length){
+          // Where the openings really sit (ltAccXs — the no-overlap model the 3D
+          // uses and the side frames are priced from).
+          entryItems.forEach(function(item,i){ _renderOuterItem(item, ox+acc.xs[i]*sc, acc.xs[i]); });
+        } else if(ePos==='offset'){
           entryItems.forEach(function(item,i){
             var offVal=eOffs[i]!==undefined?eOffs[i]:(eOffs[eOffs.length-1]||0);
             _renderOuterItem(item, ox+offVal*sc, offVal);
@@ -14509,6 +15140,9 @@ function collectLTsForViews(){
       var aoffs=Array.prototype.map.call(offInputs,function(i){return parseFloat(i.value)||0;});
       if(aoffs.length===0) aoffs=[0];
       var acc={type:atype,qty:aqty,loc:aloc,pos:apos,offs:aoffs,off:aoffs[0]};
+      // Where the openings really sit (ft from the left, the no-overlap model —
+      // the same spots the 3D draws and the side frames are priced from).
+      try { var _axs=ltAccXs(ae); if(_axs && _axs.length===aqty) acc.xs=_axs; } catch(e){}
       if(atype==='rollup'){
         acc.size=ae.querySelector('.lt-acc-size')?ae.querySelector('.lt-acc-size').value:'9x8';
         acc.color=ae.querySelector('.lt-acc-color')?ae.querySelector('.lt-acc-color').value:'white';
@@ -15057,7 +15691,7 @@ function drawBlueprintWall(wt,fw,wh,items,wn,bw){var SW=540,MX=50,MT=38,MB=26,dW
 function getBPItems(wt,W,L){var fw=(wt==='front'||wt==='back')?W:L,items=[];document.querySelectorAll('.re').forEach(function(el){var loc=el.querySelector('.rloc').value,wm=(loc==='Front Gable End'&&wt==='front')||(loc==='Back Gable End'&&wt==='back')||(loc==='Left Eave Side'&&wt==='left')||(loc==='Right Eave Side'&&wt==='right');if(!wm)return;var sz=(el.querySelector('.rsz').value||'10x8').split('x'),dW=parseFloat(sz[0])||10,dH=parseFloat(sz[1])||8,qty=parseInt(el.querySelector('.rqt').value)||1;var its=getPosItems(el,qty,dW,fw,dH,'rollup');var _is45=(el.querySelector('.r45')&&el.querySelector('.r45').value==='yes');its.forEach(function(it){if(_is45)it.angle45=true;items.push(it);});});document.querySelectorAll('.we').forEach(function(el){var loc=el.querySelector('.wloc').value,wm=(loc==='Front Gable End'&&wt==='front')||(loc==='Back Gable End'&&wt==='back')||(loc==='Left Eave Side'&&wt==='left')||(loc==='Right Eave Side'&&wt==='right');if(!wm)return;var its=getPosItems(el,(parseInt((el.querySelector('.wqt')||{}).value)||1),3,fw,6.67,'wtd');its.forEach(function(it){items.push(it);});});document.querySelectorAll('.ne').forEach(function(el){var loc=el.querySelector('.nloc').value,wm=(loc==='Front Gable End'&&wt==='front')||(loc==='Back Gable End'&&wt==='back')||(loc==='Left Eave Side'&&wt==='left')||(loc==='Right Eave Side'&&wt==='right');if(!wm)return;var qty=parseInt(el.querySelector('.nqt')?el.querySelector('.nqt').value:1)||1;var its=getPosItems(el,qty,2.5,fw,2.5,'win',winSillFt(el));its.forEach(function(it){items.push(it);});});return items;}
 function renderBlueprintViews(){adjustViewProportions();var W=parseInt(G('bw').value)||30,L=parseInt(G('bl').value)||40,H=parseInt(G('bh').value)||10,wn=G('wain')&&G('wain').value==='yes';var _bpLTs=collectLTsForViews();['front','back','right','left'].forEach(function(w){var fw=(w==='front'||w==='back')?W:L,el=G('bp-'+w);if(el)el.innerHTML=drawBlueprintWall(w,fw,H,getBPItems(w,W,L),wn,W,_bpLTs[w]);});}
 var _bvMode='color';function setBldViewMode(m){_bvMode=m;var cv=G('bld-views'),bv=G('bld-blueprint-views'),cb=G('bvt-color'),bb=G('bvt-bp');if(m==='color'){if(cv)cv.style.display='grid';if(bv)bv.style.display='none';if(cb)cb.classList.add('active');if(bb)bb.classList.remove('active');renderBuildingViews();}else{if(cv)cv.style.display='none';if(bv)bv.style.display='grid';if(cb)cb.classList.remove('active');if(bb)bb.classList.add('active');renderBlueprintViews();}}
-function sendToClient(mode){if(!G('bw').value||!G('bl').value){toast('Set dimensions first','err');return;}var W=parseInt(G('bw').value)||30,L=parseInt(G('bl').value)||40,H=parseInt(G('bh').value)||10,pt=G('pitch')?G('pitch').textContent:'3:12',pitch=parseInt(pt)||3,cn=G('cn').value||'Client';function ics(id){var e=G(id);return e&&e.value&&e.value!=='TBD';}var rH=ics('cr')?G('cr').value:'#F0EFE8',wH=ics('cw')?G('cw').value:'#9EA5A8',tH2=ics('ct')?G('ct').value:'#F0EFE8',waH=ics('cwn')?G('cwn').value:'#F0EFE8',wn=G('wain')&&G('wain').value==='yes',ws=G('ws')?G('ws').value:'Vertical';var fI=[],bI=[],rI=[],lI=[];document.querySelectorAll('.re').forEach(function(el){var loc=el.querySelector('.rloc').value,sz=(el.querySelector('.rsz').value||'10x8').split('x'),dW=parseFloat(sz[0])||10,dH=parseFloat(sz[1])||8,qty=parseInt(el.querySelector('.rqt').value)||1;function pl(a,fw){getPosItems(el,qty,dW,fw,dH,'rollup').forEach(function(it){a.push(it);});}if(loc==='Front Gable End')pl(fI,W);else if(loc==='Back Gable End')pl(bI,W);else if(loc==='Left Eave Side')pl(lI,L);else if(loc==='Right Eave Side')pl(rI,L);});document.querySelectorAll('.we').forEach(function(el){var loc=el.querySelector('.wloc').value;function pl(a,fw){getPosItems(el,(parseInt((el.querySelector('.wqt')||{}).value)||1),3,fw,6.67,'wtd').forEach(function(it){a.push(it);});}if(loc==='Front Gable End')pl(fI,W);else if(loc==='Back Gable End')pl(bI,W);else if(loc==='Left Eave Side')pl(lI,L);else if(loc==='Right Eave Side')pl(rI,L);});document.querySelectorAll('.ne').forEach(function(el){var loc=el.querySelector('.nloc').value,qty=parseInt(el.querySelector('.nqt')?el.querySelector('.nqt').value:1)||1;function pl(a,fw){getPosItems(el,qty,2.5,fw,2.5,'win',winSillFt(el)).forEach(function(it){a.push(it);});}if(loc==='Front Gable End')pl(fI,W);else if(loc==='Back Gable End')pl(bI,W);else if(loc==='Left Eave Side')pl(lI,L);else if(loc==='Right Eave Side')pl(rI,L);});var tmp=document.createElement('div');document.body.appendChild(tmp);var _stcLTs=collectLTsForViews();var _stcSpC=getSidePanelConfig();var _stcSpR=(_stcSpC.right.hasPanels||_stcSpC.right.full)?_stcSpC.right:null;var _stcSpL=(_stcSpC.left.hasPanels||_stcSpC.left.full)?_stcSpC.left:null;function _stcWallOpen(loc){var wo={front:G('wfg')?G('wfg').value:'Closed',back:G('wbg')?G('wbg').value:'Closed',left:baseWallMode(G('wle')?G('wle').value:'Closed'),right:baseWallMode(G('wre')?G('wre').value:'Closed')};return wo[loc]||'Closed';}function mkC(id,fw,isSide,items,viewKey,gchSp,spCfg){tmp.innerHTML='';var d=document.createElement('div');d.id=id;tmp.appendChild(d);drawElev(id,fw,H,pitch,rH,wH,tH2,waH,wn,items,isSide,ws,_stcWallOpen(viewKey),_stcLTs[viewKey],gchSp,spCfg);return d.innerHTML;}var pages='',bx=function(l,svg,bg,tc){return'<div style="background:'+bg+';border-radius:6px;overflow:hidden;border:1px solid #333"><div style="background:'+(tc||'#1C2E3F')+';color:#fff;font-size:9pt;font-weight:800;letter-spacing:2px;text-align:center;padding:5px;font-family:Arial">'+l+'</div>'+svg+'</div>';},pw=function(t,v,bg){return'<div style="page-break-before:always;background:'+bg+';min-height:100vh;padding:24px;box-sizing:border-box"><div style="font-family:Arial;font-size:11pt;font-weight:800;letter-spacing:2px;color:'+(bg==='#06101a'?'#1fcec4':'#0D1B2A')+';margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid '+(bg==='#06101a'?'#1fcec4':'#1B8A8A')+';text-transform:uppercase">'+t+' - '+cn+' | '+W+"x"+L+"x"+H+"</div><div style=\"display:grid;grid-template-columns:1fr 1fr;gap:16px\">"+v+'</div></div>';};var _pGchR=null,_pGchL=null;if(G('btype')&&G('btype').value==='gch'){var _peL=parseInt(G('gch-enc').value)||0,_poL=parseInt(G('gch-open').value)||0;if(_peL>0&&_poL>0){_pGchR={encLen:_peL,openLen:_poL,encSide:'right'};_pGchL={encLen:_peL,openLen:_poL,encSide:'left'};}}if(mode==='colored'||mode==='both'){var cF=mkC('_cf',W,false,fI,'front'),cR=mkC('_cr',L,true,rI,'right',_pGchR,_stcSpR),cB=mkC('_cb',W,false,bI,'back'),cL=mkC('_cl',L,true,lI,'left',_pGchL,_stcSpL);pages+=pw('Color Rendering',bx('FRONT',cF,'#fff')+bx('RIGHT',cR,'#fff')+bx('BACK',cB,'#fff')+bx('LEFT',cL,'#fff'),'#f5f0e8');}if(mode==='blueprint'||mode==='both'){var bF=drawBlueprintWall('front',W,H,getBPItems('front',W,L),wn,W,_stcLTs.front),bR=drawBlueprintWall('right',L,H,getBPItems('right',W,L),wn,W,_stcLTs.right),bB=drawBlueprintWall('back',W,H,getBPItems('back',W,L),wn,W,_stcLTs.back),bL=drawBlueprintWall('left',L,H,getBPItems('left',W,L),wn,W,_stcLTs.left);pages+=pw('Engineering Blueprint',bx('FRONT',bF,'#06101a','#0f1e2e')+bx('RIGHT',bR,'#06101a','#0f1e2e')+bx('BACK',bB,'#06101a','#0f1e2e')+bx('LEFT',bL,'#06101a','#0f1e2e'),'#06101a');}document.body.removeChild(tmp);var doc='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>StormSafe Elevations</title><style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{background:#0D1B2A}@media print{@page{margin:0;size:letter landscape}}</style></head><body>'+pages+'</body></html>';var w2=window.open('','_blank');if(w2){w2.document.open();w2.document.write(doc);w2.document.close();setTimeout(function(){try{w2.focus();w2.print();}catch(e){}},900);toast('Opening elevations','ok');}else{toast('Popup blocked — please allow popups for this page, then try again','err');console.warn('sendToClient: window.open returned null — popup blocker enabled');}}
+function sendToClient(mode){if(!G('bw').value||!G('bl').value){toast('Set dimensions first','err');return;}if(ovlPrintBlock())return;var W=parseInt(G('bw').value)||30,L=parseInt(G('bl').value)||40,H=parseInt(G('bh').value)||10,pt=G('pitch')?G('pitch').textContent:'3:12',pitch=parseInt(pt)||3,cn=G('cn').value||'Client';function ics(id){var e=G(id);return e&&e.value&&e.value!=='TBD';}var rH=ics('cr')?G('cr').value:'#F0EFE8',wH=ics('cw')?G('cw').value:'#9EA5A8',tH2=ics('ct')?G('ct').value:'#F0EFE8',waH=ics('cwn')?G('cwn').value:'#F0EFE8',wn=G('wain')&&G('wain').value==='yes',ws=G('ws')?G('ws').value:'Vertical';var fI=[],bI=[],rI=[],lI=[];document.querySelectorAll('.re').forEach(function(el){var loc=el.querySelector('.rloc').value,sz=(el.querySelector('.rsz').value||'10x8').split('x'),dW=parseFloat(sz[0])||10,dH=parseFloat(sz[1])||8,qty=parseInt(el.querySelector('.rqt').value)||1;function pl(a,fw){getPosItems(el,qty,dW,fw,dH,'rollup').forEach(function(it){a.push(it);});}if(loc==='Front Gable End')pl(fI,W);else if(loc==='Back Gable End')pl(bI,W);else if(loc==='Left Eave Side')pl(lI,L);else if(loc==='Right Eave Side')pl(rI,L);});document.querySelectorAll('.we').forEach(function(el){var loc=el.querySelector('.wloc').value;function pl(a,fw){getPosItems(el,(parseInt((el.querySelector('.wqt')||{}).value)||1),3,fw,6.67,'wtd').forEach(function(it){a.push(it);});}if(loc==='Front Gable End')pl(fI,W);else if(loc==='Back Gable End')pl(bI,W);else if(loc==='Left Eave Side')pl(lI,L);else if(loc==='Right Eave Side')pl(rI,L);});document.querySelectorAll('.ne').forEach(function(el){var loc=el.querySelector('.nloc').value,qty=parseInt(el.querySelector('.nqt')?el.querySelector('.nqt').value:1)||1;function pl(a,fw){getPosItems(el,qty,2.5,fw,2.5,'win',winSillFt(el)).forEach(function(it){a.push(it);});}if(loc==='Front Gable End')pl(fI,W);else if(loc==='Back Gable End')pl(bI,W);else if(loc==='Left Eave Side')pl(lI,L);else if(loc==='Right Eave Side')pl(rI,L);});var tmp=document.createElement('div');document.body.appendChild(tmp);var _stcLTs=collectLTsForViews();var _stcSpC=getSidePanelConfig();var _stcSpR=(_stcSpC.right.hasPanels||_stcSpC.right.full)?_stcSpC.right:null;var _stcSpL=(_stcSpC.left.hasPanels||_stcSpC.left.full)?_stcSpC.left:null;function _stcWallOpen(loc){var wo={front:G('wfg')?G('wfg').value:'Closed',back:G('wbg')?G('wbg').value:'Closed',left:baseWallMode(G('wle')?G('wle').value:'Closed'),right:baseWallMode(G('wre')?G('wre').value:'Closed')};return wo[loc]||'Closed';}function mkC(id,fw,isSide,items,viewKey,gchSp,spCfg){tmp.innerHTML='';var d=document.createElement('div');d.id=id;tmp.appendChild(d);drawElev(id,fw,H,pitch,rH,wH,tH2,waH,wn,items,isSide,ws,_stcWallOpen(viewKey),_stcLTs[viewKey],gchSp,spCfg);return d.innerHTML;}var pages='',bx=function(l,svg,bg,tc){return'<div style="background:'+bg+';border-radius:6px;overflow:hidden;border:1px solid #333"><div style="background:'+(tc||'#1C2E3F')+';color:#fff;font-size:9pt;font-weight:800;letter-spacing:2px;text-align:center;padding:5px;font-family:Arial">'+l+'</div>'+svg+'</div>';},pw=function(t,v,bg){return'<div style="page-break-before:always;background:'+bg+';min-height:100vh;padding:24px;box-sizing:border-box"><div style="font-family:Arial;font-size:11pt;font-weight:800;letter-spacing:2px;color:'+(bg==='#06101a'?'#1fcec4':'#0D1B2A')+';margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid '+(bg==='#06101a'?'#1fcec4':'#1B8A8A')+';text-transform:uppercase">'+t+' - '+cn+' | '+W+"x"+L+"x"+H+"</div><div style=\"display:grid;grid-template-columns:1fr 1fr;gap:16px\">"+v+'</div></div>';};var _pGchR=null,_pGchL=null;if(G('btype')&&G('btype').value==='gch'){var _peL=parseInt(G('gch-enc').value)||0,_poL=parseInt(G('gch-open').value)||0;if(_peL>0&&_poL>0){_pGchR={encLen:_peL,openLen:_poL,encSide:'right'};_pGchL={encLen:_peL,openLen:_poL,encSide:'left'};}}if(mode==='colored'||mode==='both'){var cF=mkC('_cf',W,false,fI,'front'),cR=mkC('_cr',L,true,rI,'right',_pGchR,_stcSpR),cB=mkC('_cb',W,false,bI,'back'),cL=mkC('_cl',L,true,lI,'left',_pGchL,_stcSpL);pages+=pw('Color Rendering',bx('FRONT',cF,'#fff')+bx('RIGHT',cR,'#fff')+bx('BACK',cB,'#fff')+bx('LEFT',cL,'#fff'),'#f5f0e8');}if(mode==='blueprint'||mode==='both'){var bF=drawBlueprintWall('front',W,H,getBPItems('front',W,L),wn,W,_stcLTs.front),bR=drawBlueprintWall('right',L,H,getBPItems('right',W,L),wn,W,_stcLTs.right),bB=drawBlueprintWall('back',W,H,getBPItems('back',W,L),wn,W,_stcLTs.back),bL=drawBlueprintWall('left',L,H,getBPItems('left',W,L),wn,W,_stcLTs.left);pages+=pw('Engineering Blueprint',bx('FRONT',bF,'#06101a','#0f1e2e')+bx('RIGHT',bR,'#06101a','#0f1e2e')+bx('BACK',bB,'#06101a','#0f1e2e')+bx('LEFT',bL,'#06101a','#0f1e2e'),'#06101a');}document.body.removeChild(tmp);var doc='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>StormSafe Elevations</title><style>*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{background:#0D1B2A}@media print{@page{margin:0;size:letter landscape}}</style></head><body>'+pages+'</body></html>';var w2=window.open('','_blank');if(w2){w2.document.open();w2.document.write(doc);w2.document.close();setTimeout(function(){try{w2.focus();w2.print();}catch(e){}},900);toast('Opening elevations','ok');}else{toast('Popup blocked — please allow popups for this page, then try again','err');console.warn('sendToClient: window.open returned null — popup blocker enabled');}}
 
 
 // ══ MINI SIDEBAR BLUEPRINT ════════════════════════════════════════════════
@@ -15111,6 +15745,7 @@ setTimeout(function(){try{updateMiniPreview();}catch(e){}},200);
 function textQuote(){
   if(!G('bw').value||!G('bl').value){toast('Set dimensions first','err');return;}
   if(ltStoragePrintBlock()) return; // same lean-to storage guard as the quote PDF / contract
+  if(ovlPrintBlock()) return; // openings that overlap / crowd each other (no-overlap rule)
   // Price with the SAME pass the screen uses (rc() hands off to rcManual() in
   // INPUT mode), then read the totals it published. No price math of its own
   // here any more — the old private copy drifted (missed the lean-to connection
@@ -15277,7 +15912,7 @@ function runTrussChecks(){
     var qty = parseInt(el.querySelector('.wqt') ? el.querySelector('.wqt').value : 1) || 1;
     var posRows = el.querySelectorAll('.pos-section .pos-row');
     var itemW = 3; // 3' wide walk door
-    var hitCount = 0, allHits = [];
+    var hitCount = 0, allHits = [], _tAx;
     for(var i = 0; i < qty; i++){
       // Work in "distance from front gable" space — consistent on both eaves.
       // data-side='left' = "From Front Gable" → distFromFront = rawPos
@@ -15292,6 +15927,12 @@ function runTrussChecks(){
         if(!isNaN(rawPos) && inp && inp.value!==''){
           distFromFront = (sideVal==='left') ? rawPos : (L - rawPos - itemW);
         }
+      }
+      if(distFromFront===null){
+        // No-overlap model: an Auto opening it moved off a clash (getPosItems frame
+        // -> distance from the front gable). null = the program's own Auto spot.
+        if(_tAx===undefined){ try { _tAx=ovlAutoXs(el,itemW,L); } catch(e){ _tAx=null; } }
+        if(_tAx && _tAx[i]!=null) distFromFront=(loc.value==='Left Eave Side')?(L-_tAx[i]-itemW):_tAx[i];
       }
       if(distFromFront===null){
         var sp = (L - qty * itemW) / (qty + 1);
@@ -15315,7 +15956,7 @@ function runTrussChecks(){
     var qty = parseInt(el.querySelector('.nqt') ? el.querySelector('.nqt').value : 1) || 1;
     var posRows = el.querySelectorAll('.pos-section .pos-row');
     var itemW = 2.5; // standard window width ~30"
-    var hitCount = 0, allHits = [];
+    var hitCount = 0, allHits = [], _tAx;
     for(var i = 0; i < qty; i++){
       var distFromFront = null;
       var row = posRows[i];
@@ -15327,6 +15968,12 @@ function runTrussChecks(){
         if(!isNaN(rawPos) && inp && inp.value!==''){
           distFromFront = (sideVal==='left') ? rawPos : (L - rawPos - itemW);
         }
+      }
+      if(distFromFront===null){
+        // No-overlap model: an Auto opening it moved off a clash (getPosItems frame
+        // -> distance from the front gable). null = the program's own Auto spot.
+        if(_tAx===undefined){ try { _tAx=ovlAutoXs(el,itemW,L); } catch(e){ _tAx=null; } }
+        if(_tAx && _tAx[i]!=null) distFromFront=(loc.value==='Left Eave Side')?(L-_tAx[i]-itemW):_tAx[i];
       }
       if(distFromFront===null){
         var sp = (L - qty * itemW) / (qty + 1);
@@ -15361,7 +16008,7 @@ function runTrussChecks(){
     else if(comp.indexOf('Walk-Through')>=0){ itemW=3; }
     var qty = parseInt((el.querySelector('.acq')||{}).value)||1;
     var posRows = el.querySelectorAll('.pos-section .pos-row');
-    var hitCount = 0, allHits = [];
+    var hitCount = 0, allHits = [], _tAx;
     for(var i=0;i<qty;i++){
       var distFromFront = null, prow = posRows[i];
       if(prow){
@@ -15372,6 +16019,12 @@ function runTrussChecks(){
         if(!isNaN(rawPos) && inp && inp.value!==''){
           distFromFront = (sideVal==='left') ? rawPos : (L - rawPos - itemW);
         }
+      }
+      if(distFromFront===null){
+        // No-overlap model: an Auto opening it moved off a clash (getPosItems frame
+        // -> distance from the front gable). null = the program's own Auto spot.
+        if(_tAx===undefined){ try { _tAx=ovlAutoXs(el,itemW,L); } catch(e){ _tAx=null; } }
+        if(_tAx && _tAx[i]!=null) distFromFront=(loc.value==='Left Eave Side')?(L-_tAx[i]-itemW):_tAx[i];
       }
       if(distFromFront===null){
         var sp = (L - qty * itemW) / (qty + 1);
@@ -15453,6 +16106,9 @@ function runTrussChecks(){
           x += itemW + gap;
         }
       }
+      // No-overlap model: a lean-to wall it had to re-space (an Auto opening
+      // clashed) prices from the model's spots; otherwise the layout above.
+      try { if(ovlWallMoved(ae)){ var _ltx=ovlEntryXs(ae); if(_ltx && _ltx.length===positions.length) positions=_ltx; } } catch(e){}
       var anyHit = false, allHits = [], hitCount = 0;
       positions.forEach(function(itemX){
         var hits = checkTrussHit(itemX, itemW, L);
@@ -15512,12 +16168,18 @@ function setTrussState(el, isHit, hitPositions){
 // to run before the pricing pass.
 var _origRC2 = rc;
 rc = function(){
+  // One no-overlap model per pass (ovlModel / _ovlPassModel), read fresh at its start.
+  _ovlPassDepth++; _ovlPassModel=null;
+  try {
   runTrussChecks();
   // Lean-to storage partition fit (sizes offered / qty / flags). It never
   // changes a value, so the price pass below is unaffected; no-op without
   // partition openings.
   try { ltPartRefreshAll(); } catch(e){ console.warn('ltPartRefreshAll failed:', e); }
+  // No-overlap flags + qty lists (ovlRefresh). Never changes a value — no price effect.
+  try { ovlRefresh(); } catch(e){ console.warn('ovlRefresh failed:', e); }
   _origRC2();
+  } finally { _ovlPassDepth--; if(!_ovlPassDepth) _ovlPassModel=null; }
 };
 
 // Also hook into position changes on eave sides

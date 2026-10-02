@@ -311,6 +311,13 @@ type BuilderWindow = Window & {
    * spots its gable-end fit rules check, so the 3D draws them exactly there.
    */
   ltPartLayout?: (entry: Element, widthFt: number, qty?: number) => number[];
+  /**
+   * Program's lean-to accessory spots (quote-builder ltAccXs — its no-overlap
+   * model, 10/2/26): left edges (ft from the wall's left end) of an entry's
+   * openings on the outer / end walls, exactly where the program places and
+   * prices them (no two overlapping). null = not an opening on a wall.
+   */
+  ltAccXs?: (entry: Element) => number[] | null;
   __ssWrapped?: boolean;
   __ssViewHooked?: boolean;
   __ssOpenSig?: string;
@@ -612,9 +619,22 @@ function readLeanTos(win: Window & { document: Document }): LeanToRead[] {
           partXs = null;
         }
       }
+      // Outer / end walls: the program's own spots (ltAccXs — its no-overlap
+      // model: the layout it prices side frames from, re-spaced off any clash).
+      // Older programs without it keep the mapping below.
+      let progXs: number[] | null = null;
+      if (wall !== 'partition' && typeof (win as BuilderWindow).ltAccXs === 'function') {
+        try {
+          const xs = (win as BuilderWindow).ltAccXs!(ae);
+          if (Array.isArray(xs) && xs.length === qty && xs.every((x) => Number.isFinite(x))) progXs = xs;
+        } catch {
+          progXs = null;
+        }
+      }
       for (let i = 0; i < qty; i++) {
         let center: number;
         if (partXs) center = partXs[i] + w / 2;
+        else if (progXs) center = progXs[i] + w / 2;
         else if (pos === 'offset' && offEls[i]) center = (parseFloat(offEls[i].value) || 0) + w / 2;
         else if (pos === 'center' && qty === 1) center = wallLen / 2;
         else if (pos === 'left') center = w / 2 + 1 + i * (w + 1.5);

@@ -43,6 +43,18 @@ export const LT_PARTITION_DOOR_HEADER_FT = 1;
 export const LT_PARTITION_WINDOW_HEADER_FT = 0;
 export const LT_PARTITION_EPS_FT = 0.01;
 
+/**
+ * No-overlap rule for EVERY wall (owner 10/2/26: "Components & framed openings
+ * cant overlap"). The pricing program owns it (quote-builder.html OVL_* /
+ * ovlModel — same numbers as its LT_PART_* partition rules; a test holds them
+ * equal): 1' clear of each corner post, 1' between openings (a jamb post goes
+ * between them). The 3D only refuses to drag an opening into a spot that breaks
+ * them (engine/wallFit.ts).
+ */
+export const OPENING_CORNER_CLEAR_FT = 1;
+export const OPENING_GAP_FT = 1;
+export const OPENING_EPS_FT = 0.01;
+
 export const DEFAULT_CONFIG: BuildingConfig = {
   buildingType: 'garage',
   width: 24,

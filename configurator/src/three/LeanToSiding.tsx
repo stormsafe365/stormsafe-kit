@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { SHEET_OUTSET, COMPONENT_OUTSET, type LeanToStructure, type Vec3 } from '@/engine/geometry';
 import { leanToWallSettings, rendersLeanToFixture, type LeanToStorageSpan } from '@/engine/leanToFixtures';
 import { clampPartitionCenter, partitionGeom } from '@/engine/partitionFit';
+import { clampWallCenter } from '@/engine/wallFit';
 import type { BuildingColors, LeanToOpening, OpeningType, PanelOrientation, Wainscot } from '@/types/building';
 import { swatchHex, isMetallic, printPanelKey } from '@/config/colors';
 import { TRUSS_CLEARANCE_FT } from '@/config/constants';
@@ -972,7 +973,6 @@ export function DraggableLeanToOpening({
       // A partition opening counts as moved only once it really lands on a new
       // spot (below): one with no valid spot anywhere never writes back, so its
       // program position is never replaced by the 3D's on-wall display spot.
-      if (opening.wall !== 'partition' && !useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
       const rect = gl.domElement.getBoundingClientRect();
       const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
       const ny = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
@@ -994,7 +994,20 @@ export function DraggableLeanToOpening({
           off = clampPartitionCenter(raw, opening, partitionGeom(lt, bs.legHeight), sibs, curOff);
           if (Math.abs(off - curOff) < 1e-9) return; // no new spot: nothing moves, nothing to write back
           if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
-        } else off = Math.max(info.w / 2, Math.min(info.wallLen - info.w / 2, raw));
+        } else {
+          // Outer / end walls: the no-overlap rule (owner 10/2/26) — 1' clear of
+          // each corner post and of every other opening on this wall; the
+          // nearest spot that keeps it (the program checks the same spots).
+          const bs = useBuildingStore.getState();
+          const cur = bs.leanTos.flatMap((l) => l.openings ?? []).find((o) => o.id === oid);
+          const curOff = cur?.offsetFt ?? opening.offsetFt;
+          const sibs = lt.openings
+            .filter((o) => o.wall === opening.wall && o.id !== oid)
+            .map((o) => ({ offset: o.offsetFt, width: o.widthFt }));
+          off = clampWallCenter(raw, info.w, info.wallLen, sibs, curOff);
+          if (Math.abs(off - curOff) < 1e-9) return; // no new spot: nothing moves, nothing to write back
+          if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
+        }
         updateLeanToOpening(oid, { offsetFt: off });
       }
     };

@@ -4,7 +4,8 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Opening, OpeningType, WallSide } from '@/types/building';
 import { COMPONENT_OUTSET, SHEET_OUTSET, openingWorldTransform, type LeanToStructure, type StructureModel, type Vec3 } from '@/engine/geometry';
-import { clampOffset, checkCollision } from '@/engine/layout';
+import { checkCollision } from '@/engine/layout';
+import { clampWallCenter } from '@/engine/wallFit';
 import { cciCenterClearanceFt } from '@/engine/clearance';
 import { TRUSS_CLEARANCE_FT } from '@/config/constants';
 import { useBuildingStore } from '@/store/useBuildingStore';
@@ -273,14 +274,25 @@ function DraggableOpening({
       if (!dragRef.current) return;
       moved = Math.max(moved, Math.hypot(ev.clientX - sx, ev.clientY - sy));
       if (moved < CLICK_DRAG_THRESHOLD_PX) return; // not a drag yet — a click stays a click (opens/closes)
-      if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
       const rect = gl.domElement.getBoundingClientRect();
       const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
       const ny = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(new THREE.Vector2(nx, ny), camera);
       const hit = new THREE.Vector3();
       if (raycaster.ray.intersectPlane(wallPlane, hit)) {
-        updateOpening(oid, { offset: clampOffset(worldToOffset(oside, hit, structure), ow, wall) });
+        // No-overlap rule (owner 10/2/26): never onto / within 1' of another
+        // opening on this wall, never within 1' of a corner post — the nearest
+        // spot that keeps the rule (the program checks the same spots).
+        const st = useBuildingStore.getState();
+        const cur = st.openings.find((o) => o.id === oid);
+        const curOff = cur?.offset ?? opening.offset;
+        const sibs = st.openings.filter((o) => o.side === oside && o.id !== oid).map((o) => ({ offset: o.offset, width: o.width }));
+        const off = clampWallCenter(worldToOffset(oside, hit, structure), ow, wall.spanFt, sibs, curOff);
+        // No new valid spot: nothing moves and nothing is written back (the
+        // program keeps — and flags, if it clashes — the spot it has).
+        if (Math.abs(off - curOff) < 1e-9) return;
+        if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
+        updateOpening(oid, { offset: off });
       }
     };
     const up = () => {

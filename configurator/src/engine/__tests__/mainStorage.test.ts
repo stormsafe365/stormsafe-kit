@@ -79,7 +79,9 @@ describe('End Storage cross partition in the structure', () => {
   it('framed: its bent (already a truss line) plus a base rail and girt rows across the width', () => {
     const rails = s.members.filter((m) => m.kind === 'baseRail' && atZ(m, 8));
     expect(rails.length).toBe(1);
-    expect(rails[0].length).toBeCloseTo(30, 6);
+    // between the eave legs' inner faces (14-gauge leg = 0.2 ft → 0.1 in from each eave)
+    expect(rails[0].length).toBeCloseTo(30 - 2 * 0.1, 6);
+    expect(Math.max(rails[0].start[0], rails[0].end[0])).toBeCloseTo(14.9, 6);
     const girts = s.members.filter((m) => m.kind === 'girt' && atZ(m, 8));
     const endGirts = s.members.filter((m) => m.kind === 'girt' && atZ(m, 20));
     expect(girts.length).toBe(endGirts.length);
@@ -88,6 +90,15 @@ describe('End Storage cross partition in the structure', () => {
     const off = (ms: Member[]) => ms.filter((m) => !((m.kind === 'baseRail' || m.kind === 'girt') && atZ(m, 8)));
     expect(off(s.members)).toEqual(bare.members);
     expect(s.framePositionsZ).toEqual(bare.framePositionsZ);
+  });
+  it('its rails + girts stop against the eave legs — never in the eave walls’ plane (no line bleeding through the sheeting)', () => {
+    const stor = s.members.filter((m) => (m.kind === 'baseRail' || m.kind === 'girt') && atZ(m, 8));
+    for (const m of stor) expect(Math.max(Math.abs(m.start[0]), Math.abs(m.end[0]))).toBeCloseTo(14.9, 6);
+    // a heavier gauge (12-gauge leg 0.27 ft) moves them in with the leg's face
+    const g12 = build({ framingGauge: '12-gauge' }, { mode: 'endBack', lengthFt: 12 });
+    const stor12 = g12.members.filter((m) => (m.kind === 'baseRail' || m.kind === 'girt') && atZ(m, 8));
+    expect(stor12.length).toBe(stor.length);
+    for (const m of stor12) expect(Math.max(Math.abs(m.start[0]), Math.abs(m.end[0]))).toBeCloseTo(15 - 0.135, 6);
   });
   it('an off-grid depth still gets its own bent (framePositionsZ stays the truss grid)', () => {
     const odd = build({}, { mode: 'endBack', lengthFt: 10 });
@@ -126,7 +137,16 @@ describe('Left / Right lengthwise partition in the structure', () => {
     expect(posts.length).toBe(s.framePositionsZ.length);
     const roofY = s.peakHeight - Math.abs(x) * (s.rise / 15);
     for (const p of posts) expect(Math.max(p.start[1], p.end[1])).toBeCloseTo(roofY, 6);
-    expect(s.members.filter((m) => m.kind === 'baseRail' && atX(m, x)).map((m) => m.length)).toEqual([40]);
+    // interior frame lines: on the line; the two END posts stand just inside the
+    // end walls (outer face 0.1 ft in = one 14-gauge leg half-depth), never in the
+    // end wall's own plane behind the sheeting (verifier 10/2/26: 1-px bleed line)
+    const pz = posts.map((p) => p.start[2]).sort((a, b) => a - b);
+    expect(pz[0]).toBeCloseTo(-20 + 0.2, 6);
+    expect(pz[pz.length - 1]).toBeCloseTo(20 - 0.2, 6);
+    expect(pz.slice(1, -1)).toEqual(s.framePositionsZ.slice(1, -1));
+    // rails + girts run between those outer faces
+    expect(s.members.filter((m) => m.kind === 'baseRail' && atX(m, x)).map((m) => +m.length.toFixed(6))).toEqual([39.8]);
+    for (const g of s.members.filter((m) => m.kind === 'girt' && atX(m, x))) expect(g.length).toBeCloseTo(39.8, 6);
     expect(s.members.filter((m) => m.kind === 'girt' && atX(m, x)).length).toBeGreaterThan(0);
     const added = (m: Member) => (m.kind === 'leg' || m.kind === 'baseRail' || m.kind === 'girt') && atX(m, x);
     expect(s.members.filter((m) => !added(m))).toEqual(bare.members);

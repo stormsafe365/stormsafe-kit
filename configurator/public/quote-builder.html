@@ -5842,6 +5842,39 @@ function aewPopulate(wantD, wantW){
 // pick, a type change, a reset) and keeps the fields out of the next save.
 function aewUnset(){ var el=G('add-end-wall'); return !!(el && el.dataset && el.dataset.aewUnset==='1'); }
 function aewClearUnset(){ var el=G('add-end-wall'); if(el && el.dataset) delete el.dataset.aewUnset; }
+// "Use this position" (the unset note's button): keep the position the old quote
+// is drawn at. The selects already show it, and re-picking the option that is
+// already selected fires no change event — so the rep needs this to keep it.
+function aewKeepShown(){
+  aewClearUnset();
+  _aewMoved='';
+  updateAddEndWallDisplay();
+  rc();
+}
+// Any opening on the End Storage "Partition Wall" while the position is unset:
+// the rep is building on the wall as drawn, so that position becomes the
+// quote's — otherwise the contract plan would show neither the wall nor the
+// door (saveflow 10/2/26). Is any main-building opening on it?
+function aewHasPartitionOpenings(){
+  var sels=document.querySelectorAll('.rloc, .wloc, .nloc, .fo-loc');
+  for(var i=0;i<sels.length;i++) if(sels[i].value==='Partition Wall') return true;
+  return false;
+}
+// The rep moved an opening (`sel` = its wall select) onto it → true when that
+// adopted the position shown.
+function aewAdoptForPartition(sel){
+  if(!sel || !sel.classList || sel.value!=='Partition Wall') return false;
+  if(!(sel.classList.contains('rloc')||sel.classList.contains('wloc')||sel.classList.contains('nloc')||sel.classList.contains('fo-loc'))) return false;
+  if(!aewUnset()) return false;
+  var sp=aewSpec();
+  if(!sp.on || sp.kind!=='end') return false;
+  aewClearUnset();
+  _aewMoved='Storage position set to the one shown ('+sp.depthFt+'′ at the '+sp.end+' end) because an opening was put on the Partition Wall &mdash; change the depth if that isn&rsquo;t right.';
+  return true;
+}
+// Capture phase: runs before the select's own onchange → rc(), so that pass's
+// note / paperwork already have the position.
+document.addEventListener('change', function(e){ aewAdoptForPartition(e.target); }, true);
 // Rep picked an end / depth / width.
 function aewSpecChange(){
   aewClearUnset();
@@ -5944,7 +5977,8 @@ function updateAddEndWallDisplay(){
   var sp=aewSpec();
   var moved=_aewMoved?' <strong>&#9888; '+_aewMoved+'</strong>':'';
   // An old quote (no saved position): drawn at the default, kept off the paperwork.
-  var unsetNote=(sp.on&&sp.unset)?' <strong>&#9888; This quote was saved before storage positions existed &mdash; shown at the default; the quote and contract don&rsquo;t print a position until you pick the '+(sp.kind==='end'?'end / depth':'width')+'.</strong>':'';
+  var unsetNote=(sp.on&&sp.unset)?' <strong>&#9888; This quote was saved before storage positions existed &mdash; shown at the default; the quote and contract don&rsquo;t print a position until you pick the '+(sp.kind==='end'?'end / depth':'width')+
+    ' or keep the one shown:</strong> <button type="button" onclick="aewKeepShown()" style="font:inherit;font-weight:700;padding:1px 7px;margin-left:2px;border-radius:3px;border:1px solid var(--or);background:transparent;color:#f7956f;cursor:pointer">Use this position</button>':'';
   if(bt==='gch'){
     noteEl.innerHTML = '<strong>GCH:</strong> the divider end wall is already included in the ' +
                        '<em>Utility Storage</em> line &mdash; no extra charge here.';
@@ -10119,8 +10153,13 @@ async function printRevisedLayout(){
   var framingGA=fuVal==='12'?'12 Gauge':'14 Gauge';
   var now=new Date();
   var todayStr=(now.getMonth()+1)+'/'+now.getDate()+'/'+now.getFullYear();
-  var walls={Front:[],Back:[],Left:[],Right:[]};
+  var walls={Front:[],Back:[],Left:[],Right:[],Partition:[]};
+  // "Partition Wall": a GCH divider is listed with the front wall (as on the
+  // elevations — collectElevItems._partOnFront); an End Storage partition is its
+  // own interior wall, never the Front Wall (saveflow 10/2/26).
+  var _rvPartOnFront=((G('btype')||{}).value)==='gch';
   function wallKey(loc){
+    if(loc==='Partition Wall' && !_rvPartOnFront) return 'Partition';
     if(/front/i.test(loc)) return 'Front';
     if(/back/i.test(loc)) return 'Back';
     if(/left/i.test(loc)) return 'Left';
@@ -10203,10 +10242,13 @@ async function printRevisedLayout(){
     return '#7c3aed';
   }
   var schedHTML='';
-  ['Front','Back','Left','Right'].forEach(function(wn){
+  var _rvSp=(typeof aewSpec==='function')?aewSpec():null;
+  var _rvPartHdr='Storage Partition Wall (interior'+
+    ((_rvSp&&_rvSp.on&&!_rvSp.unset&&_rvSp.kind==='end')?' — '+_rvSp.depthFt+'′ from the '+_rvSp.end+' end':'')+')';
+  ['Front','Back','Left','Right','Partition'].forEach(function(wn){
     var items=walls[wn];
     if(!items.length) return;
-    schedHTML+='<tr class="wall-hdr"><td colspan="5">'+wn+' Wall</td></tr>';
+    schedHTML+='<tr class="wall-hdr"><td colspan="5">'+(wn==='Partition'?_rvPartHdr:wn+' Wall')+'</td></tr>';
     items.forEach(function(it){
       var c=typeColor(it.type);
       schedHTML+='<tr>'+
@@ -10682,7 +10724,10 @@ function restoreQuoteData(data, opts){
     // the quote / contract / text quote don't print a position nobody chose.
     var _aeM=G('add-end-wall');
     if(_aeM && _aeM.dataset){
-      if(f['aew-depth']===undefined && f['aew-width']===undefined) _aeM.dataset.aewUnset='1';
+      // (Not when End Storage openings already stand on its Partition Wall: they
+      // were placed on the wall as drawn, so its paperwork shows wall + doors.)
+      if(f['aew-depth']===undefined && f['aew-width']===undefined &&
+         !(_aeM.value==='yes' && (G('btype')||{}).value!=='gch' && aewHasPartitionOpenings())) _aeM.dataset.aewUnset='1';
       else delete _aeM.dataset.aewUnset;
     }
   }

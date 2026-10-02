@@ -1,6 +1,7 @@
 import type { BuildingType, EndSheeting, LeanToOpening, OpenEnd, Opening, StorageMode, WallOverrides, WallSide } from '@/types/building';
 import type { ResolvedBuilding } from './ruleEngine';
 import { leanToWallSettings, rendersLeanToFixture, type LeanToStorageSpan } from './leanToFixtures';
+import { FRAME_PROFILES } from '@/config/materials';
 
 /**
  * LAYER 2 (cont.) — Structural geometry derivation.
@@ -1018,6 +1019,14 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       ? [...framePositionsZ, storagePz].sort((a, b) => a - b)
       : framePositionsZ;
   const sidePart = enclosure.sidePartition ?? null;
+  // A storage partition's framing stops against the OUTSIDE frame it meets (the
+  // eave legs for End Storage, the end frames for Left/Right) instead of running
+  // into that wall's own plane: a member ~0.1 ft behind the exterior sheeting
+  // bled a 1-px line through the closed wall at 1×–1.5× screen scale (verifier
+  // 10/2/26 — the GPU's depth on near-edge-on faces; the frame's own legs do the
+  // same at the corners). One leg half-depth (gauge visual size) = flush with
+  // the outer leg's inner face. View-only; nothing here is priced.
+  const storageClear = (FRAME_PROFILES[config.framingGauge]?.visualSizeFt ?? FRAME_PROFILES['14-gauge'].visualSizeFt) / 2;
   // The OPEN (carport) eave portion: whole length for a carport, the un-enclosed
   // bay for a utility/GCH, none for a fully enclosed garage.
   const openBayZ: { start: number; end: number } | null =
@@ -1190,9 +1199,10 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(backHoles, 0)))
         members.push(member('baseRail', [s, 0, halfL - inset], [e, 0, halfL - inset]));
   }
-  // Storage partition base rail (single — an interior wall), cut at its floor-level doors.
+  // Storage partition base rail (single — an interior wall), cut at its floor-level
+  // doors, between the eave legs' inner faces.
   if (storagePz !== null)
-    for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(holesForWall('partition'), 0)))
+    for (const [s, e] of subtractSpans(-halfW + storageClear, halfW - storageClear, gapsAtHeight(holesForWall('partition'), 0)))
       members.push(member('baseRail', [s, 0, storagePz], [e, 0, storagePz]));
 
   // --- Ridge (clipped at openings) ---
@@ -1264,24 +1274,32 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     if (enclosure.back === 'closed')
       for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(backHoles, y)))
         members.push(member('girt', [s, y, halfL], [e, y, halfL]));
-    // Storage partition girts (same rows as a closed end wall), cut around its openings.
+    // Storage partition girts (same rows as a closed end wall), cut around its
+    // openings, between the eave legs' inner faces.
     if (storagePz !== null)
-      for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(holesForWall('partition'), y)))
+      for (const [s, e] of subtractSpans(-halfW + storageClear, halfW - storageClear, gapsAtHeight(holesForWall('partition'), y)))
         members.push(member('girt', [s, y, storagePz], [e, y, storagePz]));
   }
 
   // --- Left/Right lengthwise storage partition framing: a post on every frame
   // line (floor to the roofline at its x), a base rail and girt rows along the
-  // full length. No openings (no door rule for a lengthwise partition). ---
+  // full length. At the two END frames the post stands just inside the end wall
+  // (its outer face one leg half-depth in, where the rails and girts stop), not
+  // in the end wall's own plane. No openings (no door rule for a lengthwise
+  // partition). ---
   if (sidePart) {
     const x = sidePart.x;
     const hx = roofYAt(x);
-    for (const z of framePositionsZ) members.push(member('leg', [x, 0, z], [x, hx, z]));
-    members.push(member('baseRail', [x, 0, -halfL], [x, 0, halfL]));
+    const zIn = halfL - storageClear; // the partition's outer face at each end
+    for (const z of framePositionsZ) {
+      const zp = z <= -halfL + 1e-6 ? -zIn + storageClear : z >= halfL - 1e-6 ? zIn - storageClear : z;
+      members.push(member('leg', [x, 0, zp], [x, hx, zp]));
+    }
+    members.push(member('baseRail', [x, 0, -zIn], [x, 0, zIn]));
     const rowsX = Math.max(1, Math.floor((hx - 1) / 4));
     for (let i = 1; i <= rowsX; i++) {
       const y = (hx * i) / (rowsX + 1);
-      members.push(member('girt', [x, y, -halfL], [x, y, halfL]));
+      members.push(member('girt', [x, y, -zIn], [x, y, zIn]));
     }
   }
 

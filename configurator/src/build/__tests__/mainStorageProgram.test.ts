@@ -59,7 +59,7 @@ function grabFn(name: string): string {
 let code = '';
 for (const v of ['EC', 'LR_L', 'LR_STORAGE', 'LR_VERT_ADD', 'AEW_DEFAULT_FT', '_aewMoved']) code += grabVar(v);
 for (const f of ['eBkt', 'ecLookup', 'lrStorageLookup', 'getTrussInfo', 'aewDepthOptions', 'aewWidthOptions', 'aewNearest', 'aewDefaultDepth',
-  'aewPopulate', 'aewUnset', 'aewClearUnset', 'aewSpec', 'aewSig', 'aewLabel', 'aewEaveConflicts', 'gAddEndWall']) code += grabFn(f);
+  'aewPopulate', 'aewUnset', 'aewClearUnset', 'aewAdoptForPartition', 'aewSpec', 'aewSig', 'aewLabel', 'aewEaveConflicts', 'gAddEndWall']) code += grabFn(f);
 code += `
 var ACTIVE_MFR='CCI';
 var INPUT_MODE=false;
@@ -71,6 +71,8 @@ function conflicts(){ return aewEaveConflicts(aewSpec()); }
 function setInput(on){ INPUT_MODE=!!on; return state(); }
 function markUnset(on){ if(on) _G['add-end-wall'].dataset.aewUnset='1'; else aewClearUnset(); return state(); }
 function setMode(v){ _G['add-end-wall'].value=v; return state(); }
+// A wall select (class cls) changed to v: did it adopt an old quote's shown position?
+function adopt(cls, v){ var sel={value:v, classList:{contains:function(c){ return c===cls; }}}; var r=aewAdoptForPartition(sel); var s=state(); s.adopted=r; return s; }
 function Option(text, value){ this.text=text; this.value=value; }
 // Minimal <select>: value only sticks to an existing option (like the DOM).
 function mkSel(opts){
@@ -121,6 +123,7 @@ type Ctx = {
   setInput: (on: boolean) => State;
   markUnset: (on: boolean) => State;
   setMode: (v: string) => State;
+  adopt: (cls: string, v: string) => State & { adopted: boolean };
 };
 const ctx = vm.createContext({ Math, console, String, Number, Object }) as unknown as Ctx;
 vm.runInContext(code, ctx as unknown as vm.Context);
@@ -300,6 +303,32 @@ describe('old quotes (no saved position): drawn at the default, no position on t
     s = ctx.markUnset(false);
     expect(s.label).toBe('End Storage — Interior Partition Wall (12′ deep at back end)');
     expect(s.sig).toBe('yes|back:12');
+  });
+  it('an opening put on the End Storage Partition Wall adopts the position shown (its doors land on the paperwork)', () => {
+    ctx.populate({ w: 30, l: 40 });
+    ctx.markUnset(true);
+    // other walls / other selects: nothing
+    expect(ctx.adopt('rloc', 'Front Gable End').adopted).toBe(false);
+    expect(ctx.adopt('pos-side', 'Partition Wall').adopted).toBe(false);
+    for (const cls of ['rloc', 'wloc', 'nloc', 'fo-loc']) {
+      ctx.markUnset(true);
+      const s = ctx.adopt(cls, 'Partition Wall');
+      expect(s.adopted).toBe(true);
+      expect(s.spec.unset).toBe(false);
+      expect(s.label).toBe('End Storage — Interior Partition Wall (12′ deep at back end)');
+      expect(s.moved).toContain('Storage position set to the one shown (12′ at the back end)');
+      expect(s.price).toBe(ctx.populate({ w: 30, l: 40 }).price); // never a price
+    }
+    // already picked (not unset): leaves the note alone
+    ctx.populate({ w: 30, l: 40 });
+    expect(ctx.adopt('rloc', 'Partition Wall')).toMatchObject({ adopted: false, moved: '' });
+    // Left / Right storage (no partition door) and a GCH divider: never
+    ctx.populate({ w: 30, l: 40, aew: 'left' });
+    ctx.markUnset(true);
+    expect(ctx.adopt('rloc', 'Partition Wall').adopted).toBe(false);
+    ctx.populate({ w: 30, l: 40, btype: 'gch' });
+    ctx.markUnset(true);
+    expect(ctx.adopt('rloc', 'Partition Wall').adopted).toBe(false);
   });
   it('the signature follows end / depth / width / type', () => {
     ctx.populate({ w: 30, l: 40 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG } from '@/config/constants';
-import { COMPONENT_OUTSET, deriveStructure, openingWorldTransform, storagePartition, type Member } from '../geometry';
+import { COMPONENT_OUTSET, deriveStructure, openingWorldTransform, STORAGE_END_POST_INSET, STORAGE_RUN_END_INSET, storagePartition, type Member } from '../geometry';
 import { resolveBuilding } from '../ruleEngine';
 import { NO_STORAGE, partitionLocationAllowed, readMainStorage, storageFromSpec } from '@/build/mainStorage';
 import type { BuildingConfig, Opening, StorageMode } from '@/types/building';
@@ -79,11 +79,14 @@ describe('End Storage cross partition in the structure', () => {
   it('framed: its bent (already a truss line) plus a base rail and girt rows across the width', () => {
     const rails = s.members.filter((m) => m.kind === 'baseRail' && atZ(m, 8));
     expect(rails.length).toBe(1);
-    expect(rails[0].length).toBeCloseTo(30, 6);
+    // rail + girts end at the eave legs' inner faces, not in the side walls' sheet gap
+    expect(rails[0].length).toBeCloseTo(30 - 2 * STORAGE_RUN_END_INSET, 6);
+    expect(Math.max(Math.abs(rails[0].start[0]), Math.abs(rails[0].end[0]))).toBeCloseTo(15 - STORAGE_RUN_END_INSET, 9);
     const girts = s.members.filter((m) => m.kind === 'girt' && atZ(m, 8));
     const endGirts = s.members.filter((m) => m.kind === 'girt' && atZ(m, 20));
     expect(girts.length).toBe(endGirts.length);
     expect(girts.length).toBeGreaterThan(0);
+    for (const g of girts) expect(g.length).toBeCloseTo(30 - 2 * STORAGE_RUN_END_INSET, 6);
     // nothing else changed: same bents, same everything off the partition line
     const off = (ms: Member[]) => ms.filter((m) => !((m.kind === 'baseRail' || m.kind === 'girt') && atZ(m, 8)));
     expect(off(s.members)).toEqual(bare.members);
@@ -126,7 +129,16 @@ describe('Left / Right lengthwise partition in the structure', () => {
     expect(posts.length).toBe(s.framePositionsZ.length);
     const roofY = s.peakHeight - Math.abs(x) * (s.rise / 15);
     for (const p of posts) expect(Math.max(p.start[1], p.end[1])).toBeCloseTo(roofY, 6);
-    expect(s.members.filter((m) => m.kind === 'baseRail' && atX(m, x)).map((m) => m.length)).toEqual([40]);
+    // The two end posts stand inside the end walls (outer face on the frame line),
+    // never in the end sheet's gap — they drew a 1-px line through the closed end.
+    const zs = posts.map((p) => p.start[2]).sort((a, b) => a - b);
+    const fz = s.framePositionsZ;
+    expect(zs[0]).toBeCloseTo(-20 + STORAGE_END_POST_INSET, 9);
+    expect(zs[zs.length - 1]).toBeCloseTo(20 - STORAGE_END_POST_INSET, 9);
+    expect(zs.slice(1, -1)).toEqual(fz.slice(1, -1));
+    expect(STORAGE_END_POST_INSET).toBeGreaterThanOrEqual(0.27 / 2); // half the heaviest drawn section (12-ga)
+    expect(s.members.filter((m) => m.kind === 'baseRail' && atX(m, x)).map((m) => m.length)).toEqual([40 - 2 * STORAGE_END_POST_INSET]); // ends at the end posts
+    for (const g of s.members.filter((m) => m.kind === 'girt' && atX(m, x))) expect(g.length).toBeCloseTo(40 - 2 * STORAGE_END_POST_INSET, 9);
     expect(s.members.filter((m) => m.kind === 'girt' && atX(m, x)).length).toBeGreaterThan(0);
     const added = (m: Member) => (m.kind === 'leg' || m.kind === 'baseRail' || m.kind === 'girt') && atX(m, x);
     expect(s.members.filter((m) => !added(m))).toEqual(bare.members);

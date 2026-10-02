@@ -170,6 +170,14 @@ export type EnhancedMaterialSpec =
        * 'PRINT-<KEY>' color code.
        */
       print?: PrintPanelKey | null;
+      /**
+       * An interior storage partition's sheet (10/1/26): drawn with a
+       * slope-scaled depth offset. Seen edge-on from outside it sits only 0.18'
+       * behind the closed exterior sheet, and at 1x-1.5x screen scale its
+       * extreme depth slope let a 1-px line rasterize through that sheet
+       * (visual verifier 10/2/26). Absent = every other wall, unchanged.
+       */
+      interior?: boolean;
     })
   | (Paintable & { surface: 'roof'; orientation: SheetOrientation; flipX?: boolean })
   | { surface: 'roofUnder' }
@@ -226,7 +234,8 @@ export function materialKey(spec: EnhancedMaterialSpec): string {
       const p = resolvePaint(spec.color, spec.galvalume);
       const print = spec.surface === 'wall' ? wallPrint(spec) : null;
       const base = `${spec.surface}|${p.hex}|${p.galvalume ? 'galv' : 'paint'}|${spec.orientation}|${spec.flipX ? 'flipX' : 'std'}`;
-      return print ? base + '|print-' + print : base;
+      const keyed = print ? base + '|print-' + print : base;
+      return spec.surface === 'wall' && spec.interior ? keyed + '|interior' : keyed;
     }
     case 'trim':
     case 'reveal': {
@@ -304,6 +313,14 @@ function build(spec: EnhancedMaterialSpec): { material: THREE.MeshStandardMateri
       if (print && !lap) {
         m.color.set(0xffffff);
         m.map = printPanelTexture(print);
+      }
+      // Interior storage partition: pushed back by ~1 px of its own depth slope
+      // (nothing face-on, decisive edge-on) so it never shows through the outer sheet.
+      // ShellMeshes switches it on per frame only while the camera is outside the building.
+      if (spec.interior) {
+        m.polygonOffset = true;
+        m.polygonOffsetFactor = 1;
+        m.polygonOffsetUnits = 1;
       }
       break;
     }

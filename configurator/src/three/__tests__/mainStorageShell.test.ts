@@ -1,9 +1,11 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG } from '@/config/constants';
 import { deriveStructure, SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
 import { resolveBuilding } from '@/engine/ruleEngine';
 import type { BuildingConfig, StorageMode } from '@/types/building';
 import { fixtureFaceZ } from '../enhanced/fixtureLayout';
+import { outsideOnlyDepthOffset } from '../enhanced/ShellMeshes';
 import { storageGhostShape } from '../StoragePartitionGhost';
 import { roofSurface, shellLayout, structureKey, trimBatches, wallBatches, wallTopAt, type ShellInput } from '../enhanced/shellGeometry';
 
@@ -98,6 +100,56 @@ describe('GCH divider unchanged', () => {
     const g = build();
     expect(structureKey(g.s)).not.toContain('partitionKind');
     expect(structureKey(g.s)).not.toContain('sidePartition');
+  });
+});
+
+describe('the storage partition sheet is its own depth-offset batch (visual verifier r2)', () => {
+  const interior = (b: { spec: unknown }) => (b.spec as { interior?: boolean }).interior === true;
+  const zs = (b: { position: Float32Array }, k: number) => Array.from({ length: b.position.length / 3 }, (_, i) => b.position[i * 3 + k]);
+  it('End Storage: one interior batch holding exactly the partition sheet; outer walls unchanged', () => {
+    const { cfg, s } = build({}, { mode: 'endBack', lengthFt: 12 });
+    const bs = wallBatches(input(cfg, s));
+    const inner = bs.filter(interior);
+    expect(inner.length).toBe(1);
+    expect(inner[0].id).toContain('|interior');
+    expect(zs(inner[0], 2).every((z) => Math.abs(z - (8 - SHEET_OUTSET)) < 1e-6)).toBe(true);
+    // the outer walls' batches are byte-for-byte those of the same garage without storage
+    const bare = build();
+    const outer = bs.filter((b) => !interior(b));
+    const ref = wallBatches(input(bare.cfg, bare.s));
+    expect(outer.map((b) => b.id)).toEqual(ref.map((b) => b.id));
+    outer.forEach((b, i) => expect(Array.from(b.position)).toEqual(Array.from(ref[i].position)));
+  });
+  it('Left/Right: the lengthwise sheet is the interior batch', () => {
+    const { cfg, s } = build({}, { mode: 'right', lengthFt: 12 });
+    const inner = wallBatches(input(cfg, s)).filter(interior);
+    expect(inner.length).toBe(1);
+    expect(zs(inner[0], 0).every((x) => Math.abs(x - (3 - SHEET_OUTSET)) < 1e-6)).toBe(true);
+  });
+  it('its depth offset is on only while the camera is outside the walls (no grazing-angle effect inside)', () => {
+    const walls = new THREE.Group();
+    const shell = new THREE.Mesh(new THREE.BoxGeometry(30, 15, 40).translate(0, 7.5, 0));
+    const part = new THREE.Mesh(new THREE.PlaneGeometry(40, 12));
+    walls.add(shell, part);
+    walls.updateMatrixWorld(true);
+    const mat = new THREE.MeshStandardMaterial({ polygonOffset: true });
+    const cam = new THREE.PerspectiveCamera();
+    const at = (x: number, y: number, z: number) => {
+      cam.position.set(x, y, z);
+      cam.updateMatrixWorld(true);
+      outsideOnlyDepthOffset.call(part, {} as THREE.WebGLRenderer, {} as THREE.Scene, cam, part.geometry, mat);
+      return mat.polygonOffset;
+    };
+    expect(at(0, 8, -68)).toBe(true); // Front view
+    expect(at(-60, 8, 0)).toBe(true); // Left view
+    expect(at(0, 6, -15)).toBe(false); // Interior view
+    expect(at(40, 30, -40)).toBe(true); // orbiting back out
+  });
+  it('no interior batch on a GCH divider or a garage without storage', () => {
+    const gch = build({ buildingType: 'utility', enclosedLengthFt: 20, openEnd: 'front' }, { mode: 'endBack', lengthFt: 12 });
+    expect(wallBatches(input(gch.cfg, gch.s)).some(interior)).toBe(false);
+    const g = build();
+    expect(wallBatches(input(g.cfg, g.s)).some(interior)).toBe(false);
   });
 });
 

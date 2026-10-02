@@ -647,11 +647,12 @@ export function shellLayout(inp: ShellInput): ShellLayout {
 
 // ── Batches: walls ─────────────────────────────────────────────────────────
 
-const wallSpec = (inp: ShellInput, wainscot: boolean, flip: boolean): EnhancedMaterialSpec => ({
+const wallSpec = (inp: ShellInput, wainscot: boolean, flip: boolean, interior = false): EnhancedMaterialSpec => ({
   surface: 'wall',
   color: wainscot ? inp.colors.wainscot : inp.colors.walls,
   orientation: sheetOrientation(inp.wallOrientation),
   flipX: flip,
+  ...(interior ? { interior: true } : {}),
 });
 
 /** Emit one sheet rectangle, cut into strips around the holes that reach into it (classic stripsAround). */
@@ -680,10 +681,16 @@ function emitRegion(e: Emitter, w: ShellWall, r: SheetRegion) {
 /** Wall + wainscot sheeting (one batch per wall material). */
 export function wallBatches(inp: ShellInput, layout: ShellLayout = shellLayout(inp)): ShellBatch[] {
   const set = new BatchSet();
+  // A garage / carport storage partition (End or Left/Right) is an INTERIOR
+  // sheet: its own batch with the depth-offset material. The GCH divider is
+  // not (partitionKind absent) — drawn exactly as before.
+  const enc = inp.structure.enclosure;
+  const storageWall = enc.partitionKind === 'storage' || !!enc.sidePartition;
   for (const w of layout.walls) {
-    for (const r of w.regions) emitRegion(set.get(wallSpec(inp, r.wainscot, w.flip), true), w, r);
+    const interior = storageWall && w.plane.id === 'partition';
+    for (const r of w.regions) emitRegion(set.get(wallSpec(inp, r.wainscot, w.flip, interior), true), w, r);
     for (const poly of w.polys) {
-      const e = set.get(wallSpec(inp, false, w.flip), true);
+      const e = set.get(wallSpec(inp, false, w.flip, interior), true);
       polygon(e, poly.map(([c, y]) => wallPoint(w.plane, c, y)), w.plane.n, wallUV(w.plane));
     }
   }

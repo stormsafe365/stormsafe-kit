@@ -29,6 +29,14 @@ export type MemberKind = 'leg' | 'rafter' | 'baseRail' | 'ridge' | 'purlin' | 'h
  * through; doors/windows mount on the outside face of the sheeting.
  */
 export const SHEET_OUTSET = 0.18;
+/**
+ * A Left/Right storage partition's end posts sit this far in from the end
+ * frame line: half the heaviest drawn section (12-ga 0.27'), so the post's
+ * outer face is on/inside the end wall's framing, never in its sheet gap.
+ */
+export const STORAGE_END_POST_INSET = 0.14;
+/** An End Storage partition's rail + girts stop this far in from each eave frame line (the 14-ga leg's inner face). */
+export const STORAGE_RUN_END_INSET = 0.1;
 export const COMPONENT_OUTSET = SHEET_OUTSET + 0.16;
 /** Roof panels are nudged out along their normal so they clear the rafters.
  * Shared so the eave trim can land on the SAME drip-edge height (no gap). */
@@ -1191,8 +1199,11 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         members.push(member('baseRail', [s, 0, halfL - inset], [e, 0, halfL - inset]));
   }
   // Storage partition base rail (single — an interior wall), cut at its floor-level doors.
+  // Its rail + girts end at the eave legs' inner faces (not in the side walls'
+  // sheet gap, where an edge-on end drew a 1-px line through the closed eave).
+  const storageRunX = halfW - STORAGE_RUN_END_INSET;
   if (storagePz !== null)
-    for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(holesForWall('partition'), 0)))
+    for (const [s, e] of subtractSpans(-storageRunX, storageRunX, gapsAtHeight(holesForWall('partition'), 0)))
       members.push(member('baseRail', [s, 0, storagePz], [e, 0, storagePz]));
 
   // --- Ridge (clipped at openings) ---
@@ -1266,7 +1277,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         members.push(member('girt', [s, y, halfL], [e, y, halfL]));
     // Storage partition girts (same rows as a closed end wall), cut around its openings.
     if (storagePz !== null)
-      for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(holesForWall('partition'), y)))
+      for (const [s, e] of subtractSpans(-storageRunX, storageRunX, gapsAtHeight(holesForWall('partition'), y)))
         members.push(member('girt', [s, y, storagePz], [e, y, storagePz]));
   }
 
@@ -1276,12 +1287,20 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   if (sidePart) {
     const x = sidePart.x;
     const hx = roofYAt(x);
-    for (const z of framePositionsZ) members.push(member('leg', [x, 0, z], [x, hx, z]));
-    members.push(member('baseRail', [x, 0, -halfL], [x, 0, halfL]));
+    // The two end posts stand INSIDE the end walls (outer face on the frame
+    // line) and the rail + girts end at those posts: centred on the end frame
+    // line, half the post sat in the end wall's 0.18' sheet gap, and its (and
+    // the girts') near edge-on side faces rasterized through the closed end
+    // sheet + base trim as a 1-px line at 1×–1.5× screen scale (visual
+    // verifier 10/2/26).
+    const zEnd = halfL - STORAGE_END_POST_INSET;
+    const endZ = (z: number) => (z <= -halfL + 1e-6 ? -zEnd : z >= halfL - 1e-6 ? zEnd : z);
+    for (const z of framePositionsZ) members.push(member('leg', [x, 0, endZ(z)], [x, hx, endZ(z)]));
+    members.push(member('baseRail', [x, 0, -zEnd], [x, 0, zEnd]));
     const rowsX = Math.max(1, Math.floor((hx - 1) / 4));
     for (let i = 1; i <= rowsX; i++) {
       const y = (hx * i) / (rowsX + 1);
-      members.push(member('girt', [x, y, -halfL], [x, y, halfL]));
+      members.push(member('girt', [x, y, -zEnd], [x, y, zEnd]));
     }
   }
 

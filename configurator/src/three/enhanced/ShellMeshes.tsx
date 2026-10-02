@@ -85,8 +85,34 @@ export function ShellMeshes({ batches, name }: { batches: ShellBatch[]; name: st
   return (
     <group name={name}>
       {batches.map((b, i) => (
-        <mesh key={b.id} geometry={geometries[i]} material={material(b.spec)} castShadow={b.castShadow} receiveShadow={false} />
+        <mesh
+          key={b.id}
+          ref={b.spec.surface === 'wall' && b.spec.interior ? attachOutsideOnlyDepthOffset : undefined}
+          geometry={geometries[i]}
+          material={material(b.spec)}
+          castShadow={b.castShadow}
+          receiveShadow={false}
+        />
       ))}
     </group>
   );
+}
+
+const _walls = new THREE.Box3();
+const _eye = new THREE.Vector3();
+/**
+ * An interior storage partition sheet's depth offset (materials.ts `interior`)
+ * is only wanted seen from OUTSIDE the building, where it stops the edge-on
+ * sheet rasterizing through the closed exterior sheet. From inside (Interior
+ * view, orbiting in) it would only nudge the sheet behind its own base trim at
+ * grazing angles (a stair-stepped edge), so each frame it is on only while the
+ * camera is outside the walls' bounds.
+ */
+export function outsideOnlyDepthOffset(this: THREE.Object3D, _r: THREE.WebGLRenderer, _s: THREE.Scene, camera: THREE.Camera, _g: THREE.BufferGeometry, material: THREE.Material) {
+  if (!this.parent) return;
+  _walls.setFromObject(this.parent);
+  material.polygonOffset = !_walls.containsPoint(_eye.setFromMatrixPosition(camera.matrixWorld));
+}
+function attachOutsideOnlyDepthOffset(m: THREE.Mesh | null) {
+  if (m) m.onBeforeRender = outsideOnlyDepthOffset;
 }

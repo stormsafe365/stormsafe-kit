@@ -57,9 +57,9 @@ function grabFn(name: string): string {
 }
 
 let code = '';
-for (const v of ['EC', 'LR_L', 'LR_STORAGE', 'LR_VERT_ADD', 'AEW_DEFAULT_FT', '_aewMoved']) code += grabVar(v);
+for (const v of ['EC', 'LR_L', 'LR_STORAGE', 'LR_VERT_ADD', 'AEW_DEFAULT_FT', '_aewMoved', '_aewAdopted']) code += grabVar(v);
 for (const f of ['eBkt', 'ecLookup', 'lrStorageLookup', 'getTrussInfo', 'aewDepthOptions', 'aewWidthOptions', 'aewNearest', 'aewDefaultDepth',
-  'aewPopulate', 'aewUnset', 'aewClearUnset', 'aewSpec', 'aewSig', 'aewLabel', 'aewEaveConflicts', 'gAddEndWall']) code += grabFn(f);
+  'aewPopulate', 'aewUnset', 'aewClearUnset', 'aewAdoptForPartitionOpenings', 'aewSpec', 'aewSig', 'aewLabel', 'aewEaveConflicts', 'gAddEndWall']) code += grabFn(f);
 code += `
 var ACTIVE_MFR='CCI';
 var INPUT_MODE=false;
@@ -71,6 +71,7 @@ function conflicts(){ return aewEaveConflicts(aewSpec()); }
 function setInput(on){ INPUT_MODE=!!on; return state(); }
 function markUnset(on){ if(on) _G['add-end-wall'].dataset.aewUnset='1'; else aewClearUnset(); return state(); }
 function setMode(v){ _G['add-end-wall'].value=v; return state(); }
+function adopt(){ var r=aewAdoptForPartitionOpenings(aewSpec()); var st=state(); st.adopted=r; st.note=_aewAdopted; return st; }
 function Option(text, value){ this.text=text; this.value=value; }
 // Minimal <select>: value only sticks to an existing option (like the DOM).
 function mkSel(opts){
@@ -105,6 +106,7 @@ function pick(id, v){ _G[id].value=String(v); if(id==='aew-end') aewPopulate(); 
 type Spec = { on: boolean; kind: string; end: string; depthFt: number; widthFt: number; priced: boolean; unset: boolean };
 type State = { depth: string; width: string; moved: string; depthOpts: number[]; widthOpts: number[]; spec: Spec; label: string; price: number; sig: string };
 type Elev = { x: number; w: number; type: string };
+type ElevSet = { right?: Elev[]; left?: Elev[]; partition?: Elev[] };
 type Setup = { w: number; l: number; h?: number; oc?: 4 | 5; btype?: string; aew?: string; end?: string; mfr?: string; vert?: boolean };
 type Ctx = {
   aewDepthOptions: (L: number, S: number, end: string) => number[];
@@ -116,11 +118,12 @@ type Ctx = {
   populate: (o: Setup, wantD?: string, wantW?: string) => State;
   setSize: (o: { w: number; l: number; oc?: 4 | 5 }) => State;
   pick: (id: string, v: string | number) => State;
-  setElev: (e: { right?: Elev[]; left?: Elev[] }) => void;
+  setElev: (e: ElevSet) => void;
   conflicts: () => string[];
   setInput: (on: boolean) => State;
   markUnset: (on: boolean) => State;
   setMode: (v: string) => State;
+  adopt: () => State & { adopted: boolean; note: string };
 };
 const ctx = vm.createContext({ Math, console, String, Number, Object }) as unknown as Ctx;
 vm.runInContext(code, ctx as unknown as vm.Context);
@@ -307,6 +310,50 @@ describe('old quotes (no saved position): drawn at the default, no position on t
     expect(ctx.pick('aew-end', 'front').sig).toMatch(/^yes\|front:/);
     expect(ctx.setMode('left').sig).toBe('left|10');
     expect(ctx.setMode('no').sig).toBe('no|');
+  });
+});
+
+describe('old quote + an opening put on the End Storage wall -> the shown default becomes the position (verifier r2)', () => {
+  const door: Elev = { x: 10, w: 10, type: 'rollup' };
+  it('no partition opening: stays unset (nothing printed)', () => {
+    ctx.populate({ w: 30, l: 40 });
+    ctx.markUnset(true);
+    ctx.setElev({});
+    const s = ctx.adopt();
+    expect(s.adopted).toBe(false);
+    expect(s.spec.unset).toBe(true);
+    expect(s.sig).toBe('yes|');
+  });
+  it('a door on the partition: unset cleared at the drawn spot, rep note names it; price unchanged', () => {
+    const before = ctx.populate({ w: 30, l: 40 }).price;
+    ctx.markUnset(true);
+    ctx.setElev({ partition: [door] });
+    const s = ctx.adopt();
+    expect(s.adopted).toBe(true);
+    expect(s.spec.unset).toBe(false);
+    expect(s.label).toBe('End Storage — Interior Partition Wall (12′ deep at back end)');
+    expect(s.sig).toBe('yes|back:12');
+    expect(s.note).toMatch(/12′ in from the back end/);
+    expect(s.price).toBe(before);
+    // any later storage pick / reset clears the note
+    expect(ctx.markUnset(false) && ctx.adopt().note).toBe('');
+  });
+  it('not for Left / Right storage, a GCH, a wall that is not drawn, or a quote that already has a position', () => {
+    ctx.setElev({ partition: [door] });
+    ctx.populate({ w: 30, l: 40, aew: 'left' });
+    ctx.markUnset(true);
+    expect(ctx.adopt().adopted).toBe(false);
+    ctx.populate({ w: 30, l: 40, btype: 'gch' });
+    ctx.markUnset(true);
+    expect(ctx.adopt().adopted).toBe(false);
+    ctx.populate({ w: 30, l: 40, mfr: 'CA', aew: 'right' });
+    ctx.markUnset(true);
+    expect(ctx.adopt().adopted).toBe(false);
+    ctx.populate({ w: 30, l: 40 });
+    const s = ctx.adopt();
+    expect(s.adopted).toBe(false);
+    expect(s.sig).toBe('yes|back:12');
+    ctx.setElev({});
   });
 });
 

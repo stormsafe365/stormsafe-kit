@@ -307,7 +307,7 @@ function DraggableOpening({
             w={w}
             h={h}
             sillHeight={opening.sillHeight}
-            faceZ={fixtureFaceZ(opening.side)}
+            faceZ={fixtureFaceZ(opening.side, structure.enclosure.partitionKind !== 'storage')}
             trimColor={trimColor}
             wallColor={wallColor}
             color={opening.color}
@@ -451,8 +451,12 @@ function plyForWall(side: WallSide, structure: StructureModel): THREE.Plane {
       return new THREE.Plane(new THREE.Vector3(0, 0, 1), halfL + o);
     case 'back':
       return new THREE.Plane(new THREE.Vector3(0, 0, 1), -(halfL + o));
-    case 'partition':
-      return new THREE.Plane(new THREE.Vector3(0, 0, 1), -(structure.enclosure.partitionZ ?? 0));
+    case 'partition': {
+      // GCH divider: in its sheet plane. End Storage: the fixture face, like any wall.
+      const enc = structure.enclosure;
+      const z = (enc.partitionZ ?? 0) + (enc.partitionKind === 'storage' ? partFaces(structure) * o : 0);
+      return new THREE.Plane(new THREE.Vector3(0, 0, 1), -z);
+    }
   }
 }
 
@@ -565,7 +569,7 @@ function OpeningDimensions({
 
   // Point on the guide plane (pushed just in front of the component).
   const pt = (along: number, y: number): Vec3 =>
-    pushOut(openingWorldTransform(opening.side, along, y, structure).pos, opening.side, 0.22);
+    pushOut(openingWorldTransform(opening.side, along, y, structure).pos, opening.side, 0.22, partFaces(structure));
 
   return (
     <group>
@@ -622,7 +626,7 @@ function SpacingOverlay({ openings, structure }: { openings: Opening[]; structur
       const wall = structure.walls[side];
       if (!wall) return false;
       const c = openingWorldTransform(side, wall.spanFt / 2, wall.eaveHeightFt / 2, structure).pos;
-      const o = pushOut(c, side, 1);
+      const o = pushOut(c, side, 1, partFaces(structure));
       const dot =
         (camera.position.x - c[0]) * (o[0] - c[0]) +
         (camera.position.y - c[1]) * (o[1] - c[1]) +
@@ -739,7 +743,7 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
   const peak = wall.peakHeightFt;
   const gable = peak > eave + 0.1;
   const items = [...openings].sort((a, b) => a.offset - b.offset);
-  const pt = (along: number, y: number): Vec3 => pushOut(openingWorldTransform(side, along, y, structure).pos, side, 0.22);
+  const pt = (along: number, y: number): Vec3 => pushOut(openingWorldTransform(side, along, y, structure).pos, side, 0.22, partFaces(structure));
   // CCI center clearance (owner 9/29/26): how much headroom there is in the
   // middle before you hit the center braces — CCI chart, gable walls only.
   const mfr = useBuildingStore((st) => st.manufacturer);
@@ -891,15 +895,21 @@ export function Chip3D({ at, label, danger }: { at: Vec3; label: string; danger?
   );
 }
 
-/** Push a wall point outward (toward the viewer side) by `d` ft. */
-function pushOut(pos: Vec3, side: WallSide, d: number): Vec3 {
+/** ±Z the partition's viewer side faces: the GCH open bay (−Z), or an End Storage room's main-room face. */
+function partFaces(structure: StructureModel): -1 | 1 {
+  return structure.enclosure.partitionKind === 'storage' ? (structure.enclosure.partitionFaces ?? -1) : -1;
+}
+
+/** Push a wall point outward (toward the viewer side) by `d` ft. `pf` = the partition's viewer side (partFaces). */
+function pushOut(pos: Vec3, side: WallSide, d: number, pf: -1 | 1 = -1): Vec3 {
   switch (side) {
     case 'left':
       return [pos[0] - d, pos[1], pos[2]];
     case 'right':
       return [pos[0] + d, pos[1], pos[2]];
-    case 'front':
     case 'partition':
+      return [pos[0], pos[1], pos[2] + pf * d];
+    case 'front':
       return [pos[0], pos[1], pos[2] - d];
     case 'back':
       return [pos[0], pos[1], pos[2] + d];

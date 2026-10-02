@@ -425,7 +425,43 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           wainStripMat={(w, h, au, av) => planeMat(tex.wainscot, w, h, wallDir, wainMetal, false, au, av)}
         />
       )}
-      {enclosure.partitionZ !== null && (
+      {enclosure.partitionZ !== null && enclosure.partitionKind === 'storage' && (
+        // End Storage partition: an interior end wall sheeted on its MAIN-ROOM
+        // face, off its framing line like an end wall (no wainscot — interior).
+        <EndWall
+          z={enclosure.partitionZ + (enclosure.partitionFaces ?? -1) * SHEET_OUTSET}
+          W={W}
+          H={H}
+          peak={peakHeight}
+          apexX={mono ? -halfW : 0}
+          mode="closed"
+          holes={gableHoles('partition', H)}
+          wallStripMat={(w, h, au, av) => planeMat(tex.walls, w, h, wallDir, wallMetal, false, au, av)}
+          gableMat={shapeMat(tex.walls, wallDir, wallMetal)}
+          wH={0}
+          wainZ={0}
+          wainHoles={[]}
+          wainStripMat={(w, h, au, av) => planeMat(tex.wainscot, w, h, wallDir, wainMetal, false, au, av)}
+        />
+      )}
+      {enclosure.sidePartition &&
+        (() => {
+          // Left/Right lengthwise storage partition: full length, slab to the
+          // roofline at its sheet x (under the lifted roof skin), main-room face.
+          const xs = enclosure.sidePartition.x + enclosure.sidePartition.faces * SHEET_OUTSET;
+          const topY = mono ? peakHeight - rise * ((xs + halfW) / W) : peakHeight - Math.abs(xs) * (rise / halfW);
+          return (
+            <BasisPanel
+              center={[xs, topY / 2, 0]}
+              uVec={[0, 0, 1]}
+              vVec={[0, 1, 0]}
+              w={L}
+              h={topY}
+              material={planeMat(tex.walls, L, topY, wallDir, wallMetal, false, -halfL, 0)}
+            />
+          );
+        })()}
+      {enclosure.partitionZ !== null && enclosure.partitionKind !== 'storage' && (
         <EndWall
           z={enclosure.partitionZ}
           W={W}

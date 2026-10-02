@@ -148,8 +148,9 @@ export function Trim({ structure, color, wainscot, openings }: TrimProps) {
   // Same folded-L as the building corners, placed at the partition Z. Only
   // drawn where the trim separates an enclosed wall from an OPEN bay — when
   // the carport extension has side paneling on that side, the wall reads as
-  // one continuous panel run and gets NO transition trim. ---
-  if (enclosure.partitionZ !== null && enclosure.sideZ) {
+  // one continuous panel run and gets NO transition trim. An End Storage
+  // partition is an INTERIOR wall of a closed garage — no exterior flashing. ---
+  if (enclosure.partitionZ !== null && enclosure.sideZ && enclosure.partitionKind !== 'storage') {
     const pz = enclosure.partitionZ;
     const f = 0.25;
     const tt = 0.04;
@@ -317,7 +318,8 @@ function WainscotCap({
   if (enclosure.front === 'closed') endBar('front', -(halfL + o2), false);
   if (enclosure.back === 'closed') endBar('back', halfL + o2, true);
   // Partition divider (utility split) — full-height wall, gets the full wainscot cap.
-  if (enclosure.partitionZ !== null) endBar('partition', enclosure.partitionZ, false);
+  // (An End Storage partition carries no wainscot, so no cap.)
+  if (enclosure.partitionZ !== null && enclosure.partitionKind !== 'storage') endBar('partition', enclosure.partitionZ, false);
   // Open-bay side panels — a wainscot cap belongs ONLY on a side that is FULLY
   // closed (sheeting reaches the ground, so there's a real lower wall section).
   // A partial closure hangs from the eave and stops mid-wall; its bottom edge is

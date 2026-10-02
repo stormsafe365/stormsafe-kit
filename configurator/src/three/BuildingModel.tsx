@@ -16,6 +16,7 @@ import { EnhancedRoof } from './enhanced/EnhancedRoof';
 import { EnhancedTrim } from './enhanced/EnhancedTrim';
 import { EnhancedLeanTos } from './enhanced/EnhancedLeanTos';
 import { LeanToSpacingOverlay } from './LeanToSpacing';
+import { StoragePartitionGhost } from './StoragePartitionGhost';
 
 /** Shell opacity per view mode (exterior fully solid; structure/cutaway ghost). */
 const SHELL_OPACITY: Record<ViewMode, number> = {
@@ -181,6 +182,16 @@ export function BuildingModel() {
           ghosted), capture-ignored, and absent in classic. Last child, so the
           classic Frame / ShellGroup keep their slots and never remount. */}
       {renderStyle === 'enhanced' && <EnhancedSite structure={structure} />}
+      {/* Storage room (garage / carport): its partition stays readable in the
+          ghosted Structure / Cutaway views. Exterior + GCH: renders nothing.
+          After EnhancedSite so no earlier child changes slot. */}
+      <StoragePartitionGhost
+        structure={structure}
+        openings={config.openings}
+        color={swatchHex(config.colors.walls)}
+        edgeColor={trimHex}
+        viewMode={viewMode}
+      />
     </group>
   );
 }

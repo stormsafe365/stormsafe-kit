@@ -85,6 +85,27 @@ export function CameraRig() {
         return { pos: new THREE.Vector3(0.001, d, 0.001), look: new THREE.Vector3(0, 0, 0) };
       }
       case 'interior': {
+        const enc = structure.enclosure;
+        // Storage room (garage / carport): stand in the MAIN room and look at
+        // its partition, so the storage wall is in view whichever end it is.
+        if (enc.partitionKind === 'storage' && enc.partitionZ !== null) {
+          const pz = enc.partitionZ;
+          const farZ = (enc.partitionFaces ?? -1) < 0 ? -halfL : halfL; // main room lies on the facing side
+          // From up in the far corner of the main room, looking across at the
+          // storage wall, so it reads in perspective with a side wall running to it.
+          return {
+            pos: new THREE.Vector3(halfW * 0.8, top * 0.72, pz + (farZ - pz) * 0.97),
+            look: new THREE.Vector3(-halfW * 0.2, top * 0.38, pz),
+          };
+        }
+        if (enc.sidePartition) {
+          const { x, faces } = enc.sidePartition;
+          const farX = faces < 0 ? -halfW : halfW;
+          return {
+            pos: new THREE.Vector3(x + (farX - x) * 0.6, top * 0.45, halfL * 0.55),
+            look: new THREE.Vector3(x, top * 0.4, -halfL * 0.2),
+          };
+        }
         // inside, near the floor center, looking out the front gable
         return {
           pos: new THREE.Vector3(halfW * 0.35, top * 0.45, halfL * 0.55),
@@ -207,7 +228,7 @@ export function CameraRig() {
       delete w.__ssSetViewInstant;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [camera, controls, W, L, top]);
+  }, [camera, controls, W, L, top, structure.enclosure]);
 
   // Grabbing the mouse to orbit cancels any in-flight animation.
   useEffect(() => {

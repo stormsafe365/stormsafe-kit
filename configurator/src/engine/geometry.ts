@@ -1,4 +1,4 @@
-import type { BuildingType, EndSheeting, LeanToOpening, OpenEnd, Opening, WallOverrides, WallSide } from '@/types/building';
+import type { BuildingType, EndSheeting, LeanToOpening, OpenEnd, Opening, StorageMode, WallOverrides, WallSide } from '@/types/building';
 import type { ResolvedBuilding } from './ruleEngine';
 import { leanToWallSettings, rendersLeanToFixture, type LeanToStorageSpan } from './leanToFixtures';
 
@@ -48,7 +48,23 @@ export interface Enclosure {
   sideZ: { start: number; end: number } | null;
   front: EndSheeting; // gable end at z = -L/2
   back: EndSheeting; // gable end at z = +L/2
-  partitionZ: number | null; // interior gable wall (utility split)
+  partitionZ: number | null; // interior gable wall (utility split, or End Storage)
+  /**
+   * 'storage' = `partitionZ` is an End Storage partition inside a garage /
+   * carport (program "Storage / Add'l End Wall"): framed with its own bent
+   * line, sheeted on the MAIN-ROOM face (`partitionFaces`) and offset off the
+   * framing like an end wall; no wainscot, no exterior corner flashing. Absent
+   * = the GCH (utility) divider, drawn exactly as before.
+   */
+  partitionKind?: 'storage';
+  /** Storage partition: the ±Z direction its sheeted face points (toward the main room). */
+  partitionFaces?: -1 | 1;
+  /**
+   * Left / Right lengthwise storage partition: its framing line `x` and the ±X
+   * direction its sheeted face points (toward the main room). Full length,
+   * floor to roof underside; no openings. Absent = none.
+   */
+  sidePartition?: { x: number; faces: -1 | 1 };
   /** Per-side full-open override (garage "Right/Left Eave Side: Open"). */
   sideOpen: { left: boolean; right: boolean };
   /**
@@ -898,6 +914,40 @@ function deriveEnclosure(
   }
 }
 
+/**
+ * Interior storage partition of a garage / carport (`walls.storage`, synced
+ * from the program's "Storage / Add'l End Wall") → where it stands.
+ *  - End Storage ('end' = front end, 'endBack' = back end): a cross partition
+ *    `lengthFt` in from that end, snapped onto a frame line within 0.05 ft (the
+ *    program only offers frame-line depths), its sheet facing the main room.
+ *  - 'left' / 'right' (internal −X / +X): a lengthwise partition `lengthFt` in
+ *    from that eave wall, facing the main room.
+ * Kept at least 1 ft off every wall. A utility (GCH) never gets one — its
+ * divider is the enclosed-length split (deriveEnclosure). null = none.
+ */
+export function storagePartition(
+  type: BuildingType,
+  storage: { mode: StorageMode; lengthFt: number } | undefined,
+  W: number,
+  L: number,
+  framePositionsZ: number[],
+): Pick<Enclosure, 'partitionZ' | 'partitionKind' | 'partitionFaces'> | Pick<Enclosure, 'sidePartition'> | null {
+  if (type === 'utility' || !storage || storage.mode === 'none' || !(storage.lengthFt > 0)) return null;
+  const halfW = W / 2;
+  const halfL = L / 2;
+  if (storage.mode === 'end' || storage.mode === 'endBack') {
+    if (L < 2) return null;
+    const d = Math.min(L - 1, Math.max(1, storage.lengthFt));
+    let pz = storage.mode === 'end' ? -halfL + d : halfL - d;
+    const onFrame = framePositionsZ.find((z) => Math.abs(z - pz) < 0.05);
+    if (onFrame !== undefined) pz = onFrame;
+    return { partitionZ: pz, partitionKind: 'storage', partitionFaces: storage.mode === 'end' ? 1 : -1 };
+  }
+  if (W < 2) return null;
+  const w = Math.min(W - 1, Math.max(1, storage.lengthFt));
+  return storage.mode === 'left' ? { sidePartition: { x: -halfW + w, faces: 1 } } : { sidePartition: { x: halfW - w, faces: -1 } };
+}
+
 /** Truss lines visible on an eave (side) wall: each frame leg within its span. */
 function eaveTrussLines(framePositionsZ: number[], start: number, end: number): TrussLine[] {
   const within = framePositionsZ.filter((z) => z >= start - 1e-6 && z <= end + 1e-6);
@@ -952,7 +1002,22 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   })();
   const frameCount = framePositionsZ.length;
 
-  const enclosure = deriveEnclosure(buildingType, halfL, L, enclosedLengthFt, openEnd, openEndGableSheeting, config.wallOverrides);
+  const baseEnclosure = deriveEnclosure(buildingType, halfL, L, enclosedLengthFt, openEnd, openEndGableSheeting, config.wallOverrides);
+  // Interior storage room (garage / carport): an End Storage cross partition or
+  // a Left/Right lengthwise one. Absent → the enclosure is exactly as before.
+  const storage = storagePartition(buildingType, config.walls?.storage, W, L, framePositionsZ);
+  const enclosure: Enclosure = storage ? { ...baseEnclosure, ...storage } : baseEnclosure;
+  /** z of an End Storage partition (null = none / a GCH divider, which keeps its old framing). */
+  const storagePz = enclosure.partitionKind === 'storage' ? enclosure.partitionZ : null;
+  // Bent lines: every frame position, plus the storage partition's own bent
+  // when it is off the grid (it never is from the program — depths are frame
+  // lines — but keep it framed if it ever were). framePositionsZ itself stays
+  // the truss grid (eave truss checks, lean-to grids).
+  const bentZs =
+    storagePz !== null && !framePositionsZ.some((z) => Math.abs(z - storagePz) < 1e-6)
+      ? [...framePositionsZ, storagePz].sort((a, b) => a - b)
+      : framePositionsZ;
+  const sidePart = enclosure.sidePartition ?? null;
   // The OPEN (carport) eave portion: whole length for a carport, the un-enclosed
   // bay for a utility/GCH, none for a fully enclosed garage.
   const openBayZ: { start: number; end: number } | null =
@@ -1094,14 +1159,14 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     if (!preTruss) for (const sg of trussSegs) members.push(member(sg.kind, [sg.a[0], sg.a[1], z], [sg.b[0], sg.b[1], z]));
   };
 
-  for (const z of framePositionsZ) pushBent(z);
+  for (const z of bentZs) pushBent(z);
   // Capture-framing proxy (StructureModel.captureMembers): the same bents as
   // they were before the truss webs, built in the same order and lifted
   // straight back out; everything pushed after the bents is shared.
   const bentEnd = members.length;
   let preTrussBents: Member[] | null = null;
   if (trussStyle !== 'bow') {
-    for (const z of framePositionsZ) pushBent(z, true);
+    for (const z of bentZs) pushBent(z, true);
     preTrussBents = members.splice(bentEnd);
   }
 
@@ -1125,6 +1190,10 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(backHoles, 0)))
         members.push(member('baseRail', [s, 0, halfL - inset], [e, 0, halfL - inset]));
   }
+  // Storage partition base rail (single — an interior wall), cut at its floor-level doors.
+  if (storagePz !== null)
+    for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(holesForWall('partition'), 0)))
+      members.push(member('baseRail', [s, 0, storagePz], [e, 0, storagePz]));
 
   // --- Ridge (clipped at openings) ---
   // Ridge is at peak height, so it's only affected by openings that extend to the peak
@@ -1195,6 +1264,25 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     if (enclosure.back === 'closed')
       for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(backHoles, y)))
         members.push(member('girt', [s, y, halfL], [e, y, halfL]));
+    // Storage partition girts (same rows as a closed end wall), cut around its openings.
+    if (storagePz !== null)
+      for (const [s, e] of subtractSpans(-halfW, halfW, gapsAtHeight(holesForWall('partition'), y)))
+        members.push(member('girt', [s, y, storagePz], [e, y, storagePz]));
+  }
+
+  // --- Left/Right lengthwise storage partition framing: a post on every frame
+  // line (floor to the roofline at its x), a base rail and girt rows along the
+  // full length. No openings (no door rule for a lengthwise partition). ---
+  if (sidePart) {
+    const x = sidePart.x;
+    const hx = roofYAt(x);
+    for (const z of framePositionsZ) members.push(member('leg', [x, 0, z], [x, hx, z]));
+    members.push(member('baseRail', [x, 0, -halfL], [x, 0, halfL]));
+    const rowsX = Math.max(1, Math.floor((hx - 1) / 4));
+    for (let i = 1; i <= rowsX; i++) {
+      const y = (hx * i) / (rowsX + 1);
+      members.push(member('girt', [x, y, -halfL], [x, y, halfL]));
+    }
   }
 
   // --- Hat channels on sheeted side walls (vertical sheeting only) ---
@@ -1231,7 +1319,8 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
           ? W * Math.min(6, H) + gableTriangle // 6' band below the eave + gable
           : 0;
   const endWallArea =
-    endArea(enclosure.front) + endArea(enclosure.back) + (enclosure.partitionZ !== null ? W * H + gableTriangle : 0);
+    endArea(enclosure.front) + endArea(enclosure.back) + (enclosure.partitionZ !== null ? W * H + gableTriangle : 0) +
+    (sidePart ? L * roofYAt(sidePart.x) : 0);
 
   // --- Per-wall layouts for the editor + opening placement ---
   const sideTruss = enclosure.sideZ
@@ -1545,8 +1634,16 @@ export function openingWorldTransform(
       return { pos: [-halfW + offset, yCenter, -halfL - eps], rotY: Math.PI };
     case 'back':
       return { pos: [halfW - offset, yCenter, halfL + eps], rotY: 0 };
-    case 'partition':
-      return { pos: [-halfW + offset, yCenter, structure.enclosure.partitionZ ?? 0], rotY: Math.PI };
+    case 'partition': {
+      const enc = structure.enclosure;
+      // End Storage partition: mounted on its sheeted (main-room) face like any
+      // wall; the GCH divider keeps its in-plane placement (unchanged).
+      if (enc.partitionKind === 'storage') {
+        const f = enc.partitionFaces ?? -1;
+        return { pos: [-halfW + offset, yCenter, (enc.partitionZ ?? 0) + f * eps], rotY: f < 0 ? Math.PI : 0 };
+      }
+      return { pos: [-halfW + offset, yCenter, enc.partitionZ ?? 0], rotY: Math.PI };
+    }
     case 'left':
       return { pos: [-halfW - eps, yCenter, eaveStart + offset], rotY: -Math.PI / 2 };
     case 'right':

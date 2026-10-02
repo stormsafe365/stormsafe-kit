@@ -566,10 +566,17 @@ export function shellLayout(inp: ShellInput): ShellLayout {
   const gablePoly: [number, number][] | null =
     apex[1] - yLow > 0.02 ? [[-halfW, yLow], [halfW, yLow], apex] : null;
 
-  const endWall = (id: WallSide, Z0: number, zs: -1 | 1, mode: 'closed' | 'gableOnly' | 'open' | 'halfClosed', holes: WallHole[]) => {
+  const endWall = (
+    id: WallSide,
+    Z0: number,
+    zs: -1 | 1,
+    mode: 'closed' | 'gableOnly' | 'open' | 'halfClosed',
+    holes: WallHole[],
+    wainscot = true,
+  ) => {
     if (mode === 'open') return;
     const w = newWall({ id, along: 'x', at: Z0, n: [0, 0, zs], u: [zs, 0, 0] }, holes);
-    if (mode === 'closed') addRun(w, -halfW, halfW, 0, yLow, true);
+    if (mode === 'closed') addRun(w, -halfW, halfW, 0, yLow, wainscot);
     else if (mode === 'halfClosed') addRun(w, -halfW, halfW, H - Math.min(SHELL.halfClosedBandFt, H), yLow, false);
     else if (mode === 'gableOnly' && gablePoly) w.bottom.push({ y: yLow, c0: -halfW, c1: halfW });
     if (gablePoly) w.polys.push(gablePoly);
@@ -580,7 +587,13 @@ export function shellLayout(inp: ShellInput): ShellLayout {
   // Partition (utility / GCH split): faces the open bay, which lies past the
   // enclosed span's end (classic partition-corner rule).
   let openSign: -1 | 1 = 1;
-  if (enc.partitionZ !== null) {
+  const storageWall = enc.partitionKind === 'storage';
+  if (enc.partitionZ !== null && storageWall) {
+    // End Storage partition (garage / carport): an interior end wall sheeted on
+    // its MAIN-ROOM face, off the framing line like an end wall; no wainscot.
+    const f = enc.partitionFaces ?? -1;
+    endWall('partition', enc.partitionZ + f * SO, f, 'closed', holesFor('partition', (o) => -halfW + o.offset), false);
+  } else if (enc.partitionZ !== null) {
     const pz = enc.partitionZ;
     openSign = enc.sideZ
       ? Math.abs(pz - enc.sideZ.end) < EPS
@@ -590,6 +603,16 @@ export function shellLayout(inp: ShellInput): ShellLayout {
         ? -1
         : 1;
     endWall('partition', pz, openSign, 'closed', holesFor('partition', (o) => -halfW + o.offset));
+  }
+
+  // Left/Right lengthwise storage partition: full length, slab to just under
+  // the roof (wallTopAt) at its sheet x, facing the main room. No openings.
+  if (enc.sidePartition) {
+    const { x, faces } = enc.sidePartition;
+    const X0 = x + faces * SO;
+    const w = newWall({ id: 'partition', along: 'z', at: X0, n: [faces, 0, 0], u: [0, 0, -faces] }, []);
+    addRun(w, -halfL, halfL, 0, top(X0), false);
+    walls.push(w);
   }
 
   // Corner trims: only where two sheeted edges meet.
@@ -613,7 +636,7 @@ export function shellLayout(inp: ShellInput): ShellLayout {
     pushCorner(sx, -(halfL + SO), -1, side, -halfL, byId('front'));
     pushCorner(sx, halfL + SO, 1, side, halfL, byId('back'));
     // Partition corner (classic rule: only where no side paneling continues past it).
-    if (enc.partitionZ !== null && enc.sideZ) {
+    if (enc.partitionZ !== null && enc.sideZ && !storageWall) {
       const panelFt = sx < 0 ? s.eavePanelFt.left : s.eavePanelFt.right;
       if (panelFt <= EPS) pushCorner(sx, enc.partitionZ, openSign, side, enc.partitionZ - openSign * 0.05, byId('partition'));
     }

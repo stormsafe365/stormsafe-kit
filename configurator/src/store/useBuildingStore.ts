@@ -11,6 +11,7 @@ import type {
   OpenEnd,
   PanelOrientation,
   SheetingGauge,
+  StorageMode,
   WallOverrides,
   WallSide,
 } from '@/types/building';
@@ -62,6 +63,8 @@ export interface BuildingStore extends BuildingConfig {
   setGroundSnow: (psf: number) => void;
   /** Force truss/frame spacing (ft OC) from the pricing program; 0 → load engine decides. */
   setTrussSpacing: (ft: number) => void;
+  /** View-only: interior storage room (garage / carport) — mode + depth/width ft (see StorageMode). */
+  setStorage: (mode: StorageMode, lengthFt: number) => void;
 
   addOpening: (type: OpeningType, side: WallSide) => string;
   updateOpening: (id: string, patch: Partial<Opening>) => void;
@@ -158,6 +161,13 @@ export const useBuildingStore = create<BuildingStore>((set) => ({
   setGroundSnow: (psf) =>
     set(() => ({ groundSnowPsf: snap(psf, SNOW_RANGE.min, SNOW_RANGE.max, SNOW_RANGE.step) })),
   setTrussSpacing: (ft) => set(() => ({ trussSpacingFt: ft > 0 ? ft : undefined })),
+  setStorage: (mode, lengthFt) =>
+    set((s) => {
+      const ft = mode === 'none' || !(lengthFt > 0) ? 0 : lengthFt;
+      const m: StorageMode = ft > 0 ? mode : 'none';
+      if (s.walls.storage.mode === m && s.walls.storage.lengthFt === ft) return {};
+      return { walls: { ...s.walls, storage: { mode: m, lengthFt: ft } } };
+    }),
 
   addOpening: (type, side) => {
     const { width, height, sillHeight, customerSupplied } = OPENING_DEFAULTS[type];

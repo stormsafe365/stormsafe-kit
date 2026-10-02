@@ -20,6 +20,7 @@ import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import type { BuildingType, EndSheeting, OpeningType, WallOverrides, WallSide } from '@/types/building';
 import { leanToWalkDoorLook, leanToWindowLook, readLeanToStorage, type ProgramTypeRow } from './leanToAccessory';
+import { NO_STORAGE, partitionLocationAllowed, readMainStorage } from './mainStorage';
 
 // Cache-bust the pricing iframe on the WEB (CRM embed) so a redeploy shows up
 // without a hard refresh. Skipped for the packaged desktop app, where the page
@@ -57,24 +58,25 @@ const SIDE_MAP: Record<string, WallSide> = {
 
 /**
  * Inject a "Partition Wall" location option into the component dropdowns for GCH
- * builds — done at runtime from the bridge so the program file is untouched. A
- * partition door prices like a gable-end door (the program adds no eave header
- * for a non-eave location), and the 3D renders it on the divider plane. Removed
- * (and any selection reset) when the build isn't a GCH.
+ * builds — and (10/1/26) any build with End Storage on — done at runtime from the
+ * bridge. A partition door prices like a gable-end door (the program adds no eave
+ * header / side frame for a non-eave location), and the 3D renders it on the
+ * divider / storage partition. Removed (and any selection reset) otherwise; the
+ * program's restore twin is _ensureLocOpt (same rule: partitionLocationAllowed).
  */
 function ensurePartitionOption(win: BuilderWindow) {
   const G = win.G;
   if (typeof G !== 'function') return;
-  const isGCH = (G('btype')?.value || '') === 'gch';
+  const allowed = partitionLocationAllowed(G('btype')?.value || '', G('add-end-wall')?.value || '');
   win.document.querySelectorAll('.rloc, .wloc, .nloc, .fo-loc').forEach((node) => {
     const sel = node as HTMLSelectElement;
     const existing = Array.from(sel.options).find((o) => o.value === 'Partition Wall');
-    if (isGCH && !existing) {
+    if (allowed && !existing) {
       const opt = win.document.createElement('option');
       opt.value = 'Partition Wall';
       opt.textContent = 'Partition Wall';
       sel.appendChild(opt);
-    } else if (!isGCH && existing) {
+    } else if (!allowed && existing) {
       const wasSelected = sel.value === 'Partition Wall';
       existing.remove();
       if (wasSelected) {
@@ -696,6 +698,11 @@ function syncFromBuilder(win: BuilderWindow) {
     const enc = num('gch-enc');
     if (enc && enc !== st.enclosedLengthFt) st.setEnclosedLength(enc);
   }
+
+  // Interior storage room (End / Left / Right Storage) from the program's own
+  // aewSpec() — VIEW-ONLY. Not on a GCH: its divider is the gch-enc split above.
+  const stor = bt === 'gch' ? NO_STORAGE : readMainStorage(win);
+  if (stor.mode !== st.walls.storage.mode || stor.lengthFt !== st.walls.storage.lengthFt) st.setStorage(stor.mode, stor.lengthFt);
 
   // Gable-only sheeting on the OPEN end (carport / GCH open bay): the 3D needs
   // openEndGableSheeting=true to draw the sheeted gable triangle over an open end.

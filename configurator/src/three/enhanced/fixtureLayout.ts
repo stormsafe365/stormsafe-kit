@@ -46,11 +46,13 @@ export const FIXTURE = {
  * fixture group sits at COMPONENT_OUTSET off the frame line while its sheet is
  * at SHEET_OUTSET, so the face is 0.16 ft behind the group origin; the GCH
  * partition's fixture group sits IN its sheet plane (openingWorldTransform
- * puts it at partitionZ with no outset). Lean-to walls follow the eave rule
- * (COMP_PROUD in LeanToSiding.tsx).
+ * puts it at partitionZ with no outset). An End Storage partition
+ * (`partitionInPlane` false) is sheeted off its framing line like any wall, so
+ * it follows the wall rule. Lean-to walls follow the eave rule (COMP_PROUD in
+ * LeanToSiding.tsx).
  */
-export function fixtureFaceZ(side: WallSide | 'leanTo'): number {
-  return side === 'partition' ? 0 : -(COMPONENT_OUTSET - SHEET_OUTSET);
+export function fixtureFaceZ(side: WallSide | 'leanTo', partitionInPlane = true): number {
+  return side === 'partition' && partitionInPlane ? 0 : -(COMPONENT_OUTSET - SHEET_OUTSET);
 }
 
 /** Door leaf / curtain centre z: flush, its front face panelGap behind the siding face. */

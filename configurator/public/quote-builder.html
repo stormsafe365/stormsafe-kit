@@ -493,7 +493,22 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
       <option value="left">Left Storage &mdash; Lengthwise Partition</option>
       <option value="right">Right Storage &mdash; Lengthwise Partition</option>
     </select></div>
-  <div id="add-end-wall-cost" class="enote" style="margin:4px 0 8px;display:none;font-size:10px;background:#1a1e0a;border-left-color:#f0c040;color:#f59e0b">
+  <!-- Where the storage partition stands (owner 10/1/26). VIEW + paperwork only:
+       gAddEndWall() never reads these, so they can't change the price (the
+       charts are invariant to position / storage width). End Storage depth is a
+       frame line (the program's own truss OC, measured from the front like
+       getTrussPositions); Left/Right width is whole feet. Hidden on GCH, whose
+       divider follows the Enclosed Storage length above. -->
+  <div class="row" id="aew-end-row" style="display:none"><label>Storage at</label>
+    <select id="aew-end" onchange="aewSpecChange()">
+      <option value="back">Back end</option>
+      <option value="front">Front end</option>
+    </select></div>
+  <div class="row" id="aew-depth-row" style="display:none" title="Frame-line positions only (the building's truss spacing)"><label>Storage depth</label>
+    <select id="aew-depth" onchange="aewSpecChange()"></select></div>
+  <div class="row" id="aew-width-row" style="display:none"><label>Storage width (ft)</label>
+    <select id="aew-width" onchange="aewSpecChange()"></select></div>
+  <div id="add-end-wall-cost" class="enote" style="margin:4px 0 8px;display:none;font-size:10px;background:rgba(241,94,48,.1);border-left-color:var(--or);color:#f7956f">
     <strong>Storage partition:</strong> <span id="add-end-wall-cost-val">$0</span>
   </div>
   <div class="row"><label>Front Gable</label>
@@ -4299,6 +4314,10 @@ function doBldType(){
     var gchEaveN3=G('gch-eave-note'); if(gchEaveN3) gchEaveN3.style.display='none';
     var addEW3=G('add-end-wall'); if(addEW3) addEW3.value='no';
   }
+  // Storage position back to its defaults with the type (back end, 10'-nearest
+  // depth / width — doBld → aewPopulate picks them from the blanked selects).
+  var aewE=G('aew-end'); if(aewE) aewE.value='back';
+  ['aew-depth','aew-width'].forEach(function(id){ var s=G(id); if(s) s.value=''; });
   if(typeof updateAddEndWallDisplay==='function') updateAddEndWallDisplay();
   doBld();
 }
@@ -4606,6 +4625,8 @@ function doBld(){
   if(typeof refreshAllRUDSizes==='function') refreshAllRUDSizes();
   // GCH: rebuild the enclosed-storage dropdown (total length / width / OC may have changed)
   if(typeof populateGchEnc==='function') populateGchEnc();
+  // Storage partition depth / width lists follow the length, width and OC too.
+  if(typeof aewPopulate==='function') aewPopulate();
   sy(); rc();
 }
 
@@ -5739,11 +5760,103 @@ function lrStorageLookup(l,h){
   if(hk<=16 && G('ws') && G('ws').value==='Vertical') price+=colVal(LR_VERT_ADD);
   return price;
 }
+// ── Where the storage partition stands (owner 10/1/26) ──────────────────────
+// VIEW + paperwork only — gAddEndWall() below never reads any of this, so the
+// depth / end / width can't move the price (Sensei + IdeaRoom: position- and
+// storage-width-independent). The 3D host draws the wall from aewSpec().
+// End Storage depth = a FRAME LINE: trusses stand at k·S from the FRONT gable
+// (getTrussPositions; the 3D frames the same way, short last bay at the back),
+// so a back-end room is L − k·S deep and a front-end room k·S deep, from one
+// bay up to L − one bay.
+var AEW_DEFAULT_FT=10;
+function aewDepthOptions(L, S, end){
+  var out=[];
+  if(!(L>0) || !(S>0)) return out;
+  for(var t=S; t<L-0.01; t+=S){
+    var d=(end==='front')?t:L-t;
+    d=Math.round(d*100)/100;
+    if(d>=S-0.001 && d<=L-S+0.001 && out.indexOf(d)<0) out.push(d);
+  }
+  return out.sort(function(a,b){ return a-b; });
+}
+// Left/Right lengthwise storage width: whole feet, 4' up to (width − 4').
+function aewWidthOptions(W){
+  var out=[];
+  for(var x=4; x<=W-4; x++) out.push(x);
+  return out;
+}
+// Nearest option to `want` (a tie goes to the larger — at least the room asked for).
+function aewNearest(opts, want){
+  if(!opts.length) return null;
+  var best=opts[0], bd=Infinity;
+  opts.forEach(function(o){ var d=Math.abs(o-want); if(d<bd-1e-9 || (Math.abs(d-bd)<1e-9 && o>best)){ bd=d; best=o; } });
+  return best;
+}
+// Default pick: 10' (or the nearest valid line to it); a building too short to
+// reach 10' gets its middle-most valid line.
+function aewDefaultDepth(opts){
+  if(!opts.length) return null;
+  if(opts[opts.length-1] < AEW_DEFAULT_FT) return opts[Math.floor(opts.length/2)];
+  return aewNearest(opts, AEW_DEFAULT_FT);
+}
+var _aewMoved=''; // rep note when a length / OC change moved the depth or width
+// (Re)build the depth + width lists for the current size / truss spacing — every
+// building pass (doBld) and once after a restore with the saved picks (`wantD`,
+// `wantW`). A pick that is still valid is kept; otherwise it snaps to the
+// nearest valid line (and the note says so). Built for every type so a save
+// always reopens to the same value.
+function aewPopulate(wantD, wantW){
+  var dSel=G('aew-depth'), wSel=G('aew-width');
+  if(!dSel || !wSel) return;
+  var L=parseInt(G('bl')&&G('bl').value)||0, W=parseInt(G('bw')&&G('bw').value)||0;
+  var ti=(typeof getTrussInfo==='function')?getTrussInfo():null;
+  var S=(ti&&ti.spacing)?ti.spacing:5;
+  var end=(G('aew-end')&&G('aew-end').value==='front')?'front':'back';
+  var restoring=(wantD!=null&&wantD!=='')||(wantW!=null&&wantW!=='');
+  _aewMoved=''; // the note only describes THIS pass's move
+  function fill(sel, opts, want, dflt, fmt, what){
+    var prevStr=(want!=null&&want!=='')?String(want):sel.value;
+    var prev=parseFloat(prevStr);
+    sel.innerHTML='';
+    if(!opts.length){ sel.add(new Option(L&&W?'— building too small —':'— set the size first —','')); sel.value=''; return; }
+    opts.forEach(function(o){ sel.add(new Option(fmt(o), String(o))); });
+    var pick;
+    if(prev>0 && opts.indexOf(prev)>=0) pick=prev;
+    else if(prev>0){ pick=aewNearest(opts, prev); if(!restoring) _aewMoved=what+' moved from '+prev+'′ to '+pick+'′ ('+(what==='Depth'?'nearest frame line at '+S+'′ OC':'fits this width')+').'; }
+    else pick=dflt(opts);
+    sel.value=String(pick);
+  }
+  fill(dSel, aewDepthOptions(L, S, end), wantD, aewDefaultDepth,
+       function(d){ return d+'′ '+(end==='front'?'from the front':'from the back')+' · '+(L-d)+'′ main room'; }, 'Depth');
+  fill(wSel, aewWidthOptions(W), wantW, function(o){ return aewNearest(o, AEW_DEFAULT_FT); },
+       function(x){ return x+'′ wide · '+(W-x)+'′ main room'; }, 'Width');
+}
+// Rep picked an end / depth / width.
+function aewSpecChange(){
+  aewPopulate(); // the depth list depends on which end (also clears the moved note)
+  updateAddEndWallDisplay();
+  rc();
+}
+// The storage partition as the 3D host should draw it (and the paperwork names
+// it). on=false → nothing to draw: None, a GCH (its divider is the Enclosed
+// Storage split) or no valid position for this size.
+function aewSpec(){
+  var v=(G('add-end-wall')||{}).value||'no';
+  var bt=(G('btype')||{}).value||'';
+  var end=((G('aew-end')||{}).value==='front')?'front':'back';
+  var depth=parseFloat((G('aew-depth')||{}).value)||0;
+  var width=parseFloat((G('aew-width')||{}).value)||0;
+  if(bt==='gch' || (v!=='yes'&&v!=='left'&&v!=='right')) return {on:false, kind:'none', end:end, depthFt:depth, widthFt:width};
+  if(v==='yes') return {on:depth>0, kind:'end', end:end, depthFt:depth, widthFt:width};
+  return {on:width>0, kind:v, end:end, depthFt:depth, widthFt:width};
+}
 function aewLabel(){
   var el=G('add-end-wall'); var v=el?el.value:'no';
-  if(v==='left') return 'Left Storage — Lengthwise Partition Wall';
-  if(v==='right') return 'Right Storage — Lengthwise Partition Wall';
-  return 'End Storage — Interior Partition Wall';
+  var sp=aewSpec();
+  if(v==='left'||v==='right'){
+    return (v==='left'?'Left':'Right')+' Storage — Lengthwise Partition Wall'+(sp.on?' ('+sp.widthFt+'′ wide)':'');
+  }
+  return 'End Storage — Interior Partition Wall'+(sp.on&&sp.kind==='end'?' ('+sp.depthFt+'′ deep at '+sp.end+' end)':'');
 }
 function gAddEndWall(){
   var el=G('add-end-wall');
@@ -5763,41 +5876,46 @@ function gAddEndWall(){
 function updateAddEndWallDisplay(){
   var el=G('add-end-wall');
   var noteEl=G('add-end-wall-cost');
-  var valEl=G('add-end-wall-cost-val');
   if(!el || !noteEl) return;
   var v=el.value;
   var on=(v==='yes'||v==='left'||v==='right');
+  var bt=G('btype')?G('btype').value:'';
   noteEl.style.display = on ? '' : 'none';
-  if(on && valEl){
-    var bt=G('btype')?G('btype').value:'';
-    var noteBodyEl=noteEl.querySelector('strong');
-    if(noteBodyEl && noteBodyEl.parentNode){
-      var span=noteBodyEl.parentNode;
-      if(bt==='gch'){
-        span.innerHTML = '<strong>GCH:</strong> the divider end wall is already included in the ' +
-                         '<em>Utility Storage</em> line &mdash; no extra charge here.';
-      } else if(v==='left'||v==='right'){
-        var cl = gAddEndWall();
-        if(ACTIVE_MFR!=='CCI'){
-          span.innerHTML = '<strong style="color:#f87171">Left/Right storage is priced for CCI (Carolina) only.</strong> ' +
-                           'Carports Anywhere has no verified lengthwise-storage chart &mdash; $0 added. ' +
-                           'Use End Storage, or price the lengthwise wall manually.';
-        } else {
-          span.innerHTML = '<strong>'+(v==='left'?'Left':'Right')+' Storage partition:</strong> ' +
-                           '<span id="add-end-wall-cost-val">$' + cl.toLocaleString() + '</span>' +
-                           ' &mdash; interior wall running the FULL building length (Sensei-matched CCI chart; ' +
-                           'vertical walls auto-add the vertical rate). Storage width is the customer’s ' +
-                           'choice &mdash; no price change. Add storage doors below like any other door.';
-        }
-      } else {
-        var c = gAddEndWall();
-        span.innerHTML = '<strong>End Storage partition:</strong> ' +
-                         '<span id="add-end-wall-cost-val">$' + c.toLocaleString() + '</span>' +
-                         ' &mdash; full interior end wall, priced like a closed end. Position along ' +
-                         'the length is the customer’s choice (no price change). Add storage ' +
-                         'doors below like any other door.';
-      }
+  // Storage position rows — not on a GCH (its divider is the Enclosed Storage split).
+  function showRow(id, vis){ var r=G(id); if(r) r.style.display=vis?'':'none'; }
+  showRow('aew-end-row',   v==='yes' && bt!=='gch');
+  showRow('aew-depth-row', v==='yes' && bt!=='gch');
+  showRow('aew-width-row', (v==='left'||v==='right') && bt!=='gch');
+  if(!on) return;
+  // Rewritten in full every pass (the old code stopped updating once a branch
+  // without the -val span — GCH / CA Left-Right — had replaced the note body).
+  var sp=aewSpec();
+  var moved=_aewMoved?' <strong>&#9888; '+_aewMoved+'</strong>':'';
+  if(bt==='gch'){
+    noteEl.innerHTML = '<strong>GCH:</strong> the divider end wall is already included in the ' +
+                       '<em>Utility Storage</em> line &mdash; no extra charge here.';
+  } else if(v==='left'||v==='right'){
+    var side=(v==='left'?'Left':'Right');
+    var where=sp.on ? (sp.widthFt+'′ wide from the '+side.toLowerCase()+' side') : 'pick the storage width';
+    var doorNote=' Doors on a lengthwise partition aren&rsquo;t priced yet &mdash; ask CCI.';
+    if(ACTIVE_MFR!=='CCI'){
+      noteEl.innerHTML = '<strong style="color:#f87171">Left/Right storage is priced for CCI (Carolina) only.</strong> ' +
+                         'Carports Anywhere has no verified lengthwise-storage chart &mdash; $0 added. ' +
+                         'Use End Storage, or price the lengthwise wall manually. Drawn ' + where + '.' + doorNote + moved;
+    } else {
+      noteEl.innerHTML = '<strong>'+side+' Storage partition:</strong> ' +
+                         '<span id="add-end-wall-cost-val">$' + gAddEndWall().toLocaleString() + '</span>' +
+                         ' &mdash; interior wall running the FULL building length, ' + where +
+                         ' (Sensei-matched CCI chart; vertical walls auto-add the vertical rate). ' +
+                         'Width doesn&rsquo;t change the price.' + doorNote + moved;
     }
+  } else {
+    var at=sp.on ? (sp.depthFt+'′ in from the '+sp.end+' end') : '&mdash; pick the storage depth &mdash;';
+    noteEl.innerHTML = '<strong>End Storage partition:</strong> ' +
+                       '<span id="add-end-wall-cost-val">$' + gAddEndWall().toLocaleString() + '</span>' +
+                       ' &mdash; full interior end wall ' + at + ', priced like a closed end ' +
+                       '(depth doesn&rsquo;t change the price). Storage doors: pick the ' +
+                       '&ldquo;Partition Wall&rdquo; location (priced like a gable-end door).' + moved;
   }
 }
 function sidePanelLength(){
@@ -9540,6 +9658,8 @@ function collectQuoteData(){
     // reloaded fully enclosed (doBldType resets walls to the type default and
     // nothing restored them). Restore Step 2 now puts them back after that reset.
     'wfg','wbg','wre','wle','add-end-wall',
+    // Storage partition position (10/1/26, view + paperwork only — never priced).
+    'aew-end','aew-depth','aew-width',
     'gch-enc','gch-open','gch-gable','gch-left','gch-right','overhang-sel','sp-left','sp-right',
     // Free-standing lean-to (fslean) controls — pitch + walls drive the price.
     'fs-pitch','fs-walls-mode','fs-wf','fs-wb','fs-wt','fs-wl2','fs-orient',
@@ -10191,7 +10311,10 @@ var CCI_LEGACY_HEX = {
 // or a CRM restore that beats the host's load handler): setting the saved value then drops the
 // select to '' and the opening loses its placement. Add it first, the same way the host does.
 function _ensureLocOpt(sel, v){
-  if(!sel || v!=='Partition Wall' || (((G('btype')||{}).value)||'')!=='gch') return;
+  // GCH divider, or an End Storage partition on any other type (owner 10/1/26 —
+  // same location, same gable-end door pricing; the host offers it on both).
+  var _bt=((G('btype')||{}).value)||'', _aew=((G('add-end-wall')||{}).value)||'';
+  if(!sel || v!=='Partition Wall' || !(_bt==='gch' || _aew==='yes')) return;
   for(var i=0;i<sel.options.length;i++) if(sel.options[i].value===v) return;
   var o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o);
 }
@@ -10478,6 +10601,17 @@ function restoreQuoteData(data, opts){
   if(f.btype==='gch'){
     populateGchEnc(f['gch-enc']);   // builds options + snaps the saved length to a valid tier
     updateGchOpen();
+  }
+  // Storage partition: build the depth / width lists for the restored size + OC,
+  // then re-apply the saved picks (Step 2 ran before the lists existed). Quotes
+  // saved before 10/1/26 have no picks and reopen at the defaults — price unchanged.
+  if(typeof aewPopulate==='function'){
+    // A pick the quote never saved starts from the default for THIS size (not
+    // whatever the build pass in Step 1 chose for the previous quote's size).
+    if(f['aew-end']===undefined){ var _aeE=G('aew-end'); if(_aeE) _aeE.value='back'; }
+    if(f['aew-depth']===undefined){ var _aeD=G('aew-depth'); if(_aeD) _aeD.value=''; }
+    if(f['aew-width']===undefined){ var _aeW=G('aew-width'); if(_aeW) _aeW.value=''; }
+    aewPopulate(f['aew-depth'], f['aew-width']);
   }
   sy();
   // Re-run the building pass so size-driven rows (OC Spacing, fslean badges) match the restored quote.
@@ -11295,8 +11429,11 @@ function collectElevItems(){
   var W=parseInt(G('bw').value)||30, L=parseInt(G('bl').value)||40;
   var front=[],back=[],right=[],left=[];
   // GCH "Partition Wall" openings (e.g. the roll-up) live on the partition, which
-  // is what the Front dimensioned view shows — so route them to `front`.
-  function dispatch(loc,a,W2,L2,fw){ if(loc==='Front Gable End'||loc==='Partition Wall')fw(front,W2); else if(loc==='Back Gable End')fw(back,W2); else if(loc==='Left Eave Side')fw(left,L2); else if(loc==='Right Eave Side')fw(right,L2); }
+  // is what the Front dimensioned view shows — so route them to `front`. An End
+  // Storage partition (10/1/26) is an INTERIOR wall behind a sheeted front: its
+  // openings are not drawn on an exterior elevation (the plan views drop them too).
+  var _partOnFront=((G('btype')||{}).value)==='gch';
+  function dispatch(loc,a,W2,L2,fw){ if(loc==='Front Gable End'||(loc==='Partition Wall'&&_partOnFront))fw(front,W2); else if(loc==='Back Gable End')fw(back,W2); else if(loc==='Left Eave Side')fw(left,L2); else if(loc==='Right Eave Side')fw(right,L2); }
   document.querySelectorAll('.re').forEach(function(el){
     var loc=el.querySelector('.rloc').value, sz=(el.querySelector('.rsz').value||'10x8').split('x');
     var dW=parseFloat(sz[0])||10,dH=parseFloat(sz[1])||8,qty=parseInt(el.querySelector('.rqt').value)||1;
@@ -12153,6 +12290,31 @@ async function printContract(){
       // Label on a white chip so it stays readable over the divider line.
       s += '<rect x="'+(bx+bw/2-44)+'" y="'+(py-8)+'" width="88" height="14" fill="#ffffff" stroke="none"/>';
       s += '<text x="'+(bx+bw/2)+'" y="'+(py+2.5)+'" text-anchor="middle" font-family="Arial" font-size="8.5" font-weight="800" fill="#111827" letter-spacing="1">PARTITION WALL</text>';
+    })();
+
+    // ── Storage partition (End / Left / Right Storage, 10/1/26) ──────────────
+    // Same wall + chip as the GCH divider. End Storage runs across the width at
+    // its depth from the back (top) or front (bottom); Left/Right runs the full
+    // length at its width in from that eave (plan left = the building's left).
+    (function(){
+      var sp=(typeof aewSpec==='function')?aewSpec():null;
+      if(!sp||!sp.on) return;
+      var chip=function(cx,cy,txt,vert){
+        var tw=txt.length*6+12;
+        s += '<rect x="'+(vert?cx-7:cx-tw/2)+'" y="'+(vert?cy-tw/2:cy-8)+'" width="'+(vert?14:tw)+'" height="'+(vert?tw:14)+'" fill="#ffffff" stroke="none"/>';
+        s += '<text x="'+cx+'" y="'+(cy+2.5)+'" text-anchor="middle" font-family="Arial" font-size="8.5" font-weight="800" fill="#111827" letter-spacing="1"'+(vert?' transform="rotate(-90,'+cx+','+(cy)+')"':'')+'>'+txt+'</text>';
+      };
+      if(sp.kind==='end'){
+        var d=Math.min(sp.depthFt, L);
+        var py=by+(sp.end==='front'?(L-d):d)*scale;
+        s += '<line x1="'+bx+'" y1="'+py+'" x2="'+(bx+bw)+'" y2="'+py+'" stroke="#111827" stroke-width="'+wt+'" stroke-linecap="square"/>';
+        chip(bx+bw/2, py, 'STORAGE WALL — '+d+'′', false);
+      } else {
+        var wd=Math.min(sp.widthFt, W);
+        var px=(sp.kind==='left')?bx+wd*scale:bx+bw-wd*scale;
+        s += '<line x1="'+px+'" y1="'+by+'" x2="'+px+'" y2="'+(by+bl)+'" stroke="#111827" stroke-width="'+wt+'" stroke-linecap="square"/>';
+        chip(px, by+bl/2, 'STORAGE WALL — '+wd+'′', true);
+      }
     })();
 
     // ── Translate each item from elevation coords → "floor plan position" (fp)

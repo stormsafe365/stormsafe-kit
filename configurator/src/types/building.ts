@@ -59,7 +59,17 @@ export type WallState = 'open' | 'closed' | 'gable';
 /** Wall preset selector — maps the building family to per-wall states. */
 export type WallPreset = 'open' | 'enclosed' | 'custom';
 
-/** Enclosed "Storage" section of a utility carport, and where it sits. */
+/**
+ * Storage room walled off INSIDE a garage / carport by an interior partition
+ * (the program's "Storage / Add'l End Wall", synced by the build host):
+ *  - 'end'     End Storage at the FRONT end (z = -L/2) — a cross partition
+ *  - 'endBack' End Storage at the BACK end (z = +L/2)
+ *  - 'left' / 'right'  lengthwise storage along the internal -X / +X eave wall
+ *    (internal sides — the host maps the program's front-view Left/Right)
+ * `lengthFt` is the room's depth (end) or width (left / right). VIEW-ONLY: it
+ * never prices anything. A GCH (utility) ignores it — its divider is the
+ * enclosed-length split.
+ */
 export type StorageMode = 'none' | 'end' | 'endBack' | 'left' | 'right';
 
 /** Single-slope shed roof attached to or free-standing from the main building. */
@@ -157,7 +167,7 @@ export interface WallsConfig {
   back: WallState;
   left: WallState;
   right: WallState;
-  /** Enclosed storage bay: which part of the building is walled-in. */
+  /** Interior storage room (garage / carport): which part is walled off + its depth / width (see StorageMode). */
   storage: { mode: StorageMode; lengthFt: number };
 }
 

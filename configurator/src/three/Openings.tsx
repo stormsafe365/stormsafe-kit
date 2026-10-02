@@ -13,6 +13,7 @@ import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures
 import { CLICK_DRAG_THRESHOLD_PX, swingAngle, walkDoorHingeX, walkDoorKnobX } from './openingAnim';
 import { ftIn, roofLengthLabel } from './dimLabels';
 import { useOpenAmount } from './useOpenAmount';
+import { interiorPress } from './interiorPress';
 import { OpeningHitPlane } from './OpeningFixture';
 import { chamferFillGeometry, chamferFrameGeometry, chamferPanelGeometry, cut45Leg } from './cut45Geometry';
 import { EnhancedFixture } from './enhanced/fixtures';
@@ -258,6 +259,16 @@ function DraggableOpening({
   // R3F pointer-capture and OrbitControls can't fight it.
   const onDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
+    // Walk-in Interior: a drag looks around (never slides the part); a click
+    // still selects it and opens / closes it.
+    if (
+      interiorPress(e.nativeEvent, () => {
+        selectOpening(opening.id);
+        setActiveWall(opening.side);
+        if (opening.type !== 'frameOut') toggleOpen(opening.id);
+      })
+    )
+      return;
     selectOpening(opening.id);
     setActiveWall(opening.side);
     setDragging(true);

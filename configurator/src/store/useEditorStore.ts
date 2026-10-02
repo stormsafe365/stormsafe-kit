@@ -12,7 +12,10 @@ export type ViewMode = 'exterior' | 'structure' | 'cutaway';
  */
 export type RenderStyle = 'classic' | 'enhanced';
 
-/** Named camera framings. 'interior' drops the camera inside looking out. */
+/**
+ * Named camera framings. 'interior' is the walk-in mode (InteriorWalk): the
+ * camera stands inside the main room and drag looks around in place.
+ */
 export type CameraPreset =
   | 'front'
   | 'back'
@@ -51,6 +54,13 @@ interface EditorStore {
    * preset whenever `nonce` changes (nonce lets the same preset re-fire).
    */
   cameraCmd: { preset: CameraPreset; nonce: number } | null;
+  /**
+   * True while the walk-in Interior view is active (VIEW-ONLY, never saved or
+   * priced). Turned on by goToView('interior'); any other preset, the
+   * Structure mode framing or a Look switch turns it off, and InteriorWalk
+   * then restores the normal orbit controls, FOV and near plane.
+   */
+  interiorView: boolean;
   /** "Spacing" overlay: every component's size + all gaps / heights on every wall. */
   showSpacing: boolean;
   /** Components the user clicked OPEN (door swings, roll-up rolls, window slides). */
@@ -76,6 +86,8 @@ interface EditorStore {
   setCutawayWall: (wall: WallSide | null) => void;
   /** Fire a camera move to a named preset. */
   goToView: (preset: CameraPreset) => void;
+  /** Enter / leave the walk-in Interior view without a camera command (instant view setter). */
+  setInteriorView: (on: boolean) => void;
   setShowSpacing: (on: boolean) => void;
   toggleOpen: (id: string) => void;
   closeAllOpenings: () => void;
@@ -93,6 +105,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   viewMode: 'exterior',
   cutawayWall: null,
   cameraCmd: null,
+  interiorView: false,
   showSpacing: false,
   openIds: {},
   // Owner 9/29/26: the NEW look is the default. 'Look: Classic' (ViewControls)
@@ -114,18 +127,24 @@ export const useEditorStore = create<EditorStore>((set) => ({
   setViewMode: (mode) =>
     set((s) => ({
       viewMode: mode,
-      // Entering structure mode auto-fires the structure framing.
+      // Entering structure mode auto-fires the structure framing (which
+      // leaves the walk-in Interior view like any other preset).
       cameraCmd:
         mode === 'structure'
           ? { preset: 'structure', nonce: (s.cameraCmd?.nonce ?? 0) + 1 }
           : s.cameraCmd,
+      interiorView: mode === 'structure' ? false : s.interiorView,
     })),
   setCutawayWall: (wall) => set({ cutawayWall: wall }),
   goToView: (preset) =>
-    set((s) => ({ cameraCmd: { preset, nonce: (s.cameraCmd?.nonce ?? 0) + 1 } })),
+    set((s) => ({ cameraCmd: { preset, nonce: (s.cameraCmd?.nonce ?? 0) + 1 }, interiorView: preset === 'interior' })),
+  setInteriorView: (on) => set({ interiorView: on }),
   setShowSpacing: (on) => set({ showSpacing: on }),
   toggleOpen: (id) => set((s) => ({ openIds: { ...s.openIds, [id]: !s.openIds[id] } })),
   closeAllOpenings: () => set({ openIds: {} }),
-  setRenderStyle: (style) => set({ renderStyle: style }),
+  // A Look switch leaves the walk-in Interior view (InteriorWalk restores the
+  // orbit view synchronously, before the new Look's rig mounts, so that rig
+  // saves / restores the orbit FOV, never the interior one).
+  setRenderStyle: (style) => set((s) => (s.renderStyle === style ? { renderStyle: style } : { renderStyle: style, interiorView: false })),
   setCaptureMode: (on) => set({ captureMode: on }),
 }));

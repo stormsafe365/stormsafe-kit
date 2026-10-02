@@ -14,6 +14,7 @@ import { stripsAround, type LocalRect } from './Siding';
 import { OpeningFixture } from './OpeningFixture';
 import { GuideLine, Measure, Chip3D, ftIn, RED, RED_DIM } from './Openings';
 import { CLICK_DRAG_THRESHOLD_PX } from './openingAnim';
+import { interiorPress } from './interiorPress';
 import { EnhancedFixture } from './enhanced/fixtures';
 import { fixtureFaceZ } from './enhanced/fixtureLayout';
 
@@ -955,6 +956,15 @@ export function DraggableLeanToOpening({
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
+    // Walk-in Interior: a drag looks around (never slides the part); a click
+    // still selects it and opens / closes it.
+    if (
+      interiorPress(e.nativeEvent, () => {
+        selectLeanToOpening(opening.id);
+        if (opening.type !== 'frameOut') toggleOpen(opening.id);
+      })
+    )
+      return;
     selectLeanToOpening(opening.id);
     setDragging(true);
     dragRef.current = true;

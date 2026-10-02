@@ -13,6 +13,10 @@ import { useEditorStore, type CameraPreset } from '@/store/useEditorStore';
  * Presets compute a position that fits the relevant building face in view
  * (accounting for FOV + aspect), so close-ups never clip and big buildings
  * still fit. Motion is a smooth lerp; grabbing the mouse cancels it.
+ *
+ * The 'interior' preset is NOT framed here: it is the walk-in mode run by
+ * InteriorWalk (its own pose, look-around controls and clamping). This rig
+ * just stands aside while it is on (editor store `interiorView`).
  */
 export function CameraRig() {
   const { structure } = useResolvedBuilding();
@@ -84,40 +88,6 @@ export function CameraRig() {
         // tiny offset keeps OrbitControls out of the gimbal pole
         return { pos: new THREE.Vector3(0.001, d, 0.001), look: new THREE.Vector3(0, 0, 0) };
       }
-      case 'interior': {
-        const enc = structure.enclosure;
-        // Storage room (garage / carport): stand in the MAIN room and look at
-        // its partition, so the storage wall is in view whichever end it is.
-        if (enc.partitionKind === 'storage' && enc.partitionZ !== null) {
-          const pz = enc.partitionZ;
-          const farZ = (enc.partitionFaces ?? -1) < 0 ? -halfL : halfL; // main room lies on the facing side
-          // From up in the far corner of the main room, looking across at the
-          // storage wall, so it reads in perspective with a side wall running to it.
-          return {
-            pos: new THREE.Vector3(halfW * 0.8, top * 0.72, pz + (farZ - pz) * 0.97),
-            look: new THREE.Vector3(-halfW * 0.2, top * 0.38, pz),
-          };
-        }
-        if (enc.sidePartition) {
-          // Lengthwise storage: stand up high at the front of the MAIN room and
-          // look down its length — the partition runs along one side, the eave
-          // wall (framing showing) along the other, floor and back gable ahead,
-          // so the room reads as the part of the building left after the
-          // storage (looking straight at the partition was a blank wall).
-          const { x, faces } = enc.sidePartition;
-          const farX = faces < 0 ? -halfW : halfW;
-          const mid = (x + farX) / 2;
-          return {
-            pos: new THREE.Vector3(mid + (farX - x) * 0.1, top * 0.75, -halfL * 0.95),
-            look: new THREE.Vector3(mid + (x - mid) * 0.25, top * 0.38, halfL * 0.6),
-          };
-        }
-        // inside, near the floor center, looking out the front gable
-        return {
-          pos: new THREE.Vector3(halfW * 0.35, top * 0.45, halfL * 0.55),
-          look: new THREE.Vector3(0, top * 0.4, -halfL),
-        };
-      }
       case 'structure': {
         // low 3/4 angle (front-facing), slightly closer, to read frame + purlins
         const dir = new THREE.Vector3(1, 0.5, -1.05).normalize();
@@ -141,6 +111,12 @@ export function CameraRig() {
   useEffect(() => {
     if (!cmd) return;
     lookReturn.current = null;
+    if (cmd.preset === 'interior') {
+      // Walk-in Interior: InteriorWalk places the camera (instantly) and owns it.
+      goalPos.current = null;
+      goalLook.current = null;
+      return;
+    }
     const { pos, look } = computePreset(cmd.preset);
     goalPos.current = pos;
     goalLook.current = look;
@@ -193,8 +169,9 @@ export function CameraRig() {
       goalPos.current = pos;
       goalLook.current = look;
     }
-    // On size change, auto-frame with current orbit direction
-    else if (changed && controls) {
+    // On size change, auto-frame with current orbit direction (inside the
+    // walk-in Interior view InteriorWalk re-poses the camera in the new room).
+    else if (changed && controls && !useEditorStore.getState().interiorView) {
       const center = new THREE.Vector3(0, top * 0.45, 0);
       const dir = camera.position.clone().sub(controls.target).normalize();
       const d = fitDistance(Math.max(W, L), top) + Math.max(W, L) * 0.25;
@@ -221,6 +198,18 @@ export function CameraRig() {
     const w = window as unknown as { __ssSetViewInstant?: (p: CameraPreset) => void };
     w.__ssSetViewInstant = (preset) => {
       if (!controls) return;
+      // Leave the walk-in Interior view first: InteriorWalk restores the orbit
+      // controls, FOV and near plane synchronously, so a PDF capture started
+      // from Interior frames exactly like one started from any other view.
+      const ed = useEditorStore.getState();
+      if (ed.interiorView) ed.setInteriorView(false);
+      if (preset === 'interior') {
+        goalPos.current = null;
+        goalLook.current = null;
+        lookReturn.current = null;
+        ed.setInteriorView(true); // InteriorWalk places the camera instantly
+        return;
+      }
       const { pos, look } = computePreset(preset);
       goalPos.current = null; // cancel any in-flight animation
       goalLook.current = null;
@@ -250,6 +239,7 @@ export function CameraRig() {
 
   useFrame(() => {
     if (!goalPos.current || !goalLook.current || !controls) return;
+    if (useEditorStore.getState().interiorView) return; // InteriorWalk owns the camera
     camera.position.lerp(goalPos.current, 0.14);
     controls.target.lerp(goalLook.current, 0.14);
     controls.update();

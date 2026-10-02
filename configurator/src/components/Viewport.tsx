@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { Grid, OrbitControls, ContactShadows } from '@react-three/drei';
 import { BuildingModel } from '@/three/BuildingModel';
 import { CameraRig } from '@/three/CameraRig';
+import { InteriorWalk } from '@/three/InteriorWalk';
 import { CaptureHook } from '@/three/CaptureHook';
 import { ViewControls } from '@/components/ViewControls';
 import { EnhancedSceneRig } from '@/three/enhanced/EnhancedSceneRig';
@@ -54,8 +55,14 @@ function ClassicSceneRig() {
  * targets or its plane geometry, so remounting it on every Look round trip
  * leaked +2 textures / +1 geometry per cycle. The Grid (disposed by R3F on
  * unmount) is only mounted in classic.
+ *
+ * Walk-in Interior (classic): InteriorWalk lays a light floor over the
+ * footprint, and the infinite grid's huge plane z-fights up through it from
+ * eye height, so the grid is HIDDEN (kept mounted, uniforms still updated)
+ * while Interior is on. Outside Interior it is exactly as before.
  */
 function ClassicGround({ active }: { active: boolean }) {
+  const interior = useEditorStore((s) => s.interiorView);
   return (
     <>
       <ContactShadows
@@ -69,6 +76,7 @@ function ClassicGround({ active }: { active: boolean }) {
       />
       {active && (
         <Grid
+          visible={!interior}
           position={[0, 0, 0]}
           args={[200, 200]}
           cellSize={2}
@@ -112,6 +120,8 @@ function SceneRig() {
 export function Viewport() {
   const dragging = useEditorStore((s) => s.dragging);
   const selectOpening = useEditorStore((s) => s.selectOpening);
+  // Walk-in Interior view: InteriorWalk owns the camera, the orbit controls rest.
+  const interior = useEditorStore((s) => s.interiorView);
 
   return (
     <div className="relative h-full w-full bg-dark">
@@ -132,11 +142,12 @@ export function Viewport() {
         </Suspense>
 
         <CameraRig />
+        <InteriorWalk />
         <CaptureHook />
 
         <OrbitControls
           makeDefault
-          enabled={!dragging}
+          enabled={!dragging && !interior}
           enableDamping
           dampingFactor={0.08}
           // Allow the camera to push right inside the shell so the interior is
@@ -163,7 +174,7 @@ export function Viewport() {
         <p className="font-body text-[9px] text-muted">build · roof-overhang-A</p>
       </div>
       <p className="pointer-events-none absolute bottom-3 right-4 select-none font-body text-[11px] text-muted">
-        Drag to orbit · scroll to zoom
+        {interior ? 'Drag to look around · scroll to zoom' : 'Drag to orbit · scroll to zoom'}
       </p>
     </div>
   );

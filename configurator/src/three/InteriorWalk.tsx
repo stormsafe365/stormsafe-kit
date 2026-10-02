@@ -79,6 +79,8 @@ const isTyping = (t: EventTarget | null) => {
  * Look's rig saves / restores the orbit FOV, and a capture frames as usual);
  * the preset / refit then runs from there exactly as before. A size or
  * partition change while inside re-poses the camera in the new room.
+ * A PDF capture started inside brings you back in when it is done, at the
+ * exact spot / look / zoom you left (the images themselves are unchanged).
  */
 export function InteriorWalk() {
   const { structure } = useResolvedBuilding();
@@ -93,6 +95,12 @@ export function InteriorWalk() {
   structureRef.current = structure;
   const walkRef = useRef<WalkState | null>(null);
   const savedRef = useRef<SavedOrbit | null>(null);
+  /**
+   * Where you stood when a PDF capture took you out (captureMode on): the
+   * capture brings you back in when it ends, exactly here — same spot, look
+   * direction and zoom, and the same orbit view to return to on leaving.
+   */
+  const resumeRef = useRef<{ walk: WalkState; saved: SavedOrbit | null; key: string } | null>(null);
   const keys = useRef(new Set<string>());
 
   /** Write the current walk state onto the camera (clamped). */
@@ -130,23 +138,38 @@ export function InteriorWalk() {
 
   const enter = () => {
     if (!controls || walkRef.current) return;
-    savedRef.current = {
-      pos: camera.position.clone(),
-      quat: camera.quaternion.clone(),
-      target: controls.target.clone(),
-      fov: camera.fov,
-      near: camera.near,
-    };
+    // Coming back in at the end of a PDF capture that started inside: resume
+    // the exact pose (and keep the orbit view saved before Interior began).
+    const resume = resumeRef.current;
+    resumeRef.current = null;
+    const resuming = !!resume && useEditorStore.getState().captureMode && resume.key === interiorKey(structureRef.current);
+    savedRef.current = resuming
+      ? resume!.saved
+      : {
+          pos: camera.position.clone(),
+          quat: camera.quaternion.clone(),
+          target: controls.target.clone(),
+          fov: camera.fov,
+          near: camera.near,
+        };
     controls.enabled = false;
     camera.near = INTERIOR.nearFt;
     camera.updateProjectionMatrix();
     keys.current.clear();
     gl.domElement.style.cursor = 'grab';
-    placeAtPose();
+    if (resuming) {
+      const w = resume!.walk;
+      walkRef.current = { ...w, pos: [...w.pos] as Vec3, goalPos: [...w.pos] as Vec3, goalYaw: w.yaw, goalPitch: w.pitch, goalFov: w.fov };
+      applyCamera(walkRef.current);
+    } else placeAtPose();
   };
 
   const exit = () => {
     if (!walkRef.current) return;
+    // A PDF capture is taking the camera out: remember where you stood.
+    resumeRef.current = useEditorStore.getState().captureMode
+      ? { walk: { ...walkRef.current, pos: [...walkRef.current.pos] as Vec3 }, saved: savedRef.current, key: interiorKey(structureRef.current) }
+      : null;
     walkRef.current = null;
     keys.current.clear();
     gl.domElement.style.cursor = '';

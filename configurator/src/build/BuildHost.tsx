@@ -21,6 +21,7 @@ import { useEditorStore } from '@/store/useEditorStore';
 import type { BuildingType, EndSheeting, OpeningType, WallOverrides, WallSide } from '@/types/building';
 import { leanToWalkDoorLook, leanToWindowLook, readLeanToStorage, type ProgramTypeRow } from './leanToAccessory';
 import { NO_STORAGE, partitionLocationAllowed, readMainStorage } from './mainStorage';
+import { spreadAutoOverlaps } from '@/engine/autoSpread';
 
 // Cache-bust the pricing iframe on the WEB (CRM embed) so a redeploy shows up
 // without a hard refresh. Skipped for the packaged desktop app, where the page
@@ -140,6 +141,46 @@ interface DesiredOpening {
   itemIndex: number;
 }
 
+/** A program item's spot is "typed" when its position row has a value (getPosItems' own test). */
+function hasTypedPos(entry: Element, i: number): boolean {
+  const row = entry.querySelectorAll('.pos-section .pos-row')[i];
+  const inp = row ? (row.querySelector('input') as HTMLInputElement | null) : null;
+  return !!inp && inp.value !== '';
+}
+
+/**
+ * VIEW-ONLY: auto-placed items that the program put on top of (or within 1'
+ * of) another row's opening on the same wall are drawn at the nearest free
+ * spot instead (engine/autoSpread). Typed spots never move, and neither does
+ * an auto walk door / window / framed opening on an EAVE wall — the program
+ * auto-sets its side frames from that auto spot (runTrussChecks), so the 3D
+ * keeps drawing it exactly where it was priced. The program is not touched.
+ */
+function spreadAutoPlaced(out: DesiredOpening[], faceOf: Map<DesiredOpening, number>, autoOf: Map<DesiredOpening, boolean>) {
+  const bySide = new Map<WallSide, DesiredOpening[]>();
+  for (const d of out) {
+    const l = bySide.get(d.side);
+    if (l) l.push(d);
+    else bySide.set(d.side, [d]);
+  }
+  bySide.forEach((list, side) => {
+    if (list.length < 2) return;
+    const eave = side === 'left' || side === 'right';
+    const offs = spreadAutoOverlaps(
+      list.map((d) => ({
+        offset: d.offset,
+        width: d.width,
+        group: d.entry,
+        movable: !!autoOf.get(d) && !(eave && (d.type === 'walkDoor' || d.type === 'window' || d.type === 'frameOut')),
+      })),
+      faceOf.get(list[0]) ?? 0,
+    );
+    list.forEach((d, i) => {
+      d.offset = offs[i];
+    });
+  });
+}
+
 /**
  * Read the program's doors/windows and compute their 3D placement by calling
  * the program's OWN positioning function (getPosItems) — so the 3D mirrors
@@ -180,6 +221,9 @@ function readOpenings(
   };
   // Black hex shared by black walk doors and black window frames (mirrors the 2D).
   const BLACK = '#1f1f1f';
+  // Per item: its wall's face width and whether the program auto-placed it (for spreadAutoPlaced).
+  const faceOf = new Map<DesiredOpening, number>();
+  const autoOf = new Map<DesiredOpening, boolean>();
 
   const push = (el: Element, loc: string, qty: number, itemW: number, itemH: number, type: string, extraH?: number) => {
     const side = SIDE_MAP[loc];
@@ -209,7 +253,7 @@ function readOpenings(
         color = it.color === 'black' ? BLACK : undefined;
         impact = /^(hi|hiwind)$/.test(lv(el, '.whi'));
       } else if (type === 'win') color = it.color === 'black' ? BLACK : undefined;
-      out.push({
+      const d: DesiredOpening = {
         type: OTYPE_MAP[type] ?? 'frameOut',
         side,
         offset,
@@ -222,7 +266,10 @@ function readOpenings(
         impact,
         entry: el,
         itemIndex: i,
-      });
+      };
+      out.push(d);
+      faceOf.set(d, face);
+      autoOf.set(d, !hasTypedPos(el, i));
     });
   };
 
@@ -287,6 +334,7 @@ function readOpenings(
     push(el, loc, qty, foW, foH, 'fo', foYo);
   });
 
+  spreadAutoPlaced(out, faceOf, autoOf);
   return out;
 }
 

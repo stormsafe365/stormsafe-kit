@@ -20,7 +20,9 @@ const isCaptureIgnored = (ob: THREE.Object3D) => {
  * embed the live 3D modeler. Cycles the camera through ISO + the four
  * elevations, lets each framing settle, and snapshots the canvas as a PNG data
  * URL (the Canvas is created with preserveDrawingBuffer, so toDataURL works).
- * Restores the ISO view afterward. Returns { iso, front, back, left, right }.
+ * Restores the ISO view afterward — or, when the capture started inside the
+ * walk-in Interior view, puts you back inside where you stood (after all the
+ * images are taken). Returns { iso, front, back, left, right }.
  *
  * For the duration of the capture it DROPS the fog, pushes the far plane out,
  * and lifts the orbit distance clamp — otherwise a long building's elevation
@@ -58,6 +60,9 @@ export function CaptureHook() {
       // the Spacing overlay and shut any doors/windows the rep clicked open
       // (captureMode has already snapped them shut; the wait is a kept margin).
       const ed = useEditorStore.getState();
+      // Started from the walk-in Interior view: go back in afterwards (at the
+      // exact spot — InteriorWalk keeps it), instead of ending on ISO.
+      const wasInterior = ed.interiorView;
       const savedSpacing = ed.showSpacing;
       const savedOpen = ed.openIds;
       const hadOpen = Object.values(savedOpen).some(Boolean);
@@ -209,6 +214,8 @@ export function CaptureHook() {
         if (controls && savedMax != null) controls.maxDistance = savedMax;
         if (setView) setView('iso');
         else goToView('iso');
+        // ISO first, so the orbit pose is sane; then back inside (instant).
+        if (wasInterior && setView) setView('interior');
         gl.render(scene, camera); // repaint the live view at the restored resolution
         if (savedSpacing) useEditorStore.getState().setShowSpacing(true);
       }

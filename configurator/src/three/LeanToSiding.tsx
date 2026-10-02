@@ -39,8 +39,12 @@ const RAKE_H = 0.24; // rake board face
 
 type Pt = [number, number, number];
 type UV = [number, number];
-/** A trim board: position, size, optional Euler rotation, and whether it's the dark drip edge. */
-type BoxSpec = { pos: Pt; size: [number, number, number]; rot?: [number, number, number]; dark?: boolean };
+/**
+ * A trim board: position, size, optional Euler rotation, and whether it's the dark drip edge.
+ * `hideInside`: the board sits inside the main building's wall line (hidden behind the
+ * cladding from outside), so it is not drawn while the walk-in Interior view is on.
+ */
+type BoxSpec = { pos: Pt; size: [number, number, number]; rot?: [number, number, number]; dark?: boolean; hideInside?: boolean };
 
 /**
  * Lean-to sheet-metal skin. A lean-to is HALF a building: a single-slope roof,
@@ -115,6 +119,8 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
   const wallMetal = isMetallic(colors.walls);
   const wainMetal = isMetallic(colors.wainscot);
   const wH = wainscot.enabled ? wainscot.heightFt : 0;
+  // Walk-in Interior view: hide trim that only sits inside the main wall line.
+  const interiorOn = useEditorStore((s) => s.interiorView);
 
   return (
     <group>
@@ -137,7 +143,7 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
 
             {/* Eave fascia + rake trim following the roof overhang */}
             {geo.trim.map((b, i) => (
-              <mesh key={`trim-${i}`} position={b.pos} rotation={b.rot ?? [0, 0, 0]} material={b.dark ? edgeMat : trimMat} castShadow receiveShadow>
+              <mesh key={`trim-${i}`} position={b.pos} rotation={b.rot ?? [0, 0, 0]} material={b.dark ? edgeMat : trimMat} visible={!(b.hideInside && interiorOn)} castShadow receiveShadow>
                 <boxGeometry args={b.size} />
               </mesh>
             ))}
@@ -375,8 +381,10 @@ function leanToTrim(
 
   // ── Ridge/attachment flashing: caps the joint where the lean-to roof meets
   // the main building's wall (the lean-to's "ridge") — a flashing band along
-  // the high edge, tight against the building face. ──
-  specs.push(box(innerAcross - outwardA * 0.02, innerUp + 0.07, runMid, 0.12, 0.24, runLen));
+  // the high edge, tight against the building face. ── It sits just INSIDE
+  // the main wall's cladding (hidden by it from outside), so from the walk-in
+  // Interior view it showed as a dark band along the wall: not drawn there.
+  specs.push({ ...box(innerAcross - outwardA * 0.02, innerUp + 0.07, runMid, 0.12, 0.24, runLen), hideInside: true });
 
   // ── Rake boards: follow each gable-end roof slope, tucked UNDER the roof so
   // the gable edge overhangs them (recessed inboard along the run + dropped). ──

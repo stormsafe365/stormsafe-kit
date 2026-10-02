@@ -59,9 +59,18 @@ function grabFn(name: string): string {
 let code = '';
 for (const v of ['EC', 'LR_L', 'LR_STORAGE', 'LR_VERT_ADD', 'AEW_DEFAULT_FT', '_aewMoved']) code += grabVar(v);
 for (const f of ['eBkt', 'ecLookup', 'lrStorageLookup', 'getTrussInfo', 'aewDepthOptions', 'aewWidthOptions', 'aewNearest', 'aewDefaultDepth',
-  'aewPopulate', 'aewSpec', 'aewLabel', 'gAddEndWall']) code += grabFn(f);
+  'aewPopulate', 'aewUnset', 'aewClearUnset', 'aewSpec', 'aewSig', 'aewLabel', 'aewEaveConflicts', 'gAddEndWall']) code += grabFn(f);
 code += `
 var ACTIVE_MFR='CCI';
+var INPUT_MODE=false;
+// Eave openings for aewEaveConflicts (the program's collectElevItems shape).
+var _elev={front:[],back:[],right:[],left:[],partition:[]};
+function collectElevItems(){ return _elev; }
+function setElev(e){ _elev=Object.assign({front:[],back:[],right:[],left:[],partition:[]}, e); }
+function conflicts(){ return aewEaveConflicts(aewSpec()); }
+function setInput(on){ INPUT_MODE=!!on; return state(); }
+function markUnset(on){ if(on) _G['add-end-wall'].dataset.aewUnset='1'; else aewClearUnset(); return state(); }
+function setMode(v){ _G['add-end-wall'].value=v; return state(); }
 function Option(text, value){ this.text=text; this.value=value; }
 // Minimal <select>: value only sticks to an existing option (like the DOM).
 function mkSel(opts){
@@ -76,23 +85,26 @@ function mkVal(v){ return {value:v}; }
 var _G={};
 function G(id){ return _G[id]||null; }
 function setup(o){
-  _G={btype:mkVal(o.btype||'standard'), bw:mkVal(String(o.w)), bl:mkVal(String(o.l)), bh:mkVal(String(o.h||12)),
+  _G={btype:mkVal(o.btype!=null?o.btype:'standard'), bw:mkVal(String(o.w)), bl:mkVal(String(o.l)), bh:mkVal(String(o.h||12)),
       'oc-spacing':mkVal(o.oc===4?'4oc':'5oc'), ws:mkVal(o.vert?'Vertical':'Horizontal'),
       'add-end-wall':mkVal(o.aew||'yes'), 'aew-end':mkSel(['back','front']),
       'aew-depth':mkSel([]), 'aew-width':mkSel([])};
+  _G['add-end-wall'].dataset={};
   _G['aew-end'].value=o.end||'back';
   ACTIVE_MFR=o.mfr||'CCI';
+  INPUT_MODE=false;
 }
 function opts(sel){ return sel.options.map(function(o){ return Number(o.value); }); }
 function state(){ return {depth:_G['aew-depth'].value, width:_G['aew-width'].value, moved:_aewMoved,
-  depthOpts:opts(_G['aew-depth']), widthOpts:opts(_G['aew-width']), spec:aewSpec(), label:aewLabel(), price:gAddEndWall()}; }
+  depthOpts:opts(_G['aew-depth']), widthOpts:opts(_G['aew-width']), spec:aewSpec(), label:aewLabel(), price:gAddEndWall(), sig:aewSig()}; }
 function populate(o, wantD, wantW){ setup(o); aewPopulate(wantD, wantW); return state(); }
 function setSize(o){ _G.bw.value=String(o.w); _G.bl.value=String(o.l); if(o.oc) _G['oc-spacing'].value=o.oc===4?'4oc':'5oc'; aewPopulate(); return state(); }
 function pick(id, v){ _G[id].value=String(v); if(id==='aew-end') aewPopulate(); return state(); }
 `;
 
-type Spec = { on: boolean; kind: string; end: string; depthFt: number; widthFt: number };
-type State = { depth: string; width: string; moved: string; depthOpts: number[]; widthOpts: number[]; spec: Spec; label: string; price: number };
+type Spec = { on: boolean; kind: string; end: string; depthFt: number; widthFt: number; priced: boolean; unset: boolean };
+type State = { depth: string; width: string; moved: string; depthOpts: number[]; widthOpts: number[]; spec: Spec; label: string; price: number; sig: string };
+type Elev = { x: number; w: number; type: string };
 type Setup = { w: number; l: number; h?: number; oc?: 4 | 5; btype?: string; aew?: string; end?: string; mfr?: string; vert?: boolean };
 type Ctx = {
   aewDepthOptions: (L: number, S: number, end: string) => number[];
@@ -104,6 +116,11 @@ type Ctx = {
   populate: (o: Setup, wantD?: string, wantW?: string) => State;
   setSize: (o: { w: number; l: number; oc?: 4 | 5 }) => State;
   pick: (id: string, v: string | number) => State;
+  setElev: (e: { right?: Elev[]; left?: Elev[] }) => void;
+  conflicts: () => string[];
+  setInput: (on: boolean) => State;
+  markUnset: (on: boolean) => State;
+  setMode: (v: string) => State;
 };
 const ctx = vm.createContext({ Math, console, String, Number, Object }) as unknown as Ctx;
 vm.runInContext(code, ctx as unknown as vm.Context);
@@ -150,7 +167,7 @@ describe('aewPopulate: defaults, keep a valid pick, snap an invalid one (with a 
     expect(s.depthOpts).toEqual(range(4, 36, 4));
     expect(s.depth).toBe('12');
     expect(s.width).toBe('10');
-    expect(s.spec).toEqual({ on: true, kind: 'end', end: 'back', depthFt: 12, widthFt: 10 });
+    expect(s.spec).toEqual({ on: true, kind: 'end', end: 'back', depthFt: 12, widthFt: 10, priced: true, unset: false });
     expect(s.moved).toBe('');
   });
   it("24x40 at 5' OC: 10' at the back", () => {
@@ -221,5 +238,96 @@ describe('the price never moves with the storage position (no invented prices)',
   it('CA Left / Right stays $0 (unverified chart) whatever the width', () => {
     ctx.populate({ w: 30, l: 40, h: 12, aew: 'left', mfr: 'CA' });
     for (const x of [4, 10, 26]) expect(ctx.pick('aew-width', x).price).toBe(0);
+  });
+});
+
+describe('rep note names only the field this storage type uses (verifier r1)', () => {
+  it("Left Storage + OC change: the hidden depth snaps silently (no 'Depth moved')", () => {
+    ctx.populate({ w: 24, l: 40, aew: 'left' }); // depth 10 at 5' OC, width 10
+    const s = ctx.setSize({ w: 24, l: 40, oc: 4 }); // depth 10 is no longer a line
+    expect(s.depth).toBe('12');
+    expect(s.width).toBe('10');
+    expect(s.moved).toBe('');
+  });
+  it('End Storage + width change: the depth move is named, the hidden width snap is not', () => {
+    ctx.populate({ w: 30, l: 40 });
+    ctx.pick('aew-depth', 28);
+    const s = ctx.setSize({ w: 12, l: 40 }); // 5' OC now; width 10 -> 8 (hidden)
+    expect(s.depth).toBe('30');
+    expect(s.width).toBe('8');
+    expect(s.moved).toContain('Depth moved from 28′ to 30′');
+    expect(s.moved).not.toContain('Width');
+  });
+  it('Left Storage + width change: the width move is named', () => {
+    ctx.populate({ w: 30, l: 40, aew: 'right' }, undefined, '26');
+    const s = ctx.setSize({ w: 24, l: 40 });
+    expect(s.width).toBe('20');
+    expect(s.moved).toBe('Width moved from 26′ to 20′ (fits this width).');
+  });
+});
+
+describe('only a wall the quote charges is drawn (CA Left/Right = no chart, $0)', () => {
+  it('CA Left: not drawn, no position on the label; Input mode (priced by hand) draws it', () => {
+    let s = ctx.populate({ w: 30, l: 40, h: 12, aew: 'left', mfr: 'CA' });
+    expect(s.price).toBe(0);
+    expect(s.spec.on).toBe(false);
+    expect(s.spec.priced).toBe(false);
+    expect(s.label).toBe('Left Storage — Lengthwise Partition Wall');
+    s = ctx.setInput(true);
+    expect(s.spec.on).toBe(true);
+    expect(s.price).toBe(0); // Input mode never changes the chart price
+  });
+  it('CA End Storage is charged (closed-end chart) and drawn', () => {
+    const s = ctx.populate({ w: 30, l: 40, h: 12, mfr: 'CA' });
+    expect(s.price).toBeGreaterThan(0);
+    expect(s.spec.on).toBe(true);
+  });
+  it('no building type yet (after RESET): nothing drawn', () => {
+    const s = ctx.populate({ w: 30, l: 40, btype: '' });
+    expect(s.spec.on).toBe(false);
+    expect(s.label).toBe('End Storage — Interior Partition Wall');
+  });
+});
+
+describe('old quotes (no saved position): drawn at the default, no position on the paperwork', () => {
+  it('unset -> label without position, signature without position; any pick clears it', () => {
+    ctx.populate({ w: 30, l: 40 });
+    let s = ctx.markUnset(true);
+    expect(s.spec.on).toBe(true); // the 3D still draws the default
+    expect(s.spec.unset).toBe(true);
+    expect(s.label).toBe('End Storage — Interior Partition Wall');
+    expect(s.sig).toBe('yes|');
+    s = ctx.markUnset(false);
+    expect(s.label).toBe('End Storage — Interior Partition Wall (12′ deep at back end)');
+    expect(s.sig).toBe('yes|back:12');
+  });
+  it('the signature follows end / depth / width / type', () => {
+    ctx.populate({ w: 30, l: 40 });
+    expect(ctx.pick('aew-depth', 20).sig).toBe('yes|back:20');
+    expect(ctx.pick('aew-end', 'front').sig).toMatch(/^yes\|front:/);
+    expect(ctx.setMode('left').sig).toBe('left|10');
+    expect(ctx.setMode('no').sig).toBe('no|');
+  });
+});
+
+describe('End Storage wall through an eave opening -> rep warning (no price effect)', () => {
+  it('Right Eave x from the front, Left Eave x from the back', () => {
+    ctx.populate({ w: 30, l: 40 }); // back end 12' -> wall 28' from the front
+    ctx.setElev({ right: [{ x: 23, w: 10, type: 'rollup' }] }); // 23-33 from the front
+    expect(ctx.conflicts()).toEqual(['the Right Eave roll-up door (23′–33′ from the front)']);
+    ctx.setElev({ left: [{ x: 7, w: 10, type: 'rollup' }] }); // 40-7-10 = 23 .. 33 from the front
+    expect(ctx.conflicts()).toEqual(['the Left Eave roll-up door (23′–33′ from the front)']);
+    ctx.setElev({ right: [{ x: 28, w: 3, type: 'wtd' }, { x: 18, w: 10, type: 'rollup' }] }); // touching jambs: fine
+    expect(ctx.conflicts()).toEqual([]);
+    ctx.setElev({ left: [{ x: 10.75, w: 2.5, type: 'win' }] }); // 26.75-29.25 from the front
+    expect(ctx.conflicts()).toEqual(['the Left Eave window (26.8′–29.3′ from the front)']);
+  });
+  it('front-end storage measures from the front; Left/Right storage is not checked here', () => {
+    ctx.populate({ w: 30, l: 40, end: 'front' }, '12');
+    ctx.setElev({ right: [{ x: 10, w: 10, type: 'fo' }] });
+    expect(ctx.conflicts()).toEqual(['the Right Eave framed opening (10′–20′ from the front)']);
+    ctx.populate({ w: 30, l: 40, aew: 'left' });
+    expect(ctx.conflicts()).toEqual([]);
+    ctx.setElev({});
   });
 });

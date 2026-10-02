@@ -99,11 +99,17 @@ export function CameraRig() {
           };
         }
         if (enc.sidePartition) {
+          // Lengthwise storage: stand up high at the front of the MAIN room and
+          // look down its length — the partition runs along one side, the eave
+          // wall (framing showing) along the other, floor and back gable ahead,
+          // so the room reads as the part of the building left after the
+          // storage (looking straight at the partition was a blank wall).
           const { x, faces } = enc.sidePartition;
           const farX = faces < 0 ? -halfW : halfW;
+          const mid = (x + farX) / 2;
           return {
-            pos: new THREE.Vector3(x + (farX - x) * 0.6, top * 0.45, halfL * 0.55),
-            look: new THREE.Vector3(x, top * 0.4, -halfL * 0.2),
+            pos: new THREE.Vector3(mid + (farX - x) * 0.1, top * 0.75, -halfL * 0.95),
+            look: new THREE.Vector3(mid + (x - mid) * 0.25, top * 0.38, halfL * 0.6),
           };
         }
         // inside, near the floor center, looking out the front gable

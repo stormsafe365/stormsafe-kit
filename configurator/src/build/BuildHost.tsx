@@ -56,6 +56,10 @@ const SIDE_MAP: Record<string, WallSide> = {
   'Partition Wall': 'partition',
 };
 
+// A moved select's change handler re-runs rc() → sync → ensurePartitionOption
+// (nested). Moves are counted across the nesting and told once, at the top.
+const partitionMoves = { depth: 0, n: 0, to: '' };
+
 /**
  * Inject a "Partition Wall" location option into the component dropdowns for GCH
  * builds — and (10/1/26) any build with End Storage on — done at runtime from the
@@ -63,10 +67,29 @@ const SIDE_MAP: Record<string, WallSide> = {
  * header / side frame for a non-eave location), and the 3D renders it on the
  * divider / storage partition. Removed (and any selection reset) otherwise; the
  * program's restore twin is _ensureLocOpt (same rule: partitionLocationAllowed).
+ * Openings moved off a removed partition are announced (toast) — 10/2/26.
  */
 function ensurePartitionOption(win: BuilderWindow) {
   const G = win.G;
   if (typeof G !== 'function') return;
+  partitionMoves.depth++;
+  try {
+    ensurePartitionOptionPass(win, G);
+  } finally {
+    partitionMoves.depth--;
+  }
+  // The partition is gone (storage / GCH turned off): say where its openings
+  // went instead of moving them silently. Same price — a non-eave location.
+  if (partitionMoves.depth === 0 && partitionMoves.n) {
+    const n = partitionMoves.n;
+    const to = partitionMoves.to;
+    partitionMoves.n = 0;
+    if (typeof win.toast === 'function') {
+      win.toast(`No partition wall now — ${n} opening${n > 1 ? 's' : ''} moved from Partition Wall to ${to}. Check ${n > 1 ? 'their' : 'its'} wall.`, 'err');
+    }
+  }
+}
+function ensurePartitionOptionPass(win: BuilderWindow, G: NonNullable<BuilderWindow['G']>) {
   const allowed = partitionLocationAllowed(G('btype')?.value || '', G('add-end-wall')?.value || '');
   win.document.querySelectorAll('.rloc, .wloc, .nloc, .fo-loc').forEach((node) => {
     const sel = node as HTMLSelectElement;
@@ -81,6 +104,8 @@ function ensurePartitionOption(win: BuilderWindow) {
       existing.remove();
       if (wasSelected) {
         sel.value = sel.options[0]?.value || 'Front Gable End';
+        partitionMoves.n++;
+        partitionMoves.to = sel.value;
         sel.dispatchEvent(new Event('change', { bubbles: true }));
       }
     }
@@ -277,6 +302,8 @@ type BuilderWindow = Window & {
   /** Program's authoritative truss spacing/count (so the 3D mirrors the quote exactly). */
   getTrussInfo?: () => { spacing: number; count: number } | null;
   rc?: (...a: unknown[]) => unknown;
+  /** Program's bottom-right notice (3 s). */
+  toast?: (msg: string, type?: string) => void;
   updatePosSection?: (entry: Element, qty: number, label?: string) => void;
   /**
    * Program's storage-PARTITION layout (quote-builder ltPartLayout): the left

@@ -487,7 +487,7 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
        EC[30][16], invariant to building length AND partition position). Charged
        on the quote. Storage doors are added like any other door (Components). -->
   <div class="row"><label>Storage / Add'l End Wall</label>
-    <select id="add-end-wall" onchange="updateAddEndWallDisplay();rc()">
+    <select id="add-end-wall" onchange="aewModeChange()">
       <option value="no">None</option>
       <option value="yes">End Storage &mdash; Partition Wall</option>
       <option value="left">Left Storage &mdash; Lengthwise Partition</option>
@@ -4318,6 +4318,7 @@ function doBldType(){
   // depth / width — doBld → aewPopulate picks them from the blanked selects).
   var aewE=G('aew-end'); if(aewE) aewE.value='back';
   ['aew-depth','aew-width'].forEach(function(id){ var s=G(id); if(s) s.value=''; });
+  if(typeof aewClearUnset==='function') aewClearUnset();
   if(typeof updateAddEndWallDisplay==='function') updateAddEndWallDisplay();
   doBld();
 }
@@ -5803,8 +5804,10 @@ var _aewMoved=''; // rep note when a length / OC change moved the depth or width
 // (Re)build the depth + width lists for the current size / truss spacing — every
 // building pass (doBld) and once after a restore with the saved picks (`wantD`,
 // `wantW`). A pick that is still valid is kept; otherwise it snaps to the
-// nearest valid line (and the note says so). Built for every type so a save
-// always reopens to the same value.
+// nearest valid line. Built for every type so a save always reopens to the
+// same value. The rep note only names a move of the field the current storage
+// type actually uses (Depth for End Storage, Width for Left / Right) — the
+// hidden one snaps silently.
 function aewPopulate(wantD, wantW){
   var dSel=G('aew-depth'), wSel=G('aew-width');
   if(!dSel || !wSel) return;
@@ -5812,9 +5815,10 @@ function aewPopulate(wantD, wantW){
   var ti=(typeof getTrussInfo==='function')?getTrussInfo():null;
   var S=(ti&&ti.spacing)?ti.spacing:5;
   var end=(G('aew-end')&&G('aew-end').value==='front')?'front':'back';
+  var mode=(G('add-end-wall')||{}).value||'no';
   var restoring=(wantD!=null&&wantD!=='')||(wantW!=null&&wantW!=='');
-  _aewMoved=''; // the note only describes THIS pass's move
-  function fill(sel, opts, want, dflt, fmt, what){
+  var moved=[]; // the note only describes THIS pass's move(s)
+  function fill(sel, opts, want, dflt, fmt, what, shown){
     var prevStr=(want!=null&&want!=='')?String(want):sel.value;
     var prev=parseFloat(prevStr);
     sel.innerHTML='';
@@ -5822,41 +5826,89 @@ function aewPopulate(wantD, wantW){
     opts.forEach(function(o){ sel.add(new Option(fmt(o), String(o))); });
     var pick;
     if(prev>0 && opts.indexOf(prev)>=0) pick=prev;
-    else if(prev>0){ pick=aewNearest(opts, prev); if(!restoring) _aewMoved=what+' moved from '+prev+'′ to '+pick+'′ ('+(what==='Depth'?'nearest frame line at '+S+'′ OC':'fits this width')+').'; }
+    else if(prev>0){ pick=aewNearest(opts, prev); if(!restoring && shown) moved.push(what+' moved from '+prev+'′ to '+pick+'′ ('+(what==='Depth'?'nearest frame line at '+S+'′ OC':'fits this width')+').'); }
     else pick=dflt(opts);
     sel.value=String(pick);
   }
   fill(dSel, aewDepthOptions(L, S, end), wantD, aewDefaultDepth,
-       function(d){ return d+'′ '+(end==='front'?'from the front':'from the back')+' · '+(L-d)+'′ main room'; }, 'Depth');
+       function(d){ return d+'′ '+(end==='front'?'from the front':'from the back')+' · '+(L-d)+'′ main room'; }, 'Depth', mode==='yes');
   fill(wSel, aewWidthOptions(W), wantW, function(o){ return aewNearest(o, AEW_DEFAULT_FT); },
-       function(x){ return x+'′ wide · '+(W-x)+'′ main room'; }, 'Width');
+       function(x){ return x+'′ wide · '+(W-x)+'′ main room'; }, 'Width', mode==='left'||mode==='right');
+  _aewMoved=moved.join(' ');
 }
+// A quote saved before 10/1/26 has no storage position: it reopens drawn at the
+// default (3D), but the paperwork must not print a position nobody chose. The
+// flag lives on the select (set by restoreQuoteData, cleared by any storage
+// pick, a type change, a reset) and keeps the fields out of the next save.
+function aewUnset(){ var el=G('add-end-wall'); return !!(el && el.dataset && el.dataset.aewUnset==='1'); }
+function aewClearUnset(){ var el=G('add-end-wall'); if(el && el.dataset) delete el.dataset.aewUnset; }
 // Rep picked an end / depth / width.
 function aewSpecChange(){
+  aewClearUnset();
   aewPopulate(); // the depth list depends on which end (also clears the moved note)
   updateAddEndWallDisplay();
   rc();
 }
+// Rep picked the storage type (None / End / Left / Right): a note about the
+// previous type's move no longer applies.
+function aewModeChange(){
+  aewClearUnset();
+  _aewMoved='';
+  updateAddEndWallDisplay();
+  rc();
+}
 // The storage partition as the 3D host should draw it (and the paperwork names
-// it). on=false → nothing to draw: None, a GCH (its divider is the Enclosed
-// Storage split) or no valid position for this size.
+// it). on=false → nothing to draw: None, no building type yet, a GCH (its
+// divider is the Enclosed Storage split), no valid position for this size, or a
+// wall the quote doesn't charge (CA Left/Right: no chart, $0 — so the 3D and
+// the contract never show a wall that isn't on the price; Input mode prices by
+// hand, so it draws there). unset = an old quote's default position (above).
 function aewSpec(){
   var v=(G('add-end-wall')||{}).value||'no';
   var bt=(G('btype')||{}).value||'';
   var end=((G('aew-end')||{}).value==='front')?'front':'back';
   var depth=parseFloat((G('aew-depth')||{}).value)||0;
   var width=parseFloat((G('aew-width')||{}).value)||0;
-  if(bt==='gch' || (v!=='yes'&&v!=='left'&&v!=='right')) return {on:false, kind:'none', end:end, depthFt:depth, widthFt:width};
-  if(v==='yes') return {on:depth>0, kind:'end', end:end, depthFt:depth, widthFt:width};
-  return {on:width>0, kind:v, end:end, depthFt:depth, widthFt:width};
+  var sp={on:false, kind:'none', end:end, depthFt:depth, widthFt:width, priced:false, unset:aewUnset()};
+  if(!bt || bt==='gch' || (v!=='yes'&&v!=='left'&&v!=='right')) return sp;
+  sp.kind=(v==='yes')?'end':v;
+  sp.priced=(typeof INPUT_MODE!=='undefined' && INPUT_MODE===true) || gAddEndWall()>0;
+  sp.on=((v==='yes')?depth>0:width>0) && sp.priced;
+  return sp;
+}
+// What the storage looks like for a revision diff (as ordered vs now).
+function aewSig(){
+  var v=(G('add-end-wall')||{}).value||'no', sp=aewSpec();
+  return v+'|'+((sp.on&&!sp.unset)?(sp.kind==='end'?sp.end+':'+sp.depthFt:String(sp.widthFt)):'');
 }
 function aewLabel(){
   var el=G('add-end-wall'); var v=el?el.value:'no';
-  var sp=aewSpec();
+  var sp=aewSpec(), at=sp.on&&!sp.unset;
   if(v==='left'||v==='right'){
-    return (v==='left'?'Left':'Right')+' Storage — Lengthwise Partition Wall'+(sp.on?' ('+sp.widthFt+'′ wide)':'');
+    return (v==='left'?'Left':'Right')+' Storage — Lengthwise Partition Wall'+(at?' ('+sp.widthFt+'′ wide)':'');
   }
-  return 'End Storage — Interior Partition Wall'+(sp.on&&sp.kind==='end'?' ('+sp.depthFt+'′ deep at '+sp.end+' end)':'');
+  return 'End Storage — Interior Partition Wall'+(at&&sp.kind==='end'?' ('+sp.depthFt+'′ deep at '+sp.end+' end)':'');
+}
+// Eave openings the End Storage wall would run through (rep warning only — no
+// price effect). Eave positions follow getPosItems: Right Eave x is measured
+// from the FRONT, Left Eave x from the BACK; the wall stands L − depth from the
+// front (back-end storage) or depth from the front (front-end storage).
+function aewEaveConflicts(sp){
+  if(!sp || !sp.on || sp.kind!=='end' || typeof collectElevItems!=='function') return [];
+  var L=parseInt(G('bl')&&G('bl').value)||0; if(!L) return [];
+  var z=(sp.end==='front')?sp.depthFt:L-sp.depthFt;
+  var names={rollup:'roll-up door', wtd:'walk door', win:'window', fo:'framed opening'};
+  var r1=function(n){ return Math.round(n*10)/10; };
+  var it=collectElevItems(), out=[];
+  function chk(arr, side, fromBack){
+    (arr||[]).forEach(function(o){
+      var a=fromBack?L-o.x-o.w:o.x, b=a+o.w;
+      if(z>a+0.05 && z<b-0.05) out.push('the '+side+' '+(names[o.type]||'opening')+' ('+r1(a)+'′–'+r1(b)+'′ from the front)');
+    });
+  }
+  chk(it.right, 'Right Eave', false);
+  chk(it.left, 'Left Eave', true);
+  return out;
 }
 function gAddEndWall(){
   var el=G('add-end-wall');
@@ -5891,31 +5943,39 @@ function updateAddEndWallDisplay(){
   // without the -val span — GCH / CA Left-Right — had replaced the note body).
   var sp=aewSpec();
   var moved=_aewMoved?' <strong>&#9888; '+_aewMoved+'</strong>':'';
+  // An old quote (no saved position): drawn at the default, kept off the paperwork.
+  var unsetNote=(sp.on&&sp.unset)?' <strong>&#9888; This quote was saved before storage positions existed &mdash; shown at the default; the quote and contract don&rsquo;t print a position until you pick the '+(sp.kind==='end'?'end / depth':'width')+'.</strong>':'';
   if(bt==='gch'){
     noteEl.innerHTML = '<strong>GCH:</strong> the divider end wall is already included in the ' +
                        '<em>Utility Storage</em> line &mdash; no extra charge here.';
   } else if(v==='left'||v==='right'){
     var side=(v==='left'?'Left':'Right');
-    var where=sp.on ? (sp.widthFt+'′ wide from the '+side.toLowerCase()+' side') : 'pick the storage width';
-    var doorNote=' Doors on a lengthwise partition aren&rsquo;t priced yet &mdash; ask CCI.';
+    var where=sp.widthFt>0 ? (sp.widthFt+'′ wide from the '+side.toLowerCase()+' side') : 'pick the storage width';
     if(ACTIVE_MFR!=='CCI'){
+      // No CA chart: $0, so nothing is drawn (3D / contract) unless Input mode prices it by hand.
       noteEl.innerHTML = '<strong style="color:#f87171">Left/Right storage is priced for CCI (Carolina) only.</strong> ' +
-                         'Carports Anywhere has no verified lengthwise-storage chart &mdash; $0 added. ' +
-                         'Use End Storage, or price the lengthwise wall manually. Drawn ' + where + '.' + doorNote + moved;
+                         'Carports Anywhere has no verified lengthwise-storage chart &mdash; $0 added' +
+                         (sp.on ? '. Drawn ' + where + ' &mdash; Input mode: price it on a manual line.'
+                                : ', so the wall isn&rsquo;t drawn (3D or contract). Use End Storage, or price the lengthwise wall manually in Input mode.') +
+                         unsetNote + moved;
     } else {
       noteEl.innerHTML = '<strong>'+side+' Storage partition:</strong> ' +
                          '<span id="add-end-wall-cost-val">$' + gAddEndWall().toLocaleString() + '</span>' +
                          ' &mdash; interior wall running the FULL building length, ' + where +
                          ' (Sensei-matched CCI chart; vertical walls auto-add the vertical rate). ' +
-                         'Width doesn&rsquo;t change the price.' + doorNote + moved;
+                         'Width doesn&rsquo;t change the price. Doors on a lengthwise partition aren&rsquo;t priced yet &mdash; ask CCI.' +
+                         unsetNote + moved;
     }
   } else {
-    var at=sp.on ? (sp.depthFt+'′ in from the '+sp.end+' end') : '&mdash; pick the storage depth &mdash;';
+    var at=sp.depthFt>0 ? (sp.depthFt+'′ in from the '+sp.end+' end') : '&mdash; pick the storage depth &mdash;';
+    var noPrice=(sp.depthFt>0 && !sp.priced)?' <strong>No chart price for this size, so the wall isn&rsquo;t drawn.</strong>':'';
+    var cross=aewEaveConflicts(sp);
+    var crossNote=cross.length?' <strong>&#9888; The storage wall ('+(sp.end==='front'?sp.depthFt:((parseInt(G('bl').value)||0)-sp.depthFt))+'′ from the front) runs through '+cross.join(' and ')+' &mdash; move the opening or pick another depth.</strong>':'';
     noteEl.innerHTML = '<strong>End Storage partition:</strong> ' +
                        '<span id="add-end-wall-cost-val">$' + gAddEndWall().toLocaleString() + '</span>' +
                        ' &mdash; full interior end wall ' + at + ', priced like a closed end ' +
                        '(depth doesn&rsquo;t change the price). Storage doors: pick the ' +
-                       '&ldquo;Partition Wall&rdquo; location (priced like a gable-end door).' + moved;
+                       '&ldquo;Partition Wall&rdquo; location (priced like a gable-end door).' + noPrice + unsetNote + crossNote + moved;
   }
 }
 function sidePanelLength(){
@@ -7953,6 +8013,8 @@ function exitInputMode(){
 }
 // Parallel recalc for INPUT mode — drives the SAME breakdown panel + totals as rc().
 function rcManual(){
+  // Storage note / rows follow Input mode too (wording only — never a price).
+  if(typeof updateAddEndWallDisplay==='function') updateAddEndWallDisplay();
   var base=_ip('ip-base'), leg=_ip('ip-leg'), framing=_ip('ip-framing'), pitch=_ip('ip-pitch');
   var walls=_ip('ip-frontend')+_ip('ip-backend')+_ip('ip-leftside')+_ip('ip-rightside');
   var rud=_ip('ip-rud'), wtd=_ip('ip-wtd'), win=_ip('ip-win');
@@ -8135,6 +8197,7 @@ function _rvClear(){
   window._rvOrig=null; window._rvForce=false;
   document.querySelectorAll('[data-rv-orig]').forEach(function(el){ delete el.dataset.rvOrig; });
   document.querySelectorAll('[data-rv-stor]').forEach(function(el){ delete el.dataset.rvStor; }); // lean-to storage signature (as ordered)
+  window._rvAewSig=null; // main-building storage wall (as ordered)
 }
 // Reopened-quote price lock (see window.PriceLock at the end of this file). The
 // difference between the SAVED building subtotal and today's engine price for
@@ -9678,6 +9741,9 @@ function collectQuoteData(){
     if(el.tagName==='SELECT'||el.tagName==='INPUT'||el.tagName==='TEXTAREA') data.fields[id]=el.value;
     else if(el.textContent!==undefined) data.fields[id]=el.textContent;
   });
+  // An old quote whose storage position was never picked stays that way on the
+  // next save (it reopens drawn at the default, with no position on the paperwork).
+  if(typeof aewUnset==='function' && aewUnset()){ delete data.fields['aew-end']; delete data.fields['aew-depth']; delete data.fields['aew-width']; }
 
   // Active manufacturer (CA / CCI) — drives pricing tables + every per-mfr
   // dropdown. Was never saved, so reloads reverted to the CA default.
@@ -10612,6 +10678,13 @@ function restoreQuoteData(data, opts){
     if(f['aew-depth']===undefined){ var _aeD=G('aew-depth'); if(_aeD) _aeD.value=''; }
     if(f['aew-width']===undefined){ var _aeW=G('aew-width'); if(_aeW) _aeW.value=''; }
     aewPopulate(f['aew-depth'], f['aew-width']);
+    // No saved position at all (saved before 10/1/26): drawn at the default, but
+    // the quote / contract / text quote don't print a position nobody chose.
+    var _aeM=G('add-end-wall');
+    if(_aeM && _aeM.dataset){
+      if(f['aew-depth']===undefined && f['aew-width']===undefined) _aeM.dataset.aewUnset='1';
+      else delete _aeM.dataset.aewUnset;
+    }
   }
   sy();
   // Re-run the building pass so size-driven rows (OC Spacing, fslean badges) match the restored quote.
@@ -10644,6 +10717,7 @@ function restoreQuoteData(data, opts){
         :{ tot:_rvNum(G('ptot').textContent), dep:_rvNum(G('pdep').textContent), dims:(G('bw').value+'x'+G('bl').value+'x'+G('bh').value) };
       document.querySelectorAll('.re,.we,.ne,.ace,.lte').forEach(function(el){ el.dataset.rvOrig='1'; });
       document.querySelectorAll('.lte').forEach(function(el){ el.dataset.rvStor=ltStorSig(el); });
+      window._rvAewSig=(typeof aewSig==='function')?aewSig():null; // storage wall as ordered
     }catch(e){}
   }, 900);
 
@@ -11427,13 +11501,15 @@ function _dimIn(ft){ return parseFloat((ft*12).toFixed(2))+'"'; }
 // Collect the openings placed on each wall (same dispatch the elevations use).
 function collectElevItems(){
   var W=parseInt(G('bw').value)||30, L=parseInt(G('bl').value)||40;
-  var front=[],back=[],right=[],left=[];
+  var front=[],back=[],right=[],left=[],partition=[];
   // GCH "Partition Wall" openings (e.g. the roll-up) live on the partition, which
   // is what the Front dimensioned view shows — so route them to `front`. An End
   // Storage partition (10/1/26) is an INTERIOR wall behind a sheeted front: its
-  // openings are not drawn on an exterior elevation (the plan views drop them too).
+  // openings are not on an exterior elevation — they go to `partition` (the
+  // spacing page's Storage Partition view + the contract plan's storage wall),
+  // measured like the Front view (x from the left, as seen from the front).
   var _partOnFront=((G('btype')||{}).value)==='gch';
-  function dispatch(loc,a,W2,L2,fw){ if(loc==='Front Gable End'||(loc==='Partition Wall'&&_partOnFront))fw(front,W2); else if(loc==='Back Gable End')fw(back,W2); else if(loc==='Left Eave Side')fw(left,L2); else if(loc==='Right Eave Side')fw(right,L2); }
+  function dispatch(loc,a,W2,L2,fw){ if(loc==='Front Gable End'||(loc==='Partition Wall'&&_partOnFront))fw(front,W2); else if(loc==='Partition Wall')fw(partition,W2); else if(loc==='Back Gable End')fw(back,W2); else if(loc==='Left Eave Side')fw(left,L2); else if(loc==='Right Eave Side')fw(right,L2); }
   document.querySelectorAll('.re').forEach(function(el){
     var loc=el.querySelector('.rloc').value, sz=(el.querySelector('.rsz').value||'10x8').split('x');
     var dW=parseFloat(sz[0])||10,dH=parseFloat(sz[1])||8,qty=parseInt(el.querySelector('.rqt').value)||1;
@@ -11458,7 +11534,7 @@ function collectElevItems(){
     var _duEl=el.querySelector('.fo-disp-unit'), _du=_duEl?_duEl.value:'ft';
     dispatch(el.querySelector('.fo-loc').value,0,W,L,function(a,fw){ getPosItems(el,qty,foW,fw,foH,'fo',foYo).forEach(function(it){ it.dispUnit=_du; a.push(it); }); });
   });
-  return {front:front,back:back,right:right,left:left,W:W,L:L};
+  return {front:front,back:back,right:right,left:left,partition:partition,W:W,L:L};
 }
 
 // CCI interior clearances (Dealer Handbook p7, "all figures approximate"),
@@ -11565,9 +11641,15 @@ function dimSpacingPageHTML(){
       '<div style="padding:10px 12px;background:#fff">'+dimElevSVG(faceW,H,peakH,isGable,items,gchFront,frontSide,isGable?cciClearance(W,(G('rs')||{}).value,H):null)+'</div>'+
     '</div>';
   }
+  // End Storage partition doors (10/1/26): their own view, measured like the
+  // Front view (seen from the front), placed only where the wall is drawn.
+  var _sp=(typeof aewSpec==='function')?aewSpec():null, partBox='';
+  if(_sp && _sp.on && _sp.kind==='end' && it.partition && it.partition.length){
+    partBox=box('Storage Partition (interior)'+(_sp.unset?'':' — '+_sp.depthFt+'′ from the '+_sp.end+' end')+' · seen from the front',W,true,it.partition,false);
+  }
   return '<div style="page-break-before:always;background:#ffffff;min-height:100vh;padding:24px;box-sizing:border-box;font-family:Arial,sans-serif">'+
     '<div style="font-size:11pt;font-weight:800;letter-spacing:2px;color:#0D1B2A;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #1B8A8A;text-transform:uppercase">Dimensioned Layout &amp; Spacing</div>'+
-    box('Front',W,true,it.front,isGCH)+box('Back',W,true,it.back,false)+box('Right Eave',L,false,it.right,false,'left')+box('Left Eave',L,false,it.left,false,'right')+
+    box('Front',W,true,it.front,isGCH)+box('Back',W,true,it.back,false)+partBox+box('Right Eave',L,false,it.right,false,'left')+box('Left Eave',L,false,it.left,false,'right')+
     '<div style="margin-top:4px;font-size:8pt;color:#64748b;text-align:center">All dimensions measured along grade from the wall corners.'+(cciClearance(W,(G('rs')||{}).value,H)?' &nbsp;Center &amp; peak clearances are CCI approximate figures (Dealer Handbook).':'')+' &nbsp;Building '+W+"' W × "+L+"' L × "+H+"' H.</div>"+
   '</div>';
 }
@@ -11847,6 +11929,9 @@ async function printContract(){
   // window._rvForce: set by the CRM's Finish Revision — marks the contract
   // REVISED even for no-charge changes (e.g. doors moved to another wall).
   var _rvMode=!!(window._rvForce===true||(window._rvOrig&&(_rvHasNew||_rvSizeChanged||Math.abs(_rvNum(G('ptot').textContent)-window._rvOrig.tot)>0.5)));
+  // Storage wall added / moved / removed since the order (no-charge moves need
+  // Finish Revision like a moved door; on a revised contract its row is highlighted).
+  var _rvAewChanged=!!(_rvMode&&window._rvOrig&&window._rvAewSig!=null&&typeof aewSig==='function'&&window._rvAewSig!==aewSig());
   window._rvHlCur=false;
   if(_rvMode&&G('pdf-dims')) G('pdf-dims').checked=true;
   function row(desc,qty,unit,amt){ lineItems.push({desc:desc, qty:qty, unit:unit, amt:amt, hl:!!window._rvHlCur}); } // amounts show cents wherever they have them (lean-to / storage rows included)
@@ -11939,7 +12024,11 @@ async function printContract(){
   if(wainP) row('Wainscot',null,null,wainP);
   if(typeof adjPC!=='undefined'&&adjPC) row(gAdjLabel(),null,null,adjPC);
   gHoldRows(holdPC).forEach(function(hr){ row(hr.label,null,null,hr.amt); });
-  if(aewP) row(aewLabel(),null,null,aewP);
+  if(aewP){
+    window._rvHlCur=_rvAewChanged; row(aewLabel(),null,null,aewP); window._rvHlCur=false;
+    // Storage that was on the order but moved: CHANGED, not NEW.
+    if(_rvAewChanged && String(window._rvAewSig).indexOf('no|')!==0) lineItems[lineItems.length-1].tag='CHANGED';
+  }
 
   document.querySelectorAll('.re').forEach(function(el){
     window._rvHlCur=(_rvMode&&!(el.dataset&&el.dataset.rvOrig==='1'));
@@ -12133,7 +12222,7 @@ async function printContract(){
   lineItems.forEach(function(it){
     var amtStr=it.amt===0?'<span style="color:#15803d;font-weight:800">INCLUDED</span>':(it.amt<0?'\u2212'+(it.amt%1?fD(-it.amt):fC(-it.amt)):(it.amt%1?fD(it.amt):fC(it.amt)));
     rowsHTML+='<tr'+(it.hl?' style="background:#fff4dc"':'')+'>'+
-      '<td class="li-desc">'+(it.hl?'<span style="display:inline-block;background:#f59e0b;color:#7c2d12;font-size:6pt;font-weight:900;letter-spacing:.5px;border-radius:3px;padding:1px 5px;margin-right:6px">NEW</span>':'')+it.desc+'</td>'+
+      '<td class="li-desc">'+(it.hl?'<span style="display:inline-block;background:#f59e0b;color:#7c2d12;font-size:6pt;font-weight:900;letter-spacing:.5px;border-radius:3px;padding:1px 5px;margin-right:6px">'+(it.tag||'NEW')+'</span>':'')+it.desc+'</td>'+
       '<td class="li-c">'+(it.qty!==null?it.qty:'—')+'</td>'+
       '<td class="li-c">'+(it.unit?fC(it.unit):'—')+'</td>'+
       '<td class="li-r">'+amtStr+'</td>'+
@@ -12296,9 +12385,12 @@ async function printContract(){
     // Same wall + chip as the GCH divider. End Storage runs across the width at
     // its depth from the back (top) or front (bottom); Left/Right runs the full
     // length at its width in from that eave (plan left = the building's left).
+    // Not drawn when the quote doesn't charge it (aewSpec on=false) or when an old
+    // quote never picked a position (unset). End Storage partition doors sit on
+    // the line, measured from the plan's left like the front wall's icons.
     (function(){
       var sp=(typeof aewSpec==='function')?aewSpec():null;
-      if(!sp||!sp.on) return;
+      if(!sp||!sp.on||sp.unset) return;
       var chip=function(cx,cy,txt,vert){
         var tw=txt.length*6+12;
         s += '<rect x="'+(vert?cx-7:cx-tw/2)+'" y="'+(vert?cy-tw/2:cy-8)+'" width="'+(vert?14:tw)+'" height="'+(vert?tw:14)+'" fill="#ffffff" stroke="none"/>';
@@ -12308,7 +12400,19 @@ async function printContract(){
         var d=Math.min(sp.depthFt, L);
         var py=by+(sp.end==='front'?(L-d):d)*scale;
         s += '<line x1="'+bx+'" y1="'+py+'" x2="'+(bx+bw)+'" y2="'+py+'" stroke="#111827" stroke-width="'+wt+'" stroke-linecap="square"/>';
-        chip(bx+bw/2, py, 'STORAGE WALL — '+d+'′', false);
+        // Its doors / windows / framed openings (same codes + colors as the outer
+        // walls). The wall's label moves off the line onto the main-room side when
+        // an opening sits under it.
+        var pItems=(typeof collectElevItems==='function')?(collectElevItems().partition||[]):[];
+        var pStyle=function(t){ return t==='rollup'?{f:'#fef3c7',k:'#c4421e',c:'C1'}:t==='wtd'?{f:'#dbeafe',k:'#1d4ed8',c:'C3'}:t==='win'?{f:'#dcfce7',k:'#15803d',c:'C5'}:{f:'#f3f4f6',k:'#4b5563',c:'C7'}; };
+        var lbl='STORAGE WALL — '+d+'′', lw=lbl.length*6+12, lx0=bx+bw/2-lw/2, lx1=bx+bw/2+lw/2, ly=py;
+        pItems.forEach(function(it){ var a=bx+it.x*scale, b=a+it.w*scale; if(b>lx0 && a<lx1) ly=py+(sp.end==='front'?-14:14); });
+        chip(bx+bw/2, ly, lbl, false);
+        pItems.forEach(function(it){
+          var st=pStyle(it.type), ix=bx+Math.max(0,Math.min(it.x,W-it.w))*scale, iw=it.w*scale, ih=10, iy=py-ih/2;
+          s += '<rect x="'+ix+'" y="'+iy+'" width="'+iw+'" height="'+ih+'" fill="'+st.f+'" stroke="'+st.k+'" stroke-width="1.4"/>';
+          s += '<text x="'+(ix+iw/2)+'" y="'+(iy+ih/2+2.5)+'" text-anchor="middle" font-family="Arial" font-size="6.8" font-weight="800" fill="'+st.k+'">'+st.c+'</text>';
+        });
       } else {
         var wd=Math.min(sp.widthFt, W);
         var px=(sp.kind==='left')?bx+wd*scale:bx+bw-wd*scale;
@@ -12735,7 +12839,7 @@ async function printContract(){
     '</div>'+
     '</div>'+
 
-    (_rvMode?'<div style="background:#fff7ed;border:1.5px solid #f59e0b;border-radius:6px;padding:7px 12px;margin:4px 0 8px;font-size:8pt;color:#7c2d12"><strong style="letter-spacing:.5px">REVISED CONTRACT</strong> \u2014 supersedes the previously signed agreement. '+(_rvSizeChanged?('Building size revised: '+window._rvOrig.dims.split("x").join("\u00d7")+' \u2192 '+_rvDimsNow.split("x").join("\u00d7")+'. '):'')+'Added items are highlighted below; renderings, floor plan and spacing pages reflect the revised building.</div>':'')+
+    (_rvMode?'<div style="background:#fff7ed;border:1.5px solid #f59e0b;border-radius:6px;padding:7px 12px;margin:4px 0 8px;font-size:8pt;color:#7c2d12"><strong style="letter-spacing:.5px">REVISED CONTRACT</strong> \u2014 supersedes the previously signed agreement. '+(_rvSizeChanged?('Building size revised: '+window._rvOrig.dims.split("x").join("\u00d7")+' \u2192 '+_rvDimsNow.split("x").join("\u00d7")+'. '):'')+(_rvAewChanged?'Storage wall revised. ':'')+'Added items are highlighted below; renderings, floor plan and spacing pages reflect the revised building.</div>':'')+
     '<div class="c-sec">'+
     '<div class="c-sec-title">Itemized Pricing</div>'+
     '<table class="c-tbl"><thead><tr><th>Description</th><th class="c">Qty</th><th class="c">Unit</th><th class="r">Amount</th></tr></thead>'+
@@ -13150,6 +13254,15 @@ function resetAll(){
   var insulSelR=G('insul-sel'); if(insulSelR) insulSelR.value='none';
   var insulDetailR=G('insul-detail'); if(insulDetailR) insulDetailR.classList.add('hidden');
   ['wfg','wbg','wre','wle'].forEach(function(id){ G(id).value='Closed'; });
+  // Storage partition: none, rows back to their defaults (nothing drawn until a
+  // type + storage is picked). A type pick (doBldType) sets this again anyway,
+  // so no price can move — it just stops the old rows / 3D wall lingering.
+  var aewR=G('add-end-wall'); if(aewR) aewR.value='no';
+  var aewER=G('aew-end'); if(aewER) aewER.value='back';
+  ['aew-depth','aew-width'].forEach(function(id){ var s=G(id); if(s) s.value=''; });
+  if(typeof aewClearUnset==='function') aewClearUnset();
+  _aewMoved='';
+  if(typeof updateAddEndWallDisplay==='function') updateAddEndWallDisplay();
   ['cr','cw','ct','cwn'].forEach(function(id){
     G(id).value='';
     var swMap={'cr':'swr','cw':'sww','ct':'swt','cwn':'swn'};

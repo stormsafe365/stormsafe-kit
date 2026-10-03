@@ -197,3 +197,73 @@ render tail (`EnhancedSite layout={foundation}`, then `StoragePartitionGhost`, t
 - Text quote copies to the clipboard (program design); it does not open a window.
 - Not done in this run, by the ground rules: packaging the desktop apps, the CRM `dist\build` copy,
   any push. The preview folder under Demos is unchanged.
+
+---
+
+## 6. Capability audit — old program vs new program (completed 2026-10-02, second pass)
+
+Question answered: *can a rep still do everything in the New layout that today's program does, with the
+same prices?* Old = `aecb039` (`3D Builder/configurator/dist`, byte-identical to the owner's copy); new =
+this worktree's `configurator/dist` (byte-identical to `public/`). Both served read-only from scratch copies
+on one static server into one headless Chrome (swiftshader, popups allowed), each run as the real
+`build.html` + quote-builder iframe, driven over CDP. Full table: `capability-audit.md` (187 control
+patterns, one row per control, old effect → new effect → OK/FAIL); classified notes: `capability-audit-notes.json`.
+
+**Result: FAIL 0 / NOTE 73 — nothing missing, nothing priced differently, nothing unreachable.**
+
+- 10 saved-quote states (CCI 30×40×12 Palm Beach; CA 24×30×10 Orange; CCI widespan 40×60×14 Lee 12GA;
+  CCI 24×40×12 Lee 4′ OC + 12GA; GCH 28×40×14 enc 20 with partition-wall door + walk door; carport 24×30×8;
+  two lean-tos incl. free-standing; End Storage 30′ back 26×50×12; Left Storage 12′; INPUT mode), each with
+  every entry kind and every optional row on (positions, chain hoist / opener / colour / 45° / seal, lean-to
+  storage + 4 accessory openings, framed openings, gutters, custom components, override links, manual inputs).
+- Baselines: all 10 totals, `_qTotals`, saved fields, program notes and summary panel identical.
+- Controls: 17,556 old / 18,086 new enumerated; **0 old controls missing** in new (the extra ones are the
+  Section-5 chrome and the three documented hidden storage-position selects).
+- Sweep: 2,920 planned changes (2,818 applied, 102 skipped as read-only / single-option — same skips both
+  sides), one control at a time from a fresh restore, comparing all `_qTotals` fields, every saved field,
+  every visible note and the summary panel: **2,818 same, 0 different, 0 unreachable** in the New layout
+  (every entry control is reachable by opening its card from the header; the only rows hidden inside an open
+  card are the location row and the entry × that the card header replaces — 24 per full state, as designed).
+- The rep's own New-layout paths were replayed too (247): header wall dropdown ×89, card × ×108, wall tile +
+  add button ×50 — each gave the identical result to the old control.
+- Cards: 108 / 108 open from their header; Expand all opens all; tiles / add buttons present in every state
+  (Partition tile on the GCH state, "Storage wall · 30′ from back" tile on the End Storage state).
+- Classic link: today's section list restored in all 10 states (14 / 15 with Side Panels / Manual Pricing),
+  same controls, same visibility, same DOM order, lists back in their own sections, totals / fields / summary
+  unchanged by the switch and by the switch back; `localStorage` remembered.
+- Program-level (CCI 30×40×12 state): all 35 old buttons present (the 5 Classic "+ Add" buttons are in the
+  hidden sections, replaced by the tiles + add buttons); the same buttons visible with the quote summary open;
+  Saved / Building / Pricing tabs identical (7 tables, 1,443 price inputs); save → log → reset → load from log →
+  delete identical (same saved keys, same download, same reload); Pricing-tab edit + Reset to Defaults
+  identical; MFR → Input → CCI identical (20 manual inputs; card prices hidden in Input mode); Reset form
+  identical; **documents identical** after masking the random quote / contract number: quote PDF (9.3 MB,
+  6 images), contract (3.0 MB, 7 images), executed copy, revision form, revised layout (9.1 MB, 5 images),
+  elevations, text quote (905 chars). No console errors in either program.
+- Global functions: 319 in old, 300 byte-identical in new, 0 removed; the 19 changed and 16 new ones are
+  exactly the storage-partition / GCH-enclosed-length / Section-5 `rc` hook functions already listed in §1.
+
+The 73 NOTEs are all documented, non-price differences: `#add-end-wall` onchange → `aewModeChange()`;
+the Section-4 storage note is re-rendered on every pass and names the position (old went stale after a size
+change); "Partition Wall" offered as a location on End Storage builds (any type); the three hidden
+`#aew-*` selects; no header wall dropdown for items that are not on a wall (gutters, custom components,
+free-standing lean-tos — their location row is hidden in the old program too).
+
+Audit-method notes: snapshots in the New layout are taken with every card expanded (what a rep sees after
+"Expand all"), so entry notes compare like the old program's always-visible notes; phase B runs on a fresh
+page load in both programs (a first new-program pass that ran it after the sweeps printed a contract with
+Section-14 values left over from the sweep, which `restoreQuoteData` does not reset — same in both programs,
+so the fresh-page run is the fair one).
+
+Observed in BOTH programs, identical, pre-existing (for the owner's eye, not caused by this release):
+- Restoring the Lee 4′ OC + 12GA fixture a second time in the same session prices $42,831 where the first
+  restore priced $39,924 — the county lap-siding lock and the free 26GA sheeting apply on the next pass
+  (same family as the price gate's "Broward lap flag on reopen").
+- Pricing tab "Reset to Defaults" after a +100 cell edit does not return to the quote's baseline (the hi-impact
+  8×8 door loses its type / size and re-prices); leaving Input mode back to CCI leaves 17 fields changed.
+- After `resetAll()` the new program sets Storage to None (old left the previous quote's pick); the next type
+  pick sets it again in both, totals identical — kept.
+- The three storage-position fields are saved on every quote (even Storage = None); the old program opens
+  such saves cleanly (price gate G3) — kept.
+
+No program code changed by the audit; `dist` unchanged; `tsc -b --noEmit` clean, vitest 36 files / 713 tests
+pass. All audit processes stopped; the owner's 5577 / 5590 servers were not touched.

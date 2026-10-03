@@ -1,0 +1,440 @@
+[
+ {
+  "sev": "NOTE",
+  "state": "cci-std-30x40x12-palmbeach",
+  "control": "#add-end-wall",
+  "text": "documented handler change: onchange \"updateAddEndWallDisplay();rc()\" vs \"aewModeChange()\""
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-std-30x40x12-palmbeach",
+  "control": "#add-end-wall",
+  "text": "notes wording: old-only [\"+ #add-end-wall-cost: End Storage partition: $2,315 — full interior end wall, priced like a closed end. Position along the length is the customer’s choice (no price change). Add storage doors below like any other door.\"] new-only [\"+ #add-end-wall-cost: End Storage partition: $2,315 — full interior end wall 12′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-std-30x40x12-palmbeach",
+  "control": "ace[3] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-std-30x40x12-palmbeach",
+  "control": "ace[4] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-std-30x40x12-palmbeach",
+  "control": "(classic)",
+  "text": "only the new hidden storage-position selects differ (documented): [\"#aew-end|false|Wall Options\",\"#aew-depth|false|Wall Options\",\"#aew-width|false|Wall Options\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "ca-std-24x30x10-orange",
+  "control": "#add-end-wall",
+  "text": "documented handler change: onchange \"updateAddEndWallDisplay();rc()\" vs \"aewModeChange()\""
+ },
+ {
+  "sev": "NOTE",
+  "state": "ca-std-24x30x10-orange",
+  "control": "#add-end-wall",
+  "text": "notes wording: old-only [\"+ #add-end-wall-cost: End Storage partition: $1,435 — full interior end wall, priced like a closed end. Position along the length is the customer’s choice (no price change). Add storage doors below like any other door.\"] new-only [\"+ #add-end-wall-cost: End Storage partition: $1,435 — full interior end wall 10′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door). ⚠ The storage wall (20′ from the front) runs through the Left Eave window (19.5′–22′ from the front) — move the opening or pick another depth.\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "ca-std-24x30x10-orange",
+  "control": "ace[3] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "ca-std-24x30x10-orange",
+  "control": "ace[4] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "ca-std-24x30x10-orange",
+  "control": "(classic)",
+  "text": "only the new hidden storage-position selects differ (documented): [\"#aew-end|false|Wall Options\",\"#aew-depth|false|Wall Options\",\"#aew-width|false|Wall Options\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-widespan-vert-12ga-40x60x14-lee",
+  "control": "#add-end-wall",
+  "text": "documented handler change: onchange \"updateAddEndWallDisplay();rc()\" vs \"aewModeChange()\""
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-widespan-vert-12ga-40x60x14-lee",
+  "control": "#add-end-wall",
+  "text": "notes wording: old-only [\"+ #add-end-wall-cost: End Storage partition: $3,775 — full interior end wall, priced like a closed end. Position along the length is the customer’s choice (no price change). Add storage doors below like any other door.\"] new-only [\"+ #add-end-wall-cost: End Storage partition: $3,775 — full interior end wall 12′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-widespan-vert-12ga-40x60x14-lee",
+  "control": "ace[3] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-widespan-vert-12ga-40x60x14-lee",
+  "control": "ace[4] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-widespan-vert-12ga-40x60x14-lee",
+  "control": "(classic)",
+  "text": "only the new hidden storage-position selects differ (documented): [\"#aew-end|false|Wall Options\",\"#aew-depth|false|Wall Options\",\"#aew-width|false|Wall Options\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-std-vert-4oc-12ga-24x40x12-lee",
+  "control": "#add-end-wall",
+  "text": "documented handler change: onchange \"updateAddEndWallDisplay();rc()\" vs \"aewModeChange()\""
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-std-vert-4oc-12ga-24x40x12-lee",
+  "control": "#add-end-wall",
+  "text": "notes wording: old-only [\"+ #add-end-wall-cost: End Storage partition: $1,790 — full interior end wall, priced like a closed end. Position along the length is the customer’s choice (no price change). Add storage doors below like any other door.\"] new-only [\"+ #add-end-wall-cost: End Storage partition: $1,790 — full interior end wall 12′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-std-vert-4oc-12ga-24x40x12-lee",
+  "control": "ace[3] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-std-vert-4oc-12ga-24x40x12-lee",
+  "control": "ace[4] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-std-vert-4oc-12ga-24x40x12-lee",
+  "control": "(classic)",
+  "text": "only the new hidden storage-position selects differ (documented): [\"#aew-end|false|Wall Options\",\"#aew-depth|false|Wall Options\",\"#aew-width|false|Wall Options\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-gch-28x40x14-enc20",
+  "control": "#add-end-wall",
+  "text": "documented handler change: onchange \"updateAddEndWallDisplay();rc()\" vs \"aewModeChange()\""
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-gch-28x40x14-enc20",
+  "control": "ace[3] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-gch-28x40x14-enc20",
+  "control": "ace[4] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-gch-28x40x14-enc20",
+  "control": "(classic)",
+  "text": "only the new hidden storage-position selects differ (documented): [\"#aew-end|false|Wall Options\",\"#aew-depth|false|Wall Options\",\"#aew-width|false|Wall Options\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-carport-24x30x8",
+  "control": "#add-end-wall",
+  "text": "documented handler change: onchange \"updateAddEndWallDisplay();rc()\" vs \"aewModeChange()\""
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-carport-24x30x8",
+  "control": "#add-end-wall",
+  "text": "notes wording: old-only [\"+ #add-end-wall-cost: GCH: the divider end wall is already included in the Utility Storage line — no extra charge here.\"] new-only [\"+ #add-end-wall-cost: End Storage partition: $1,200 — full interior end wall 10′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-carport-24x30x8",
+  "control": "ace[0] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-carport-24x30x8",
+  "control": "ace[1] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-carport-24x30x8",
+  "control": "(classic)",
+  "text": "only the new hidden storage-position selects differ (documented): [\"#aew-end|false|Wall Options\",\"#aew-depth|false|Wall Options\",\"#aew-width|false|Wall Options\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-two-leantos-24x40x10",
+  "control": "#add-end-wall",
+  "text": "documented handler change: onchange \"updateAddEndWallDisplay();rc()\" vs \"aewModeChange()\""
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-two-leantos-24x40x10",
+  "control": "#add-end-wall",
+  "text": "notes wording: old-only [\"+ #add-end-wall-cost: GCH: the divider end wall is already included in the Utility Storage line — no extra charge here.\"] new-only [\"+ #add-end-wall-cost: End Storage partition: $1,435 — full interior end wall 10′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-two-leantos-24x40x10",
+  "control": "lte[1] .lts",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-two-leantos-24x40x10",
+  "control": "(classic)",
+  "text": "only the new hidden storage-position selects differ (documented): [\"#aew-end|false|Wall Options\",\"#aew-depth|false|Wall Options\",\"#aew-width|false|Wall Options\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "(baseline)",
+  "text": "notes wording: old-only [\"#add-end-wall-cost: GCH: the divider end wall is already included in the Utility Storage line — no extra charge here.\"] new-only [\"#add-end-wall-cost: End Storage partition: $1,910 — full interior end wall 30′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "#add-end-wall",
+  "text": "documented handler change: onchange \"updateAddEndWallDisplay();rc()\" vs \"aewModeChange()\""
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "re[0] .rloc",
+  "text": "attribute difference: options old-only [] new-only [\"Partition Wall\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "re[1] .rloc",
+  "text": "attribute difference: options old-only [] new-only [\"Partition Wall\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "we[0] .wloc",
+  "text": "attribute difference: options old-only [] new-only [\"Partition Wall\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "we[1] .wloc",
+  "text": "attribute difference: options old-only [] new-only [\"Partition Wall\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "ne[0] .nloc",
+  "text": "attribute difference: options old-only [] new-only [\"Partition Wall\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "ne[1] .nloc",
+  "text": "attribute difference: options old-only [] new-only [\"Partition Wall\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "ace[0] .fo-loc",
+  "text": "attribute difference: options old-only [] new-only [\"Partition Wall\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "ace[1] .fo-loc",
+  "text": "attribute difference: options old-only [] new-only [\"Partition Wall\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "ace[2] .fo-loc",
+  "text": "attribute difference: options old-only [] new-only [\"Partition Wall\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "ace[3] .fo-loc",
+  "text": "attribute difference: options old-only [] new-only [\"Partition Wall\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "ace[4] .fo-loc",
+  "text": "attribute difference: options old-only [] new-only [\"Partition Wall\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "#btype",
+  "text": "notes wording: old-only [\"- #add-end-wall-cost: GCH: the divider end wall is already included in the Utility Storage line — no extra charge here.\"] new-only [\"- #add-end-wall-cost: End Storage partition: $1,910 — full interior end wall 30′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "#bw",
+  "text": "notes wording: old-only [] new-only [\"+ #add-end-wall-cost: End Storage partition: $2,110 — full interior end wall 30′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\",\"- #add-end-wall-cost: End Storage partition: $1,910 — full interior end wall 30′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "#bl",
+  "text": "notes wording: old-only [] new-only [\"+ #add-end-wall-cost: End Storage partition: $1,910 — full interior end wall 31′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door). ⚠ Depth moved from 30′ to 31′ (nearest frame line at 4′ OC).\",\"- #add-end-wall-cost: End Storage partition: $1,910 — full interior end wall 30′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "#bh",
+  "text": "notes wording: old-only [] new-only [\"+ #add-end-wall-cost: End Storage partition: $2,015 — full interior end wall 30′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\",\"- #add-end-wall-cost: End Storage partition: $1,910 — full interior end wall 30′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "#add-end-wall",
+  "text": "notes wording: old-only [] new-only [\"+ #add-end-wall-cost: Left Storage partition: $4,680 — interior wall running the FULL building length, 10′ wide from the left side (Sensei-matched CCI chart; vertical walls auto-add the vertical rate). Width doesn’t change the price. Doors on a lengthwise partition aren’t priced yet — ask CCI.\",\"- #add-end-wall-cost: End Storage partition: $1,910 — full interior end wall 30′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "ace[3] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "ace[4] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-endstorage-30back-26x50x12",
+  "control": "(classic)",
+  "text": "only the new hidden storage-position selects differ (documented): [\"#aew-end|true|Wall Options\",\"#aew-depth|true|Wall Options\",\"#aew-width|false|Wall Options\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-leftstorage-12-26x50x12",
+  "control": "(baseline)",
+  "text": "notes wording: old-only [\"#add-end-wall-cost: GCH: the divider end wall is already included in the Utility Storage line — no extra charge here.\"] new-only [\"#add-end-wall-cost: Left Storage partition: $5,580 — interior wall running the FULL building length, 12′ wide from the left side (Sensei-matched CCI chart; vertical walls auto-add the vertical rate). Width doesn’t change the price. Doors on a lengthwise partition aren’t priced yet — ask CCI.\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-leftstorage-12-26x50x12",
+  "control": "#add-end-wall",
+  "text": "documented handler change: onchange \"updateAddEndWallDisplay();rc()\" vs \"aewModeChange()\""
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-leftstorage-12-26x50x12",
+  "control": "#btype",
+  "text": "notes wording: old-only [\"- #add-end-wall-cost: GCH: the divider end wall is already included in the Utility Storage line — no extra charge here.\"] new-only [\"- #add-end-wall-cost: Left Storage partition: $5,580 — interior wall running the FULL building length, 12′ wide from the left side (Sensei-matched CCI chart; vertical walls auto-add the vertical rate). Width doesn’t change the price. Doors on a lengthwise partition aren’t priced yet — ask CCI.\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-leftstorage-12-26x50x12",
+  "control": "#bl",
+  "text": "notes wording: old-only [] new-only [\"+ #add-end-wall-cost: Left Storage partition: $6,160 — interior wall running the FULL building length, 12′ wide from the left side (Sensei-matched CCI chart; vertical walls auto-add the vertical rate). Width doesn’t change the price. Doors on a lengthwise partition aren’t priced yet — ask CCI.\",\"- #add-end-wall-cost: Left Storage partition: $5,580 — interior wall running the FULL building length, 12′ wide from the left side (Sensei-matched CCI chart; vertical walls auto-add the vertical rate). Width doesn’t change the price. Doors on a lengthwise partition aren’t priced yet — ask CCI.\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-leftstorage-12-26x50x12",
+  "control": "#ws",
+  "text": "notes wording: old-only [] new-only [\"+ #add-end-wall-cost: Left Storage partition: $4,680 — interior wall running the FULL building length, 12′ wide from the left side (Sensei-matched CCI chart; vertical walls auto-add the vertical rate). Width doesn’t change the price. Doors on a lengthwise partition aren’t priced yet — ask CCI.\",\"- #add-end-wall-cost: Left Storage partition: $5,580 — interior wall running the FULL building length, 12′ wide from the left side (Sensei-matched CCI chart; vertical walls auto-add the vertical rate). Width doesn’t change the price. Doors on a lengthwise partition aren’t priced yet — ask CCI.\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-leftstorage-12-26x50x12",
+  "control": "#add-end-wall",
+  "text": "notes wording: old-only [] new-only [\"+ #add-end-wall-cost: Right Storage partition: $5,580 — interior wall running the FULL building length, 12′ wide from the right side (Sensei-matched CCI chart; vertical walls auto-add the vertical rate). Width doesn’t change the price. Doors on a lengthwise partition aren’t priced yet — ask CCI.\",\"- #add-end-wall-cost: Left Storage partition: $5,580 — interior wall running the FULL building length, 12′ wide from the left side (Sensei-matched CCI chart; vertical walls auto-add the vertical rate). Width doesn’t change the price. Doors on a lengthwise partition aren’t priced yet — ask CCI.\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-leftstorage-12-26x50x12",
+  "control": "ace[3] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-leftstorage-12-26x50x12",
+  "control": "ace[4] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "cci-leftstorage-12-26x50x12",
+  "control": "(classic)",
+  "text": "only the new hidden storage-position selects differ (documented): [\"#aew-end|false|Wall Options\",\"#aew-depth|false|Wall Options\",\"#aew-width|true|Wall Options\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "input-mode-cci-30x40x12",
+  "control": "#add-end-wall",
+  "text": "documented handler change: onchange \"updateAddEndWallDisplay();rc()\" vs \"aewModeChange()\""
+ },
+ {
+  "sev": "NOTE",
+  "state": "input-mode-cci-30x40x12",
+  "control": "#add-end-wall",
+  "text": "notes wording: old-only [\"+ #add-end-wall-cost: GCH: the divider end wall is already included in the Utility Storage line — no extra charge here.\"] new-only [\"+ #add-end-wall-cost: End Storage partition: $2,315 — full interior end wall 12′ in from the back end, priced like a closed end (depth doesn’t change the price). Storage doors: pick the “Partition Wall” location (priced like a gable-end door).\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "input-mode-cci-30x40x12",
+  "control": "ace[3] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "input-mode-cci-30x40x12",
+  "control": "ace[4] .fo-loc",
+  "text": "no header wall dropdown for this entry ({\"kind\":\"proxy\",\"noProxy\":true,\"pxHidden\":true})"
+ },
+ {
+  "sev": "NOTE",
+  "state": "input-mode-cci-30x40x12",
+  "control": "(classic)",
+  "text": "only the new hidden storage-position selects differ (documented): [\"#aew-end|false|Wall Options\",\"#aew-depth|false|Wall Options\",\"#aew-width|false|Wall Options\"]"
+ },
+ {
+  "sev": "NOTE",
+  "state": "phaseB",
+  "control": "Roll-Up Doors > button[onclick=aRUD()]{+ Add Roll-Up Door}",
+  "text": "Classic section add button hidden in the New layout — replaced by the wall tiles + add buttons"
+ },
+ {
+  "sev": "NOTE",
+  "state": "phaseB",
+  "control": "Walk-Through Doors > button[onclick=aWTD()]{+ Add Walk-Through Door}",
+  "text": "Classic section add button hidden in the New layout — replaced by the wall tiles + add buttons"
+ },
+ {
+  "sev": "NOTE",
+  "state": "phaseB",
+  "control": "Windows > button[onclick=aWIN()]{+ Add Window}",
+  "text": "Classic section add button hidden in the New layout — replaced by the wall tiles + add buttons"
+ },
+ {
+  "sev": "NOTE",
+  "state": "phaseB",
+  "control": "Lean-Tos > button[onclick=aLT()]{+ Add Lean-To}",
+  "text": "Classic section add button hidden in the New layout — replaced by the wall tiles + add buttons"
+ },
+ {
+  "sev": "NOTE",
+  "state": "phaseB",
+  "control": "Additional Components > button[onclick=aAC()]{+ Add Component}",
+  "text": "Classic section add button hidden in the New layout — replaced by the wall tiles + add buttons"
+ }
+]

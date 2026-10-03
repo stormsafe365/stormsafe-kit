@@ -1,0 +1,80 @@
+
+## A-cci-30x40x12-rollups-walk-win-leanto-storage  old ptot $43,108.00  new ptot $43,108.00  SAME
+- quote: ptot after print old $43,108.00 new $43,108.00 same; cards old 4 new 5
+  ✓ Front: old 20 figures / new 20
+  ✓ Back: old 18 figures / new 18
+  ✓ Right Eave: old 11 figures / new 14  (new adds 10′×1, 30′×1, 4′×1)
+  ✓ Left Eave: old 13 figures / new 16  (new adds 12′×1, 40′×1, 4′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels)
+  notes identical
+  rest-of-document byte-identical (108424 chars; spacing page removed, base64 images + per-print random ids normalised)
+- contract: ptot after print old $43,108.00 new $43,108.00 same; cards old 4 new 5
+  ✓ Front: old 20 figures / new 20
+  ✓ Back: old 18 figures / new 18
+  ✓ Right Eave: old 11 figures / new 14  (new adds 10′×1, 30′×1, 4′×1)
+  ✓ Left Eave: old 13 figures / new 16  (new adds 12′×1, 40′×1, 4′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels)
+  notes identical
+  rest-of-document byte-identical (96323 chars; spacing page removed, base64 images + per-print random ids normalised)
+- revised: ptot after print old $43,108.00 new $43,108.00 same; cards old 4 new 5
+  ✓ Front: old 20 figures / new 20
+  ✓ Back: old 18 figures / new 18
+  ✓ Right Eave: old 11 figures / new 14  (new adds 10′×1, 30′×1, 4′×1)
+  ✓ Left Eave: old 13 figures / new 16  (new adds 12′×1, 40′×1, 4′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels)
+  notes identical
+  rest-of-document byte-identical (9311 chars; spacing page removed, base64 images + per-print random ids normalised)
+
+## B-cci-26x50x12-endstorage-30back-partition-doors  old ptot $38,612.00  new ptot $38,612.00  SAME
+- quote: ptot after print old $38,612.00 new $38,612.00 same; cards old 5 new 5
+  ✓ Front: old 20 figures / new 20
+  ✓ Back: old 18 figures / new 18
+  ✓ Storage Partition (interior) — 30′ from the back end · seen from the front: old 13 figures / new 13
+  ✓ Right Eave: old 11 figures / new 12  (new adds 4′×1)
+  ✓ Left Eave: old 13 figures / new 16  (new adds 10′×1, 30′×1, 4′×1)
+  notes identical
+  rest-of-document byte-identical (103022 chars; spacing page removed, base64 images + per-print random ids normalised)
+- contract: ptot after print old $38,612.00 new $38,612.00 same; cards old 5 new 5
+  ✓ Front: old 20 figures / new 20
+  ✓ Back: old 18 figures / new 18
+  ✓ Storage Partition (interior) — 30′ from the back end · seen from the front: old 13 figures / new 13
+  ✓ Right Eave: old 11 figures / new 12  (new adds 4′×1)
+  ✓ Left Eave: old 13 figures / new 16  (new adds 10′×1, 30′×1, 4′×1)
+  notes identical
+  rest-of-document byte-identical (92496 chars; spacing page removed, base64 images + per-print random ids normalised)
+- revised: ptot after print old $38,612.00 new $38,612.00 same; cards old 5 new 5
+  ✓ Front: old 20 figures / new 20
+  ✓ Back: old 18 figures / new 18
+  ✓ Storage Partition (interior) — 30′ from the back end · seen from the front: old 13 figures / new 13
+  ✓ Right Eave: old 11 figures / new 12  (new adds 4′×1)
+  ✓ Left Eave: old 13 figures / new 16  (new adds 10′×1, 30′×1, 4′×1)
+  notes identical
+  rest-of-document byte-identical (9744 chars; spacing page removed, base64 images + per-print random ids normalised)
+
+## C-cci-gch-28x40x14-enc20  old ptot $45,856.00  new ptot $45,856.00  SAME
+- quote: ptot after print old $45,856.00 new $45,856.00 same; cards old 4 new 5
+  ✓ Front: old 27 figures / new 27
+  ✓ Back: old 18 figures / new 18
+  ✓ Right Eave: old 11 figures / new 12  (new adds 4′×1)
+  ✓ Left Eave: old 13 figures / new 16  (new adds 12′×1, 40′×1, 4′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (12 labels)
+  notes identical
+  rest-of-document byte-identical (109577 chars; spacing page removed, base64 images + per-print random ids normalised)
+- contract: ptot after print old $45,856.00 new $45,856.00 same; cards old 4 new 5
+  ✓ Front: old 27 figures / new 27
+  ✓ Back: old 18 figures / new 18
+  ✓ Right Eave: old 11 figures / new 12  (new adds 4′×1)
+  ✓ Left Eave: old 13 figures / new 16  (new adds 12′×1, 40′×1, 4′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (12 labels)
+  notes identical
+  rest-of-document byte-identical (97781 chars; spacing page removed, base64 images + per-print random ids normalised)
+- revised: ptot after print old $45,856.00 new $45,856.00 same; cards old 4 new 5
+  ✓ Front: old 27 figures / new 27
+  ✓ Back: old 18 figures / new 18
+  ✓ Right Eave: old 11 figures / new 12  (new adds 4′×1)
+  ✓ Left Eave: old 13 figures / new 16  (new adds 12′×1, 40′×1, 4′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (12 labels)
+  notes identical
+  rest-of-document byte-identical (9638 chars; spacing page removed, base64 images + per-print random ids normalised)
+
+RESULT: PASS — nothing lost, totals unchanged, other pages byte-identical

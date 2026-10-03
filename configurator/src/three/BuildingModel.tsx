@@ -201,6 +201,8 @@ export function BuildingModel() {
         color={swatchHex(config.colors.walls)}
         edgeColor={trimHex}
         viewMode={viewMode}
+        wainscot={config.wainscot}
+        wainscotColor={swatchHex(config.colors.wainscot)}
       />
       {/* Footings, #5 bars and anchors (FoundationDetails): enhanced always
           (exterior = only what is above the surface); classic ONLY in

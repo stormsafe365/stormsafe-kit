@@ -10,8 +10,9 @@ import { storageGhostShape } from '../StoragePartitionGhost';
 import { roofSurface, shellLayout, structureKey, trimBatches, wallBatches, wallTopAt, type ShellInput } from '../enhanced/shellGeometry';
 
 // Main-building storage partitions in the ENHANCED shell (owner 10/1/26): an
-// interior wall sheeted on its main-room face, no wainscot, no exterior
-// corner trims — and the GCH divider exactly as before.
+// interior wall sheeted on its main-room face, no exterior corner trims — and
+// the GCH divider exactly as before. Since 10/3/26 the building's wainscot
+// runs on that face too (partitionWainscot.test.ts has the full band rules).
 
 const build = (over: Partial<BuildingConfig> = {}, storage?: { mode: StorageMode; lengthFt: number }) => {
   const cfg: BuildingConfig = {
@@ -47,9 +48,9 @@ describe('enhanced shell: End Storage partition', () => {
     expect(part.plane.n).toEqual([0, 0, -1]);
     expect(part.polys.length).toBe(1);
   });
-  it('interior wall: no wainscot band, no corner trims', () => {
-    expect(part.regions.every((r) => !r.wainscot)).toBe(true);
-    expect(part.cap.length).toBe(0);
+  it("interior wall: the building's wainscot band + Z-trim line on its main-room face, no corner trims", () => {
+    expect(part.regions.filter((r) => r.wainscot)).toEqual([{ c0: -15, c1: 15, y0: 0, y1: 3, wainscot: true }]);
+    expect(part.cap).toEqual([{ y: 3, c0: -15, c1: 15 }]);
     expect(layout.corners.some((c) => c.end === 'partition')).toBe(false);
     // the outside walls still get their wainscot
     expect(layout.walls.find((w) => w.plane.id === 'front')!.regions.some((r) => r.wainscot)).toBe(true);
@@ -78,8 +79,18 @@ describe('enhanced shell: Left / Right lengthwise partition', () => {
   it('full length, floor to just under the roof at its x, facing the main room', () => {
     const X0 = 3 - SHEET_OUTSET;
     expect(part.plane).toEqual({ id: 'partition', along: 'z', at: X0, n: [-1, 0, 0], u: [0, 0, 1] });
-    expect(part.regions).toEqual([{ c0: -20, c1: 20, y0: 0, y1: wallTopAt(roofSurface(s), X0), wainscot: false }]);
+    expect(part.regions).toEqual([
+      { c0: -20, c1: 20, y0: 0, y1: 3, wainscot: true },
+      { c0: -20, c1: 20, y0: 3, y1: wallTopAt(roofSurface(s), X0), wainscot: false },
+    ]);
+    expect(part.cap).toEqual([{ y: 3, c0: -20, c1: 20 }]);
     expect(part.holes).toEqual([]);
+  });
+  it('wainscot off: the single full-height sheet, as before', () => {
+    const off = build({ wainscot: { enabled: false, heightFt: 3 } }, { mode: 'right', lengthFt: 12 });
+    const p = shellLayout(input(off.cfg, off.s)).walls.find((w) => w.plane.id === 'partition')!;
+    expect(p.regions).toEqual([{ c0: -20, c1: 20, y0: 0, y1: wallTopAt(roofSurface(off.s), 3 - SHEET_OUTSET), wainscot: false }]);
+    expect(p.cap).toEqual([]);
   });
 });
 
@@ -106,13 +117,20 @@ describe('GCH divider unchanged', () => {
 describe('the storage partition sheet is its own depth-offset batch (visual verifier r2)', () => {
   const interior = (b: { spec: unknown }) => (b.spec as { interior?: boolean }).interior === true;
   const zs = (b: { position: Float32Array }, k: number) => Array.from({ length: b.position.length / 3 }, (_, i) => b.position[i * 3 + k]);
-  it('End Storage: one interior batch holding exactly the partition sheet; outer walls unchanged', () => {
+  it('End Storage: the interior batches hold exactly the partition sheet (wall + wainscot colour); outer walls unchanged', () => {
     const { cfg, s } = build({}, { mode: 'endBack', lengthFt: 12 });
     const bs = wallBatches(input(cfg, s));
     const inner = bs.filter(interior);
-    expect(inner.length).toBe(1);
-    expect(inner[0].id).toContain('|interior');
-    expect(zs(inner[0], 2).every((z) => Math.abs(z - (8 - SHEET_OUTSET)) < 1e-6)).toBe(true);
+    expect(inner.map((b) => (b.spec as { color: string }).color).sort()).toEqual([cfg.colors.walls, cfg.colors.wainscot].sort());
+    for (const b of inner) {
+      expect(b.id).toContain('|interior');
+      expect(zs(b, 2).every((z) => Math.abs(z - (8 - SHEET_OUTSET)) < 1e-6)).toBe(true);
+    }
+    // wainscot off: the one wall-colour interior batch, as before
+    const off = build({ wainscot: { enabled: false, heightFt: 3 } }, { mode: 'endBack', lengthFt: 12 });
+    const offInner = wallBatches(input(off.cfg, off.s)).filter(interior);
+    expect(offInner.length).toBe(1);
+    expect((offInner[0].spec as { color: string }).color).toBe(off.cfg.colors.walls);
     // the outer walls' batches are byte-for-byte those of the same garage without storage
     const bare = build();
     const outer = bs.filter((b) => !interior(b));
@@ -120,11 +138,11 @@ describe('the storage partition sheet is its own depth-offset batch (visual veri
     expect(outer.map((b) => b.id)).toEqual(ref.map((b) => b.id));
     outer.forEach((b, i) => expect(Array.from(b.position)).toEqual(Array.from(ref[i].position)));
   });
-  it('Left/Right: the lengthwise sheet is the interior batch', () => {
+  it('Left/Right: the lengthwise sheet (wall + wainscot colour) is the interior batch', () => {
     const { cfg, s } = build({}, { mode: 'right', lengthFt: 12 });
     const inner = wallBatches(input(cfg, s)).filter(interior);
-    expect(inner.length).toBe(1);
-    expect(zs(inner[0], 0).every((x) => Math.abs(x - (3 - SHEET_OUTSET)) < 1e-6)).toBe(true);
+    expect(inner.length).toBe(2);
+    for (const b of inner) expect(zs(b, 0).every((x) => Math.abs(x - (3 - SHEET_OUTSET)) < 1e-6)).toBe(true);
   });
   it('its depth offset is on only while the camera is outside the walls (no grazing-angle effect inside)', () => {
     const walls = new THREE.Group();

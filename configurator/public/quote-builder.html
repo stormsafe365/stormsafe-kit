@@ -11627,7 +11627,7 @@ var _dimSvgN=0;
 function _dimT(x,y,txt,a){
   a=a||{};
   return '<text x="'+(+x).toFixed(1)+'" y="'+(+y).toFixed(1)+'"'+(a.anchor?' text-anchor="'+a.anchor+'"':'')+' font-size="'+(a.size||10)+'"'+(a.weight?' font-weight="'+a.weight+'"':'')+
-    ' fill="'+(a.fill||DIM_C.dim)+'" font-family="'+DIM_C.font+'"'+(a.ls?' letter-spacing="'+a.ls+'"':'')+(a.tr?' transform="'+a.tr+'"':'')+'>'+txt+'</text>';
+    ' fill="'+(a.fill||DIM_C.dim)+'" font-family="'+DIM_C.font+'"'+(a.cls?' class="'+a.cls+'"':'')+(a.ls?' letter-spacing="'+a.ls+'"':'')+(a.tr?' transform="'+a.tr+'"':'')+'>'+txt+'</text>';
 }
 // Attached lean-tos as the drawings need them, read with the program's own
 // readers (getLTDims incl. continuous legs, getLTWalls, ltStorage) under the
@@ -11757,68 +11757,111 @@ function dimElevSVG(faceW, wallH, peakH, isGable, items, gchFront, frontSide, cl
     o+=_dimT(X(faceW/2), Y(wallH)+16, 'open wall', {anchor:'middle',size:10});
   }
   // a lean-to hanging off THIS wall: dashed footprint to its connection height.
-  // Its label never sits on an opening (a door / frame-out into the lean-to is
-  // a normal layout) and never leaves the drawing: it takes the first spot that
-  // crosses no opening rect and no sill / clearance / frame-line / open-wall /
-  // peak label — centred in the footprint, else the widest opening-free span
-  // across the footprint (mid-height, then higher up under the connection
-  // line), else just above the dashed line where the wall rises past it, else
-  // beside the footprint on the wall at its mid-height, else above the wall
-  // (only a row whose text still sits inside the viewBox), else centred in the
-  // footprint on a small panel-coloured backing painted after the openings.
-  var blocks=[]; // px boxes {x0,x1,y0,y1} a footprint label must stay clear of
+  // Its label is NEVER drawn on top of an opening rectangle or an opening's
+  // W×H / sill label (a door / frame-out into the lean-to is a normal layout)
+  // and never leaves the drawing. Placement order (verifier round 3):
+  //   1. inside the footprint, clear of every opening and label — centred,
+  //      else the widest opening-free span across it (mid-height, then higher
+  //      up under the connection line);
+  //   2. OUTSIDE the footprint, above its roof line (the dashed connection
+  //      line): centred on the lean-to, the lowest row that stays inside the
+  //      viewBox and clear of the openings, the peak / clearance / frame-line /
+  //      open-wall / leg labels and the other lean-to labels, tied to the
+  //      footprint by a thin leader tick (which stops at the footprint top or
+  //      at the first opening under it);
+  //   3. beside the footprint on the free side of the wall — past its far end,
+  //      else before its near end — at mid-height, then higher, then lower;
+  //   4. last resort: the label shrinks to "LTn" (same ladder, then the lowest
+  //      row above the connection line that the openings alone leave clear —
+  //      openings never rise past the eave, so that row exists) and the full
+  //      text goes to the card's legend line under the drawing
+  //      (dimElevSVG.notes, read by dimSpacingPageHTML's card()).
+  // There is no backing rectangle: nothing is ever painted over an opening.
+  var blocks=[]; // px boxes {x0,x1,y0,y1} a footprint label must stay clear of — blocks[0..opN) are the openings (the hard rule)
   sorted.forEach(function(it){
     var yo=it.yo||0; blocks.push({x0:X(it.x),x1:X(it.x+it.w),y0:Y(yo+it.h),y1:Y(yo)});
+    // its W×H label as the opening loop below draws it — a narrow door's text is wider than its rectangle
+    var lf=(it.type==='fo'&&it.dispUnit==='in')?_dimIn:_dimFtIn, ln=(lf(it.w)+'×'+lf(it.h)).length, ls=(it.w*s<56)?8:9.5, lb=(it.h*s>=26)?Y(yo+it.h)+13:Y(yo+it.h)+it.h*s/2+3, lcx=X(it.x+it.w/2);
+    blocks.push({x0:lcx-ln*ls*0.3-2,x1:lcx+ln*ls*0.3+2,y0:lb-ls,y1:lb+3});
     if(yo>0.1){ var scx=X(it.x+it.w/2), scy=(Y(0)+Y(yo))/2; blocks.push({x0:scx-28,x1:scx+28,y0:scy-6,y1:scy+8}); } // its sill label
   });
+  var opN=blocks.length;
   if(clr&&isGable&&!x.prof){ var ccy=Y(Math.min(clr.center,peak)); blocks.push({x0:X(faceW/2)-72,x1:X(faceW/2)+72,y0:ccy-2,y1:ccy+12}); } // Center clearance label
   if(truss.length&&x.oc) blocks.push({x0:X(0),x1:X(0)+96,y0:Y(wallH)-20,y1:Y(wallH)-7}); // "frame lines N′ OC"
   if(x.open&&!gchFront) blocks.push({x0:X(faceW/2)-32,x1:X(faceW/2)+32,y0:Y(wallH)+6,y1:Y(wallH)+19}); // "open wall"
+  if(gchFront) blocks.push({x0:X(faceW/2)-150,x1:X(faceW/2)+150,y0:Y(wallH)+4,y1:Y(wallH)+20}); // GCH partition caption
   if(isGable&&!x.prof) blocks.push({x0:X(faceW/2)-70,x1:X(faceW/2)+70,y0:Y(peak)-19,y1:Y(peak)-7}); // "Peak …"
-  function clearOf(b){ return !blocks.some(function(q){ return b.x0<q.x1&&b.x1>q.x0&&b.y0<q.y1&&b.y1>q.y0; }); }
-  var ltLab=''; // footprint labels, painted after the openings (a backed fallback has to sit on top of the hatch)
+  var hR=hAt(faceW), dx=X(faceW+extR)+20; // leg dimension line + label, right of the wall (drawn below)
+  blocks.push({x0:dx-6,x1:VW,y0:Y(hR)-8,y1:Y(0)+8});
+  sideLeans.forEach(function(q){ var l=q.l; blocks.push(q.onLeft?{x0:X(-l.w),x1:X(0),y0:Y(l.conn),y1:Y(0)}:{x0:X(faceW),x1:X(faceW+l.w),y0:Y(l.conn),y1:Y(0)}); }); // end-on lean-tos + their LTn
+  function hits(b,from,to){ for(var i=from;i<to;i++){ var q=blocks[i]; if(b.x0<q.x1&&b.x1>q.x0&&b.y0<q.y1&&b.y1>q.y0) return true; } return false; }
+  function clearOf(b){ return !hits(b,0,blocks.length); }
+  function inView(b){ return b.x0>=2&&b.x1<=VW-2&&b.y0>=2; }
+  var notes=[]; dimElevSVG.notes=notes; // legend lines for this card (step 4 only)
+  var ltLab=''; // footprint labels + leader ticks, painted after the openings
   foot.forEach(function(q){
-    var l=q.l, c=l.conn, x0=q.x0, x1=x0+l.len, txt='LT'+l.n+' · '+l.w+'′ × '+l.ll+'′ lean-to', tw=txt.length*6.4, th=11, pos=null, backed=false;
-    o+='<rect x="'+X(x0)+'" y="'+Y(c)+'" width="'+(l.len*s).toFixed(1)+'" height="'+(c*s).toFixed(1)+'" fill="rgba(167,139,250,.05)" stroke="'+DIM_K.lt+'" stroke-opacity=".8" stroke-width="1.2" stroke-dasharray="5 4"/>';
-    function mbox(cx,base){ return {x0:cx-tw/2,x1:cx+tw/2,y0:base-th+2,y1:base+3}; }
-    function lbox(lx,base){ return {x0:lx,x1:lx+tw,y0:base-th+2,y1:base+3}; }
-    // 1. centred in the footprint
-    if(c*s>=36 && l.len*s>=tw+12 && clearOf(mbox(X(x0+l.len/2),Y(c/2)+4))) pos=[X(x0+l.len/2),Y(c/2)+4,'middle'];
-    // 2. the widest opening-free span across the footprint, mid-height first
-    if(!pos && c*s>=36) [c/2, c*0.78].some(function(hh){
-      var base=Y(hh)+4, by0=base-th+2, by1=base+3, edges=[X(x0),X(x1)], best=null;
-      blocks.forEach(function(bb){ if(bb.y0<by1&&bb.y1>by0){ edges.push(bb.x0); edges.push(bb.x1); } });
-      edges=edges.filter(function(v){ return v>=X(x0)-E&&v<=X(x1)+E; }).sort(function(a,b){ return a-b; });
-      for(var i=0;i<edges.length-1;i++){ var gw=edges[i+1]-edges[i], mid=(edges[i]+edges[i+1])/2; if(gw>=tw+10 && clearOf(mbox(mid,base)) && (!best||gw>best.w)) best={cx:mid,w:gw}; }
-      if(best) pos=[best.cx,base,'middle'];
-      return !!best;
-    });
-    // 3. just above the dashed connection line where the wall rises past it
-    if(!pos) for(var xx=x0; xx<=x1-tw/s+E; xx+=0.5){ if((hAt(xx)-c)*s>=16 && (hAt(xx+tw/s)-c)*s>=16 && clearOf(lbox(X(xx)+6,Y(c)-5))){ pos=[X(xx)+6,Y(c)-5,'start']; break; } }
-    // 4. beside the footprint on the wall at its mid-height: past its far end, else before its near end (inside the wall)
-    if(!pos && c*s>=36){
-      var by=Y(c/2)+4, rx=X(x1)+8, lx=X(x0)-8-tw;
-      if(rx+tw<=X(faceW)-4 && clearOf(lbox(rx,by))) pos=[rx,by,'start'];
-      else if(lx>=X(0)+4 && clearOf(lbox(lx,by))) pos=[lx,by,'start'];
+    var l=q.l, c=l.conn, x0=q.x0, x1=x0+l.len, full='LT'+l.n+' · '+l.w+'′ × '+l.ll+'′ lean-to', th=12, cxF=X(x0+l.len/2), top=Y(c);
+    o+='<rect x="'+X(x0)+'" y="'+top+'" width="'+(l.len*s).toFixed(1)+'" height="'+(c*s).toFixed(1)+'" fill="rgba(167,139,250,.05)" stroke="'+DIM_K.lt+'" stroke-opacity=".8" stroke-width="1.2" stroke-dasharray="5 4"/>';
+    function place(txt){
+      var tw=txt.length*6.4, pos=null;
+      function mbox(cx,base){ return {x0:cx-tw/2,x1:cx+tw/2,y0:base-th+2,y1:base+3}; }
+      function lbox(lx,base){ return {x0:lx,x1:lx+tw,y0:base-th+2,y1:base+3}; }
+      // 1. inside the footprint: centred, else the widest opening-free span (mid-height, then higher up)
+      if(c*s>=36 && l.len*s>=tw+12 && clearOf(mbox(cxF,Y(c/2)+4))) pos={x:cxF,y:Y(c/2)+4,a:'middle'};
+      if(!pos && c*s>=36) [c/2, c*0.78].some(function(hh){
+        var base=Y(hh)+4, by0=base-th+2, by1=base+3, edges=[X(x0),X(x1)], best=null;
+        blocks.forEach(function(bb){ if(bb.y0<by1&&bb.y1>by0){ edges.push(bb.x0); edges.push(bb.x1); } });
+        edges=edges.filter(function(v){ return v>=X(x0)-E&&v<=X(x1)+E; }).sort(function(a,b){ return a-b; });
+        for(var i=0;i<edges.length-1;i++){ var gw=edges[i+1]-edges[i], mid=(edges[i]+edges[i+1])/2; if(gw>=tw+10 && clearOf(mbox(mid,base)) && (!best||gw>best.w)) best={cx:mid,w:gw}; }
+        if(best) pos={x:best.cx,y:base,a:'middle'};
+        return !!best;
+      });
+      // 2. above the roof line, centred on the lean-to (nudged left of the leg dimension when that keeps it over the footprint), lowest clear row
+      if(!pos){
+        var c1=Math.max(tw/2+4,Math.min(VW-tw/2-4,cxF)), c2=Math.min(c1,dx-8-tw/2), cands=(c2<c1-E && c2+tw/2>X(x0)+6)?[c1,c2]:[c1];
+        for(var base=top-6; base-th+2>=2 && !pos; base-=13) cands.some(function(cx){ var b=mbox(cx,base); if(inView(b)&&clearOf(b)){ pos={x:cx,y:base,a:'middle',tick:true}; return true; } return false; });
+      }
+      // 3. beside the footprint on the free side, inside the wall: past its far end, else before its near end
+      if(!pos && c*s>=36) [c/2, c*0.75, c*0.25].some(function(hh){
+        var by=Y(hh)+4, rx=X(x1)+8, lx=X(x0)-8-tw;
+        if(rx+tw<=X(faceW)-4 && clearOf(lbox(rx,by))) pos={x:rx,y:by,a:'start'};
+        else if(lx>=X(0)+4 && clearOf(lbox(lx,by))) pos={x:lx,y:by,a:'start'};
+        return !!pos;
+      });
+      if(pos) pos.tw=tw;
+      return pos;
     }
-    // 5. above the wall — a row only when its text stays inside the viewBox (an eave wall tops out at the margin)
-    if(!pos) [22,36].some(function(yy){
-      var base=Y(wallH)-yy; if(base-th<1) return false;
-      for(var xx2=x0; xx2<=Math.min(x1-0.5,faceW-(tw+6)/s)+E; xx2+=1){ if(clearOf(lbox(X(xx2)+6,base))){ pos=[X(xx2)+6,base,'start']; return true; } }
-      return false;
-    });
-    // 6. centred in the footprint on a backing — always inside the drawing, always legible
-    if(!pos){ pos=[Math.max(tw/2+4,Math.min(VW-tw/2-4,X(x0+l.len/2))),(c*s>=36)?Y(c/2)+4:Y(c)+th,'middle']; backed=true; }
-    var bx=(pos[2]==='middle')?mbox(pos[0],pos[1]):lbox(pos[0],pos[1]);
-    if(backed) ltLab+='<rect x="'+(bx.x0-4).toFixed(1)+'" y="'+(bx.y0-1).toFixed(1)+'" width="'+(tw+8).toFixed(1)+'" height="'+(th+3).toFixed(1)+'" rx="2" fill="'+DIM_C.panel+'" fill-opacity=".92"/>';
-    ltLab+=_dimT(pos[0], pos[1], txt, {anchor:pos[2],size:pos[2]==='middle'?10.5:10,fill:DIM_K.ltText});
+    var txt=full, pos=place(full);
+    if(!pos){
+      // 4. "LTn" + legend line; its final spot is decided by the openings alone
+      txt='LT'+l.n; pos=place(txt);
+      if(!pos){
+        var tw2=txt.length*6.4, cx2=Math.max(tw2/2+4,Math.min(VW-tw2/2-4,cxF)), base2;
+        for(base2=top-6; base2-th+2>=2; base2-=13){ if(!hits({x0:cx2-tw2/2,x1:cx2+tw2/2,y0:base2-th+2,y1:base2+3},0,opN)) break; }
+        if(base2-th+2<2) base2=th; // top row of the viewBox (only an opening drawn past the top could force this)
+        pos={x:cx2,y:base2,a:'middle',tick:true,tw:tw2};
+      }
+      notes.push(txt+' = '+l.w+'′ × '+l.ll+'′ lean-to');
+    }
+    var bx=(pos.a==='middle')?{x0:pos.x-pos.tw/2,x1:pos.x+pos.tw/2,y0:pos.y-th+2,y1:pos.y+3}:{x0:pos.x,x1:pos.x+pos.tw,y0:pos.y-th+2,y1:pos.y+3};
+    if(pos.tick){
+      // leader tick: from the label down to the footprint top (or the first opening under it), on a path clear of the other labels when one exists
+      var lo=Math.max(X(x0)+3,bx.x0+2), hi=Math.min(X(x1)-3,bx.x1-2), tx=Math.max(lo,Math.min(hi,pos.x)), best=null;
+      function tEnd(xx){ var e=top; for(var i=0;i<opN;i++){ var q=blocks[i]; if(q.x0<=xx&&xx<=q.x1&&q.y0<e) e=q.y0; } return e; }
+      for(var d=0; d<=hi-lo && !best; d+=6){ [tx-d,tx+d].some(function(xx){ if(xx<lo-E||xx>hi+E) return false; var e=tEnd(xx); if(!hits({x0:xx-1,x1:xx+1,y0:bx.y1,y1:e},opN,blocks.length)){ best={x:xx,e:e}; return true; } return false; }); }
+      if(!best) best={x:tx,e:tEnd(tx)};
+      if(best.e-bx.y1>3){
+        ltLab+='<line x1="'+best.x.toFixed(1)+'" y1="'+(bx.y1+1).toFixed(1)+'" x2="'+best.x.toFixed(1)+'" y2="'+best.e.toFixed(1)+'" stroke="'+DIM_K.lt+'" stroke-opacity=".8" stroke-width="1"/>';
+        blocks.push({x0:best.x-2,x1:best.x+2,y0:bx.y1,y1:best.e}); // later labels stay off the tick
+      }
+    }
+    ltLab+=_dimT(pos.x, pos.y, txt, {anchor:pos.a,size:pos.a==='middle'?10.5:10,fill:DIM_K.ltText,cls:'dim-lt'});
     blocks.push(bx); // the next lean-to's label stays clear of this one
   });
   // frame lines (eave views) at the build's OC spacing
   truss.forEach(function(t){ if(t<=E||t>=faceW-E) return; o+='<line x1="'+X(t)+'" y1="'+gy.toFixed(1)+'" x2="'+X(t)+'" y2="'+Y(hAt(t))+'" stroke="rgba(255,255,255,.12)" stroke-width="1" stroke-dasharray="3 4"/>'; });
   if(truss.length&&x.oc) o+=_dimT(X(0), Y(wallH)-10, 'frame lines '+x.oc+'′ OC', {size:10});
-  // leg height: a dimension line to the right of the wall
-  var hR=hAt(faceW), dx=X(faceW+extR)+20;
+  // leg height: a dimension line to the right of the wall (hR / dx computed above, where the label rule needs them)
   o+='<line x1="'+dx+'" y1="'+Y(0)+'" x2="'+dx+'" y2="'+Y(hR)+'" stroke="'+DIM_C.line+'" stroke-width="1"/>'+
      '<line x1="'+(dx-4)+'" y1="'+Y(0)+'" x2="'+(dx+4)+'" y2="'+Y(0)+'" stroke="'+DIM_C.line+'" stroke-width="1"/>'+
      '<line x1="'+(dx-4)+'" y1="'+Y(hR)+'" x2="'+(dx+4)+'" y2="'+Y(hR)+'" stroke="'+DIM_C.line+'" stroke-width="1"/>';
@@ -11898,6 +11941,7 @@ function dimSpacingPageHTML(theme){
     else { var wd=Math.min(_sp.widthFt,W); part={kind:'x',at:(_sp.kind==='left'?wd:W-wd)}; }
   }
   function card(label, sel, elev){
+    var notes=(dimElevSVG.notes||[]).slice(); dimElevSVG.notes=[]; // legend lines the elevation asked for (a lean-to label shortened to LTn)
     return '<div style="break-inside:avoid;page-break-inside:avoid;margin-bottom:12px;border:1px solid '+DIM_C.edge+';border-radius:6px;overflow:hidden;background:'+DIM_C.panel+'">'+
       '<div style="background:'+DIM_C.band+';color:#fff;font-size:9pt;font-weight:700;letter-spacing:1.8px;text-align:center;padding:6px;text-transform:uppercase">'+label+'</div>'+
       '<div style="display:flex;align-items:center">'+
@@ -11905,7 +11949,7 @@ function dimSpacingPageHTML(theme){
           '<div style="font-size:7pt;font-weight:600;letter-spacing:1.5px;color:'+DIM_C.dim+';text-align:center;text-transform:uppercase;margin-bottom:2px">Top-down</div>'+
           dimPlanSVG(sel,it,lts,W,L,part,open)+
         '</div>'+
-        '<div style="flex:1;min-width:0;padding:8px 10px">'+elev+'</div>'+
+        '<div style="flex:1;min-width:0;padding:8px 10px">'+elev+(notes.length?'<div style="font-size:7.5pt;color:'+DIM_K.ltText+';text-align:center;margin-top:2px;letter-spacing:.2px">'+notes.join(' &nbsp;&#183;&nbsp; ')+'</div>':'')+'</div>'+
       '</div>'+
     '</div>';
   }

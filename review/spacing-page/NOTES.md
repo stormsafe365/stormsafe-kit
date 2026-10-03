@@ -56,9 +56,46 @@ peak label, and can never leave the drawing:
 6. centred in the footprint on a small panel-coloured backing rectangle, painted after the openings so it sits on top of the
    hatch — always inside the drawing, always legible (reachable only when 1–5 all fail; exercised by a synthetic case).
 
+*(Steps 5–6 and the backing rectangle were removed in round 3 below — a lean-to label is never painted over an opening.)*
+
 Smaller labels bumped for print: sill 7.5 → 8.5, narrow-gap chain 7.5 → 8.5, centre clearance 8 → 9, and the GCH
 `PARTITION WALL · gable-only sheeting · open carport front` caption 7.5 → 8.5 (shrinks, never below 7, so it stays inside the
 inset on a narrow GCH).
+
+## Lean-to footprint label, round 3 — never on top of an opening (10/3/26)
+
+Round-3 gate failure: a gable-end lean-to whose footprint is **shorter than its own label** (10′-long lean-tos, the common CCI
+size) with a door inside the footprint reached step 6 above, and the panel-coloured backing was painted over the door's `W×H`
+label — a figure LIVE prints became unreadable (repro builds N1–N3 and P; the unit fuzz fired on 11 % of typical walls and
+covered another label on 1.4 % of those).
+
+**Rule as implemented** (`dimElevSVG`, one function for the quote, contract and revised layout): a lean-to label is never drawn on
+top of any opening rectangle or opening label (`W×H`, `sill`). The openings and their labels are the hard blocks; the peak /
+centre-clearance / frame-line / open-wall / GCH caption / leg labels, the end-on lean-tos beside the wall and the earlier
+lean-to labels + ticks are the soft blocks. Placement order:
+
+1. **inside the footprint** when it fits clear of every block — centred, else the widest opening-free span (mid-height, then
+   higher up under the connection line);
+2. **outside the footprint, above its roof line** (the dashed connection line): centred on the lean-to (nudged left of the leg
+   dimension when that keeps it over the footprint), the lowest row that stays inside the viewBox and clear of every block,
+   tied to the footprint by a **thin leader tick** (vertical, on a path clear of the other labels when one exists; it stops at
+   the footprint top or at the first opening under it; omitted when the label sits right on the line) — this is where N1–N3
+   and P land;
+3. **beside the footprint on the free side** of the wall — past its far end, else before its near end — at mid-height, then
+   higher, then lower;
+4. last resort: the label **shrinks to `LTn`** (same ladder, then the lowest row above the connection line that the openings
+   alone leave clear — openings never rise past the eave, so that row exists) and the full text goes to a **legend line under the
+   drawing** of that card (`dimElevSVG.notes` → `card()`: `LT1 = 12′ × 10′ lean-to`). Reached only on a tiny wall whose footprint
+   is filled by openings with nothing free above it (fuzz: 0.16 % of typical CCI walls, 0.8 % of random valid walls).
+
+**No backing rectangle exists any more.** Footprint labels carry `class="dim-lt"` so the test and the fuzz can find them.
+
+Evidence: `dimLeanToLabel.test.ts` (6 tests: N1–N3/P geometries → full label above the roof line, centred, tick, clear of every
+opening / opening label / peak / clearance / leg label, inside the viewBox, no backing; a synthetic last-resort case → `LT1` +
+legend line; a 20′ lean-to on a 40′ eave → inside the footprint, no tick). Fuzz (`vsp4-fuzz4.mjs`, the round-2 valid-wall and
+typical-CCI generators, 40 000 walls × 2 seeds): **0** labels over an opening / opening label / out of view, **0** backing
+rects, 0 throws. Before/after: `N1-…`, `N2-…`, `N3-…`, `P-…` `-{quote,contract,revised}-front-card-{before,after}.png` and the
+full page `-{quote,contract,revised}-{before,after}.png` in this folder.
 
 ## Verification (`old-vs-new-diff.txt`: 13 builds × quote / contract / revised layout, LIVE dist vs this build)
 

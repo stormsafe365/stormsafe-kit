@@ -52,6 +52,7 @@ export function EnhancedLeanTos({ structure, mainOpenings, wallOrientation, roof
                   key={`of-${o.id}`}
                   geo={geo}
                   lt={lt}
+                  building={structure}
                   opening={o}
                   trimColor={trimHex}
                   enhanced

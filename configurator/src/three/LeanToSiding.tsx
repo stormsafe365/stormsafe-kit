@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
-import { SHEET_OUTSET, COMPONENT_OUTSET, type LeanToStructure, type Vec3 } from '@/engine/geometry';
+import { SHEET_OUTSET, COMPONENT_OUTSET, type LeanToStructure, type StructureModel, type Vec3 } from '@/engine/geometry';
 import { leanToWallSettings, rendersLeanToFixture, type LeanToStorageSpan } from '@/engine/leanToFixtures';
 import { clampPartitionCenter, partitionGeom } from '@/engine/partitionFit';
 import type { BuildingColors, LeanToOpening, OpeningType, PanelOrientation, Wainscot } from '@/types/building';
@@ -14,12 +14,15 @@ import { stripsAround, type LocalRect } from './Siding';
 import { OpeningFixture } from './OpeningFixture';
 import { GuideLine, Measure, Chip3D, ftIn, RED, RED_DIM } from './Openings';
 import { CLICK_DRAG_THRESHOLD_PX } from './openingAnim';
+import { interiorRoom, partTakesPress } from './interiorView';
 import { EnhancedFixture } from './enhanced/fixtures';
 import { fixtureFaceZ } from './enhanced/fixtureLayout';
 
 const COMP_PROUD = COMPONENT_OUTSET - SHEET_OUTSET; // component standoff past the wall sheeting
 
 interface LeanToSidingProps {
+  /** The main building — its walk-in Interior room decides which parts take a press (partTakesPress). */
+  structure: StructureModel;
   leanTos: LeanToStructure[];
   wallOrientation: PanelOrientation;
   roofOrientation: PanelOrientation;
@@ -58,7 +61,7 @@ type BoxSpec = { pos: Pt; size: [number, number, number]; rot?: [number, number,
  * up (identical lighting on left and right lean-tos) and the gable ends are true
  * trapezoids, not averaged rectangles.
  */
-export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors, wainscot, overhangFt, trimColor }: LeanToSidingProps) {
+export function LeanToSiding({ structure, leanTos, wallOrientation, roofOrientation, colors, wainscot, overhangFt, trimColor }: LeanToSidingProps) {
   const wallDir: RibDirection = wallOrientation === 'Vertical' ? 'vertical' : 'horizontal';
   const roofDir: RibDirection = roofOrientation === 'Vertical' ? 'vertical' : 'horizontal';
 
@@ -229,7 +232,7 @@ export function LeanToSiding({ leanTos, wallOrientation, roofOrientation, colors
             {lt.openings
               .filter((o) => rendersLeanToFixture(o, walls))
               .map((o) => (
-                <DraggableLeanToOpening key={`of-${o.id}`} geo={geo} lt={lt} opening={o} trimColor={trimColor} />
+                <DraggableLeanToOpening key={`of-${o.id}`} geo={geo} lt={lt} building={structure} opening={o} trimColor={trimColor} />
               ))}
           </group>
         );
@@ -894,6 +897,12 @@ function openingPlacement(geo: SurfaceSet, opening: LeanToOpening): { pos: [numb
     : { pos: [plane + outward * COMP_PROUD, yC, aC], rotY: (outward * Math.PI) / 2 };
 }
 
+/** World end points of a lean-to opening's along-wall span (its two jambs, mid height, on its mounting face) — for partTakesPress. */
+export function leanToOpeningSpan(geo: SurfaceSet, opening: LeanToOpening): [Vec3, Vec3] {
+  const half = opening.widthFt / 2;
+  return [openingPlacement(geo, { ...opening, offsetFt: opening.offsetFt - half }).pos, openingPlacement(geo, { ...opening, offsetFt: opening.offsetFt + half }).pos];
+}
+
 // The wall plane to raycast against while dragging + how to read the along-wall
 // offset from a hit point. Mirrors openingPlacement's wall math.
 interface DragInfo {
@@ -928,6 +937,7 @@ function dragInfo(geo: SurfaceSet, opening: LeanToOpening): DragInfo {
 export function DraggableLeanToOpening({
   geo,
   lt,
+  building,
   opening,
   trimColor,
   enhanced = false,
@@ -936,6 +946,8 @@ export function DraggableLeanToOpening({
 }: {
   geo: SurfaceSet;
   lt: LeanToStructure;
+  /** The main building (its walk-in Interior room: partTakesPress). */
+  building: StructureModel;
   opening: LeanToOpening;
   trimColor: string;
   /** Draw the enhanced fixture (same placement / drag / click handling). */
@@ -962,9 +974,13 @@ export function DraggableLeanToOpening({
   const { pos, rotY } = openingPlacement(geo, opening);
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
+    // Same rule as the main building (Openings.tsx): inside the walk-in
+    // Interior only a part on the walls of the room you stand in takes a press
+    // (partTakesPress) — a lean-to wall never is one, so from inside a press
+    // where a lean-to part projects looks around instead of grabbing it. Taken:
+    // `dragging` keeps the look-around off.
+    if (!partTakesPress({ inside: useEditorStore.getState().interiorView, room: interiorRoom(building), span: leanToOpeningSpan(geo, opening) })) return;
     e.stopPropagation();
-    // Inside the walk-in Interior too: a press ON a part drags it (same rule
-    // as the main building, Openings.tsx); `dragging` keeps the look-around off.
     selectLeanToOpening(opening.id);
     setDragging(true);
     dragRef.current = true;

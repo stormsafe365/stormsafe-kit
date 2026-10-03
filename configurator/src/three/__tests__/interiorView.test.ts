@@ -5,7 +5,7 @@ import { DEFAULT_CONFIG } from '@/config/constants';
 import { deriveStructure, type StructureModel } from '@/engine/geometry';
 import { resolveBuilding } from '@/engine/ruleEngine';
 import { useEditorStore } from '@/store/useEditorStore';
-import type { BuildingConfig, StorageMode } from '@/types/building';
+import type { BuildingConfig, LeanTo, LeanToOpening, Opening, StorageMode } from '@/types/building';
 import {
   INTERIOR,
   ceilingAt,
@@ -17,12 +17,16 @@ import {
   interiorRoom,
   lookDir,
   lookPressStarts,
+  openingSpan,
+  partTakesPress,
   roofLineAt,
+  spanOnRoomWalls,
   walk,
   yawPitchOf,
   zoomFov,
   type Vec3,
 } from '../interiorView';
+import { eaveSurfaces, gableSurfaces, leanToOpeningSpan, resolveWalls } from '../LeanToSiding';
 
 // Walk-in Interior camera (owner 10/2/26: "if you try to zoom out at all.. it
 // takes out outside the building .. so there really is not an interior view").
@@ -346,11 +350,18 @@ describe('Interior pointer routing: a press on a part drags it, a press beside o
     expect(lookPressStarts({ ...base, button: 2 })).toBe(false);
     expect(lookPressStarts({ ...base, button: 1 })).toBe(false);
   });
-  it('Openings / LeanToSiding have no Interior-only press gate; InteriorWalk routes its press through lookPressStarts', () => {
-    for (const f of ['../Openings.tsx', '../LeanToSiding.tsx']) {
+  it('Openings / LeanToSiding take a press only through partTakesPress (no Interior-only gate); InteriorWalk routes its press through lookPressStarts', () => {
+    for (const [f, room, span] of [
+      ['../Openings.tsx', 'structure', 'openingSpan(opening, structure)'],
+      ['../LeanToSiding.tsx', 'building', 'leanToOpeningSpan(geo, opening)'],
+    ]) {
       const code = src(f);
       expect(code).not.toMatch(/interiorPress/);
-      expect(code).toMatch(/e\.stopPropagation\(\);[\s\S]{0,600}?setDragging\(true\);/);
+      // The routing rule runs first; a press not taken returns before anything
+      // (no stopPropagation, no select, no dragging) so the look-around gets it.
+      const gate = `if (!partTakesPress({ inside: useEditorStore.getState().interiorView, room: interiorRoom(${room}), span: ${span} })) return;`;
+      expect(code).toContain(gate);
+      expect(code.slice(code.indexOf(gate) + gate.length)).toMatch(/^\s*e\.stopPropagation\(\);[\s\S]{0,600}?setDragging\(true\);/);
     }
     expect(existsSync(fileURLToPath(new URL('../interiorPress.ts', import.meta.url)))).toBe(false);
     const walk = src('../InteriorWalk.tsx');
@@ -364,5 +375,140 @@ describe('Interior pointer routing: a press on a part drags it, a press beside o
   });
   it('the Viewport hint says so', () => {
     expect(src('../../components/Viewport.tsx')).toMatch(/Drag a door to move it · drag elsewhere to look around/);
+  });
+});
+
+// Verifier 10/3/26 (branch partition-drag, gate run): inside, a press on
+// visually EMPTY partition wall where an out-of-sight part projects grabbed
+// that part and rewrote its program position — the back gable's 8x8 roll-up at
+// 21' (in the storage room behind the partition) and the Right Eave window at
+// 40.75' (also in the storage room). R3F raycasts interactive objects only, so
+// the walls never block a press. Inside, only a part on the walls of the room
+// you stand in takes a press; every other press looks around.
+describe("Interior press routing: only a part on the room's own walls takes a press", () => {
+  const op = (side: Opening['side'], offset: number, width = 10, height = 10, sillHeight = 0): Opening => ({
+    id: `${side}-${offset}`,
+    type: 'rollUpDoor',
+    side,
+    offset,
+    width,
+    height,
+    sillHeight,
+  });
+  const takes = (s: StructureModel, o: Opening, inside = true) => partTakesPress({ inside, room: interiorRoom(s), span: openingSpan(o, s) });
+
+  describe('End Storage 30 ft at the back of 26x50x12 (main room x -13..13, z -25..-5)', () => {
+    const s = build({}, { mode: 'endBack', lengthFt: 30 });
+    it("the partition doors take a press (the owner's 10x10 roll-up at 13 and the walk door)", () => {
+      expect(takes(s, op('partition', 13))).toBe(true);
+      expect(takes(s, op('partition', 7.5, 3, 6.67))).toBe(true);
+      expect(takes(s, op('partition', 1.5, 3, 6.67))).toBe(true); // at the corner
+    });
+    it('so do the front gable behind you and the eave walls of the main room', () => {
+      expect(takes(s, op('front', 8))).toBe(true);
+      expect(takes(s, op('front', 21, 8, 8))).toBe(true);
+      expect(takes(s, op('left', 10, 2.5, 1.25, 4))).toBe(true);
+      expect(takes(s, op('right', 6.5, 3, 6.67))).toBe(true);
+    });
+    it("the back gable is the storage room's wall: the verifier's hidden 8x8 roll-up at 21 does not", () => {
+      expect(takes(s, op('back', 21, 8, 8))).toBe(false);
+      expect(takes(s, op('back', 4, 8, 8))).toBe(false); // at the back gable's corner, 1' from the eave line
+    });
+    it("an eave part past the partition is in the storage room: the verifier's Right Eave window at 40.75 does not", () => {
+      expect(takes(s, op('right', 40.75, 2.5, 1.25, 4))).toBe(false);
+      expect(takes(s, op('left', 30, 3, 6.67))).toBe(false);
+      expect(takes(s, op('left', 48.75, 2.5, 1.25, 4))).toBe(false);
+    });
+    it('a part straddling the partition line takes a press once at least 1 ft of it is in the main room', () => {
+      // Left Eave, 3 ft wide, centre z = -25 + offset: 20 -> span -6.5..-3.5 (1.5 ft in); 21 -> -5.5..-2.5 (0.5 ft in)
+      expect(takes(s, op('left', 20, 3, 6.67))).toBe(true);
+      expect(takes(s, op('left', 21, 3, 6.67))).toBe(false);
+    });
+    it("outside the Interior every part takes a press (today's behaviour, unchanged)", () => {
+      expect(takes(s, op('back', 21, 8, 8), false)).toBe(true);
+      expect(takes(s, op('right', 40.75, 2.5, 1.25, 4), false)).toBe(true);
+      expect(takes(s, op('partition', 13), false)).toBe(true);
+    });
+    it('the storage at the FRONT (room z -5..25): the partition and back gable take a press, the front gable does not', () => {
+      const f = build({}, { mode: 'end', lengthFt: 20 });
+      expect(takes(f, op('partition', 13))).toBe(true);
+      expect(takes(f, op('back', 21, 8, 8))).toBe(true);
+      expect(takes(f, op('front', 8))).toBe(false);
+      expect(takes(f, op('right', 40.75, 2.5, 1.25, 4))).toBe(true);
+      expect(takes(f, op('right', 6.5, 3, 6.67))).toBe(false);
+    });
+  });
+
+  describe('GCH 28x40x14, 20 ft enclosed at the back (room z 0..20): the divider, the back gable and the enclosed bay', () => {
+    const s = build({ buildingType: 'utility', width: 28, length: 40, legHeight: 14, enclosedLengthFt: 20, openEnd: 'front' });
+    it('divider + back gable + eave parts in the enclosed bay take a press', () => {
+      expect(interiorRoom(s).kind).toBe('gch');
+      expect(takes(s, op('partition', 14))).toBe(true);
+      expect(takes(s, op('back', 10, 8, 8))).toBe(true);
+      expect(takes(s, op('left', 30, 3, 6.67))).toBe(true);
+    });
+    it('eave parts in the open bay and the (open) front gable line do not', () => {
+      expect(takes(s, op('left', 5, 3, 6.67))).toBe(false);
+      expect(takes(s, op('right', 10, 2.5, 1.25, 4))).toBe(false);
+      expect(takes(s, op('front', 8))).toBe(false);
+    });
+  });
+
+  describe('Left lengthwise storage 12 ft on 30x40 (room x -3..15)', () => {
+    const s = build({ width: 30, length: 40 }, { mode: 'left', lengthFt: 12 });
+    it("the right eave wall and the main room's stretch of the gables take a press; the storage's left eave wall does not", () => {
+      expect(takes(s, op('right', 10, 3, 6.67))).toBe(true);
+      expect(takes(s, op('left', 10, 3, 6.67))).toBe(false);
+      expect(takes(s, op('front', 20))).toBe(true); // x -5..5
+      expect(takes(s, op('front', 6))).toBe(false); // x -14..-4, all on the storage side of x = -3
+      expect(takes(s, op('front', 9))).toBe(true); // x -11..-1: 2 ft in the room
+      expect(takes(s, op('back', 20))).toBe(true);
+    });
+  });
+
+  it('a plain garage: every part is on the room (the whole footprint)', () => {
+    const s = build();
+    for (const o of [op('front', 8), op('back', 21, 8, 8), op('left', 48.75, 2.5, 1.25, 4), op('right', 6.5, 3, 6.67)]) expect(takes(s, o)).toBe(true);
+  });
+
+  describe('lean-to parts are never on the main room (a lean-to wall is outside it), so inside they never take a press', () => {
+    const lt = (o: Partial<LeanTo> = {}): LeanTo => ({ id: 'lt1', type: 'attached', attachedSide: 'Left Eave', widthFt: 12, lengthFt: 50, lowLegHeightFt: 10, roofPitch: '2:12', enclosure: 'enclosed', openings: [], ...o });
+    const lo = (wall: LeanToOpening['wall'], offsetFt: number, widthFt = 6, heightFt = 6, sillFt = 0): LeanToOpening => ({ id: `lt-${wall}-${offsetFt}`, type: 'rollUpDoor', wall, widthFt, heightFt, sillFt, offsetFt });
+    it('Left Eave lean-to on the End Storage building: outer wall, both end walls (on the gable lines, past the eave) and its storage partition', () => {
+      const s = build({ leanTos: [lt({ enclosure: 'custom', customWalls: { side: '2panel', front: 'closed', back: 'closed' }, storage: { end: 'back', lengthFt: 10 } })] }, { mode: 'endBack', lengthFt: 30 });
+      const L = s.leanTos[0];
+      const geo = eaveSurfaces(L, s.roofOverhangFt, resolveWalls(L));
+      const room = interiorRoom(s);
+      for (const o of [lo('outer', 6), lo('outer', 20), lo('front', 6), lo('back', 6), lo('partition', 6)]) {
+        const span = leanToOpeningSpan(geo, o);
+        expect(spanOnRoomWalls(room, span[0], span[1])).toBe(false);
+        expect(partTakesPress({ inside: true, room, span })).toBe(false);
+        expect(partTakesPress({ inside: false, room, span })).toBe(true);
+      }
+      // its front end wall IS on the room's front line (z = -25) — the span lies past the eave (x beyond 13), so no overlap
+      const fr = leanToOpeningSpan(geo, lo('front', 6));
+      expect(Math.abs(fr[0][2] - room.z0)).toBeLessThan(INTERIOR.wallLineTolFt);
+      expect(Math.min(Math.abs(fr[0][0]), Math.abs(fr[1][0]))).toBeGreaterThanOrEqual(13 - 1e-9);
+    });
+    it('Front Gable lean-to on a plain 30x40: outer wall and both end walls', () => {
+      const s = build({ width: 30, length: 40, leanTos: [lt({ attachedSide: 'Front Gable', lengthFt: 30, widthFt: 10 })] });
+      const L = s.leanTos[0];
+      const geo = gableSurfaces(L, s.roofOverhangFt, resolveWalls(L));
+      const room = interiorRoom(s);
+      for (const o of [lo('outer', 6), lo('front', 3, 3, 6.67), lo('back', 3, 3, 6.67)]) expect(partTakesPress({ inside: true, room, span: leanToOpeningSpan(geo, o) })).toBe(false);
+    });
+  });
+
+  it('spanOnRoomWalls: parallel to a line within 1 ft, overlapping its extent by 1 ft or more; never a perpendicular span', () => {
+    const room = { x0: -13, x1: 13, z0: -25, z1: -5 };
+    expect(spanOnRoomWalls(room, [-8, 5, -5.34], [2, 5, -5.34])).toBe(true); // on the partition line (fixture proud of it)
+    expect(spanOnRoomWalls(room, [-8, 5, -6.5], [2, 5, -6.5])).toBe(false); // 1.5 ft off the line
+    expect(spanOnRoomWalls(room, [13.34, 5, -20], [13.34, 5, -17])).toBe(true); // right eave, in the room
+    expect(spanOnRoomWalls(room, [13.34, 5, -4.5], [13.34, 5, -1.5])).toBe(false); // right eave, past the partition (0.5 ft in)
+    expect(spanOnRoomWalls(room, [13.34, 5, -6], [13.34, 5, -3])).toBe(true); // exactly 1 ft in
+    expect(spanOnRoomWalls(room, [-13, 5, -25.3], [-11, 5, -25.3])).toBe(true); // front gable corner part, 2 ft wide
+    expect(spanOnRoomWalls(room, [-12.5, 5, 25.3], [-12.9, 5, 25.3])).toBe(false); // on the back gable, hugging the eave line: perpendicular, never
+    expect(spanOnRoomWalls(room, [-21, 5, -25.2], [-15, 5, -25.2])).toBe(false); // lean-to end wall on the front line, past the eave
+    expect(spanOnRoomWalls(room, [-14, 5, -25.2], [-12, 5, -25.2])).toBe(true); // 1 ft of it inside the room's line
   });
 });

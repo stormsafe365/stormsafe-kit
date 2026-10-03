@@ -80,6 +80,7 @@ function ClassicShell({ structure, config, trimHex }: ShellProps) {
         wainscot={config.wainscot}
       />
       <LeanToSiding
+        structure={structure}
         leanTos={structure.leanTos}
         wallOrientation={config.panelOrientation}
         roofOrientation={config.roofOrientation}

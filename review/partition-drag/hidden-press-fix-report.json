@@ -1,0 +1,6271 @@
+{
+ "fix": "Interior press routing: only a part on the walls of the room you stand in takes a press (interiorView.partTakesPress)",
+ "hidden": {
+  "live": [
+   {
+    "part": 3,
+    "world": [
+     -8,
+     4,
+     25.18
+    ],
+    "size": [
+     8,
+     8,
+     0
+    ],
+    "pressAt": {
+     "x": 1162.8769,
+     "y": 624.9661,
+     "inFront": true
+    },
+    "looksLikeOnPartitionAt": [
+     -3.04,
+     4.93
+    ],
+    "skipped": "covered by a visible partition door hit plane"
+   },
+   {
+    "part": 9,
+    "world": [
+     13.15,
+     6.0417,
+     15.75
+    ],
+    "size": [
+     0.03,
+     1.25,
+     2.5
+    ],
+    "pressAt": {
+     "x": 822.5729,
+     "y": 594.3064,
+     "inFront": true
+    },
+    "looksLikeOnPartitionAt": [
+     6.2,
+     5.76
+    ],
+    "skipped": null,
+    "took": null,
+    "camMoved": true,
+    "rowsChanged": false,
+    "d3Changed": false,
+    "totalsSame": true,
+    "shot": "01-live-hidden-9.png"
+   },
+   {
+    "part": 10,
+    "world": [
+     13.095,
+     4.7917,
+     15.75
+    ],
+    "size": [
+     0.03,
+     1.25,
+     2.5
+    ],
+    "pressAt": {
+     "x": 822.6941,
+     "y": 616.1603,
+     "inFront": true
+    },
+    "looksLikeOnPartitionAt": [
+     6.17,
+     5.17
+    ],
+    "skipped": null,
+    "took": null,
+    "camMoved": true,
+    "rowsChanged": false,
+    "d3Changed": false,
+    "totalsSame": true,
+    "shot": "02-live-hidden-10.png"
+   },
+   {
+    "part": 11,
+    "world": [
+     9.75,
+     6.875,
+     25.15
+    ],
+    "size": [
+     2.5,
+     1.25,
+     0.03
+    ],
+    "pressAt": {
+     "x": 914.3831,
+     "y": 584.4347,
+     "inFront": true
+    },
+    "looksLikeOnPartitionAt": [
+     3.71,
+     6.02
+    ],
+    "skipped": "covered by a visible partition door hit plane"
+   },
+   {
+    "part": 12,
+    "world": [
+     9.75,
+     5.625,
+     25.095
+    ],
+    "size": [
+     2.5,
+     1.25,
+     0.03
+    ],
+    "pressAt": {
+     "x": 913.827,
+     "y": 601.9931,
+     "inFront": true
+    },
+    "looksLikeOnPartitionAt": [
+     3.71,
+     5.55
+    ],
+    "skipped": "covered by a visible partition door hit plane"
+   },
+   {
+    "part": 15,
+    "world": [
+     3,
+     4,
+     25.18
+    ],
+    "size": [
+     12,
+     8,
+     0
+    ],
+    "pressAt": {
+     "x": 1008.3587,
+     "y": 624.9661,
+     "inFront": true
+    },
+    "looksLikeOnPartitionAt": [
+     1.14,
+     4.93
+    ],
+    "skipped": "covered by a visible partition door hit plane"
+   }
+  ],
+  "new": [
+   {
+    "part": 3,
+    "world": [
+     -8,
+     4,
+     25.18
+    ],
+    "size": [
+     8,
+     8,
+     0
+    ],
+    "pressAt": {
+     "x": 1162.8769,
+     "y": 624.9661,
+     "inFront": true
+    },
+    "looksLikeOnPartitionAt": [
+     -3.04,
+     4.93
+    ],
+    "skipped": "covered by a visible partition door hit plane"
+   },
+   {
+    "part": 9,
+    "world": [
+     13.15,
+     6.0417,
+     15.75
+    ],
+    "size": [
+     0.03,
+     1.25,
+     2.5
+    ],
+    "pressAt": {
+     "x": 822.5729,
+     "y": 594.3064,
+     "inFront": true
+    },
+    "looksLikeOnPartitionAt": [
+     6.2,
+     5.76
+    ],
+    "skipped": null,
+    "took": null,
+    "camMoved": true,
+    "rowsChanged": false,
+    "d3Changed": false,
+    "totalsSame": true,
+    "shot": "01-new-hidden-9.png"
+   },
+   {
+    "part": 10,
+    "world": [
+     13.095,
+     4.7917,
+     15.75
+    ],
+    "size": [
+     0.03,
+     1.25,
+     2.5
+    ],
+    "pressAt": {
+     "x": 822.6941,
+     "y": 616.1603,
+     "inFront": true
+    },
+    "looksLikeOnPartitionAt": [
+     6.17,
+     5.17
+    ],
+    "skipped": null,
+    "took": null,
+    "camMoved": true,
+    "rowsChanged": false,
+    "d3Changed": false,
+    "totalsSame": true,
+    "shot": "02-new-hidden-10.png"
+   },
+   {
+    "part": 11,
+    "world": [
+     9.75,
+     6.875,
+     25.15
+    ],
+    "size": [
+     2.5,
+     1.25,
+     0.03
+    ],
+    "pressAt": {
+     "x": 914.3831,
+     "y": 584.4347,
+     "inFront": true
+    },
+    "looksLikeOnPartitionAt": [
+     3.71,
+     6.02
+    ],
+    "skipped": "covered by a visible partition door hit plane"
+   },
+   {
+    "part": 12,
+    "world": [
+     9.75,
+     5.625,
+     25.095
+    ],
+    "size": [
+     2.5,
+     1.25,
+     0.03
+    ],
+    "pressAt": {
+     "x": 913.827,
+     "y": 601.9931,
+     "inFront": true
+    },
+    "looksLikeOnPartitionAt": [
+     3.71,
+     5.55
+    ],
+    "skipped": "covered by a visible partition door hit plane"
+   },
+   {
+    "part": 15,
+    "world": [
+     3,
+     4,
+     25.18
+    ],
+    "size": [
+     12,
+     8,
+     0
+    ],
+    "pressAt": {
+     "x": 1008.3587,
+     "y": 624.9661,
+     "inFront": true
+    },
+    "looksLikeOnPartitionAt": [
+     1.14,
+     4.93
+    ],
+    "skipped": "covered by a visible partition door hit plane"
+   }
+  ]
+ },
+ "owner": {
+  "OWNER": {
+   "PZ": -5,
+   "contexts": {
+    "interior": {
+     "rollup": {
+      "ok": true,
+      "from": 13,
+      "got": 18.917,
+      "row": "13.917 left",
+      "elevX": 13.917,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$23,819.00"
+     },
+     "walk": {
+      "ok": true,
+      "from": 11.417,
+      "got": 7.5,
+      "row": "6 left",
+      "elevX": 6,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$23,819.00"
+     },
+     "chipsAfter": [
+      "6'",
+      "4'11\"",
+      "2'1\"",
+      "26'W",
+      "12'H",
+      "15'4\"H",
+      "36\"x80\"",
+      "10'x10'"
+     ],
+     "lookAroundOnEmptyWall": {
+      "ok": true,
+      "camMoved": true,
+      "progSame": true,
+      "d3Same": true,
+      "took": null
+     },
+     "dragAfterLookAround": {
+      "ok": true,
+      "from": 18.917,
+      "got": 16.917,
+      "row": "11.917 left",
+      "elevX": 11.917,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$23,819.00"
+     },
+     "clickOpens": {
+      "ok": true,
+      "openAfter": 1,
+      "rowsSame": true,
+      "d3Same": true
+     },
+     "lookAroundAfterDrags": {
+      "camMoved": true
+     },
+     "hint": "Drag a door to move it · drag elsewhere to look around · scroll to zoom"
+    },
+    "cutaway": {
+     "rollup": {
+      "ok": true,
+      "from": 13,
+      "got": 19.167,
+      "row": "14.167 left",
+      "elevX": 14.167,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$23,819.00"
+     },
+     "walk": {
+      "ok": true,
+      "from": 11.667,
+      "got": 7.917,
+      "row": "6.417 left",
+      "elevX": 6.417,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$23,819.00"
+     },
+     "chipsAfter": [
+      "26'",
+      "26'W",
+      "12'H",
+      "15'4\"H",
+      "13'3\" center clearance",
+      "50'",
+      "50'W",
+      "12'H",
+      "51' roof",
+      "6'5\"",
+      "4'9\"",
+      "1'10\"",
+      "26'W",
+      "12'H",
+      "15'4\"H",
+      "36\"x80\"",
+      "10'x10'"
+     ]
+    },
+    "exterior-iso": {
+     "rollup": {
+      "ok": true,
+      "from": 13,
+      "got": 19.167,
+      "row": "14.167 left",
+      "elevX": 14.167,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$23,819.00"
+     },
+     "walk": {
+      "ok": true,
+      "from": 11.667,
+      "got": 7.917,
+      "row": "6.417 left",
+      "elevX": 6.417,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$23,819.00"
+     },
+     "chipsAfter": [
+      "26'",
+      "26'W",
+      "12'H",
+      "15'4\"H",
+      "13'3\" center clearance",
+      "50'",
+      "50'W",
+      "12'H",
+      "51' roof"
+     ]
+    },
+    "exterior-inside": {
+     "rollup": {
+      "ok": true,
+      "from": 13,
+      "got": 19,
+      "row": "14 left",
+      "elevX": 14,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$23,819.00"
+     },
+     "walk": {
+      "ok": true,
+      "from": 11.5,
+      "got": 7.5,
+      "row": "6 left",
+      "elevX": 6,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$23,819.00"
+     },
+     "chipsAfter": [
+      "6'",
+      "5'",
+      "2'",
+      "26'W",
+      "12'H",
+      "15'4\"H",
+      "36\"x80\"",
+      "10'x10'"
+     ]
+    }
+   }
+  },
+  "OWNER2": {
+   "PZ": -5,
+   "contexts": {
+    "interior": {
+     "rollup": {
+      "ok": true,
+      "from": 13,
+      "got": 18.917,
+      "row": "13.917 left",
+      "elevX": 13.917,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$38,612.00"
+     },
+     "walk": {
+      "ok": true,
+      "from": 11.417,
+      "got": 7.5,
+      "row": "6 left",
+      "elevX": 6,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$38,612.00"
+     },
+     "chipsAfter": [
+      "7' low leg",
+      "9'6\" high side",
+      "10' lean-to W",
+      "3:12 pitch",
+      "6'",
+      "4'11\"",
+      "2'1\"",
+      "26'W",
+      "12'H",
+      "15'4\"H",
+      "36\"x80\"",
+      "10'x10'"
+     ],
+     "lookAroundOnEmptyWall": {
+      "ok": true,
+      "camMoved": true,
+      "progSame": true,
+      "d3Same": true,
+      "took": null
+     },
+     "dragAfterLookAround": {
+      "ok": true,
+      "from": 18.917,
+      "got": 16.917,
+      "row": "11.917 left",
+      "elevX": 11.917,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$38,612.00"
+     },
+     "clickOpens": {
+      "ok": true,
+      "openAfter": 1,
+      "rowsSame": true,
+      "d3Same": true
+     },
+     "lookAroundAfterDrags": {
+      "camMoved": true
+     },
+     "hint": "Drag a door to move it · drag elsewhere to look around · scroll to zoom",
+     "hiddenBackDoorPress": {
+      "ok": true,
+      "pressAt": {
+       "x": 1162.8769,
+       "y": 624.9661,
+       "inFront": true
+      },
+      "nearestInteractive": [
+       -8,
+       4,
+       25.18
+      ],
+      "took": false,
+      "draggingAtPress": false,
+      "selectedAtPress": {
+       "side": "partition",
+       "type": "walkDoor",
+       "offset": 7.5,
+       "width": 3
+      },
+      "camMoved": true,
+      "backDoor": [
+       21,
+       21
+      ],
+      "rowsChanged": false,
+      "totalsSame": true,
+      "shot": "20-new-OWNER2-interior-after-hidden-press.png"
+     }
+    },
+    "cutaway": {
+     "rollup": {
+      "ok": true,
+      "from": 13,
+      "got": 19.167,
+      "row": "14.167 left",
+      "elevX": 14.167,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$38,612.00"
+     },
+     "walk": {
+      "ok": true,
+      "from": 11.667,
+      "got": 7.917,
+      "row": "6.417 left",
+      "elevX": 6.417,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$38,612.00"
+     },
+     "chipsAfter": [
+      "7' low leg",
+      "9'6\" high side",
+      "10' lean-to W",
+      "3:12 pitch",
+      "3'",
+      "8'6\"",
+      "0'6\"",
+      "1'",
+      "1'6\"",
+      "7'6\"",
+      "1'",
+      "26'W",
+      "12'H",
+      "15'4\"H",
+      "13'3\" center clearance",
+      "6'5\"",
+      "4'9\"",
+      "1'10\"",
+      "26'W",
+      "12'H",
+      "15'4\"H",
+      "6'",
+      "31'",
+      "8'",
+      "50'W",
+      "12'H",
+      "51' roof",
+      "30' lean-to L",
+      "31' roof",
+      "5' no lean-to",
+      "15' no lean-to",
+      "10'x10'",
+      "3'x3'",
+      "sill 5'",
+      "10'x10'",
+      "36\"x80\"",
+      "30\"x30\"",
+      "sill 4'2\"",
+      "30\"x30\"",
+      "sill 4'2\"",
+      "36\"x80\"",
+      "10'x10'"
+     ]
+    },
+    "exterior-iso": {
+     "rollup": {
+      "ok": true,
+      "from": 13,
+      "got": 19.167,
+      "row": "14.167 left",
+      "elevX": 14.167,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$38,612.00"
+     },
+     "walk": {
+      "ok": true,
+      "from": 11.667,
+      "got": 7.917,
+      "row": "6.417 left",
+      "elevX": 6.417,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$38,612.00"
+     },
+     "chipsAfter": [
+      "7' low leg",
+      "9'6\" high side",
+      "10' lean-to W",
+      "3:12 pitch",
+      "30' lean-to L",
+      "31' roof",
+      "5' no lean-to",
+      "15' no lean-to",
+      "3'",
+      "8'6\"",
+      "0'6\"",
+      "1'",
+      "1'6\"",
+      "7'6\"",
+      "1'",
+      "26'W",
+      "12'H",
+      "15'4\"H",
+      "13'3\" center clearance",
+      "6'",
+      "31'",
+      "8'",
+      "50'W",
+      "12'H",
+      "51' roof",
+      "10'x10'",
+      "3'x3'",
+      "sill 5'",
+      "10'x10'",
+      "36\"x80\"",
+      "30\"x30\"",
+      "sill 4'2\"",
+      "30\"x30\"",
+      "sill 4'2\""
+     ]
+    }
+   }
+  },
+  "GCH": {
+   "PZ": 0,
+   "contexts": {
+    "interior": {
+     "rollup": {
+      "ok": true,
+      "from": 14,
+      "got": 18,
+      "row": "13 left",
+      "elevX": 13,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$45,856.00"
+     },
+     "walk": {
+      "ok": true,
+      "from": 4.5,
+      "got": 1.5,
+      "row": "0 left",
+      "elevX": 0,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$45,856.00"
+     },
+     "chipsAfter": [],
+     "lookAroundOnEmptyWall": {
+      "ok": true,
+      "camMoved": true,
+      "progSame": true,
+      "d3Same": true,
+      "took": null
+     },
+     "dragAfterLookAround": {
+      "ok": true,
+      "from": 18,
+      "got": 16,
+      "row": "11 left",
+      "elevX": 11,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$45,856.00"
+     },
+     "clickOpens": {
+      "ok": true,
+      "openAfter": 1,
+      "rowsSame": true,
+      "d3Same": true
+     },
+     "lookAroundAfterDrags": {
+      "camMoved": true
+     },
+     "hint": "Drag a door to move it · drag elsewhere to look around · scroll to zoom"
+    },
+    "cutaway": {
+     "rollup": {
+      "ok": true,
+      "from": 14,
+      "got": 18,
+      "row": "13 left",
+      "elevX": 13,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$45,856.00"
+     },
+     "walk": {
+      "ok": true,
+      "from": 4.5,
+      "got": 1.583,
+      "row": "0.083 left",
+      "elevX": 0.083,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$45,856.00"
+     },
+     "chipsAfter": [
+      "8' low leg",
+      "10' high side",
+      "12' lean-to W",
+      "2:12 pitch",
+      "40' lean-to L",
+      "41' roof",
+      "12' storage",
+      "3'",
+      "9'6\"",
+      "0'6\"",
+      "1'",
+      "1'6\"",
+      "8'6\"",
+      "1'",
+      "28'W",
+      "14'H",
+      "17'6\"H",
+      "15'2\" center clearance",
+      "6'",
+      "21'",
+      "8'",
+      "40'W",
+      "14'H",
+      "41' roof",
+      "0'1\"",
+      "9'11\"",
+      "5'",
+      "28'W",
+      "14'H",
+      "17'6\"H",
+      "3'",
+      "3'",
+      "6'x7'",
+      "10'x10'",
+      "3'x3'",
+      "sill 5'",
+      "10'x10'",
+      "36\"x80\"",
+      "30\"x30\"",
+      "sill 4'2\"",
+      "30\"x30\"",
+      "sill 4'2\"",
+      "36\"x80\"",
+      "10'x10'"
+     ]
+    },
+    "exterior-iso": {
+     "rollup": {
+      "ok": true,
+      "from": 14,
+      "got": 18,
+      "row": "13 left",
+      "elevX": 13,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$45,856.00"
+     },
+     "walk": {
+      "ok": true,
+      "from": 4.5,
+      "got": 1.583,
+      "row": "0.083 left",
+      "elevX": 0.083,
+      "totalsSame": true,
+      "camMoved": false,
+      "midCamMoved": false,
+      "draggingAfter": false,
+      "ptot": "$45,856.00"
+     },
+     "chipsAfter": [
+      "8' low leg",
+      "10' high side",
+      "12' lean-to W",
+      "2:12 pitch",
+      "40' lean-to L",
+      "41' roof",
+      "12' storage",
+      "3'",
+      "9'6\"",
+      "0'6\"",
+      "1'",
+      "1'6\"",
+      "8'6\"",
+      "1'",
+      "28'W",
+      "14'H",
+      "17'6\"H",
+      "15'2\" center clearance",
+      "6'",
+      "21'",
+      "8'",
+      "40'W",
+      "14'H",
+      "41' roof",
+      "3'",
+      "3'",
+      "6'x7'",
+      "10'x10'",
+      "3'x3'",
+      "sill 5'",
+      "10'x10'",
+      "36\"x80\"",
+      "30\"x30\"",
+      "sill 4'2\"",
+      "30\"x30\"",
+      "sill 4'2\""
+     ]
+    }
+   }
+  }
+ },
+ "regress": {
+  "identical": "16/16",
+  "drags": [
+   {
+    "label": "F1 front roll-up #1 (offset 8) screen-left (+X = +offset)",
+    "live": {
+     "from": [
+      -7,
+      5,
+      -20.18
+     ],
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "16",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "16",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F1 front roll-up #2 (offset 21) screen-left",
+    "live": {
+     "from": [
+      6,
+      5,
+      -20.18
+     ],
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F1 front walk door (offset 28.5, at the clamp) screen-right",
+    "live": {
+     "from": [
+      -11.583,
+      3.335,
+      -20.125
+     ],
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F1 back roll-up 8x8 (offset 21) screen-right",
+    "live": {
+     "from": [
+      -6,
+      4,
+      20.18
+     ],
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F1 back framed garage door 12x8 (offset 10) screen-left",
+    "live": {
+     "from": [
+      5,
+      4,
+      20.18
+     ],
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F1 left walk door (offset 6.5) screen-left",
+    "live": {
+     "from": [
+      -15.125,
+      3.335,
+      -13.5
+     ],
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F1 left framed opening 10x8 (offset 11) screen-right",
+    "live": {
+     "from": [
+      -15.18,
+      4,
+      -15
+     ],
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F1 right window #1 (offset 7.25, upper sash) screen-left",
+    "live": {
+     "from": [
+      15.15,
+      6.0417,
+      -12.75
+     ],
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "11.583",
+          "side": "left"
+         },
+         {
+          "val": "29.5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": true,
+      "lt": false
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "11.583",
+          "side": "left"
+         },
+         {
+          "val": "29.5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F1 LT front roll-up 6x6 (auto-centred) screen-right (front view dollied out 1.8x)",
+    "live": {
+     "from": [
+      21,
+      3,
+      -20.18
+     ],
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "11.583",
+          "side": "left"
+         },
+         {
+          "val": "29.5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "0"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "11.583",
+          "side": "left"
+         },
+         {
+          "val": "29.5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "0"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F1 LT front walk door (pressed on its top strip above the roll-up) screen-left (dollied out 1.8x)",
+    "live": {
+     "from": [
+      21,
+      3.335,
+      -20.125
+     ],
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "11.583",
+          "side": "left"
+         },
+         {
+          "val": "29.5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "0"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "8.5"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "11.583",
+          "side": "left"
+         },
+         {
+          "val": "29.5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "0"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "8.5"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "auto",
+          "offs": [
+           "1",
+           "4"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F1 LT back window #1 screen-left (back view dollied out 1.5x)",
+    "live": {
+     "from": [
+      19,
+      6.0417,
+      20.15
+     ],
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "11.583",
+          "side": "left"
+         },
+         {
+          "val": "29.5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "0"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "8.5"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "offset",
+          "offs": [
+           "0",
+           "6.75"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "11.583",
+          "side": "left"
+         },
+         {
+          "val": "29.5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "0"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "8.5"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "offset",
+          "offs": [
+           "0",
+           "6.75"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F1 LT back window #2 screen-left (back view dollied out 1.5x)",
+    "live": {
+     "from": [
+      23,
+      6.0417,
+      20.15
+     ],
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "11.583",
+          "side": "left"
+         },
+         {
+          "val": "29.5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "0"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "8.5"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "offset",
+          "offs": [
+           "0.167",
+           "4.083"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "11.583",
+          "side": "left"
+         },
+         {
+          "val": "29.5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "0"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "8.5"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "offset",
+          "offs": [
+           "0.167",
+           "4.083"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F1 LT STORAGE PARTITION frame-out 6x7 screen-right",
+    "live": {
+     "from": [
+      21,
+      3.5,
+      -7.82
+     ],
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "11.583",
+          "side": "left"
+         },
+         {
+          "val": "29.5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "0"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "8.5"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "offset",
+          "offs": [
+           "0.167",
+           "4.083"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "5.917",
+          "side": "left"
+         },
+         {
+          "val": "18.25",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "14.417",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "0",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "11.583",
+          "side": "left"
+         },
+         {
+          "val": "29.5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6.417",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "7.833",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Left Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "0"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "offset",
+          "offs": [
+           "8.5"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "offset",
+          "offs": [
+           "0.167",
+           "4.083"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Right Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F2 LT back window #1 screen-left (back view dollied out 1.3x)",
+    "live": {
+     "from": [
+      -28,
+      6.0417,
+      10.15
+     ],
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "3",
+          "side": "left"
+         },
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Right Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "offset",
+          "offs": [
+           "0",
+           "6.75"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Left Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "3",
+          "side": "left"
+         },
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Right Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "offset",
+          "offs": [
+           "0",
+           "6.75"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Left Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F2 LT back window #2 screen-right into the clamp (dollied out 1.3x)",
+    "live": {
+     "from": [
+      -24,
+      6.0417,
+      10.15
+     ],
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "3",
+          "side": "left"
+         },
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Right Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "offset",
+          "offs": [
+           "0.167",
+           "9.5"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Left Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "3",
+          "side": "left"
+         },
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Right Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "offset",
+          "offs": [
+           "0.167",
+           "9.5"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "auto",
+          "offs": [
+           "3"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Left Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   },
+   {
+    "label": "F2 LT STORAGE PARTITION frame-out 6x7 screen-left",
+    "live": {
+     "from": [
+      -26,
+      3.5,
+      -2.18
+     ],
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "3",
+          "side": "left"
+         },
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Right Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "offset",
+          "offs": [
+           "0.167",
+           "9.5"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "offset",
+          "offs": [
+           "5"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Left Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "new": {
+     "moved": {
+      "main": false,
+      "lt": true
+     },
+     "rows": {
+      "ent": [
+       {
+        "kind": "re",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "3",
+          "side": "left"
+         },
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "re",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "5",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "we",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Left Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         },
+         {
+          "val": "8",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ne",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "2",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Right Eave Side",
+        "rows": [
+         {
+          "val": "6",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": [
+         {
+          "val": "",
+          "side": "left"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Back Gable End",
+        "rows": [
+         {
+          "val": "4",
+          "side": "right"
+         }
+        ]
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       },
+       {
+        "kind": "ace",
+        "loc": "Front Gable End",
+        "rows": []
+       }
+      ],
+      "lts": [
+       {
+        "side": "Right Eave",
+        "accs": [
+         {
+          "t": "rollup",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "2"
+          ]
+         },
+         {
+          "t": "wtd",
+          "loc": "front",
+          "pos": "auto",
+          "offs": [
+           "1"
+          ]
+         },
+         {
+          "t": "win",
+          "loc": "back",
+          "pos": "offset",
+          "offs": [
+           "0.167",
+           "9.5"
+          ]
+         },
+         {
+          "t": "frameout",
+          "loc": "partition",
+          "pos": "offset",
+          "offs": [
+           "5"
+          ]
+         }
+        ]
+       },
+       {
+        "side": "Left Eave",
+        "accs": []
+       }
+      ]
+     }
+    },
+    "diffs": []
+   }
+  ]
+ },
+ "problems": {
+  "hidden-live": [],
+  "hidden-new": [],
+  "owner-new": [],
+  "regress-live": [],
+  "regress-new": []
+ }
+}

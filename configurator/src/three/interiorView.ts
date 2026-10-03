@@ -1,4 +1,5 @@
-import type { StructureModel } from '@/engine/geometry';
+import { openingWorldTransform, type StructureModel } from '@/engine/geometry';
+import type { Opening } from '@/types/building';
 
 /**
  * Walk-in INTERIOR camera mode — pure math (no three.js, no React), so the
@@ -38,6 +39,18 @@ export const INTERIOR = {
   /** Keyboard walk speed (ft/s) and turn speed (rad/s). */
   walkFtPerS: 8,
   turnRadPerS: Math.PI / 2,
+  /**
+   * Press routing inside (partTakesPress): a part is on one of the room's
+   * walls when its along-wall span lies within this of that wall's plan line
+   * (fixtures mount COMPONENT_OUTSET ≈ 4" proud of the framing line)...
+   */
+  wallLineTolFt: 1,
+  /**
+   * ...and overlaps the line's extent by at least this (a part that only meets
+   * the room at a corner from beyond a wall line — a lean-to end wall, an eave
+   * part just past the partition — does not).
+   */
+  wallSpanMinFt: 1,
 } as const;
 
 export type Vec3 = [number, number, number];
@@ -233,15 +246,63 @@ export function walk(p: Vec3, yaw: number, forwardFt: number, rightFt: number): 
 /**
  * Whether a pointerdown on the canvas starts the look-around drag (InteriorWalk).
  * The parts' own handlers (Openings / LeanToSiding onDown, run first by R3F)
- * set `dragging` when they take a press — that press drags the part, inside
- * exactly as outside (owner 10/3/26: doors on the storage partition could not
- * be moved from the Interior view), so it never also turns the camera. A press
- * beside every part looks around as before. Only the primary mouse button.
+ * set `dragging` when they take a press (partTakesPress: a part on the walls
+ * of the room you stand in) — that press drags the part, inside exactly as
+ * outside (owner 10/3/26: doors on the storage partition could not be moved
+ * from the Interior view), so it never also turns the camera. A press beside
+ * every part, or where only an out-of-sight part projects, looks around as
+ * before. Only the primary mouse button.
  */
 export function lookPressStarts(p: { inside: boolean; active: boolean; partDragging: boolean; pointerType: string; button: number }): boolean {
   if (!p.inside || p.active || p.partDragging) return false;
   if (p.pointerType === 'mouse' && p.button !== 0) return false;
   return true;
+}
+
+/** Length of the overlap of [a0, a1] and [b0, b1] (either order), 0 when apart. */
+function overlap(a0: number, a1: number, b0: number, b1: number): number {
+  return Math.max(0, Math.min(Math.max(a0, a1), Math.max(b0, b1)) - Math.max(Math.min(a0, a1), Math.min(b0, b1)));
+}
+
+/**
+ * Whether a part whose along-wall span runs from world point `a` to `b` is on
+ * one of the room's own walls: the span parallel to and within
+ * INTERIOR.wallLineTolFt of one of the room's four plan lines (x0 / x1 / z0 /
+ * z1), overlapping that line's extent by INTERIOR.wallSpanMinFt or more. The
+ * walls are axis-aligned, so a part on a perpendicular wall never matches, and
+ * one beyond a wall line (the storage room past the partition, a lean-to, the
+ * open bay past a GCH divider) fails the line or the overlap.
+ */
+export function spanOnRoomWalls(room: Pick<InteriorRoom, 'x0' | 'x1' | 'z0' | 'z1'>, a: Vec3, b: Vec3): boolean {
+  const tol = INTERIOR.wallLineTolFt;
+  const min = INTERIOR.wallSpanMinFt;
+  const flat = 0.01; // a span on an x-line keeps one x (and vice versa) — fixtures are axis-aligned
+  const onX = (x: number) => Math.abs(a[0] - b[0]) <= flat && Math.abs(a[0] - x) <= tol && Math.abs(b[0] - x) <= tol && overlap(a[2], b[2], room.z0, room.z1) >= min;
+  const onZ = (z: number) => Math.abs(a[2] - b[2]) <= flat && Math.abs(a[2] - z) <= tol && Math.abs(b[2] - z) <= tol && overlap(a[0], b[0], room.x0, room.x1) >= min;
+  return onX(room.x0) || onX(room.x1) || onZ(room.z0) || onZ(room.z1);
+}
+
+/** World end points of a main-building opening's along-wall span (at its mid height, on its mounting face). */
+export function openingSpan(o: Pick<Opening, 'side' | 'offset' | 'width' | 'sillHeight' | 'height'>, s: StructureModel): [Vec3, Vec3] {
+  const y = o.sillHeight + o.height / 2;
+  return [openingWorldTransform(o.side, o.offset - o.width / 2, y, s).pos, openingWorldTransform(o.side, o.offset + o.width / 2, y, s).pos];
+}
+
+/**
+ * Whether a press on a part (Openings / LeanToSiding onDown) takes it: select,
+ * drag, click-to-open, write-back. Outside the walk-in Interior: always, as
+ * today. Inside: only a part on the walls of the room you stand in
+ * (spanOnRoomWalls). R3F raycasts interactive objects only, so the walls never
+ * block a press — a press on visually empty wall where an out-of-sight part
+ * projects (the back gable's roll-up in the storage room behind the partition,
+ * an eave window past the partition, a lean-to door outside) would otherwise
+ * grab that part and rewrite its program position. A press that is not taken
+ * is not stopped either: the look-around (lookPressStarts) gets it, exactly
+ * like a press on bare wall.
+ */
+export function partTakesPress(p: { inside: boolean; room: Pick<InteriorRoom, 'x0' | 'x1' | 'z0' | 'z1'>; span: [Vec3, Vec3] }): boolean {
+  if (!p.inside) return true;
+  return spanOnRoomWalls(p.room, p.span[0], p.span[1]);
 }
 
 /** Key that changes only when the room box / pose would change (size, eave, partitions). */

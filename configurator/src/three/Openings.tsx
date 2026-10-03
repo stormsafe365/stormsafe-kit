@@ -15,6 +15,7 @@ import { ftIn, roofLengthLabel } from './dimLabels';
 import { useOpenAmount } from './useOpenAmount';
 import { OpeningHitPlane } from './OpeningFixture';
 import { partitionSpacingVisible } from './spacingVisibility';
+import { interiorRoom, openingSpan, partTakesPress } from './interiorView';
 import { chamferFillGeometry, chamferFrameGeometry, chamferPanelGeometry, cut45Leg } from './cut45Geometry';
 import { EnhancedFixture } from './enhanced/fixtures';
 import { fixtureFaceZ, mainOpeningsSheeted } from './enhanced/fixtureLayout';
@@ -258,11 +259,17 @@ function DraggableOpening({
   // Uses window-level listeners + manual raycast so the drag never depends on
   // R3F pointer-capture and OrbitControls can't fight it.
   const onDown = (e: ThreeEvent<PointerEvent>) => {
+    // Inside the walk-in Interior too (owner 10/3/26: partition doors could not
+    // be moved) a press ON a part drags it — but only a part on the walls of the
+    // room you stand in (partTakesPress): R3F raycasts interactive objects
+    // only, so a press on empty wall where an out-of-sight part projects (the
+    // storage room behind the partition, a lean-to) would otherwise grab that
+    // part and rewrite its position. Not taken = not stopped: the look-around
+    // gets it, like a press on bare wall. Taken: `dragging` is set here, before
+    // InteriorWalk's own canvas listener runs, so the look-around never starts
+    // (lookPressStarts).
+    if (!partTakesPress({ inside: useEditorStore.getState().interiorView, room: interiorRoom(structure), span: openingSpan(opening, structure) })) return;
     e.stopPropagation();
-    // Same inside the walk-in Interior (owner 10/3/26: partition doors could
-    // not be moved): a press ON a part drags it — `dragging` is set here,
-    // before InteriorWalk's own canvas listener runs, so the look-around never
-    // starts (lookPressStarts). A press beside a part still looks around.
     selectOpening(opening.id);
     setActiveWall(opening.side);
     setDragging(true);

@@ -11750,19 +11750,69 @@ function dimElevSVG(faceW, wallH, peakH, isGable, items, gchFront, frontSide, cl
     o+='<polygon points="'+poly([[0,wallH],[faceW/2,peak],[faceW,wallH]])+'" fill="rgba(255,255,255,.03)" stroke="'+DIM_C.wall+'" stroke-width="1.2" stroke-linejoin="round"/>';
     var pin=6;
     o+='<rect x="'+(X(0)+pin).toFixed(1)+'" y="'+(Y(wallH)+pin).toFixed(1)+'" width="'+(faceW*s-2*pin).toFixed(1)+'" height="'+(wallH*s-2*pin).toFixed(1)+'" fill="none" stroke="'+DIM_C.wall+'" stroke-width="1"/>';
-    o+=_dimT(X(faceW/2), Y(wallH)+pin+11, 'PARTITION WALL &#183; gable-only sheeting &#183; open carport front', {anchor:'middle',size:7.5,weight:600,fill:DIM_C.teal,ls:.4});
+    // caption: 8.5 where the partition is wide enough, shrunk (never below 7) so it stays inside the inset on a narrow GCH
+    var capSz=Math.max(7,Math.min(8.5,((faceW*s-2*pin-12)/55-0.4)/0.58));
+    o+=_dimT(X(faceW/2), Y(wallH)+pin+11, 'PARTITION WALL &#183; gable-only sheeting &#183; open carport front', {anchor:'middle',size:+capSz.toFixed(1),weight:600,fill:DIM_C.teal,ls:.4});
   } else if(x.open){
     o+=_dimT(X(faceW/2), Y(wallH)+16, 'open wall', {anchor:'middle',size:10});
   }
-  // a lean-to hanging off THIS wall: dashed footprint to its connection height
+  // a lean-to hanging off THIS wall: dashed footprint to its connection height.
+  // Its label never sits on an opening (a door / frame-out into the lean-to is
+  // a normal layout) and never leaves the drawing: it takes the first spot that
+  // crosses no opening rect and no sill / clearance / frame-line / open-wall /
+  // peak label — centred in the footprint, else the widest opening-free span
+  // across the footprint (mid-height, then higher up under the connection
+  // line), else just above the dashed line where the wall rises past it, else
+  // beside the footprint on the wall at its mid-height, else above the wall
+  // (only a row whose text still sits inside the viewBox), else centred in the
+  // footprint on a small panel-coloured backing painted after the openings.
+  var blocks=[]; // px boxes {x0,x1,y0,y1} a footprint label must stay clear of
+  sorted.forEach(function(it){
+    var yo=it.yo||0; blocks.push({x0:X(it.x),x1:X(it.x+it.w),y0:Y(yo+it.h),y1:Y(yo)});
+    if(yo>0.1){ var scx=X(it.x+it.w/2), scy=(Y(0)+Y(yo))/2; blocks.push({x0:scx-28,x1:scx+28,y0:scy-6,y1:scy+8}); } // its sill label
+  });
+  if(clr&&isGable&&!x.prof){ var ccy=Y(Math.min(clr.center,peak)); blocks.push({x0:X(faceW/2)-72,x1:X(faceW/2)+72,y0:ccy-2,y1:ccy+12}); } // Center clearance label
+  if(truss.length&&x.oc) blocks.push({x0:X(0),x1:X(0)+96,y0:Y(wallH)-20,y1:Y(wallH)-7}); // "frame lines N′ OC"
+  if(x.open&&!gchFront) blocks.push({x0:X(faceW/2)-32,x1:X(faceW/2)+32,y0:Y(wallH)+6,y1:Y(wallH)+19}); // "open wall"
+  if(isGable&&!x.prof) blocks.push({x0:X(faceW/2)-70,x1:X(faceW/2)+70,y0:Y(peak)-19,y1:Y(peak)-7}); // "Peak …"
+  function clearOf(b){ return !blocks.some(function(q){ return b.x0<q.x1&&b.x1>q.x0&&b.y0<q.y1&&b.y1>q.y0; }); }
+  var ltLab=''; // footprint labels, painted after the openings (a backed fallback has to sit on top of the hatch)
   foot.forEach(function(q){
-    var l=q.l, c=l.conn, x0=q.x0, txt='LT'+l.n+' · '+l.w+'′ × '+l.ll+'′ lean-to', tw=txt.length*6.4;
+    var l=q.l, c=l.conn, x0=q.x0, x1=x0+l.len, txt='LT'+l.n+' · '+l.w+'′ × '+l.ll+'′ lean-to', tw=txt.length*6.4, th=11, pos=null, backed=false;
     o+='<rect x="'+X(x0)+'" y="'+Y(c)+'" width="'+(l.len*s).toFixed(1)+'" height="'+(c*s).toFixed(1)+'" fill="rgba(167,139,250,.05)" stroke="'+DIM_K.lt+'" stroke-opacity=".8" stroke-width="1.2" stroke-dasharray="5 4"/>';
-    if(c*s>=36 && l.len*s>=tw+12) o+=_dimT(X(x0+l.len/2), Y(c/2)+4, txt, {anchor:'middle',size:10.5,fill:DIM_K.ltText});
-    else {
-      var xa=null; for(var xx=x0; xx<=x0+l.len/2+E; xx+=0.5){ if((hAt(xx)-c)*s>=16){ xa=xx; break; } }
-      o+=(xa!==null)?_dimT(X(xa)+6, Y(c)-5, txt, {size:10,fill:DIM_K.ltText}):_dimT(X(x0)+6, Y(wallH)-22, txt, {size:10,fill:DIM_K.ltText});
+    function mbox(cx,base){ return {x0:cx-tw/2,x1:cx+tw/2,y0:base-th+2,y1:base+3}; }
+    function lbox(lx,base){ return {x0:lx,x1:lx+tw,y0:base-th+2,y1:base+3}; }
+    // 1. centred in the footprint
+    if(c*s>=36 && l.len*s>=tw+12 && clearOf(mbox(X(x0+l.len/2),Y(c/2)+4))) pos=[X(x0+l.len/2),Y(c/2)+4,'middle'];
+    // 2. the widest opening-free span across the footprint, mid-height first
+    if(!pos && c*s>=36) [c/2, c*0.78].some(function(hh){
+      var base=Y(hh)+4, by0=base-th+2, by1=base+3, edges=[X(x0),X(x1)], best=null;
+      blocks.forEach(function(bb){ if(bb.y0<by1&&bb.y1>by0){ edges.push(bb.x0); edges.push(bb.x1); } });
+      edges=edges.filter(function(v){ return v>=X(x0)-E&&v<=X(x1)+E; }).sort(function(a,b){ return a-b; });
+      for(var i=0;i<edges.length-1;i++){ var gw=edges[i+1]-edges[i], mid=(edges[i]+edges[i+1])/2; if(gw>=tw+10 && clearOf(mbox(mid,base)) && (!best||gw>best.w)) best={cx:mid,w:gw}; }
+      if(best) pos=[best.cx,base,'middle'];
+      return !!best;
+    });
+    // 3. just above the dashed connection line where the wall rises past it
+    if(!pos) for(var xx=x0; xx<=x1-tw/s+E; xx+=0.5){ if((hAt(xx)-c)*s>=16 && (hAt(xx+tw/s)-c)*s>=16 && clearOf(lbox(X(xx)+6,Y(c)-5))){ pos=[X(xx)+6,Y(c)-5,'start']; break; } }
+    // 4. beside the footprint on the wall at its mid-height: past its far end, else before its near end (inside the wall)
+    if(!pos && c*s>=36){
+      var by=Y(c/2)+4, rx=X(x1)+8, lx=X(x0)-8-tw;
+      if(rx+tw<=X(faceW)-4 && clearOf(lbox(rx,by))) pos=[rx,by,'start'];
+      else if(lx>=X(0)+4 && clearOf(lbox(lx,by))) pos=[lx,by,'start'];
     }
+    // 5. above the wall — a row only when its text stays inside the viewBox (an eave wall tops out at the margin)
+    if(!pos) [22,36].some(function(yy){
+      var base=Y(wallH)-yy; if(base-th<1) return false;
+      for(var xx2=x0; xx2<=Math.min(x1-0.5,faceW-(tw+6)/s)+E; xx2+=1){ if(clearOf(lbox(X(xx2)+6,base))){ pos=[X(xx2)+6,base,'start']; return true; } }
+      return false;
+    });
+    // 6. centred in the footprint on a backing — always inside the drawing, always legible
+    if(!pos){ pos=[Math.max(tw/2+4,Math.min(VW-tw/2-4,X(x0+l.len/2))),(c*s>=36)?Y(c/2)+4:Y(c)+th,'middle']; backed=true; }
+    var bx=(pos[2]==='middle')?mbox(pos[0],pos[1]):lbox(pos[0],pos[1]);
+    if(backed) ltLab+='<rect x="'+(bx.x0-4).toFixed(1)+'" y="'+(bx.y0-1).toFixed(1)+'" width="'+(tw+8).toFixed(1)+'" height="'+(th+3).toFixed(1)+'" rx="2" fill="'+DIM_C.panel+'" fill-opacity=".92"/>';
+    ltLab+=_dimT(pos[0], pos[1], txt, {anchor:pos[2],size:pos[2]==='middle'?10.5:10,fill:DIM_K.ltText});
+    blocks.push(bx); // the next lean-to's label stays clear of this one
   });
   // frame lines (eave views) at the build's OC spacing
   truss.forEach(function(t){ if(t<=E||t>=faceW-E) return; o+='<line x1="'+X(t)+'" y1="'+gy.toFixed(1)+'" x2="'+X(t)+'" y2="'+Y(hAt(t))+'" stroke="rgba(255,255,255,.12)" stroke-width="1" stroke-dasharray="3 4"/>'; });
@@ -11781,7 +11831,7 @@ function dimElevSVG(faceW, wallH, peakH, isGable, items, gchFront, frontSide, cl
   if(clr&&isGable&&!x.prof){
     var cy=Y(Math.min(clr.center,peak));
     o+='<line x1="'+X(0)+'" y1="'+cy+'" x2="'+X(faceW)+'" y2="'+cy+'" stroke="'+DIM_C.orange+'" stroke-width="1" stroke-dasharray="5 3"/>';
-    o+=_dimT(X(faceW/2), cy+9, 'Center clearance ≈ '+_dimFtIn(clr.center), {anchor:'middle',size:8,weight:500,fill:DIM_C.orange});
+    o+=_dimT(X(faceW/2), cy+9, 'Center clearance ≈ '+_dimFtIn(clr.center), {anchor:'middle',size:9,weight:500,fill:DIM_C.orange});
   }
   // openings: outlined rectangle in the kind colour, faint hatch, W×H label
   // (+ sill). Framed openings can opt into inch labels (display only — the
@@ -11793,8 +11843,9 @@ function dimElevSVG(faceW, wallH, peakH, isGable, items, gchFront, frontSide, cl
     if(it.type==='win') o+='<line x1="'+(rx+rw/2).toFixed(1)+'" y1="'+ry+'" x2="'+(rx+rw/2).toFixed(1)+'" y2="'+(ry+rh).toFixed(1)+'" stroke="'+col+'" stroke-opacity=".45" stroke-width=".8"/><line x1="'+rx+'" y1="'+(ry+rh/2).toFixed(1)+'" x2="'+(rx+rw).toFixed(1)+'" y2="'+(ry+rh/2).toFixed(1)+'" stroke="'+col+'" stroke-opacity=".45" stroke-width=".8"/>';
     if(it.type==='wtd') o+='<circle cx="'+(rx+rw*.8).toFixed(1)+'" cy="'+(ry+rh*.55).toFixed(1)+'" r="'+Math.max(1.5,s*.12).toFixed(1)+'" fill="'+col+'"/>';
     o+=_dimT(rx+rw/2, (rh>=26)?ry+13:ry+rh/2+3, _f(it.w)+'×'+_f(it.h), {anchor:'middle',size:(rw<56?8:9.5),weight:500,fill:DIM_C.text});
-    if(yo>0.1) o+=_dimT(rx+rw/2, (Y(0)+Y(yo))/2+3, 'sill '+_f(yo), {anchor:'middle',size:7.5});
+    if(yo>0.1) o+=_dimT(rx+rw/2, (Y(0)+Y(yo))/2+3, 'sill '+_f(yo), {anchor:'middle',size:8.5});
   });
+  o+=ltLab; // lean-to footprint labels on top of the openings
   // dimension chain: corner → opening edges → corner, then the overall
   var dy=gy+18, stops=[0];
   sorted.forEach(function(it){ stops.push(it.x); stops.push(it.x+it.w); }); stops.push(faceW);
@@ -11806,8 +11857,8 @@ function dimElevSVG(faceW, wallH, peakH, isGable, items, gchFront, frontSide, cl
     for(var i=0;i<stops.length-1;i++){
       var a=stops[i], b=stops[i+1], d=b-a; if(d<=0.02) continue;
       var inside=sorted.some(function(it){ return it.x<=a+0.01 && it.x+it.w>=b-0.01; }), wpx=(b-a)*s, lab=_dimFtIn(d), cx=X((a+b)/2), ly=dy-5;
-      if(wpx<24){ var half=lab.length*2.2+2, row=(cx-half>=lastBelow[0]+3)?0:1; ly=dy+12+row*10; lastBelow[row]=cx+half; } // narrow gaps: labelled below the line, a second row when two would touch
-      o+=_dimT(cx, ly, lab, {anchor:'middle',size:wpx<24?7.5:9,weight:inside?500:400,fill:inside?DIM_C.text:DIM_C.dim});
+      if(wpx<24){ var half=lab.length*2.5+2, row=(cx-half>=lastBelow[0]+3)?0:1; ly=dy+13+row*11; lastBelow[row]=cx+half; } // narrow gaps: labelled below the line, a second row when two would touch
+      o+=_dimT(cx, ly, lab, {anchor:'middle',size:wpx<24?8.5:9,weight:inside?500:400,fill:inside?DIM_C.text:DIM_C.dim});
     }
   }
   var dy2=sorted.length?gy+52:gy+24;

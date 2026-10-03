@@ -1,80 +1,388 @@
 
-## A-cci-30x40x12-rollups-walk-win-leanto-storage  old ptot $43,108.00  new ptot $43,108.00  SAME
-- quote: ptot after print old $43,108.00 new $43,108.00 same; cards old 4 new 5
-  ✓ Front: old 20 figures / new 20
-  ✓ Back: old 18 figures / new 18
-  ✓ Right Eave: old 11 figures / new 14  (new adds 10′×1, 30′×1, 4′×1)
-  ✓ Left Eave: old 13 figures / new 16  (new adds 12′×1, 40′×1, 4′×1)
-  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels)
+## A-cci-30x40x12-rollups-walk-win-leanto-storage  30x40x12 standard CCI  ptot old $43,108.00 new $43,108.00 SAME; end-of-build old $43,108.00 new $43,108.00 same
+- quote: ptot after print old $43,108.00 new $43,108.00 same; cards old 4 new 5; pdf pages old 7 new 7; shot problems old 0 new 0
+  ✓ Front: figures old 20 / new 20; openings old 4 / new 4
+  ✓ Back: figures old 18 / new 18; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels, 1 openings)
   notes identical
-  rest-of-document byte-identical (108424 chars; spacing page removed, base64 images + per-print random ids normalised)
-- contract: ptot after print old $43,108.00 new $43,108.00 same; cards old 4 new 5
-  ✓ Front: old 20 figures / new 20
-  ✓ Back: old 18 figures / new 18
-  ✓ Right Eave: old 11 figures / new 14  (new adds 10′×1, 30′×1, 4′×1)
-  ✓ Left Eave: old 13 figures / new 16  (new adds 12′×1, 40′×1, 4′×1)
-  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels)
+  rest-of-document byte-identical (108424 chars)
+- contract: ptot after print old $43,108.00 new $43,108.00 same; cards old 4 new 5; pdf pages old 9 new 9; shot problems old 0 new 0
+  ✓ Front: figures old 20 / new 20; openings old 4 / new 4
+  ✓ Back: figures old 18 / new 18; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels, 1 openings)
   notes identical
-  rest-of-document byte-identical (96323 chars; spacing page removed, base64 images + per-print random ids normalised)
-- revised: ptot after print old $43,108.00 new $43,108.00 same; cards old 4 new 5
-  ✓ Front: old 20 figures / new 20
-  ✓ Back: old 18 figures / new 18
-  ✓ Right Eave: old 11 figures / new 14  (new adds 10′×1, 30′×1, 4′×1)
-  ✓ Left Eave: old 13 figures / new 16  (new adds 12′×1, 40′×1, 4′×1)
-  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels)
+  rest-of-document byte-identical (96323 chars)
+- revised: ptot after print old $43,108.00 new $43,108.00 same; cards old 4 new 5; pdf pages old 5 new 5; shot problems old 0 new 0
+  ✓ Front: figures old 20 / new 20; openings old 4 / new 4
+  ✓ Back: figures old 18 / new 18; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels, 1 openings)
   notes identical
-  rest-of-document byte-identical (9311 chars; spacing page removed, base64 images + per-print random ids normalised)
+  rest-of-document byte-identical (9311 chars)
 
-## B-cci-26x50x12-endstorage-30back-partition-doors  old ptot $38,612.00  new ptot $38,612.00  SAME
-- quote: ptot after print old $38,612.00 new $38,612.00 same; cards old 5 new 5
-  ✓ Front: old 20 figures / new 20
-  ✓ Back: old 18 figures / new 18
-  ✓ Storage Partition (interior) — 30′ from the back end · seen from the front: old 13 figures / new 13
-  ✓ Right Eave: old 11 figures / new 12  (new adds 4′×1)
-  ✓ Left Eave: old 13 figures / new 16  (new adds 10′×1, 30′×1, 4′×1)
+## B-cci-26x50x12-endstorage-30back-partition-doors  26x50x12 standard CCI  ptot old $38,612.00 new $38,612.00 SAME; end-of-build old $38,612.00 new $38,612.00 same
+- quote: ptot after print old $38,612.00 new $38,612.00 same; cards old 5 new 5; pdf pages old 8 new 7; shot problems old 0 new 0
+  ✓ Front: figures old 20 / new 20; openings old 4 / new 4
+  ✓ Back: figures old 18 / new 18; openings old 3 / new 3
+  ✓ Storage Partition (interior) — 30′ from the back end · seen from the front: figures old 13 / new 13; openings old 2 / new 2
+  ✓ Right Eave: figures old 11 / new 12; openings old 2 / new 2  (new adds 4′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
   notes identical
-  rest-of-document byte-identical (103022 chars; spacing page removed, base64 images + per-print random ids normalised)
-- contract: ptot after print old $38,612.00 new $38,612.00 same; cards old 5 new 5
-  ✓ Front: old 20 figures / new 20
-  ✓ Back: old 18 figures / new 18
-  ✓ Storage Partition (interior) — 30′ from the back end · seen from the front: old 13 figures / new 13
-  ✓ Right Eave: old 11 figures / new 12  (new adds 4′×1)
-  ✓ Left Eave: old 13 figures / new 16  (new adds 10′×1, 30′×1, 4′×1)
+  rest-of-document byte-identical (103022 chars)
+- contract: ptot after print old $38,612.00 new $38,612.00 same; cards old 5 new 5; pdf pages old 10 new 9; shot problems old 0 new 0
+  ✓ Front: figures old 20 / new 20; openings old 4 / new 4
+  ✓ Back: figures old 18 / new 18; openings old 3 / new 3
+  ✓ Storage Partition (interior) — 30′ from the back end · seen from the front: figures old 13 / new 13; openings old 2 / new 2
+  ✓ Right Eave: figures old 11 / new 12; openings old 2 / new 2  (new adds 4′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
   notes identical
-  rest-of-document byte-identical (92496 chars; spacing page removed, base64 images + per-print random ids normalised)
-- revised: ptot after print old $38,612.00 new $38,612.00 same; cards old 5 new 5
-  ✓ Front: old 20 figures / new 20
-  ✓ Back: old 18 figures / new 18
-  ✓ Storage Partition (interior) — 30′ from the back end · seen from the front: old 13 figures / new 13
-  ✓ Right Eave: old 11 figures / new 12  (new adds 4′×1)
-  ✓ Left Eave: old 13 figures / new 16  (new adds 10′×1, 30′×1, 4′×1)
+  rest-of-document byte-identical (92496 chars)
+- revised: ptot after print old $38,612.00 new $38,612.00 same; cards old 5 new 5; pdf pages old 6 new 5; shot problems old 0 new 0
+  ✓ Front: figures old 20 / new 20; openings old 4 / new 4
+  ✓ Back: figures old 18 / new 18; openings old 3 / new 3
+  ✓ Storage Partition (interior) — 30′ from the back end · seen from the front: figures old 13 / new 13; openings old 2 / new 2
+  ✓ Right Eave: figures old 11 / new 12; openings old 2 / new 2  (new adds 4′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
   notes identical
-  rest-of-document byte-identical (9744 chars; spacing page removed, base64 images + per-print random ids normalised)
+  rest-of-document byte-identical (9744 chars)
 
-## C-cci-gch-28x40x14-enc20  old ptot $45,856.00  new ptot $45,856.00  SAME
-- quote: ptot after print old $45,856.00 new $45,856.00 same; cards old 4 new 5
-  ✓ Front: old 27 figures / new 27
-  ✓ Back: old 18 figures / new 18
-  ✓ Right Eave: old 11 figures / new 12  (new adds 4′×1)
-  ✓ Left Eave: old 13 figures / new 16  (new adds 12′×1, 40′×1, 4′×1)
-  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (12 labels)
+## C-cci-gch-28x40x14-enc20  28x40x14 gch CCI  ptot old $45,856.00 new $45,856.00 SAME; end-of-build old $45,856.00 new $45,856.00 same
+- quote: ptot after print old $45,856.00 new $45,856.00 same; cards old 4 new 5; pdf pages old 9 new 8; shot problems old 0 new 0
+  ✓ Front: figures old 27 / new 27; openings old 6 / new 6
+  ✓ Back: figures old 18 / new 18; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 12; openings old 2 / new 2  (new adds 4′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (12 labels, 1 openings)
   notes identical
-  rest-of-document byte-identical (109577 chars; spacing page removed, base64 images + per-print random ids normalised)
-- contract: ptot after print old $45,856.00 new $45,856.00 same; cards old 4 new 5
-  ✓ Front: old 27 figures / new 27
-  ✓ Back: old 18 figures / new 18
-  ✓ Right Eave: old 11 figures / new 12  (new adds 4′×1)
-  ✓ Left Eave: old 13 figures / new 16  (new adds 12′×1, 40′×1, 4′×1)
-  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (12 labels)
+  rest-of-document byte-identical (109577 chars)
+- contract: ptot after print old $45,856.00 new $45,856.00 same; cards old 4 new 5; pdf pages old 11 new 10; shot problems old 0 new 0
+  ✓ Front: figures old 27 / new 27; openings old 6 / new 6
+  ✓ Back: figures old 18 / new 18; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 12; openings old 2 / new 2  (new adds 4′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (12 labels, 1 openings)
   notes identical
-  rest-of-document byte-identical (97781 chars; spacing page removed, base64 images + per-print random ids normalised)
-- revised: ptot after print old $45,856.00 new $45,856.00 same; cards old 4 new 5
-  ✓ Front: old 27 figures / new 27
-  ✓ Back: old 18 figures / new 18
-  ✓ Right Eave: old 11 figures / new 12  (new adds 4′×1)
-  ✓ Left Eave: old 13 figures / new 16  (new adds 12′×1, 40′×1, 4′×1)
-  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (12 labels)
+  rest-of-document byte-identical (97781 chars)
+- revised: ptot after print old $45,856.00 new $45,856.00 same; cards old 4 new 5; pdf pages old 6 new 5; shot problems old 0 new 0
+  ✓ Front: figures old 27 / new 27; openings old 6 / new 6
+  ✓ Back: figures old 18 / new 18; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 12; openings old 2 / new 2  (new adds 4′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (12 labels, 1 openings)
   notes identical
-  rest-of-document byte-identical (9638 chars; spacing page removed, base64 images + per-print random ids normalised)
+  rest-of-document byte-identical (9638 chars)
 
-RESULT: PASS — nothing lost, totals unchanged, other pages byte-identical
+## D-cci-widespan-40x60x14-4oc-lee  40x60x14 widespan CCI  ptot old $77,927.00 new $77,927.00 SAME; end-of-build old $77,927.00 new $77,927.00 same
+- quote: ptot after print old $77,927.00 new $77,927.00 same; cards old 4 new 5; pdf pages old 7 new 7; shot problems old 0 new 0
+  ✓ Front: figures old 18 / new 19; openings old 4 / new 4  (new adds 17'4"×1)
+  ✓ Back: figures old 16 / new 17; openings old 3 / new 3  (new adds 17'4"×1)
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 4′×1, 12′×1, 40′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (13 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (124213 chars)
+- contract: ptot after print old $77,927.00 new $77,927.00 same; cards old 4 new 5; pdf pages old 9 new 9; shot problems old 0 new 0
+  ✓ Front: figures old 18 / new 19; openings old 4 / new 4  (new adds 17'4"×1)
+  ✓ Back: figures old 16 / new 17; openings old 3 / new 3  (new adds 17'4"×1)
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 4′×1, 12′×1, 40′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (13 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (114657 chars)
+- revised: ptot after print old $77,927.00 new $77,927.00 same; cards old 4 new 5; pdf pages old 5 new 5; shot problems old 0 new 0
+  ✓ Front: figures old 18 / new 19; openings old 4 / new 4  (new adds 17'4"×1)
+  ✓ Back: figures old 16 / new 17; openings old 3 / new 3  (new adds 17'4"×1)
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 4′×1, 12′×1, 40′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (13 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (9313 chars)
+
+## E-cci-std-24x40x12-4oc-lee  24x40x12 standard CCI  ptot old $42,831.00 new $42,831.00 SAME; end-of-build old $42,831.00 new $42,831.00 same
+- quote: ptot after print old $42,831.00 new $42,831.00 same; cards old 4 new 5; pdf pages old 8 new 7; shot problems old 0 new 0
+  ✓ Front: figures old 20 / new 20; openings old 4 / new 4
+  ✓ Back: figures old 17 / new 17; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 4′×1, 12′×1, 40′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (13 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (113087 chars)
+- contract: ptot after print old $42,831.00 new $42,831.00 same; cards old 4 new 5; pdf pages old 10 new 9; shot problems old 0 new 0
+  ✓ Front: figures old 20 / new 20; openings old 4 / new 4
+  ✓ Back: figures old 17 / new 17; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 4′×1, 12′×1, 40′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (13 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (101268 chars)
+- revised: ptot after print old $42,831.00 new $42,831.00 same; cards old 4 new 5; pdf pages old 6 new 5; shot problems old 0 new 0
+  ✓ Front: figures old 20 / new 20; openings old 4 / new 4
+  ✓ Back: figures old 17 / new 17; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 4′×1, 12′×1, 40′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (13 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (9311 chars)
+
+## F-ca-std-24x30x10-orange  24x30x10 standard CA  ptot old $30,190.00 new $30,190.00 SAME; end-of-build old $30,190.00 new $30,190.00 same
+- quote: ptot after print old $30,190.00 new $30,190.00 same; cards old 4 new 5; pdf pages old 8 new 7; shot problems old 0 new 0
+  ✓ Front: figures old 18 / new 19; openings old 4 / new 4  (new adds 13'×1)
+  ✓ Back: figures old 16 / new 17; openings old 3 / new 3  (new adds 13'×1)
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 5′×1, 10′×1, 30′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 5′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (95202 chars)
+- contract: ptot after print old $30,190.00 new $30,190.00 same; cards old 4 new 5; pdf pages old 10 new 10; shot problems old 0 new 0
+  ✓ Front: figures old 18 / new 19; openings old 4 / new 4  (new adds 13'×1)
+  ✓ Back: figures old 16 / new 17; openings old 3 / new 3  (new adds 13'×1)
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 5′×1, 10′×1, 30′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 5′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (89580 chars)
+- revised: ptot after print old $30,190.00 new $30,190.00 same; cards old 4 new 5; pdf pages old 6 new 5; shot problems old 0 new 0
+  ✓ Front: figures old 18 / new 19; openings old 4 / new 4  (new adds 13'×1)
+  ✓ Back: figures old 16 / new 17; openings old 3 / new 3  (new adds 13'×1)
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 5′×1, 10′×1, 30′×1)
+  ✓ Left Eave: figures old 13 / new 16; openings old 2 / new 2  (new adds 5′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (9312 chars)
+
+## G-cci-leftstorage-12-26x50x12  26x50x12 standard CCI  ptot old $37,690.00 new $37,690.00 SAME; end-of-build old $37,690.00 new $37,690.00 same
+- quote: ptot after print old $37,690.00 new $37,690.00 same; cards old 4 new 4; pdf pages old 8 new 8; shot problems old 0 new 0
+  ✓ Front: figures old 20 / new 20; openings old 4 / new 4
+  ✓ Back: figures old 18 / new 18; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 12; openings old 2 / new 2  (new adds 4′×1)
+  ✓ Left Eave: figures old 13 / new 14; openings old 2 / new 2  (new adds 4′×1)
+  notes identical
+  rest-of-document byte-identical (93414 chars)
+- contract: ptot after print old $37,690.00 new $37,690.00 same; cards old 4 new 4; pdf pages old 9 new 9; shot problems old 0 new 0
+  ✓ Front: figures old 20 / new 20; openings old 4 / new 4
+  ✓ Back: figures old 18 / new 18; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 12; openings old 2 / new 2  (new adds 4′×1)
+  ✓ Left Eave: figures old 13 / new 14; openings old 2 / new 2  (new adds 4′×1)
+  notes identical
+  rest-of-document byte-identical (82188 chars)
+- revised: ptot after print old $37,690.00 new $37,690.00 same; cards old 4 new 4; pdf pages old 5 new 5; shot problems old 0 new 0
+  ✓ Front: figures old 20 / new 20; openings old 4 / new 4
+  ✓ Back: figures old 18 / new 18; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 12; openings old 2 / new 2  (new adds 4′×1)
+  ✓ Left Eave: figures old 13 / new 14; openings old 2 / new 2  (new adds 4′×1)
+  notes identical
+  rest-of-document byte-identical (9311 chars)
+
+## H-cci-two-leantos-24x40x10  24x40x10 standard CCI  ptot old $25,526.00 new $25,526.00 SAME; end-of-build old $25,526.00 new $25,526.00 same
+- quote: ptot after print old $25,526.00 new $25,526.00 same; cards old 4 new 5; pdf pages old 7 new 7; shot problems old 0 new 0
+  ✓ Front: figures old 9 / new 9; openings old 1 / new 1
+  ✗ Back: figures old 5 / new 4; openings old 0 / new 0  MISSING FIGURES 24'×1
+  ✗ Right Eave: figures old 3 / new 5; openings old 0 / new 0  MISSING FIGURES 40'×1  (new adds 5′×1, 12′×1, 40′×1)
+  ✗ Left Eave: figures old 3 / new 3; openings old 0 / new 0  MISSING FIGURES 40'×1  (new adds 5′×1)
+  + new card "Lean-to 1 · Storage Partition — 10′ storage at the back end" (12 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (86670 chars)
+- contract: ptot after print old $25,526.00 new $25,526.00 same; cards old 4 new 5; pdf pages old 9 new 9; shot problems old 0 new 0
+  ✓ Front: figures old 9 / new 9; openings old 1 / new 1
+  ✗ Back: figures old 5 / new 4; openings old 0 / new 0  MISSING FIGURES 24'×1
+  ✗ Right Eave: figures old 3 / new 5; openings old 0 / new 0  MISSING FIGURES 40'×1  (new adds 5′×1, 12′×1, 40′×1)
+  ✗ Left Eave: figures old 3 / new 3; openings old 0 / new 0  MISSING FIGURES 40'×1  (new adds 5′×1)
+  + new card "Lean-to 1 · Storage Partition — 10′ storage at the back end" (12 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (70132 chars)
+- revised: ptot after print old $25,526.00 new $25,526.00 same; cards old 4 new 5; pdf pages old 4 new 4; shot problems old 0 new 0
+  ✓ Front: figures old 9 / new 9; openings old 1 / new 1
+  ✗ Back: figures old 5 / new 4; openings old 0 / new 0  MISSING FIGURES 24'×1
+  ✗ Right Eave: figures old 3 / new 5; openings old 0 / new 0  MISSING FIGURES 40'×1  (new adds 5′×1, 12′×1, 40′×1)
+  ✗ Left Eave: figures old 3 / new 3; openings old 0 / new 0  MISSING FIGURES 40'×1  (new adds 5′×1)
+  + new card "Lean-to 1 · Storage Partition — 10′ storage at the back end" (12 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (6949 chars)
+
+## I-cci-carport-24x30x8-open  24x30x8 carport CCI  ptot old $8,756.50 new $8,756.50 SAME; end-of-build old $8,756.50 new $8,756.50 same
+- quote: ptot after print old $8,756.50 new $8,756.50 same; cards old 4 new 4; pdf pages old 6 new 6; shot problems old 0 new 0
+  ✗ Front: figures old 5 / new 4; openings old 0 / new 0  MISSING FIGURES 24'×1
+  ✗ Back: figures old 5 / new 4; openings old 0 / new 0  MISSING FIGURES 24'×1
+  ✗ Right Eave: figures old 3 / new 5; openings old 0 / new 0  MISSING FIGURES 30'×1  (new adds 5′×1, 10′×1, 30′×1)
+  ✗ Left Eave: figures old 3 / new 3; openings old 0 / new 0  MISSING FIGURES 30'×1  (new adds 5′×1)
+  notes identical
+  rest-of-document byte-identical (70654 chars)
+- contract: ptot after print old $8,756.50 new $8,756.50 same; cards old 4 new 4; pdf pages old 9 new 9; shot problems old 0 new 0
+  ✗ Front: figures old 5 / new 4; openings old 0 / new 0  MISSING FIGURES 24'×1
+  ✗ Back: figures old 5 / new 4; openings old 0 / new 0  MISSING FIGURES 24'×1
+  ✗ Right Eave: figures old 3 / new 5; openings old 0 / new 0  MISSING FIGURES 30'×1  (new adds 5′×1, 10′×1, 30′×1)
+  ✗ Left Eave: figures old 3 / new 3; openings old 0 / new 0  MISSING FIGURES 30'×1  (new adds 5′×1)
+  notes identical
+  rest-of-document byte-identical (56663 chars)
+- revised: ptot after print old $8,756.50 new $8,756.50 same; cards old 4 new 4; pdf pages old 4 new 4; shot problems old 0 new 0
+  ✗ Front: figures old 5 / new 4; openings old 0 / new 0  MISSING FIGURES 24'×1
+  ✗ Back: figures old 5 / new 4; openings old 0 / new 0  MISSING FIGURES 24'×1
+  ✗ Right Eave: figures old 3 / new 5; openings old 0 / new 0  MISSING FIGURES 30'×1  (new adds 5′×1, 10′×1, 30′×1)
+  ✗ Left Eave: figures old 3 / new 3; openings old 0 / new 0  MISSING FIGURES 30'×1  (new adds 5′×1)
+  notes identical
+  rest-of-document byte-identical (7101 chars)
+
+## J-clean-cci-30x40x12  30x40x12 standard CCI  ptot old $42,735.00 new $42,735.00 SAME; end-of-build old $42,735.00 new $42,735.00 same
+- quote: ptot after print old $42,735.00 new $42,735.00 same; cards old 4 new 5; pdf pages old 7 new 7; shot problems old 0 new 0
+  ✓ Front: figures old 17 / new 17; openings old 3 / new 3
+  ✓ Back: figures old 19 / new 19; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
+  ✓ Left Eave: figures old 17 / new 20; openings old 3 / new 3  (new adds 4′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (108176 chars)
+- contract: ptot after print old $42,735.00 new $42,735.00 same; cards old 4 new 5; pdf pages old 9 new 9; shot problems old 0 new 0
+  ✓ Front: figures old 17 / new 17; openings old 3 / new 3
+  ✓ Back: figures old 19 / new 19; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
+  ✓ Left Eave: figures old 17 / new 20; openings old 3 / new 3  (new adds 4′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (96952 chars)
+- revised: ptot after print old $42,735.00 new $42,735.00 same; cards old 4 new 5; pdf pages old 5 new 5; shot problems old 0 new 0
+  ✓ Front: figures old 17 / new 17; openings old 3 / new 3
+  ✓ Back: figures old 19 / new 19; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 14; openings old 2 / new 2  (new adds 4′×1, 10′×1, 30′×1)
+  ✓ Left Eave: figures old 17 / new 20; openings old 3 / new 3  (new adds 4′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the front end" (13 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (9341 chars)
+
+## K-clean-gch-28x40x14  28x40x14 gch CCI  ptot old $35,019.00 new $35,019.00 SAME; end-of-build old $35,019.00 new $35,019.00 same
+- quote: ptot after print old $35,019.00 new $35,019.00 same; cards old 4 new 5; pdf pages old 8 new 7; shot problems old 0 new 0
+  ✓ Front: figures old 13 / new 13; openings old 2 / new 2
+  ✓ Back: figures old 10 / new 10; openings old 1 / new 1
+  ✗ Right Eave: figures old 3 / new 3; openings old 0 / new 0  MISSING FIGURES 40'×1  (new adds 4′×1)
+  ✗ Left Eave: figures old 3 / new 5; openings old 0 / new 0  MISSING FIGURES 40'×1  (new adds 4′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (12 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (93969 chars)
+- contract: ptot after print old $35,019.00 new $35,019.00 same; cards old 4 new 5; pdf pages old 11 new 10; shot problems old 0 new 0
+  ✓ Front: figures old 13 / new 13; openings old 2 / new 2
+  ✓ Back: figures old 10 / new 10; openings old 1 / new 1
+  ✗ Right Eave: figures old 3 / new 3; openings old 0 / new 0  MISSING FIGURES 40'×1  (new adds 4′×1)
+  ✗ Left Eave: figures old 3 / new 5; openings old 0 / new 0  MISSING FIGURES 40'×1  (new adds 4′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (12 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (79477 chars)
+- revised: ptot after print old $35,019.00 new $35,019.00 same; cards old 4 new 5; pdf pages old 5 new 4; shot problems old 0 new 0
+  ✓ Front: figures old 13 / new 13; openings old 2 / new 2
+  ✓ Back: figures old 10 / new 10; openings old 1 / new 1
+  ✗ Right Eave: figures old 3 / new 3; openings old 0 / new 0  MISSING FIGURES 40'×1  (new adds 4′×1)
+  ✗ Left Eave: figures old 3 / new 5; openings old 0 / new 0  MISSING FIGURES 40'×1  (new adds 4′×1, 12′×1, 40′×1)
+  + new card "Lean-to 1 · Storage Partition — 12′ storage at the back end" (12 labels, 1 openings)
+  notes identical
+  rest-of-document byte-identical (7647 chars)
+
+## L-edge-partial-corner-lt-4oc-24x40x12  24x40x12 standard CCI  ptot old $32,815.50 new $32,815.50 SAME; end-of-build old $32,815.50 new $32,815.50 same
+- quote: ptot after print old $32,815.50 new $32,815.50 same; cards old 4 new 4; pdf pages old 8 new 7; shot problems old 0 new 0
+  ✓ Front: figures old 9 / new 9; openings old 1 / new 1
+  ✗ Back: figures old 5 / new 4; openings old 0 / new 0  MISSING FIGURES 24'×1
+  ✓ Right Eave: figures old 6 / new 9; openings old 1 / new 1  (new adds 4′×1, 12′×1, 10′×1)
+  ✓ Left Eave: figures old 20 / new 23; openings old 4 / new 4  (new adds 4′×1, 10′×1, 40′×1)
+  notes identical
+  rest-of-document byte-identical (102254 chars)
+- contract: ptot after print old $32,815.50 new $32,815.50 same; cards old 4 new 4; pdf pages old 10 new 9; shot problems old 0 new 0
+  ✓ Front: figures old 9 / new 9; openings old 1 / new 1
+  ✗ Back: figures old 5 / new 4; openings old 0 / new 0  MISSING FIGURES 24'×1
+  ✓ Right Eave: figures old 6 / new 9; openings old 1 / new 1  (new adds 4′×1, 12′×1, 10′×1)
+  ✓ Left Eave: figures old 20 / new 23; openings old 4 / new 4  (new adds 4′×1, 10′×1, 40′×1)
+  notes identical
+  rest-of-document byte-identical (90497 chars)
+- revised: ptot after print old $32,815.50 new $32,815.50 same; cards old 4 new 4; pdf pages old 5 new 4; shot problems old 0 new 0
+  ✓ Front: figures old 9 / new 9; openings old 1 / new 1
+  ✗ Back: figures old 5 / new 4; openings old 0 / new 0  MISSING FIGURES 24'×1
+  ✓ Right Eave: figures old 6 / new 9; openings old 1 / new 1  (new adds 4′×1, 12′×1, 10′×1)
+  ✓ Left Eave: figures old 20 / new 23; openings old 4 / new 4  (new adds 4′×1, 10′×1, 40′×1)
+  notes identical
+  rest-of-document byte-identical (7939 chars)
+
+## M-front-gable-lt-30x40x12  30x40x12 standard CCI  ptot old $33,904.00 new $33,904.00 SAME; end-of-build old $33,904.00 new $33,904.00 same
+- quote: ptot after print old $33,904.00 new $33,904.00 same; cards old 4 new 4; pdf pages old 8 new 8; shot problems old 0 new 0
+  ✓ Front: figures old 17 / new 19; openings old 3 / new 3  (new adds 12′×1, 30′×1)
+  ✓ Back: figures old 19 / new 19; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 12; openings old 2 / new 2  (new adds 4′×1)
+  ✓ Left Eave: figures old 17 / new 18; openings old 3 / new 3  (new adds 4′×1)
+  notes identical
+  rest-of-document byte-identical (97072 chars)
+- contract: ptot after print old $33,904.00 new $33,904.00 same; cards old 4 new 4; pdf pages old 9 new 9; shot problems old 0 new 0
+  ✓ Front: figures old 17 / new 19; openings old 3 / new 3  (new adds 12′×1, 30′×1)
+  ✓ Back: figures old 19 / new 19; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 12; openings old 2 / new 2  (new adds 4′×1)
+  ✓ Left Eave: figures old 17 / new 18; openings old 3 / new 3  (new adds 4′×1)
+  notes identical
+  rest-of-document byte-identical (85536 chars)
+- revised: ptot after print old $33,904.00 new $33,904.00 same; cards old 4 new 4; pdf pages old 5 new 5; shot problems old 0 new 0
+  ✓ Front: figures old 17 / new 19; openings old 3 / new 3  (new adds 12′×1, 30′×1)
+  ✓ Back: figures old 19 / new 19; openings old 3 / new 3
+  ✓ Right Eave: figures old 11 / new 12; openings old 2 / new 2  (new adds 4′×1)
+  ✓ Left Eave: figures old 17 / new 18; openings old 3 / new 3  (new adds 4′×1)
+  notes identical
+  rest-of-document byte-identical (9341 chars)
+  lean-to label: A-cci-30x40x12-rollups-walk-win-leanto-storage/quote / Right Eave: "LT2 · 10′ × 30′ lean-to" x=559.8 y=3518.5 w=95.8 h=11 (svg x=239 y=3394.3 w=626 h=258.4) openings-hit=0
+  lean-to label: A-cci-30x40x12-rollups-walk-win-leanto-storage/quote / Left Eave: "LT1 · 12′ × 40′ lean-to" x=488.2 y=3833.6 w=94 h=11 (svg x=239 y=3712.6 w=626 h=258.4) openings-hit=0
+  lean-to label: A-cci-30x40x12-rollups-walk-win-leanto-storage/contract / Right Eave: "LT2 · 10′ × 30′ lean-to" x=497.4 y=6854.1 w=84.1 h=10 (svg x=215.2 y=6744.9 w=550.8 h=227.4) openings-hit=0
+  lean-to label: A-cci-30x40x12-rollups-walk-win-leanto-storage/contract / Left Eave: "LT1 · 12′ × 40′ lean-to" x=434.4 y=7142.5 w=82.5 h=10 (svg x=215.2 y=7036.1 w=550.8 h=227.4) openings-hit=0
+  lean-to label: A-cci-30x40x12-rollups-walk-win-leanto-storage/revised / Right Eave: "LT2 · 10′ × 30′ lean-to" x=497.4 y=1055.4 w=84.1 h=10 (svg x=215.2 y=946.3 w=550.8 h=227.4) openings-hit=0
+  lean-to label: A-cci-30x40x12-rollups-walk-win-leanto-storage/revised / Left Eave: "LT1 · 12′ × 40′ lean-to" x=434.4 y=1340 w=82.5 h=10 (svg x=215.2 y=1233.7 w=550.8 h=227.4) openings-hit=0
+  lean-to label: B-cci-26x50x12-endstorage-30back-partition-doors/quote / Left Eave: "LT1 · 10′ × 30′ lean-to" x=541 y=4159.3 w=93.9 h=11 (svg x=239 y=4054.2 w=626 h=227.1) openings-hit=0
+  lean-to label: B-cci-26x50x12-endstorage-30back-partition-doors/contract / Left Eave: "LT1 · 10′ × 30′ lean-to" x=480.9 y=7497.9 w=82.4 h=10 (svg x=215.2 y=7405.5 w=550.8 h=199.8) openings-hit=0
+  lean-to label: B-cci-26x50x12-endstorage-30back-partition-doors/revised / Left Eave: "LT1 · 10′ × 30′ lean-to" x=480.9 y=1743.3 w=82.4 h=10 (svg x=215.2 y=1650.9 w=550.8 h=199.8) openings-hit=0
+  lean-to label: C-cci-gch-28x40x14-enc20/quote / Left Eave: "LT1 · 12′ × 40′ lean-to" x=488.2 y=4034.6 w=94 h=11 (svg x=239 y=3887.3 w=626 h=285.3) openings-hit=0
+  lean-to label: C-cci-gch-28x40x14-enc20/contract / Left Eave: "LT1 · 12′ × 40′ lean-to" x=434.4 y=7602.2 w=82.5 h=10 (svg x=215.2 y=7472.6 w=550.8 h=251) openings-hit=0
+  lean-to label: C-cci-gch-28x40x14-enc20/revised / Left Eave: "LT1 · 12′ × 40′ lean-to" x=434.4 y=1459.7 w=82.5 h=10 (svg x=215.2 y=1330.1 w=550.8 h=251) openings-hit=0
+  lean-to label: D-cci-widespan-40x60x14-4oc-lee/quote / Right Eave: "LT1 · 12′ × 40′ lean-to" x=470.6 y=3496.5 w=94 h=11 (svg x=239 y=3388.8 w=626 h=223.6) openings-hit=0
+  lean-to label: D-cci-widespan-40x60x14-4oc-lee/quote / Left Eave: "LT2 · 10′ × 30′ lean-to" x=575.2 y=3817 w=95.8 h=11 (svg x=239 y=3707.1 w=626 h=223.6) openings-hit=0
+  lean-to label: D-cci-widespan-40x60x14-4oc-lee/contract / Right Eave: "LT1 · 12′ × 40′ lean-to" x=418.9 y=6819.2 w=82.5 h=10 (svg x=215.2 y=6724.6 w=550.8 h=196.7) openings-hit=0
+  lean-to label: D-cci-widespan-40x60x14-4oc-lee/contract / Left Eave: "LT2 · 10′ × 30′ lean-to" x=511 y=7112.5 w=84.1 h=10 (svg x=215.2 y=7015.8 w=550.8 h=196.7) openings-hit=0
+  lean-to label: D-cci-widespan-40x60x14-4oc-lee/revised / Right Eave: "LT1 · 12′ × 40′ lean-to" x=418.9 y=1056.3 w=82.5 h=10 (svg x=215.2 y=961.6 w=550.8 h=196.7) openings-hit=0
+  lean-to label: D-cci-widespan-40x60x14-4oc-lee/revised / Left Eave: "LT2 · 10′ × 30′ lean-to" x=511 y=1345.7 w=84.1 h=10 (svg x=215.2 y=1249 w=550.8 h=196.7) openings-hit=0
+  lean-to label: E-cci-std-24x40x12-4oc-lee/quote / Right Eave: "LT1 · 12′ × 40′ lean-to" x=593.7 y=3557.4 w=94 h=11 (svg x=239 y=3436.5 w=626 h=258.4) openings-hit=0
+  lean-to label: E-cci-std-24x40x12-4oc-lee/quote / Left Eave: "LT2 · 10′ × 30′ lean-to" x=487.3 y=3878.9 w=95.8 h=11 (svg x=239 y=3754.8 w=626 h=258.4) openings-hit=0
+  lean-to label: E-cci-std-24x40x12-4oc-lee/contract / Right Eave: "LT1 · 12′ × 40′ lean-to" x=527.3 y=6978.5 w=82.5 h=10 (svg x=215.2 y=6872.2 w=550.8 h=227.4) openings-hit=0
+  lean-to label: E-cci-std-24x40x12-4oc-lee/contract / Left Eave: "LT2 · 10′ × 30′ lean-to" x=433.6 y=7272.6 w=84.1 h=10 (svg x=215.2 y=7163.4 w=550.8 h=227.4) openings-hit=0
+  lean-to label: E-cci-std-24x40x12-4oc-lee/revised / Right Eave: "LT1 · 12′ × 40′ lean-to" x=527.3 y=1070.2 w=82.5 h=10 (svg x=215.2 y=963.9 w=550.8 h=227.4) openings-hit=0
+  lean-to label: E-cci-std-24x40x12-4oc-lee/revised / Left Eave: "LT2 · 10′ × 30′ lean-to" x=433.6 y=1360.4 w=84.1 h=10 (svg x=215.2 y=1251.3 w=550.8 h=227.4) openings-hit=0
+  lean-to label: F-ca-std-24x30x10-orange/quote / Right Eave: "LT2 · 10′ × 30′ lean-to" x=628 y=3448.8 w=95.8 h=11 (svg x=239 y=3327.9 w=626 h=276.3) openings-hit=0
+  lean-to label: F-ca-std-24x30x10-orange/quote / Left Eave: "LT1 · 12′ × 40′ lean-to" x=488.2 y=3777.7 w=94 h=11 (svg x=239 y=3661.2 w=626 h=276.3) openings-hit=0
+  lean-to label: F-ca-std-24x30x10-orange/contract / Right Eave: "LT2 · 10′ × 30′ lean-to" x=557.5 y=7412.4 w=84.1 h=10 (svg x=215.2 y=7306.1 w=550.8 h=243.1) openings-hit=0
+  lean-to label: F-ca-std-24x30x10-orange/contract / Left Eave: "LT1 · 12′ × 40′ lean-to" x=434.4 y=7710.4 w=82.5 h=10 (svg x=215.2 y=7608 w=550.8 h=243.1) openings-hit=0
+  lean-to label: F-ca-std-24x30x10-orange/revised / Right Eave: "LT2 · 10′ × 30′ lean-to" x=557.5 y=1051.1 w=84.1 h=10 (svg x=215.2 y=944.8 w=550.8 h=243.1) openings-hit=0
+  lean-to label: F-ca-std-24x30x10-orange/revised / Left Eave: "LT1 · 12′ × 40′ lean-to" x=434.4 y=1347.3 w=82.5 h=10 (svg x=215.2 y=1244.9 w=550.8 h=243.1) openings-hit=0
+  lean-to label: H-cci-two-leantos-24x40x10/quote / Right Eave: "LT1 · 12′ × 40′ lean-to" x=488.2 y=3140.5 w=94 h=11 (svg x=239 y=3046 w=626 h=232.5) openings-hit=0
+  lean-to label: H-cci-two-leantos-24x40x10/contract / Right Eave: "LT1 · 12′ × 40′ lean-to" x=434.4 y=6534.2 w=82.5 h=10 (svg x=215.2 y=6451.1 w=550.8 h=204.6) openings-hit=0
+  lean-to label: H-cci-two-leantos-24x40x10/revised / Right Eave: "LT1 · 12′ × 40′ lean-to" x=434.4 y=1091.4 w=82.5 h=10 (svg x=215.2 y=1008.3 w=550.8 h=204.6) openings-hit=0
+  lean-to label: I-cci-carport-24x30x8-open/quote / Right Eave: "LT1 · 10′ × 30′ lean-to" x=488.2 y=3049 w=93.9 h=11 (svg x=239 y=2950 w=626 h=240.6) openings-hit=0
+  lean-to label: I-cci-carport-24x30x8-open/contract / Right Eave: "LT1 · 10′ × 30′ lean-to" x=434.5 y=6277.8 w=82.4 h=10 (svg x=215.2 y=6190.8 w=550.8 h=211.6) openings-hit=0
+  lean-to label: I-cci-carport-24x30x8-open/revised / Right Eave: "LT1 · 10′ × 30′ lean-to" x=434.5 y=1057.1 w=82.4 h=10 (svg x=215.2 y=970.2 w=550.8 h=211.6) openings-hit=0
+  lean-to label: J-clean-cci-30x40x12/quote / Right Eave: "LT2 · 10′ × 30′ lean-to" x=586.2 y=3518.5 w=95.8 h=11 (svg x=239 y=3394.3 w=626 h=258.4) openings-hit=0
+  lean-to label: J-clean-cci-30x40x12/quote / Left Eave: "LT1 · 12′ × 40′ lean-to" x=316.8 y=3796.5 w=94 h=11 (svg x=239 y=3712.6 w=626 h=258.4) openings-hit=0
+  lean-to label: J-clean-cci-30x40x12/contract / Right Eave: "LT2 · 10′ × 30′ lean-to" x=520.7 y=6854.1 w=84.1 h=10 (svg x=215.2 y=6744.9 w=550.8 h=227.4) openings-hit=0
+  lean-to label: J-clean-cci-30x40x12/contract / Left Eave: "LT1 · 12′ × 40′ lean-to" x=283.6 y=7109.9 w=82.5 h=10 (svg x=215.2 y=7036.1 w=550.8 h=227.4) openings-hit=0
+  lean-to label: J-clean-cci-30x40x12/revised / Right Eave: "LT2 · 10′ × 30′ lean-to" x=520.7 y=1055.4 w=84.1 h=10 (svg x=215.2 y=946.3 w=550.8 h=227.4) openings-hit=0
+  lean-to label: J-clean-cci-30x40x12/revised / Left Eave: "LT1 · 12′ × 40′ lean-to" x=283.6 y=1307.4 w=82.5 h=10 (svg x=215.2 y=1233.7 w=550.8 h=227.4) openings-hit=0
+  lean-to label: K-clean-gch-28x40x14/quote / Left Eave: "LT1 · 12′ × 40′ lean-to" x=488.2 y=3677.6 w=94 h=11 (svg x=239 y=3530.3 w=626 h=285.3) openings-hit=0
+  lean-to label: K-clean-gch-28x40x14/contract / Left Eave: "LT1 · 12′ × 40′ lean-to" x=434.4 y=7253.1 w=82.5 h=10 (svg x=215.2 y=7123.6 w=550.8 h=251) openings-hit=0
+  lean-to label: K-clean-gch-28x40x14/revised / Left Eave: "LT1 · 12′ × 40′ lean-to" x=434.4 y=1459.7 w=82.5 h=10 (svg x=215.2 y=1330.1 w=550.8 h=251) openings-hit=0
+  lean-to label: L-edge-partial-corner-lt-4oc-24x40x12/quote / Right Eave: "LT1 · 12′ × 10′ lean-to" x=410.3 y=3250.2 w=87.7 h=11 (svg x=239 y=3142.5 w=626 h=258.4) openings-hit=0
+  lean-to label: L-edge-partial-corner-lt-4oc-24x40x12/quote / Left Eave: "LT2 · 10′ × 40′ lean-to" x=276.6 y=3512 w=91.9 h=11 (svg x=239 y=3460.8 w=626 h=258.4) openings-hit=0
+  lean-to label: L-edge-partial-corner-lt-4oc-24x40x12/contract / Right Eave: "LT1 · 12′ × 10′ lean-to" x=365.9 y=6679.4 w=76.9 h=10 (svg x=215.2 y=6584.8 w=550.8 h=227.4) openings-hit=0
+  lean-to label: L-edge-partial-corner-lt-4oc-24x40x12/contract / Left Eave: "LT2 · 10′ × 40′ lean-to" x=248.3 y=6921 w=80.5 h=10 (svg x=215.2 y=6876 w=550.8 h=227.4) openings-hit=0
+  lean-to label: L-edge-partial-corner-lt-4oc-24x40x12/revised / Right Eave: "LT1 · 12′ × 10′ lean-to" x=365.9 y=1058.5 w=76.9 h=10 (svg x=215.2 y=963.9 w=550.8 h=227.4) openings-hit=0
+  lean-to label: L-edge-partial-corner-lt-4oc-24x40x12/revised / Left Eave: "LT2 · 10′ × 40′ lean-to" x=248.3 y=1296.3 w=80.5 h=10 (svg x=215.2 y=1251.3 w=550.8 h=227.4) openings-hit=0
+  lean-to label: M-front-gable-lt-30x40x12/quote / Front: "LT1 · 12′ × 30′ lean-to" x=344.5 y=2620.9 w=89.6 h=11 (svg x=239 y=2525.3 w=626 h=305.8) openings-hit=0
+  lean-to label: M-front-gable-lt-30x40x12/contract / Front: "LT1 · 12′ × 30′ lean-to" x=308.1 y=6107.8 w=78.5 h=10 (svg x=215.2 y=6023.8 w=550.8 h=269.1) openings-hit=0
+  lean-to label: M-front-gable-lt-30x40x12/revised / Front: "LT1 · 12′ × 30′ lean-to" x=308.1 y=454.1 w=78.5 h=10 (svg x=215.2 y=370 w=550.8 h=269.1) openings-hit=0
+
+Colours on the new spacing pages: rgba(255,255,255,.03) rgba(167,139,250,.04) #a78bfa #b8a6fb #22d3c8 #f0883e #e58bb0 rgba(255,255,255,.4) #7fa6f0 #8a97a5 rgba(255,255,255,.16) rgba(167,139,250,.05) rgba(255,255,255,.025) #b7c2cd #dfe6ee url(#dsp1rollup) url(#dsp1wtd) url(#dsp1fo) #0d1820 url(#dsp2rollup) url(#dsp2fo) url(#dsp2win) rgba(255,255,255,.12) url(#dsp3wtd) url(#dsp3fo) url(#dsp4win) rgba(167,139,250,.12) url(#dsp5fo) url(#dsp6rollup) url(#dsp6wtd) url(#dsp6fo) url(#dsp7rollup) url(#dsp7fo) url(#dsp7win) url(#dsp8wtd) url(#dsp8fo) url(#dsp9win) url(#dsp10fo) url(#dsp11rollup) url(#dsp11wtd) url(#dsp11fo) url(#dsp12rollup) url(#dsp12fo) url(#dsp12win) url(#dsp13wtd) url(#dsp13fo) url(#dsp14win) url(#dsp15fo) rgba(255,255,255,.35) url(#dsp16rollup) url(#dsp16wtd) url(#dsp16fo) url(#dsp17rollup) url(#dsp17fo) url(#dsp17win) url(#dsp18rollup) url(#dsp18wtd) url(#dsp19wtd) url(#dsp19fo) url(#dsp20win) url(#dsp21rollup) url(#dsp21wtd) url(#dsp21fo) url(#dsp22rollup) url(#dsp22fo) url(#dsp22win) url(#dsp23rollup) url(#dsp23wtd) url(#dsp24wtd) url(#dsp24fo) url(#dsp25win) url(#dsp26rollup) url(#dsp26wtd) url(#dsp26fo) url(#dsp27rollup) url(#dsp27fo) url(#dsp27win) url(#dsp28rollup) url(#dsp28wtd) url(#dsp29wtd) url(#dsp29fo) url(#dsp30win) rgba(255,255,255,.015) none url(#dsp31rollup) url(#dsp31wtd) url(#dsp31fo) url(#dsp32rollup) url(#dsp32fo) url(#dsp32win) url(#dsp33wtd) url(#dsp33fo) url(#dsp34win) url(#dsp35fo) url(#dsp36rollup) url(#dsp36wtd) url(#dsp36fo) url(#dsp37rollup) url(#dsp37fo) url(#dsp37win) url(#dsp38wtd) url(#dsp38fo) url(#dsp39win) url(#dsp40fo) url(#dsp41rollup) url(#dsp41wtd) url(#dsp41fo) url(#dsp42rollup) url(#dsp42fo) url(#dsp42win) url(#dsp43wtd) url(#dsp43fo) url(#dsp44win) url(#dsp45fo) url(#dsp46rollup) url(#dsp46wtd) url(#dsp46fo) url(#dsp47rollup) url(#dsp47fo) url(#dsp47win) url(#dsp48wtd) url(#dsp48fo) url(#dsp49win) url(#dsp50fo) url(#dsp51rollup) url(#dsp51wtd) url(#dsp51fo) url(#dsp52rollup) url(#dsp52fo) url(#dsp52win) url(#dsp53wtd) url(#dsp53fo) url(#dsp54win) url(#dsp55fo) url(#dsp56rollup) url(#dsp56wtd) url(#dsp56fo) url(#dsp57rollup) url(#dsp57fo) url(#dsp57win) url(#dsp58wtd) url(#dsp58fo) url(#dsp59win) url(#dsp60fo) url(#dsp61rollup) url(#dsp61wtd) url(#dsp61fo) url(#dsp62rollup) url(#dsp62fo) url(#dsp62win) url(#dsp63wtd) url(#dsp63fo) url(#dsp64win) url(#dsp65fo) url(#dsp66rollup) url(#dsp66wtd) url(#dsp66fo) url(#dsp67rollup) url(#dsp67fo) url(#dsp67win) url(#dsp68wtd) url(#dsp68fo) url(#dsp69win) url(#dsp70fo) url(#dsp71rollup) url(#dsp71wtd) url(#dsp71fo) url(#dsp72rollup) url(#dsp72fo) url(#dsp72win) url(#dsp73wtd) url(#dsp73fo) url(#dsp74win) url(#dsp75fo) url(#dsp76rollup) url(#dsp76wtd) url(#dsp76fo) url(#dsp77rollup) url(#dsp77fo) url(#dsp77win) url(#dsp78wtd) url(#dsp78fo) url(#dsp79win) url(#dsp80fo) url(#dsp81rollup) url(#dsp81wtd) url(#dsp81fo) url(#dsp82rollup) url(#dsp82fo) url(#dsp82win) url(#dsp83wtd) url(#dsp83fo) url(#dsp84win) url(#dsp85fo) url(#dsp86rollup) url(#dsp86wtd) url(#dsp86fo) url(#dsp87rollup) url(#dsp87fo) url(#dsp87win) url(#dsp88wtd) url(#dsp88fo) url(#dsp89win) url(#dsp90fo) url(#dsp91rollup) url(#dsp91wtd) url(#dsp91fo) url(#dsp92rollup) url(#dsp92fo) url(#dsp92win) url(#dsp93wtd) url(#dsp93fo) url(#dsp94win) url(#dsp95rollup) url(#dsp95wtd) url(#dsp95fo) url(#dsp96rollup) url(#dsp96fo) url(#dsp96win) url(#dsp97wtd) url(#dsp97fo) url(#dsp98win) url(#dsp99rollup) url(#dsp99wtd) url(#dsp99fo) url(#dsp100rollup) url(#dsp100fo) url(#dsp100win) url(#dsp101wtd) url(#dsp101fo) url(#dsp102win) url(#dsp103rollup) url(#dsp107fo) url(#dsp108rollup) url(#dsp112fo) url(#dsp113rollup) url(#dsp117fo) url(#dsp130rollup) url(#dsp130wtd) url(#dsp131rollup) url(#dsp131fo) url(#dsp131win) url(#dsp132wtd) url(#dsp132fo) url(#dsp133win) url(#dsp133fo) url(#dsp134fo) url(#dsp135rollup) url(#dsp135wtd) url(#dsp136rollup) url(#dsp136fo) url(#dsp136win) url(#dsp137wtd) url(#dsp137fo) url(#dsp138win) url(#dsp138fo) url(#dsp139fo) url(#dsp140rollup) url(#dsp140wtd) url(#dsp141rollup) url(#dsp141fo) url(#dsp141win) url(#dsp142wtd) url(#dsp142fo) url(#dsp143win) url(#dsp143fo) url(#dsp144fo) url(#dsp145rollup) url(#dsp145wtd) url(#dsp146win) url(#dsp149fo) url(#dsp150rollup) url(#dsp150wtd) url(#dsp151win) url(#dsp154fo) url(#dsp155rollup) url(#dsp155wtd) url(#dsp156win) url(#dsp159fo) url(#dsp160rollup) url(#dsp162rollup) url(#dsp163fo) url(#dsp163wtd) url(#dsp163win) url(#dsp163rollup) url(#dsp164rollup) url(#dsp166rollup) url(#dsp167fo) url(#dsp167wtd) url(#dsp167win) url(#dsp167rollup) url(#dsp168rollup) url(#dsp170rollup) url(#dsp171fo) url(#dsp171wtd) url(#dsp171win) url(#dsp171rollup) url(#dsp172rollup) url(#dsp172wtd) url(#dsp173rollup) url(#dsp173fo) url(#dsp173win) url(#dsp174wtd) url(#dsp174fo) url(#dsp175win) url(#dsp175fo) url(#dsp176rollup) url(#dsp176wtd) url(#dsp177rollup) url(#dsp177fo) url(#dsp177win) url(#dsp178wtd) url(#dsp178fo) url(#dsp179win) url(#dsp179fo) url(#dsp180rollup) url(#dsp180wtd) url(#dsp181rollup) url(#dsp181fo) url(#dsp181win) url(#dsp182wtd) url(#dsp182fo) url(#dsp183win) url(#dsp183fo) #1fcec4 #243c50 #1C2E3F #fff rgba(255,255,255,.08) #8aa3b5 #0D1B2A #1B8A8A #64748b
+no yellow
+Smallest rendered label: 6.27px (4.7pt) at A-cci-30x40x12-rollups-walk-win-leanto-storage/contract/Front "BACK"
+Program-page console problems: old 1 new 1
+  new: [{"kind":"log","text":"Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:5795/favicon.ico"}]
+
+RESULT: 30 hard problem(s) <<<; 0 layout warning(s); 0 oversize card(s)

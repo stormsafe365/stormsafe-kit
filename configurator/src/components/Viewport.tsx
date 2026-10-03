@@ -174,7 +174,7 @@ export function Viewport() {
         <p className="font-body text-[9px] text-muted">build · roof-overhang-A</p>
       </div>
       <p className="pointer-events-none absolute bottom-3 right-4 select-none font-body text-[11px] text-muted">
-        {interior ? 'Drag to look around · scroll to zoom' : 'Drag to orbit · scroll to zoom'}
+        {interior ? 'Drag a door to move it · drag elsewhere to look around · scroll to zoom' : 'Drag to orbit · scroll to zoom'}
       </p>
     </div>
   );

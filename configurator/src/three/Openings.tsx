@@ -13,8 +13,8 @@ import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures
 import { CLICK_DRAG_THRESHOLD_PX, swingAngle, walkDoorHingeX, walkDoorKnobX } from './openingAnim';
 import { ftIn, roofLengthLabel } from './dimLabels';
 import { useOpenAmount } from './useOpenAmount';
-import { interiorPress } from './interiorPress';
 import { OpeningHitPlane } from './OpeningFixture';
+import { partitionSpacingVisible } from './spacingVisibility';
 import { chamferFillGeometry, chamferFrameGeometry, chamferPanelGeometry, cut45Leg } from './cut45Geometry';
 import { EnhancedFixture } from './enhanced/fixtures';
 import { fixtureFaceZ, mainOpeningsSheeted } from './enhanced/fixtureLayout';
@@ -259,16 +259,10 @@ function DraggableOpening({
   // R3F pointer-capture and OrbitControls can't fight it.
   const onDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
-    // Walk-in Interior: a drag looks around (never slides the part); a click
-    // still selects it and opens / closes it.
-    if (
-      interiorPress(e.nativeEvent, () => {
-        selectOpening(opening.id);
-        setActiveWall(opening.side);
-        if (opening.type !== 'frameOut') toggleOpen(opening.id);
-      })
-    )
-      return;
+    // Same inside the walk-in Interior (owner 10/3/26: partition doors could
+    // not be moved): a press ON a part drags it — `dragging` is set here,
+    // before InteriorWalk's own canvas listener runs, so the look-around never
+    // starts (lookPressStarts). A press beside a part still looks around.
     selectOpening(opening.id);
     setActiveWall(opening.side);
     setDragging(true);
@@ -614,7 +608,9 @@ function OpeningDimensions({
   );
 }
 
-const SPACING_SIDES: WallSide[] = ['front', 'back', 'left', 'right'];
+// The partition (End Storage / GCH) joins the chain where it can be seen
+// (partitionSpacingVisible) — owner 10/3/26, with its doors now draggable inside.
+const SPACING_SIDES: WallSide[] = ['front', 'back', 'left', 'right', 'partition'];
 
 /** Size chip text: walk doors + windows in inches (36"x80"), big doors in ft. */
 function sizeLabel(o: Opening): string {
@@ -636,6 +632,10 @@ function SpacingOverlay({ openings, structure }: { openings: Opening[]; structur
     const f = SPACING_SIDES.filter((side) => {
       const wall = structure.walls[side];
       if (!wall) return false;
+      if (side === 'partition') {
+        if (structure.enclosure.partitionZ === null) return false;
+        if (!partitionSpacingVisible(camera.position, structure, useEditorStore.getState())) return false;
+      }
       const c = openingWorldTransform(side, wall.spanFt / 2, wall.eaveHeightFt / 2, structure).pos;
       const o = pushOut(c, side, 1, partFaces(structure));
       const dot =

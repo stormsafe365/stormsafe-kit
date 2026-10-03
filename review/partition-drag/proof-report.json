@@ -1,0 +1,1653 @@
+{
+ "build": "CCI 26x50x12 standard, End Storage 30' from the back (partition at z=-5), 10x10 roll-up + 36x80 walk door on the Partition Wall, both Auto",
+ "outset": 0.33999999999999997,
+ "contexts": {
+  "interior": {
+   "ed": {
+    "viewMode": "exterior",
+    "interiorView": true,
+    "showSpacing": true,
+    "dragging": false,
+    "selected": null
+   },
+   "cam": {
+    "pos": [
+     0,
+     5.5,
+     -23.5
+    ],
+    "quat": [
+     0,
+     0.9984,
+     -0.0572,
+     0
+    ],
+    "fov": 70
+   },
+   "chipsBefore": [
+    "4'",
+    "1'",
+    "8'",
+    "36\"x80\"",
+    "10'x10'",
+    "26'W",
+    "12'H",
+    "15'4\"H"
+   ],
+   "shotBefore": "01-interior-before.png",
+   "rollup": {
+    "type": "rollUpDoor",
+    "ft": 6,
+    "screenDir": "left",
+    "worldDx": 6,
+    "from": 13,
+    "wanted": 19,
+    "got": 19,
+    "delta3D": 6,
+    "screenFrom": {
+     "x": 1050.5,
+     "y": 622.7,
+     "inFront": true
+    },
+    "screenTo": {
+     "x": 824.7,
+     "y": 622.7,
+     "inFront": true
+    },
+    "camMoved": false,
+    "camBefore": {
+     "pos": [
+      0,
+      5.5,
+      -23.5
+     ],
+     "quat": [
+      0,
+      0.9984,
+      -0.0572,
+      0
+     ],
+     "fov": 70
+    },
+    "camAfter": {
+     "pos": [
+      0,
+      5.5,
+      -23.5
+     ],
+     "quat": [
+      0,
+      0.9984,
+      -0.0572,
+      0
+     ],
+     "fov": 70
+    },
+    "draggingAfter": false,
+    "progBefore": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "progAfter": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "14",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "partBefore": [
+     {
+      "type": "rollup",
+      "x": 8,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 11.5,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "partAfter": [
+     {
+      "type": "rollup",
+      "x": 14,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 11.5,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "ptotBefore": "$23,819.00",
+    "ptotAfter": "$23,819.00",
+    "totalsSame": true,
+    "d3Before": [
+     {
+      "id": "rollUpDoor-122",
+      "type": "rollUpDoor",
+      "offset": 13,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-123",
+      "type": "walkDoor",
+      "offset": 5.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ],
+    "d3After": [
+     {
+      "id": "rollUpDoor-124",
+      "type": "rollUpDoor",
+      "offset": 19,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-125",
+      "type": "walkDoor",
+      "offset": 11.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ]
+   },
+   "shotAfterRollup": "02-interior-after-rollup.png",
+   "walk": {
+    "type": "walkDoor",
+    "ft": 4,
+    "screenDir": "right",
+    "worldDx": -4,
+    "from": 11.5,
+    "wanted": 7.5,
+    "got": 7.5,
+    "delta3D": -4,
+    "screenFrom": {
+     "x": 1107.6,
+     "y": 686.7,
+     "inFront": true
+    },
+    "screenTo": {
+     "x": 1259.7,
+     "y": 686.7,
+     "inFront": true
+    },
+    "camMoved": false,
+    "camBefore": {
+     "pos": [
+      0,
+      5.5,
+      -23.5
+     ],
+     "quat": [
+      0,
+      0.9984,
+      -0.0572,
+      0
+     ],
+     "fov": 70
+    },
+    "camAfter": {
+     "pos": [
+      0,
+      5.5,
+      -23.5
+     ],
+     "quat": [
+      0,
+      0.9984,
+      -0.0572,
+      0
+     ],
+     "fov": 70
+    },
+    "draggingAfter": false,
+    "progBefore": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "14",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "progAfter": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "14",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "6",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "partBefore": [
+     {
+      "type": "rollup",
+      "x": 14,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 11.5,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "partAfter": [
+     {
+      "type": "rollup",
+      "x": 14,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 6,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "ptotBefore": "$23,819.00",
+    "ptotAfter": "$23,819.00",
+    "totalsSame": true,
+    "d3Before": [
+     {
+      "id": "rollUpDoor-124",
+      "type": "rollUpDoor",
+      "offset": 19,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-125",
+      "type": "walkDoor",
+      "offset": 11.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ],
+    "d3After": [
+     {
+      "id": "rollUpDoor-126",
+      "type": "rollUpDoor",
+      "offset": 19,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-127",
+      "type": "walkDoor",
+      "offset": 7.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ]
+   },
+   "chipsAfter": [
+    "6'",
+    "5'",
+    "2'",
+    "26'W",
+    "12'H",
+    "15'4\"H",
+    "36\"x80\"",
+    "10'x10'"
+   ],
+   "shotAfterWalk": "03-interior-after-walk.png",
+   "lookAround": {
+    "from": {
+     "x": 723.2,
+     "y": 420.7,
+     "inFront": true
+    },
+    "camBefore": {
+     "pos": [
+      0,
+      5.5,
+      -23.5
+     ],
+     "quat": [
+      0,
+      0.9984,
+      -0.0572,
+      0
+     ],
+     "fov": 70
+    },
+    "camAfter": {
+     "pos": [
+      0,
+      5.5,
+      -23.5
+     ],
+     "quat": [
+      0.009,
+      0.988,
+      -0.0629,
+      0.141
+     ],
+     "fov": 70
+    },
+    "camMoved": true,
+    "progSame": true,
+    "d3Same": true
+   },
+   "shotLook": "04-interior-after-lookaround.png",
+   "click": {
+    "at": {
+     "x": 1057.8,
+     "y": 692.3,
+     "inFront": true
+    },
+    "opened": [
+     "walkDoor-127"
+    ],
+    "selected": "walkDoor-127",
+    "rowsSame": true,
+    "d3Same": true
+   },
+   "shotClick": "05-interior-after-click-opens.png",
+   "spacingPageBefore": [],
+   "spacingPageAfter": []
+  },
+  "cutaway": {
+   "ed": {
+    "viewMode": "cutaway",
+    "interiorView": false,
+    "showSpacing": true,
+    "dragging": false,
+    "selected": null
+   },
+   "cam": {
+    "pos": [
+     67.676,
+     55.59,
+     -67.724
+    ],
+    "quat": [
+     -0.0892,
+     0.8985,
+     0.2155,
+     0.372
+    ],
+    "fov": 30
+   },
+   "chipsBefore": [
+    "26'",
+    "26'W",
+    "12'H",
+    "15'4\"H",
+    "13'3\" center clearance",
+    "50'",
+    "50'W",
+    "12'H",
+    "51' roof",
+    "4'",
+    "1'",
+    "8'",
+    "36\"x80\"",
+    "10'x10'",
+    "26'W",
+    "12'H",
+    "15'4\"H"
+   ],
+   "shotBefore": "06-cutaway-before.png",
+   "rollup": {
+    "type": "rollUpDoor",
+    "ft": 6,
+    "screenDir": "left",
+    "worldDx": 6,
+    "from": 13,
+    "wanted": 19,
+    "got": 19,
+    "delta3D": 6,
+    "screenFrom": {
+     "x": 1114.1,
+     "y": 582.9,
+     "inFront": true
+    },
+    "screenTo": {
+     "x": 1042.3,
+     "y": 618.7,
+     "inFront": true
+    },
+    "camMoved": false,
+    "camBefore": {
+     "pos": [
+      67.676,
+      55.59,
+      -67.724
+     ],
+     "quat": [
+      -0.0892,
+      0.8985,
+      0.2155,
+      0.372
+     ],
+     "fov": 30
+    },
+    "camAfter": {
+     "pos": [
+      67.676,
+      55.59,
+      -67.724
+     ],
+     "quat": [
+      -0.0892,
+      0.8985,
+      0.2155,
+      0.372
+     ],
+     "fov": 30
+    },
+    "draggingAfter": false,
+    "progBefore": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "progAfter": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "14",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "partBefore": [
+     {
+      "type": "rollup",
+      "x": 8,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 11.5,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "partAfter": [
+     {
+      "type": "rollup",
+      "x": 14,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 11.5,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "ptotBefore": "$23,819.00",
+    "ptotAfter": "$23,819.00",
+    "totalsSame": true,
+    "d3Before": [
+     {
+      "id": "rollUpDoor-140",
+      "type": "rollUpDoor",
+      "offset": 13,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-141",
+      "type": "walkDoor",
+      "offset": 5.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ],
+    "d3After": [
+     {
+      "id": "rollUpDoor-142",
+      "type": "rollUpDoor",
+      "offset": 19,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-143",
+      "type": "walkDoor",
+      "offset": 11.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ]
+   },
+   "shotAfterRollup": "07-cutaway-after-rollup.png",
+   "walk": {
+    "type": "walkDoor",
+    "ft": 4,
+    "screenDir": "right",
+    "worldDx": -4,
+    "from": 11.5,
+    "wanted": 7.5,
+    "got": 7.5,
+    "delta3D": -4,
+    "screenFrom": {
+     "x": 1130.7,
+     "y": 598.6,
+     "inFront": true
+    },
+    "screenTo": {
+     "x": 1174.8,
+     "y": 576.2,
+     "inFront": true
+    },
+    "camMoved": false,
+    "camBefore": {
+     "pos": [
+      67.676,
+      55.59,
+      -67.724
+     ],
+     "quat": [
+      -0.0892,
+      0.8985,
+      0.2155,
+      0.372
+     ],
+     "fov": 30
+    },
+    "camAfter": {
+     "pos": [
+      67.676,
+      55.59,
+      -67.724
+     ],
+     "quat": [
+      -0.0892,
+      0.8985,
+      0.2155,
+      0.372
+     ],
+     "fov": 30
+    },
+    "draggingAfter": false,
+    "progBefore": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "14",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "progAfter": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "14",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "6",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "partBefore": [
+     {
+      "type": "rollup",
+      "x": 14,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 11.5,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "partAfter": [
+     {
+      "type": "rollup",
+      "x": 14,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 6,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "ptotBefore": "$23,819.00",
+    "ptotAfter": "$23,819.00",
+    "totalsSame": true,
+    "d3Before": [
+     {
+      "id": "rollUpDoor-142",
+      "type": "rollUpDoor",
+      "offset": 19,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-143",
+      "type": "walkDoor",
+      "offset": 11.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ],
+    "d3After": [
+     {
+      "id": "rollUpDoor-144",
+      "type": "rollUpDoor",
+      "offset": 19,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-145",
+      "type": "walkDoor",
+      "offset": 7.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ]
+   },
+   "chipsAfter": [
+    "26'",
+    "26'W",
+    "12'H",
+    "15'4\"H",
+    "13'3\" center clearance",
+    "50'",
+    "50'W",
+    "12'H",
+    "51' roof",
+    "6'",
+    "5'",
+    "2'",
+    "26'W",
+    "12'H",
+    "15'4\"H",
+    "36\"x80\"",
+    "10'x10'"
+   ],
+   "shotAfterWalk": "08-cutaway-after-walk.png"
+  },
+  "exterior-iso": {
+   "ed": {
+    "viewMode": "exterior",
+    "interiorView": false,
+    "showSpacing": true,
+    "dragging": false,
+    "selected": null
+   },
+   "cam": {
+    "pos": [
+     67.678,
+     55.591,
+     -67.725
+    ],
+    "quat": [
+     -0.0892,
+     0.8985,
+     0.2155,
+     0.372
+    ],
+    "fov": 30
+   },
+   "chipsBefore": [
+    "26'",
+    "26'W",
+    "12'H",
+    "15'4\"H",
+    "13'3\" center clearance",
+    "50'",
+    "50'W",
+    "12'H",
+    "51' roof"
+   ],
+   "shotBefore": "09-exterior-iso-before.png",
+   "rollup": {
+    "type": "rollUpDoor",
+    "ft": 6,
+    "screenDir": "left",
+    "worldDx": 6,
+    "from": 13,
+    "wanted": 19,
+    "got": 19,
+    "delta3D": 6,
+    "screenFrom": {
+     "x": 1114.1,
+     "y": 582.9,
+     "inFront": true
+    },
+    "screenTo": {
+     "x": 1042.3,
+     "y": 618.7,
+     "inFront": true
+    },
+    "camMoved": false,
+    "camBefore": {
+     "pos": [
+      67.678,
+      55.591,
+      -67.725
+     ],
+     "quat": [
+      -0.0892,
+      0.8985,
+      0.2155,
+      0.372
+     ],
+     "fov": 30
+    },
+    "camAfter": {
+     "pos": [
+      67.678,
+      55.591,
+      -67.725
+     ],
+     "quat": [
+      -0.0892,
+      0.8985,
+      0.2155,
+      0.372
+     ],
+     "fov": 30
+    },
+    "draggingAfter": false,
+    "progBefore": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "progAfter": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "14",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "partBefore": [
+     {
+      "type": "rollup",
+      "x": 8,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 11.5,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "partAfter": [
+     {
+      "type": "rollup",
+      "x": 14,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 11.5,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "ptotBefore": "$23,819.00",
+    "ptotAfter": "$23,819.00",
+    "totalsSame": true,
+    "d3Before": [
+     {
+      "id": "rollUpDoor-158",
+      "type": "rollUpDoor",
+      "offset": 13,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-159",
+      "type": "walkDoor",
+      "offset": 5.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ],
+    "d3After": [
+     {
+      "id": "rollUpDoor-160",
+      "type": "rollUpDoor",
+      "offset": 19,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-161",
+      "type": "walkDoor",
+      "offset": 11.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ]
+   },
+   "shotAfterRollup": "10-exterior-iso-after-rollup.png",
+   "walk": {
+    "type": "walkDoor",
+    "ft": 4,
+    "screenDir": "right",
+    "worldDx": -4,
+    "from": 11.5,
+    "wanted": 7.5,
+    "got": 7.5,
+    "delta3D": -4,
+    "screenFrom": {
+     "x": 1130.7,
+     "y": 598.6,
+     "inFront": true
+    },
+    "screenTo": {
+     "x": 1174.8,
+     "y": 576.2,
+     "inFront": true
+    },
+    "camMoved": false,
+    "camBefore": {
+     "pos": [
+      67.678,
+      55.591,
+      -67.725
+     ],
+     "quat": [
+      -0.0892,
+      0.8985,
+      0.2155,
+      0.372
+     ],
+     "fov": 30
+    },
+    "camAfter": {
+     "pos": [
+      67.678,
+      55.591,
+      -67.725
+     ],
+     "quat": [
+      -0.0892,
+      0.8985,
+      0.2155,
+      0.372
+     ],
+     "fov": 30
+    },
+    "draggingAfter": false,
+    "progBefore": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "14",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "progAfter": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "14",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "6",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "partBefore": [
+     {
+      "type": "rollup",
+      "x": 14,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 11.5,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "partAfter": [
+     {
+      "type": "rollup",
+      "x": 14,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 6,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "ptotBefore": "$23,819.00",
+    "ptotAfter": "$23,819.00",
+    "totalsSame": true,
+    "d3Before": [
+     {
+      "id": "rollUpDoor-160",
+      "type": "rollUpDoor",
+      "offset": 19,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-161",
+      "type": "walkDoor",
+      "offset": 11.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ],
+    "d3After": [
+     {
+      "id": "rollUpDoor-162",
+      "type": "rollUpDoor",
+      "offset": 19,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-163",
+      "type": "walkDoor",
+      "offset": 7.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ]
+   },
+   "chipsAfter": [
+    "26'",
+    "26'W",
+    "12'H",
+    "15'4\"H",
+    "13'3\" center clearance",
+    "50'",
+    "50'W",
+    "12'H",
+    "51' roof"
+   ],
+   "shotAfterWalk": "11-exterior-iso-after-walk.png"
+  },
+  "exterior-inside": {
+   "ed": {
+    "viewMode": "exterior",
+    "interiorView": false,
+    "showSpacing": true,
+    "dragging": false,
+    "selected": null
+   },
+   "cam": {
+    "pos": [
+     2,
+     6.5,
+     -24.5
+    ],
+    "quat": [
+     0,
+     0.9999,
+     0.0128,
+     0
+    ],
+    "fov": 30
+   },
+   "chipsBefore": [
+    "4'",
+    "1'",
+    "8'",
+    "36\"x80\"",
+    "10'x10'",
+    "26'W",
+    "12'H",
+    "15'4\"H"
+   ],
+   "shotBefore": "12-exterior-inside-before.png",
+   "rollup": {
+    "type": "rollUpDoor",
+    "ft": 6,
+    "screenDir": "left",
+    "worldDx": 6,
+    "from": 13,
+    "wanted": 19,
+    "got": 19,
+    "delta3D": 6,
+    "screenFrom": {
+     "x": 1234.8,
+     "y": 618.9,
+     "inFront": true
+    },
+    "screenTo": {
+     "x": 681.8,
+     "y": 618.9,
+     "inFront": true
+    },
+    "camMoved": false,
+    "camBefore": {
+     "pos": [
+      2,
+      6.5,
+      -24.5
+     ],
+     "quat": [
+      0,
+      0.9999,
+      0.0128,
+      0
+     ],
+     "fov": 30
+    },
+    "camAfter": {
+     "pos": [
+      2,
+      6.5,
+      -24.5
+     ],
+     "quat": [
+      0,
+      0.9999,
+      0.0128,
+      0
+     ],
+     "fov": 30
+    },
+    "draggingAfter": false,
+    "progBefore": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "progAfter": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "14",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "partBefore": [
+     {
+      "type": "rollup",
+      "x": 8,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 11.5,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "partAfter": [
+     {
+      "type": "rollup",
+      "x": 14,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 11.5,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "ptotBefore": "$23,819.00",
+    "ptotAfter": "$23,819.00",
+    "totalsSame": true,
+    "d3Before": [
+     {
+      "id": "rollUpDoor-176",
+      "type": "rollUpDoor",
+      "offset": 13,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-177",
+      "type": "walkDoor",
+      "offset": 5.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ],
+    "d3After": [
+     {
+      "id": "rollUpDoor-178",
+      "type": "rollUpDoor",
+      "offset": 19,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-179",
+      "type": "walkDoor",
+      "offset": 11.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ]
+   },
+   "shotAfterRollup": "13-exterior-inside-after-rollup.png",
+   "walk": {
+    "type": "walkDoor",
+    "ft": 4,
+    "screenDir": "right",
+    "worldDx": -4,
+    "from": 11.5,
+    "wanted": 7.5,
+    "got": 7.5,
+    "delta3D": -4,
+    "screenFrom": {
+     "x": 866.6,
+     "y": 771.8,
+     "inFront": true
+    },
+    "screenTo": {
+     "x": 1234.4,
+     "y": 771.8,
+     "inFront": true
+    },
+    "camMoved": false,
+    "camBefore": {
+     "pos": [
+      -3.5,
+      6.5,
+      -24.5
+     ],
+     "quat": [
+      0,
+      0.9999,
+      0.0128,
+      0
+     ],
+     "fov": 30
+    },
+    "camAfter": {
+     "pos": [
+      -3.5,
+      6.5,
+      -24.5
+     ],
+     "quat": [
+      0,
+      0.9999,
+      0.0128,
+      0
+     ],
+     "fov": 30
+    },
+    "draggingAfter": false,
+    "progBefore": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "14",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "progAfter": [
+     {
+      "entry": "rollup",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "14",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     },
+     {
+      "entry": "walk",
+      "loc": "Partition Wall",
+      "rows": [
+       {
+        "val": "6",
+        "side": "left",
+        "label": "From Left"
+       }
+      ]
+     }
+    ],
+    "partBefore": [
+     {
+      "type": "rollup",
+      "x": 14,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 11.5,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "partAfter": [
+     {
+      "type": "rollup",
+      "x": 14,
+      "w": 10,
+      "h": 10
+     },
+     {
+      "type": "wtd",
+      "x": 6,
+      "w": 3,
+      "h": 6.67
+     }
+    ],
+    "ptotBefore": "$23,819.00",
+    "ptotAfter": "$23,819.00",
+    "totalsSame": true,
+    "d3Before": [
+     {
+      "id": "rollUpDoor-178",
+      "type": "rollUpDoor",
+      "offset": 19,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-179",
+      "type": "walkDoor",
+      "offset": 11.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ],
+    "d3After": [
+     {
+      "id": "rollUpDoor-180",
+      "type": "rollUpDoor",
+      "offset": 19,
+      "width": 10,
+      "height": 10,
+      "sill": 0
+     },
+     {
+      "id": "walkDoor-181",
+      "type": "walkDoor",
+      "offset": 7.5,
+      "width": 3,
+      "height": 6.67,
+      "sill": 0
+     }
+    ]
+   },
+   "chipsAfter": [
+    "6'",
+    "5'",
+    "2'",
+    "26'W",
+    "12'H",
+    "15'4\"H",
+    "36\"x80\"",
+    "10'x10'"
+   ],
+   "shotAfterWalk": "14-exterior-inside-after-walk.png"
+  }
+ },
+ "baseline": {
+  "prog": {
+   "rows": [
+    {
+     "entry": "rollup",
+     "loc": "Partition Wall",
+     "rows": [
+      {
+       "val": "",
+       "side": "left",
+       "label": "From Left"
+      }
+     ]
+    },
+    {
+     "entry": "walk",
+     "loc": "Partition Wall",
+     "rows": [
+      {
+       "val": "",
+       "side": "left",
+       "label": "From Left"
+      }
+     ]
+    }
+   ],
+   "part": [
+    {
+     "type": "rollup",
+     "x": 8,
+     "w": 10,
+     "h": 10
+    },
+    {
+     "type": "wtd",
+     "x": 11.5,
+     "w": 3,
+     "h": 6.67
+    }
+   ],
+   "ptot": "$23,819.00",
+   "totals": "{\"mode\":\"engine\",\"manual\":false,\"depPct\":17,\"base\":8590,\"leg\":1770,\"walls\":5960,\"vertWallUpg\":0,\"rud\":2475,\"wtd\":600,\"win\":0,\"sf\":0,\"lapP\":0,\"framingUpgrade\":1060,\"ocUpgrade\":0,\"ocLean\":0,\"cb12x4\":false,\"pitchUpgrade\":0,\"pitchSelVal\":\"standard\",\"wainP\":0,\"adjP\":0,\"holdP\":0,\"aewP\":1910,\"leanToTotal\":0,\"connFeeTotal\":0,\"addCompTotal\":0,\"insulTotal\":0,\"overhangP\":0,\"sidePanelP\":0,\"anchors\":0,\"anchorP\":0,\"anchorLegs\":0,\"preSheetSub\":22365,\"thrPre\":22365,\"subPreFastener\":22365,\"sheetFree\":true,\"sheetUpgrade\":0,\"fastenerFree\":true,\"fastenerP\":0,\"sheet26\":true,\"sub\":22365,\"disc\":0,\"da\":0,\"ad\":22365,\"tax\":6.5,\"ta\":1454,\"tot\":23819,\"agEx\":false,\"grossDep\":3802,\"addDiscVal\":0,\"addDiscType\":\"pct\",\"addDiscAmount\":0,\"dep\":3802,\"bal\":20017,\"adjTot\":23819,\"planType\":\"Site Specific Plans\",\"planCost\":1119}"
+  },
+  "d3": [
+   {
+    "id": "rollUpDoor-108",
+    "type": "rollUpDoor",
+    "offset": 13,
+    "width": 10,
+    "height": 10,
+    "sill": 0
+   },
+   {
+    "id": "walkDoor-109",
+    "type": "walkDoor",
+    "offset": 5.5,
+    "width": 3,
+    "height": 6.67,
+    "sill": 0
+   }
+  ]
+ },
+ "problems": [
+  {
+   "kind": "log",
+   "text": "Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:5750/favicon.ico"
+  }
+ ]
+}

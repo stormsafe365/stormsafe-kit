@@ -12,6 +12,7 @@ import {
   interiorKey,
   interiorPose,
   lookDir,
+  lookPressStarts,
   walk,
   zoomFov,
   type InteriorRoom,
@@ -254,8 +255,9 @@ export function InteriorWalk() {
       doc.removeEventListener('pointercancel', onUp);
     };
     const onDown = (e: PointerEvent) => {
-      if (!walkRef.current || drag) return;
-      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      // A part's handler ran first (R3F's canvas listener) and took this press
+      // as a drag: never start the look-around under it (lookPressStarts).
+      if (!lookPressStarts({ inside: !!walkRef.current, active: !!drag, partDragging: useEditorStore.getState().dragging, pointerType: e.pointerType, button: e.button })) return;
       drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
       // Keep the drag when the pointer runs over the quote panel (an iframe
       // would otherwise swallow the moves) or off the window.

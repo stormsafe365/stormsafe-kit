@@ -230,6 +230,20 @@ export function walk(p: Vec3, yaw: number, forwardFt: number, rightFt: number): 
   return [p[0] + fx * forwardFt + rx * rightFt, p[1], p[2] + fz * forwardFt + rz * rightFt];
 }
 
+/**
+ * Whether a pointerdown on the canvas starts the look-around drag (InteriorWalk).
+ * The parts' own handlers (Openings / LeanToSiding onDown, run first by R3F)
+ * set `dragging` when they take a press — that press drags the part, inside
+ * exactly as outside (owner 10/3/26: doors on the storage partition could not
+ * be moved from the Interior view), so it never also turns the camera. A press
+ * beside every part looks around as before. Only the primary mouse button.
+ */
+export function lookPressStarts(p: { inside: boolean; active: boolean; partDragging: boolean; pointerType: string; button: number }): boolean {
+  if (!p.inside || p.active || p.partDragging) return false;
+  if (p.pointerType === 'mouse' && p.button !== 0) return false;
+  return true;
+}
+
 /** Key that changes only when the room box / pose would change (size, eave, partitions). */
 export function interiorKey(s: StructureModel): string {
   const r = interiorRoom(s);

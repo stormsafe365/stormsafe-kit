@@ -21,6 +21,7 @@ import { useEditorStore } from '@/store/useEditorStore';
 import type { BuildingType, EndSheeting, FoundationType, OpeningType, WallOverrides, WallSide } from '@/types/building';
 import { leanToWalkDoorLook, leanToWindowLook, readLeanToStorage, type ProgramTypeRow } from './leanToAccessory';
 import { NO_STORAGE, partitionLocationAllowed, readMainStorage } from './mainStorage';
+import { dragWritePosValue, dragWriteSide } from './dragWriteBack';
 import { spreadAutoOverlaps } from '@/engine/autoSpread';
 
 // Cache-bust the pricing iframe on the WEB (CRM embed) so a redeploy shows up
@@ -398,15 +399,14 @@ function writeBackDrag(win: BuilderWindow, id: string | null) {
   }
 
   const openings = useBuildingStore.getState().openings;
-  const targetSide = side === 'back' ? 'right' : 'left'; // uniform per wall
+  const targetSide = dragWriteSide(side); // uniform per wall
   let wrote = false;
   for (const sib of siblings) {
     const op = openings.find((o) => o.id === sib.oid);
     const row = rows[sib.itemIndex];
     if (!op || !row) continue;
-    const pos = Math.max(0, Math.round((op.offset - op.width / 2) * 12) / 12); // nearest inch
     const input = row.querySelector('input') as HTMLInputElement | null;
-    if (input) input.value = String(Number(pos.toFixed(3))); // tidy "4.333" not "4.33333333"
+    if (input) input.value = dragWritePosValue(op.offset, op.width); // nearest inch, tidy "4.333"
     row.querySelectorAll('.pos-toggle button').forEach((b) => {
       const btn = b as HTMLElement;
       btn.classList.toggle('active', btn.dataset.side === targetSide);

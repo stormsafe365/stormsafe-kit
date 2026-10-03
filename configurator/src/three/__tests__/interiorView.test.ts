@@ -1,4 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG } from '@/config/constants';
 import { deriveStructure, type StructureModel } from '@/engine/geometry';
 import { resolveBuilding } from '@/engine/ruleEngine';
@@ -14,13 +16,13 @@ import {
   interiorPose,
   interiorRoom,
   lookDir,
+  lookPressStarts,
   roofLineAt,
   walk,
   yawPitchOf,
   zoomFov,
   type Vec3,
 } from '../interiorView';
-import { interiorPress } from '../interiorPress';
 
 // Walk-in Interior camera (owner 10/2/26: "if you try to zoom out at all.. it
 // takes out outside the building .. so there really is not an interior view").
@@ -316,35 +318,51 @@ describe('editor store: entering / leaving Interior', () => {
   });
 });
 
-describe('a press on a door / window inside never slides it', () => {
-  const g = globalThis as unknown as { window?: EventTarget };
-  let had: EventTarget | undefined;
-  beforeEach(() => {
-    had = g.window;
-    g.window = new EventTarget();
+// Owner 10/3/26: "I added a roll up door & walk through door to the partition
+// wall inside the building & cant click & move the walk door or roll up door".
+// Inside, a press ON a part now drags it exactly like outside (Openings /
+// LeanToSiding onDown: select, setDragging, raycast, clamp, write-back); the
+// look-around (InteriorWalk) only takes a press that no part took.
+describe('Interior pointer routing: a press on a part drags it, a press beside one looks around', () => {
+  const src = (f: string) => readFileSync(fileURLToPath(new URL(f, import.meta.url)), 'utf8');
+  const base = { inside: true, active: false, partDragging: false, pointerType: 'mouse', button: 0 };
+  it('look-around starts on a primary-button press on empty space inside (mouse, touch, pen)', () => {
+    expect(lookPressStarts(base)).toBe(true);
+    expect(lookPressStarts({ ...base, pointerType: 'touch', button: 0 })).toBe(true);
+    expect(lookPressStarts({ ...base, pointerType: 'pen', button: 0 })).toBe(true);
   });
-  afterEach(() => {
-    g.window = had;
-    useEditorStore.setState({ interiorView: false });
+  it('never under a press a part already took (its handler set dragging first)', () => {
+    expect(lookPressStarts({ ...base, partDragging: true })).toBe(false);
+    // The editor store flips dragging synchronously on the part's press, so the
+    // canvas listener that runs right after it sees it.
+    useEditorStore.getState().setDragging(true);
+    expect(lookPressStarts({ ...base, partDragging: useEditorStore.getState().dragging })).toBe(false);
+    useEditorStore.getState().setDragging(false);
+    expect(lookPressStarts({ ...base, partDragging: useEditorStore.getState().dragging })).toBe(true);
   });
-  const ev = (type: string, x: number, y: number) => Object.assign(new Event(type), { clientX: x, clientY: y }) as unknown as PointerEvent;
-  it('outside Interior: not handled (the normal drag / click code runs)', () => {
-    let clicks = 0;
-    expect(interiorPress(ev('pointerdown', 0, 0), () => clicks++)).toBe(false);
-    g.window!.dispatchEvent(ev('pointerup', 0, 0));
-    expect(clicks).toBe(0);
+  it('not outside Interior, not for a second pointer, not for the right / middle mouse button', () => {
+    expect(lookPressStarts({ ...base, inside: false })).toBe(false);
+    expect(lookPressStarts({ ...base, active: true })).toBe(false);
+    expect(lookPressStarts({ ...base, button: 2 })).toBe(false);
+    expect(lookPressStarts({ ...base, button: 1 })).toBe(false);
   });
-  it('inside: a click still opens / selects; a drag does nothing to the part', () => {
-    useEditorStore.setState({ interiorView: true });
-    let clicks = 0;
-    expect(interiorPress(ev('pointerdown', 10, 10), () => clicks++)).toBe(true);
-    g.window!.dispatchEvent(ev('pointermove', 12, 11));
-    g.window!.dispatchEvent(ev('pointerup', 12, 11));
-    expect(clicks).toBe(1);
-    expect(interiorPress(ev('pointerdown', 10, 10), () => clicks++)).toBe(true);
-    g.window!.dispatchEvent(ev('pointermove', 60, 10));
-    g.window!.dispatchEvent(ev('pointermove', 12, 10));
-    g.window!.dispatchEvent(ev('pointerup', 12, 10));
-    expect(clicks).toBe(1);
+  it('Openings / LeanToSiding have no Interior-only press gate; InteriorWalk routes its press through lookPressStarts', () => {
+    for (const f of ['../Openings.tsx', '../LeanToSiding.tsx']) {
+      const code = src(f);
+      expect(code).not.toMatch(/interiorPress/);
+      expect(code).toMatch(/e\.stopPropagation\(\);[\s\S]{0,600}?setDragging\(true\);/);
+    }
+    expect(existsSync(fileURLToPath(new URL('../interiorPress.ts', import.meta.url)))).toBe(false);
+    const walk = src('../InteriorWalk.tsx');
+    expect(walk).toMatch(
+      /if \(!lookPressStarts\(\{ inside: !!walkRef\.current, active: !!drag, partDragging: useEditorStore\.getState\(\)\.dragging, pointerType: e\.pointerType, button: e\.button \}\)\) return;/,
+    );
+    // The look-around's move handler still yields to a part drag, and the orbit
+    // controls stay off inside after the part's release re-enables them.
+    expect(walk).toMatch(/if \(!w \|\| useEditorStore\.getState\(\)\.dragging\) return;/);
+    expect(walk).toMatch(/if \(controls && controls\.enabled\) controls\.enabled = false;/);
+  });
+  it('the Viewport hint says so', () => {
+    expect(src('../../components/Viewport.tsx')).toMatch(/Drag a door to move it · drag elsewhere to look around/);
   });
 });

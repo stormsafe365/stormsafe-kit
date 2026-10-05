@@ -3,6 +3,7 @@ import { ROOF_LIFT, SHEET_OUTSET, type StructureModel } from '@/engine/geometry'
 import type { BuildingColors, Opening, PanelOrientation, Wainscot, WallSide } from '@/types/building';
 import { TRIM_LIFT } from '../lappedBox';
 import { eaveDownBand, stripsAround, type LocalRect } from '../Siding';
+import type { PlanRect } from '../panelBack';
 import { litFromRight, materialKey, sheetOrientation, type EnhancedMaterialSpec, type V3 } from './materials';
 
 /**
@@ -655,19 +656,84 @@ export function shellLayout(inp: ShellInput): ShellLayout {
 
 // ── Batches: walls ─────────────────────────────────────────────────────────
 
-const wallSpec = (inp: ShellInput, wainscot: boolean, flip: boolean, interior = false): EnhancedMaterialSpec => ({
+const wallSpec = (inp: ShellInput, wainscot: boolean, flip: boolean, interior = false, seal = false): EnhancedMaterialSpec => ({
   surface: 'wall',
   color: wainscot ? inp.colors.wainscot : inp.colors.walls,
   orientation: sheetOrientation(inp.wallOrientation),
   flipX: flip,
   ...(interior ? { interior: true } : {}),
+  ...(seal ? { seal: true } : {}),
 });
 
-/** Emit one sheet rectangle, cut into strips around the holes that reach into it (classic stripsAround). */
-function emitRegion(e: Emitter, w: ShellWall, r: SheetRegion) {
+/**
+ * The unpainted back face of a wall sheet (panelBack.ts): the sheet's own rib
+ * map, the rib flip worked out for the face looking -n (seen from inside).
+ */
+export const wallBackSpec = (wallOrientation: PanelOrientation | 'lap', plane: Pick<PlaneRef, 'n' | 'u'>, interior = false): EnhancedMaterialSpec => {
+  const o = wallOrientation === 'lap' ? 'lap' : sheetOrientation(wallOrientation);
+  const ribs = o === 'lap' ? 'lap' : o === 'horizontal' ? 'wall-horizontal' : 'wall-vertical';
+  return {
+    surface: 'panelBack',
+    part: 'wall',
+    ribs,
+    flipX: o === 'vertical' && litFromRight(scale(plane.n, -1), plane.u),
+    ...(interior ? { interior: true } : {}),
+  };
+};
+
+/**
+ * The unpainted underside of a roof plane whose top normal is `n` (texture +u
+ * = `u`), over the room inside `room` (the wall sheet lines). Drawn with the
+ * LIVE underside polygon (roofUnderSoffit), clipped to the other side of it.
+ */
+export const roofBackSpec = (orientation: 'vertical' | 'horizontal', n: V3, u: V3, room: PlanRect): EnhancedMaterialSpec => ({
+  surface: 'panelBack',
+  part: 'roof',
+  ribs: orientation === 'horizontal' ? 'roof-horizontal' : 'roof-vertical',
+  flipX: orientation === 'vertical' && litFromRight(scale(n, -1), u),
+  room,
+});
+
+/** The LIVE bare-Galvalume underside, kept only under the overhang (outside `room`). */
+export const roofUnderSoffit = (room: PlanRect): EnhancedMaterialSpec => ({ surface: 'roofUnder', room });
+
+/** The main building's room: inside its wall sheet lines. */
+export const mainRoomRect = (s: Pick<StructureModel, 'width' | 'length'>): PlanRect => ({
+  x0: -(s.width / 2 + SHEET_OUTSET),
+  x1: s.width / 2 + SHEET_OUTSET,
+  z0: -(s.length / 2 + SHEET_OUTSET),
+  z1: s.length / 2 + SHEET_OUTSET,
+});
+
+/**
+ * Panel-back faces + wall crack seals never drive the PDF capture framing
+ * (each repeats a box that is already there: its painted wall face / the LIVE
+ * roof underside): tag them captureIgnore.
+ */
+export const tagPanelBacks = (bs: ShellBatch[]): ShellBatch[] =>
+  bs.map((b) => (b.spec.surface === 'panelBack' || (b.spec.surface === 'wall' && b.spec.seal) ? { ...b, captureIgnore: true } : b));
+
+/** A polygon on its painted face (normal n) + the same polygon facing -n into `back`. */
+export function twoFaced(paint: Emitter, back: Emitter, pts: V3[], n: V3, uvOf: (p: V3) => UV) {
+  polygon(paint, pts, n, uvOf);
+  polygon(back, pts, scale(n, -1), uvOf);
+}
+
+/** A strip a sheet region was cut into (along-axis a0..a1 x height b0..b1). */
+interface SheetStrip {
+  a0: number;
+  a1: number;
+  b0: number;
+  b1: number;
+  wainscot: boolean;
+}
+
+/** Emit one sheet rectangle, cut into strips around the holes that reach into it (classic stripsAround). Returns the strips. */
+function emitRegion(e: Emitter, w: ShellWall, r: SheetRegion): SheetStrip[] {
+  const out: SheetStrip[] = [];
   const width = r.c1 - r.c0;
   const height = r.y1 - r.y0;
-  if (width <= 0.02 || height <= 0.02) return;
+  if (width <= 0.02 || height <= 0.02) return out;
   const cm = (r.c0 + r.c1) / 2;
   const ym = (r.y0 + r.y1) / 2;
   // Only holes that actually overlap this rectangle's height (stripsAround
@@ -683,10 +749,73 @@ function emitRegion(e: Emitter, w: ShellWall, r: SheetRegion) {
     const b1 = ym + st.v + st.h / 2;
     const p = w.plane;
     polygon(e, [wallPoint(p, a0, b0), wallPoint(p, a1, b0), wallPoint(p, a1, b1), wallPoint(p, a0, b1)], p.n, uv);
+    out.push({ a0, a1, b0, b1, wainscot: r.wainscot });
+  }
+  return out;
+}
+
+/**
+ * CRACK SEAL behind a wall's painted face (10/5/26). The strips a wall is cut
+ * into meet in T-junctions (a strip above a door spans the columns beside
+ * it), and a T-junction rasterizes a pixel-wide crack now and then. Through
+ * it the camera used to meet the far wall's inside in its paint colour, so the
+ * crack never showed; now the inside is the light panel back, so the crack
+ * would sparkle. The seal is the same sheet re-cut on ONE grid (every strip
+ * edge splits every row and column, the gable fans from its apex over every
+ * column on its base), so neighbouring cells share whole edges, in the same
+ * paint, pushed back in depth (materials.ts `seal`): the painted face wins
+ * every pixel it covers, the seal only shows in its cracks. No shadow, no
+ * capture framing (tagPanelBacks). The panel BACK is emitted on the same
+ * grid (facing -n), so the inside of the wall has no cracks either.
+ */
+function emitSeal(set: BatchSet, inp: ShellInput, w: ShellWall, strips: SheetStrip[], interior: boolean, back: Emitter) {
+  if (!strips.length) return;
+  const uniq = (vs: number[]) => {
+    const s = [...vs].sort((x, y) => x - y);
+    const o: number[] = [];
+    for (const v of s) if (!o.length || v - o[o.length - 1] > 1e-6) o.push(v);
+    return o;
+  };
+  const xs = uniq(strips.flatMap((s) => [s.a0, s.a1]));
+  const ys = uniq(strips.flatMap((s) => [s.b0, s.b1]));
+  const p = w.plane;
+  const uv = wallUV(p);
+  const nBack = scale(p.n, -1);
+  for (let i = 0; i + 1 < xs.length; i++) {
+    const cx = (xs[i] + xs[i + 1]) / 2;
+    for (let j = 0; j + 1 < ys.length; j++) {
+      const cy = (ys[j] + ys[j + 1]) / 2;
+      const st = strips.find((s) => cx > s.a0 && cx < s.a1 && cy > s.b0 && cy < s.b1);
+      if (!st) continue;
+      const cell = [wallPoint(p, xs[i], ys[j]), wallPoint(p, xs[i + 1], ys[j]), wallPoint(p, xs[i + 1], ys[j + 1]), wallPoint(p, xs[i], ys[j + 1])];
+      polygon(set.get(wallSpec(inp, st.wainscot, w.flip, interior, true), false), cell, p.n, uv);
+      polygon(back, cell, nBack, uv);
+    }
+  }
+  // Gable / single-slope end polygons: a fan from the apex over every column edge on the base line.
+  for (const poly of w.polys) {
+    const base = Math.min(...poly.map((q) => q[1]));
+    const apex = poly.find((q) => q[1] > base + 1e-6);
+    if (!apex) continue;
+    const lo = Math.min(...poly.map((q) => q[0]));
+    const hi = Math.max(...poly.map((q) => q[0]));
+    const cols = uniq([lo, hi, ...xs.filter((x) => x > lo && x < hi)]);
+    const e = set.get(wallSpec(inp, false, w.flip, interior, true), false);
+    for (let i = 0; i + 1 < cols.length; i++) {
+      const tri = [wallPoint(p, cols[i], base), wallPoint(p, cols[i + 1], base), wallPoint(p, apex[0], apex[1])];
+      polygon(e, tri, p.n, uv);
+      polygon(back, tri, nBack, uv);
+    }
   }
 }
 
-/** Wall + wainscot sheeting (one batch per wall material). */
+/**
+ * Wall + wainscot sheeting (one batch per wall material). Each sheet is drawn
+ * on its PAINTED face (plane.n: outward on an exterior wall, the main room /
+ * open bay on a partition) in the wall or wainscot paint, and on its other
+ * face in the unpainted panel back (no shadow, capture-ignored): the
+ * wainscot is paint on the painted face only.
+ */
 export function wallBatches(inp: ShellInput, layout: ShellLayout = shellLayout(inp)): ShellBatch[] {
   const set = new BatchSet();
   // A garage / carport storage partition (End or Left/Right) is an INTERIOR
@@ -696,13 +825,17 @@ export function wallBatches(inp: ShellInput, layout: ShellLayout = shellLayout(i
   const storageWall = enc.partitionKind === 'storage' || !!enc.sidePartition;
   for (const w of layout.walls) {
     const interior = storageWall && w.plane.id === 'partition';
-    for (const r of w.regions) emitRegion(set.get(wallSpec(inp, r.wainscot, w.flip, interior), true), w, r);
+    const back = set.get(wallBackSpec(inp.wallOrientation, w.plane, interior), false);
+    const strips: SheetStrip[] = [];
+    for (const r of w.regions) strips.push(...emitRegion(set.get(wallSpec(inp, r.wainscot, w.flip, interior), true), w, r));
     for (const poly of w.polys) {
       const e = set.get(wallSpec(inp, false, w.flip, interior), true);
       polygon(e, poly.map(([c, y]) => wallPoint(w.plane, c, y)), w.plane.n, wallUV(w.plane));
     }
+    // Crack seal behind the paint + the panel back, both on the crack-free grid.
+    emitSeal(set, inp, w, strips, interior, back);
   }
-  return set.build();
+  return tagPanelBacks(set.build());
 }
 
 // ── Batches: roof skins, ridge cap, eave + rake trim ───────────────────────
@@ -872,6 +1005,7 @@ export function roofBatches(inp: RoofBatchInput): ShellBatch[] {
   if (hasRoofCuts(inp.cuts)) return roofBatchesCut(inp, inp.cuts);
   const s = inp.structure;
   const r = roofSurface(s);
+  const room = mainRoomRect(s);
   const set = new BatchSet();
   const orientation = sheetOrientation(inp.roofOrientation);
   const zE = r.gableZ;
@@ -893,9 +1027,11 @@ export function roofBatches(inp: RoofBatchInput): ShellBatch[] {
     // u along the eave (world feet, left -> right from outside); v = distance along the slope.
     const uvOf = (p: V3): UV => [dot(p, pl.u), -Math.abs(p[0] - pl.vFrom) / r.cos];
     polygon(set.get({ surface: 'roof', color: inp.colors.roof, orientation, flipX: flip }, false), pts, n, uvOf);
-    // Bare Galvalume underside, a hair below, facing down.
+    // Unpainted underside, a hair below, facing down: the LIVE Galvalume
+    // soffit under the overhang + the panel back over the room (same polygon).
     const dn = pts.map((p): V3 => [p[0], p[1] - under, p[2]]);
-    polygon(set.get({ surface: 'roofUnder' }, false), dn, scale(n, -1), uvOf);
+    polygon(set.get(roofUnderSoffit(room), false), dn, scale(n, -1), uvOf);
+    polygon(set.get(roofBackSpec(orientation, n, pl.u, room), false), dn, scale(n, -1), uvOf);
   }
 
   const trim = set.get({ surface: 'trim', color: inp.colors.trim }, false);
@@ -936,7 +1072,7 @@ export function roofBatches(inp: RoofBatchInput): ShellBatch[] {
       rakeTrim(trim, [r.dripX, r.topAt(r.dripX), z], [-r.dripX, r.topAt(-r.dripX), z], normalOf(1), [0, 0, sz]);
     }
   }
-  return set.build();
+  return tagPanelBacks(set.build());
 }
 
 /** Sorted, de-duplicated breakpoints inside [lo, hi]. */
@@ -961,6 +1097,7 @@ function breakpoints(values: number[], lo: number, hi: number): number[] {
 function roofBatchesCut(inp: RoofBatchInput, cuts: MainRoofCuts): ShellBatch[] {
   const s = inp.structure;
   const r = roofSurface(s);
+  const room = mainRoomRect(s);
   const set = new BatchSet();
   const orientation = sheetOrientation(inp.roofOrientation);
   const zE = r.gableZ;
@@ -986,7 +1123,8 @@ function roofBatchesCut(inp: RoofBatchInput, cuts: MainRoofCuts): ShellBatch[] {
     const flip = orientation === 'vertical' && litFromRight(n, pl.u);
     const uvOf = (p: V3): UV => [dot(p, pl.u), -Math.abs(p[0] - pl.vFrom) / r.cos];
     const top = set.get({ surface: 'roof', color: inp.colors.roof, orientation, flipX: flip }, false);
-    const bottom = set.get({ surface: 'roofUnder' }, false);
+    const bottom = set.get(roofUnderSoffit(room), false);
+    const bottomBack = set.get(roofBackSpec(orientation, n, pl.u, room), false);
     const lo = Math.min(pl.x0, pl.x1);
     const hi = Math.max(pl.x0, pl.x1);
     const xs = breakpoints([lo, hi, -xw, xw, ...cuts.gable.flatMap((c) => [c.x0, c.x1])], lo, hi);
@@ -1000,6 +1138,7 @@ function roofBatchesCut(inp: RoofBatchInput, cuts: MainRoofCuts): ShellBatch[] {
       ];
       polygon(top, pts, n, uvOf);
       polygon(bottom, pts.map((p): V3 => [p[0], p[1] - under, p[2]]), scale(n, -1), uvOf);
+      polygon(bottomBack, pts.map((p): V3 => [p[0], p[1] - under, p[2]]), scale(n, -1), uvOf);
     };
     for (let i = 0; i + 1 < xs.length; i++) {
       const xa = xs[i];
@@ -1102,7 +1241,7 @@ function roofBatchesCut(inp: RoofBatchInput, cuts: MainRoofCuts): ShellBatch[] {
     const xs = r.pitched && xa < 0 && xb > 0 ? [xa, 0, xb] : [xa, xb];
     for (let i = 0; i + 1 < xs.length; i++) cutEdgeCap(trim, r, sz, zF, xs[i], xs[i + 1], c.capY, capUp);
   }
-  return set.build();
+  return tagPanelBacks(set.build());
 }
 
 /**

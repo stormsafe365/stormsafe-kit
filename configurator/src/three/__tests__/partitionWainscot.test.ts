@@ -186,7 +186,7 @@ describe('classic: End Storage partition wainscot', () => {
     const trim = src('../Trim.tsx');
     expect(trim).toMatch(/storagePartitionWainscot\(structure, openings, \{ enabled: true, heightFt \}\)/);
     // the partition's cap bars: their own captureIgnore group, after the outside walls' bars
-    expect(trim).toMatch(/if \(sb\)\s*for \(const c of sb\.cap\)\s*partBars\.push\(/);
+    expect(trim).toMatch(/if \(sb\) \{[\s\S]*?for \(const c of sb\.cap\)\s*partBars\.push\(/);
     expect(trim).toMatch(
       /\{bars\.map\(\(b, i\) => \([\s\S]*?\)\)\}\s*\{partBars\.length > 0 && \(\s*<group userData=\{CAPTURE_IGNORE\}>\s*\{partBars\.map\(/,
     );
@@ -429,7 +429,13 @@ const geo = (b: ShellBatch) => {
   g.setAttribute('position', new THREE.BufferAttribute(b.position, 3));
   return g;
 };
-const isInterior = (b: ShellBatch) => b.spec.surface === 'wall' && !!b.spec.interior;
+/** A wall's crack seal (10/5/26): capture-ignored, behind its painted face. */
+const isSeal = (b: ShellBatch) => b.spec.surface === 'wall' && !!b.spec.seal;
+const isInterior = (b: ShellBatch) => b.spec.surface === 'wall' && !!b.spec.interior && !isSeal(b);
+/** A wall sheet's unpainted back face (10/5/26): capture-ignored, never in the fit. */
+const isWallBack = (b: ShellBatch) => (b.spec.surface === 'panelBack' && b.spec.part === 'wall') || isSeal(b);
+/** The partition sheet's back face: its batches depend on the sheet's region split (same box, capture-ignored). */
+const isInteriorBack = (b: ShellBatch) => isWallBack(b) && (b.spec.surface === 'panelBack' || b.spec.surface === 'wall') && !!b.spec.interior;
 /** CaptureHook's fit point list for these batches (ShellMeshes userData + captureBoxOf, same corner order). */
 const capturePoints = (bs: ShellBatch[]) => {
   const geos = bs.map(geo);
@@ -463,15 +469,16 @@ describe('PDF capture framing: the partition wainscot never moves it', () => {
       expect(interior.map((b) => (b.spec.surface === 'wall' ? b.spec.color : '')).sort()).toEqual([cfg.colors.walls, cfg.colors.wainscot].sort());
       expect(live.filter(isInterior).length).toBe(1);
       // ... every other wall batch is LIVE's, byte for byte, in LIVE's order
-      const outside = (bs: ShellBatch[]) => bs.filter((b) => !isInterior(b)).map((b) => [b.id, Array.from(b.position)]);
+      const outside = (bs: ShellBatch[]) => bs.filter((b) => !isInterior(b) && !isInteriorBack(b)).map((b) => [b.id, Array.from(b.position)]);
       expect(outside(now)).toEqual(outside(live));
       // ... and the fit sees ONE box for the two pieces: LIVE's sheet box
       expect(capturePoints(now)).toEqual(capturePoints(live));
       const data = shellCaptureData(now, now.map(geo));
       expect(data.filter((d) => d?.captureBox).length).toBe(1);
-      expect(data.filter((d) => d?.captureIgnore).length).toBe(1);
+      expect(data.filter((d, i) => d?.captureIgnore && !isWallBack(now[i])).length).toBe(1);
       now.forEach((b, i) => {
-        if (!isInterior(b)) expect(data[i]).toBeUndefined();
+        if (isWallBack(b)) expect(data[i]).toEqual({ captureIgnore: true });
+        else if (!isInterior(b)) expect(data[i]).toBeUndefined();
       });
       // trim: the main batch is LIVE's byte for byte; the partition's Z-trim is its own capture-ignored batch
       const tNow = trimBatches(inp);
@@ -494,7 +501,7 @@ describe('PDF capture framing: the partition wainscot never moves it', () => {
     for (const { cfg, s } of [off, gch]) {
       const w = wallBatches(input(cfg, s));
       const t = trimBatches(input(cfg, s));
-      expect(shellCaptureData(w, w.map(geo)).every((d) => d === undefined)).toBe(true);
+      expect(shellCaptureData(w, w.map(geo)).every((d, i) => (isWallBack(w[i]) ? d?.captureIgnore === true : d === undefined))).toBe(true);
       expect(t.some((b) => b.captureIgnore)).toBe(false);
       expect(shellCaptureData(t, t.map(geo)).every((d) => d === undefined)).toBe(true);
     }

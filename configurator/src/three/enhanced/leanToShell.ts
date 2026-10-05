@@ -4,6 +4,7 @@ import type { BuildingColors, LeanToOpening, Opening, PanelOrientation, Wainscot
 import { eaveSurfaces, gableOutline, gableSurfaces, resolveWalls, sideBandHeight, sideWallPolys, type LtWalls } from '../LeanToSiding';
 import { clipHalf, cutHoles, polyArea, type P2 } from '../polyCut';
 import { litFromRight, sheetOrientation, type V3 } from './materials';
+import type { PlanRect } from '../panelBack';
 import {
   BatchSet,
   SHELL,
@@ -15,10 +16,15 @@ import {
   plumbAt,
   polygon,
   rakeTrim,
+  roofBackSpec,
+  roofUnderSoffit,
   roofSurface,
   sheetSpanAt,
   shellLayout,
   subtractRanges,
+  tagPanelBacks,
+  twoFaced,
+  wallBackSpec,
   wallPoint,
   wallUV,
   type Emitter,
@@ -877,9 +883,12 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
   for (const md of models) {
     for (const w of md.walls) {
       const uv = wallUV(w.plane);
+      // Painted face along plane.n (outward; a storage partition: toward the
+      // open part), the unpainted panel back on the other face (panelBack.ts).
       const emit = (pts: P2[], wainscot: boolean) =>
-        polygon(
+        twoFaced(
           set.get({ surface: 'wall', color: wainscot ? inp.colors.wainscot : inp.colors.walls, orientation: wallOrient, flipX: w.flip }, true),
+          set.get(wallBackSpec(inp.wallOrientation, w.plane), false),
           pts.map(([c, y]) => wallPoint(w.plane, c, y)),
           w.plane.n,
           uv,
@@ -962,6 +971,10 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
     const uDir: V3 = f.eave ? [0, 0, -f.out] : [f.out, 0, 0];
     const flip = roofOrient === 'vertical' && litFromRight(f.n, uDir);
     const acrossOf = (p: Plan) => (f.eave ? p[0] : p[1]);
+    // The lean-to's room (plan): from its connection line out to its outer wall sheet, between its end wall sheets.
+    const a0 = Math.min(f.inner, f.wallFace);
+    const a1 = Math.max(f.inner, f.wallFace);
+    const room: PlanRect = f.eave ? { x0: a0, x1: a1, z0: f.r0 - SO, z1: f.r1 + SO } : { x0: f.r0 - SO, x1: f.r1 + SO, z0: a0, z1: a1 };
     // Past a main corner the roof stops at the corner trim's outer face (clip).
     const clip = cornerClip(f, m, mainCorners, md.miter);
     const rect = (a0: number, a1: number, r0: number, r1: number): Plan[] =>
@@ -991,12 +1004,10 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
       if (plan.length < 3) continue;
       const pts = plan.map((p): V3 => [p[0], f.topAt(acrossOf(p)), p[1]]);
       polygon(set.get({ surface: 'roof', color: inp.colors.roof, orientation: roofOrient, flipX: flip }, false), pts, f.n, uvOf);
-      polygon(
-        set.get({ surface: 'roofUnder' }, false),
-        pts.map((p): V3 => [p[0], p[1] - SHELL.roofUnderGap, p[2]]),
-        [-f.n[0], -f.n[1], -f.n[2]],
-        uvOf,
-      );
+      // Underside: the LIVE soffit outside the lean-to's room + the panel back inside it (same polygon).
+      const dn = pts.map((p): V3 => [p[0], p[1] - SHELL.roofUnderGap, p[2]]);
+      polygon(set.get(roofUnderSoffit(room), false), dn, [-f.n[0], -f.n[1], -f.n[2]], uvOf);
+      polygon(set.get(roofBackSpec(roofOrient, f.n, uDir, room), false), dn, [-f.n[0], -f.n[1], -f.n[2]], uvOf);
     }
 
     const at = (a: number, r: number) => f.P(a, f.topAt(a), r);
@@ -1112,7 +1123,7 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
       }
     }
   }
-  return set.build();
+  return tagPanelBacks(set.build());
 }
 
 /** Memo key of every lean-to batch input. */

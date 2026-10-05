@@ -132,7 +132,9 @@ describe('imperative materials (never JSX texture props)', () => {
   it('painted wall / roof / trim use the lab values; the roof is 0.8x the paint', () => {
     const w = getEnhancedMaterial(wall('WXR0077L'));
     expect([w.metalness, w.roughness, w.envMapIntensity]).toEqual([0.22, 0.55, 0.35]);
-    expect(w.side).toBe(THREE.DoubleSide);
+    // the painted face only (10/5/26: the other face is 'panelBack'); it still casts the DoubleSide shadow
+    expect(w.side).toBe(THREE.FrontSide);
+    expect(w.shadowSide).toBe(THREE.DoubleSide);
     const r = getEnhancedMaterial({ surface: 'roof', color: 'WXR0077L', orientation: 'vertical' });
     expect([r.metalness, r.roughness, r.envMapIntensity]).toEqual([0.04, 0.82, 0.08]);
     expect(r.normalScale.x).toBeCloseTo(0.8, 12);

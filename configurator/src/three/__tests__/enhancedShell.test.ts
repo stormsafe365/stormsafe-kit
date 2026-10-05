@@ -84,10 +84,11 @@ function covers(ts: Tri[], q: V3): boolean {
 }
 
 describe('enhanced shell — walls', () => {
-  it('every wall face points OUTWARD, its winding agrees, and +u runs left -> right seen from outside', () => {
+  it('every PAINTED wall face points OUTWARD, its winding agrees, and +u runs left -> right seen from outside', () => {
     for (const panelOrientation of ['Vertical', 'Horizontal'] as const) {
       const { cfg, s } = build({ panelOrientation, wainscot: { enabled: true, heightFt: 3 } });
-      const ts = allTris(wallBatches(input(cfg, s)));
+      // the painted faces (the unpainted backs face inward: panelBack.test.ts)
+      const ts = allTris(wallBatches(input(cfg, s)).filter((b) => b.spec.surface === 'wall'));
       expect(ts.length).toBeGreaterThan(20);
       for (const t of ts) {
         const c = centroid(t);

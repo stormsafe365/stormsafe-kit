@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { isMetallic, printPanelKey, swatchHex, type PrintPanelKey } from '@/config/colors';
 import type { PanelOrientation } from '@/types/building';
 import { ENHANCED_LOOK } from './look';
+import { PANEL_BACK_HEX, clipRoofUnder, type PlanRect } from '../panelBack';
 import type { DoorStyle } from '../textures';
 import {
   doorFaceTexture,
@@ -77,7 +78,12 @@ interface MetalParams {
 }
 
 export const ENHANCED_MATERIAL_PARAMS = {
-  /** Wall / wainscot sheet (lab panelMat). DoubleSide like the classic panels. */
+  /**
+   * Wall / wainscot sheet (lab panelMat). The PAINTED face only (FrontSide,
+   * 10/5/26): every wall face is emitted toward the side its paint looks, and
+   * its other face is a separate 'panelBack' face. shadowSide stays DoubleSide,
+   * so the sheet casts exactly the shadow the old DoubleSide sheet cast.
+   */
   wall: {
     painted: { metalness: 0.22, roughness: 0.55, envMapIntensity: 0.35 },
     galvalume: { metalness: 0.8, roughness: 0.32, envMapIntensity: 0.9 },
@@ -97,6 +103,15 @@ export const ENHANCED_MATERIAL_PARAMS = {
   },
   /** Bare Galvalume roof underside, seen under the overhang (lab M.roofUnder). */
   roofUnder: { metalness: 0.85, roughness: 0.55, envMapIntensity: 0.4 },
+  /**
+   * The unpainted BACK of a steel sheet (owner 10/5/26: "the inside panels
+   * almost look white"): near-white silver Galvalume, slightly metallic, the
+   * ribs still reading through the sheet's own normal map. Inside faces of
+   * walls / gables / lean-to walls, the storage-room face of a storage
+   * partition, and the roof underside (panelBack.ts). Bright and even (owner
+   * rule: no dramatic lighting).
+   */
+  panelBack: { metalness: 0.3, roughness: 0.5, envMapIntensity: 0.6, normalScale: 0.6 },
   /** Trim, ridge cap, corner / base / Z trim, opening trim (lab flatMat). */
   trim: {
     painted: { metalness: 0.35, roughness: 0.42, envMapIntensity: 0.5 },
@@ -178,9 +193,27 @@ export type EnhancedMaterialSpec =
        * (visual verifier 10/2/26). Absent = every other wall, unchanged.
        */
       interior?: boolean;
+      /**
+       * The wall's CRACK SEAL (shellGeometry emitSeal, 10/5/26): the same paint,
+       * pushed back in depth so the painted face always wins; it only shows
+       * through T-junction cracks between strips.
+       */
+      seal?: boolean;
     })
   | (Paintable & { surface: 'roof'; orientation: SheetOrientation; flipX?: boolean })
-  | { surface: 'roofUnder' }
+  /**
+   * Bare Galvalume roof underside. `room` set (10/5/26): drawn only OUTSIDE
+   * that plan rectangle (the soffit under the overhang, exactly as LIVE); the
+   * room inside it sees the panel back (panelBack.ts roofUnderClip).
+   */
+  | { surface: 'roofUnder'; room?: PlanRect }
+  /**
+   * The unpainted back of a sheet (panelBack.ts). `ribs` = the sheet's own
+   * rib normal map; `part` = wall (incl. gables / partitions) or roof
+   * underside; `interior` = a storage partition's back (the same depth offset
+   * as its painted face, see 'wall').
+   */
+  | { surface: 'panelBack'; part: 'wall' | 'roof'; ribs: NormalMapKind; flipX?: boolean; interior?: boolean; room?: PlanRect }
   | (Paintable & { surface: 'trim' | 'reveal' })
   | (Paintable & { surface: 'opening'; clipTopY?: number })
   | (Paintable & { surface: 'slat'; heightFt: number; clipTopY?: number })
@@ -218,6 +251,10 @@ export function resolvePaint(color: string, galvalume?: boolean): { hex: string;
 
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
 
+/** Cache-key suffix of a roof-underside room rectangle ('' = none: the whole underside, as before). */
+const roomSuffix = (r?: PlanRect) => (r ? `|room${r3(r.x0)},${r3(r.x1)},${r3(r.z0)},${r3(r.z1)}` : '');
+const r3room = (r: PlanRect): PlanRect => ({ x0: r3(r.x0), x1: r3(r.x1), z0: r3(r.z0), z1: r3(r.z1) });
+
 /** A valid roll-up clip height, or undefined (no clipping). */
 const clipY = (spec: { clipTopY?: number }): number | undefined =>
   spec.clipTopY !== undefined && Number.isFinite(spec.clipTopY) ? r3(spec.clipTopY) : undefined;
@@ -235,7 +272,8 @@ export function materialKey(spec: EnhancedMaterialSpec): string {
       const print = spec.surface === 'wall' ? wallPrint(spec) : null;
       const base = `${spec.surface}|${p.hex}|${p.galvalume ? 'galv' : 'paint'}|${spec.orientation}|${spec.flipX ? 'flipX' : 'std'}`;
       const keyed = print ? base + '|print-' + print : base;
-      return spec.surface === 'wall' && spec.interior ? keyed + '|interior' : keyed;
+      const k2 = spec.surface === 'wall' && spec.interior ? keyed + '|interior' : keyed;
+      return spec.surface === 'wall' && spec.seal ? k2 + '|seal' : k2;
     }
     case 'trim':
     case 'reveal': {
@@ -252,6 +290,10 @@ export function materialKey(spec: EnhancedMaterialSpec): string {
     }
     case 'frame':
       return `frame|${resolvePaint(spec.color ?? GALVALUME_CODE).hex}`;
+    case 'panelBack':
+      return `panelBack|${spec.part}|${spec.ribs}|${spec.flipX ? 'flipX' : 'std'}${spec.interior ? '|interior' : ''}${roomSuffix(spec.room)}`;
+    case 'roofUnder':
+      return `roofUnder${roomSuffix(spec.room)}`;
     case 'hardware':
       return `hardware|${spec.part}${clipSuffix(spec)}`;
     case 'door':
@@ -301,7 +343,8 @@ function build(spec: EnhancedMaterialSpec): { material: THREE.MeshStandardMateri
     case 'wall': {
       const p = resolvePaint(spec.color, spec.galvalume);
       const lap = spec.orientation === 'lap';
-      m = std({ ...(p.galvalume ? P.wall.galvalume : P.wall.painted), color: paintColor(p.hex), side: THREE.DoubleSide });
+      m = std({ ...(p.galvalume ? P.wall.galvalume : P.wall.painted), color: paintColor(p.hex), side: THREE.FrontSide });
+      m.shadowSide = THREE.DoubleSide;
       const kind: NormalMapKind = lap ? 'lap' : spec.orientation === 'horizontal' ? 'wall-horizontal' : 'wall-vertical';
       m.normalMap = normalMapTexture(kind);
       const ns = lap ? P.wall.lapNormalScale : P.wall.normalScale;
@@ -322,6 +365,12 @@ function build(spec: EnhancedMaterialSpec): { material: THREE.MeshStandardMateri
         m.polygonOffsetFactor = 1;
         m.polygonOffsetUnits = 1;
       }
+      if (spec.seal) {
+        // Behind its painted face (and an interior sheet's own offset) at every angle.
+        m.polygonOffset = true;
+        m.polygonOffsetFactor = spec.interior ? 2 : 1;
+        m.polygonOffsetUnits = spec.interior ? 8 : 4;
+      }
       break;
     }
     case 'roof': {
@@ -336,7 +385,21 @@ function build(spec: EnhancedMaterialSpec): { material: THREE.MeshStandardMateri
     }
     case 'roofUnder':
       m = std({ ...P.roofUnder, color: paintColor(GALVALUME_HEX) });
+      if (spec.room) clipRoofUnder(m, r3room(spec.room), 'soffit');
       break;
+    case 'panelBack': {
+      const pb = P.panelBack;
+      m = std({ metalness: pb.metalness, roughness: pb.roughness, envMapIntensity: pb.envMapIntensity, color: paintColor(PANEL_BACK_HEX.slice(1).toLowerCase()) });
+      m.normalMap = normalMapTexture(spec.ribs);
+      m.normalScale.set(spec.flipX ? -pb.normalScale : pb.normalScale, pb.normalScale);
+      if (spec.interior) {
+        m.polygonOffset = true;
+        m.polygonOffsetFactor = 1;
+        m.polygonOffsetUnits = 1;
+      }
+      if (spec.room) clipRoofUnder(m, r3room(spec.room), 'inside');
+      break;
+    }
     case 'trim':
     case 'reveal':
     case 'opening': {

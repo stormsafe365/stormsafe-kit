@@ -10,6 +10,7 @@ import { TRUSS_CLEARANCE_FT } from '@/config/constants';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import { createCorrugatedTexture, type RibDirection } from './textures';
+import { PANEL_BACK_HEX, PANEL_BACK_USERDATA, clipRoofUnder, oneSided, sheetSides, type Dir3, type PlanRect } from './panelBack';
 import { stripsAround, type LocalRect } from './Siding';
 import { OpeningFixture } from './OpeningFixture';
 import { GuideLine, Measure, Chip3D, ftIn, RED, RED_DIM } from './Openings';
@@ -33,6 +34,9 @@ interface LeanToSidingProps {
 }
 
 const TILE = 3; // ft per texture module (matches main building)
+const NO_USERDATA: Record<string, unknown> = {};
+const UP: Dir3 = [0, 1, 0];
+const DOWN: Dir3 = [0, -1, 0];
 const ROOF_LIFT = 0.11; // lift roof off the rafters
 const ROOF_UNDER_GAP = 0.06; // galvalume underside sits just below the top skin
 const OUT = SHEET_OUTSET; // sheeting sits this far outside the framing centerline
@@ -81,9 +85,14 @@ export function LeanToSiding({ structure, leanTos, wallOrientation, roofOrientat
   const tex = useMemo(
     () => ({
       roof: createCorrugatedTexture(swatchHex(colors.roof), roofDir),
+      // Roof underside: bare Galvalume under the overhang (the soffit, as LIVE),
+      // the light panel back over the room; the inside of every wall sheet = the
+      // panel back too (panelBack.ts).
       underRoof: createCorrugatedTexture(swatchHex('GALVALUME'), roofDir),
+      underBack: createCorrugatedTexture(PANEL_BACK_HEX, roofDir),
       walls: createCorrugatedTexture(swatchHex(colors.walls), wallDir),
       wainscot: createCorrugatedTexture(swatchHex(colors.wainscot), wallDir, printPanelKey(colors.wainscot) ?? undefined),
+      back: createCorrugatedTexture(PANEL_BACK_HEX, wallDir),
     }),
     [colors.roof, colors.walls, colors.wainscot, wallDir, roofDir],
   );
@@ -136,12 +145,21 @@ export function LeanToSiding({ structure, leanTos, wallOrientation, roofOrientat
         const stor = storageRuns(geo);
         const shownOuter = lt.openings.filter((o) => o.wall === 'outer' && rendersLeanToFixture(o, walls));
         const partitionOps = lt.openings.filter((o) => o.wall === 'partition' && rendersLeanToFixture(o, walls));
+        // Painted-face directions: the outer wall looks away from the main
+        // building; end walls / the storage partition along the run (endWallPaint).
+        const outerPaint = outerWallPaint(geo);
+        const backMat = () => polyMat(tex.back, false, false);
 
         return (
           <group key={lt.id}>
             {/* Roof — ALWAYS. Top skin (colored) + galvalume underside. */}
             <PolyPanel corners={geo.roofTop} uvs={geo.roofUV} material={polyMat(tex.roof, roofMetal, true)} />
-            <PolyPanel corners={geo.roofUnder} uvs={geo.roofUV} material={polyMat(tex.underRoof, true, true)} />
+            {/* Underside skin: its upward face exactly as LIVE (seen from above
+                only through gaps); its downward face the LIVE Galvalume under
+                the overhang + the light panel back over the lean-to's room. */}
+            <PolyPanel corners={geo.roofUnder} uvs={geo.roofUV} material={polyMat(tex.underRoof, true, true)} paint={UP} />
+            <PolyPanel corners={geo.roofUnder} uvs={geo.roofUV} material={clipRoofUnder(polyMat(tex.underRoof, true, true), leanToRoomRect(geo), 'soffit')} paint={DOWN} userData={PANEL_BACK_USERDATA} />
+            <PolyPanel corners={geo.roofUnder} uvs={geo.roofUV} material={clipRoofUnder(polyMat(tex.underBack, false, true), leanToRoomRect(geo), 'inside')} paint={DOWN} userData={PANEL_BACK_USERDATA} />
 
             {/* Eave fascia + rake trim following the roof overhang */}
             {geo.trim.map((b, i) => (
@@ -154,18 +172,18 @@ export function LeanToSiding({ structure, leanTos, wallOrientation, roofOrientat
                 openings; otherwise render the partial/panel wall as before. */}
             {side === 'closed'
               ? cutOuterWall(geo, lt.lowLegHeightFt, lt.openings.filter((o) => o.wall === 'outer')).map((p, i) => (
-                  <PolyPanel key={`side-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.walls, wallMetal, false)} />
+                  <PolyPanel key={`side-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.walls, wallMetal, false)} paint={outerPaint} back={backMat()} />
                 ))
               : side !== 'open' &&
                 sideWallPolys(geo, side, lt.lowLegHeightFt, lt.openings.filter((o) => o.wall === 'outer'), stor?.band).map((p, i) => (
-                  <PolyPanel key={`side-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.walls, wallMetal, false)} />
+                  <PolyPanel key={`side-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.walls, wallMetal, false)} paint={outerPaint} back={backMat()} />
                 ))}
             {/* Storage stretch of an open / partial outer wall: closed floor to
                 eave, cut around the openings drawn on it. */}
             {side !== 'closed' &&
               stor &&
               wallBandStrips(geo, 0, lt.lowLegHeightFt, shownOuter, 0, stor.seg).map((p, i) => (
-                <PolyPanel key={`stor-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.walls, wallMetal, false)} />
+                <PolyPanel key={`stor-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.walls, wallMetal, false)} paint={outerPaint} back={backMat()} />
               ))}
 
             {/* Wainscot band on the outer wall (only when the wall is fully
@@ -174,18 +192,18 @@ export function LeanToSiding({ structure, leanTos, wallOrientation, roofOrientat
             {side === 'closed' &&
               wH > 0 &&
               wallBandStrips(geo, 0, wH, lt.openings.filter((o) => o.wall === 'outer'), 0.02).map((p, i) => (
-                <PolyPanel key={`wain-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} />
+                <PolyPanel key={`wain-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} paint={outerPaint} />
               ))}
             {side !== 'closed' &&
               stor &&
               wH > 0 &&
               wallBandStrips(geo, 0, wH, shownOuter, 0.02, stor.seg).map((p, i) => (
-                <PolyPanel key={`swain-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} />
+                <PolyPanel key={`swain-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} paint={outerPaint} />
               ))}
 
             {/* Gable ends — cut around their openings when closed */}
-            <GableEnd geo={geo} which="front" val={front} openings={lt.openings.filter((o) => o.wall === 'front')} material={polyMat(tex.walls, wallMetal, false)} />
-            <GableEnd geo={geo} which="back" val={back} openings={lt.openings.filter((o) => o.wall === 'back')} material={polyMat(tex.walls, wallMetal, false)} />
+            <GableEnd geo={geo} which="front" val={front} openings={lt.openings.filter((o) => o.wall === 'front')} material={polyMat(tex.walls, wallMetal, false)} back={backMat} />
+            <GableEnd geo={geo} which="back" val={back} openings={lt.openings.filter((o) => o.wall === 'back')} material={polyMat(tex.walls, wallMetal, false)} back={backMat} />
 
             {/* Wainscot band on a CLOSED gable end (matches the main building's
                 gable-end wainscot — only when the end is fully sheeted), cut
@@ -193,12 +211,12 @@ export function LeanToSiding({ structure, leanTos, wallOrientation, roofOrientat
             {front === 'closed' &&
               wH > 0 &&
               gableWainscotStrips(geo, 'front', wH, lt.openings.filter((o) => o.wall === 'front')).map((p, i) => (
-                <PolyPanel key={`fgw-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} />
+                <PolyPanel key={`fgw-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} paint={endWallPaint(geo.gable, 'front')} />
               ))}
             {back === 'closed' &&
               wH > 0 &&
               gableWainscotStrips(geo, 'back', wH, lt.openings.filter((o) => o.wall === 'back')).map((p, i) => (
-                <PolyPanel key={`bgw-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} />
+                <PolyPanel key={`bgw-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} paint={endWallPaint(geo.gable, 'back')} />
               ))}
 
             {/* Storage PARTITION: a closed end-wall trapezoid across the
@@ -206,12 +224,12 @@ export function LeanToSiding({ structure, leanTos, wallOrientation, roofOrientat
                 main wall), its face toward the open part, cut around its
                 openings; wainscot like a closed end. */}
             {geo.gable.partition && (
-              <GableEnd geo={geo} which="partition" val="closed" openings={partitionOps} material={polyMat(tex.walls, wallMetal, false)} />
+              <GableEnd geo={geo} which="partition" val="closed" openings={partitionOps} material={polyMat(tex.walls, wallMetal, false)} back={backMat} />
             )}
             {geo.gable.partition &&
               wH > 0 &&
               gableWainscotStrips(geo, 'partition', wH, partitionOps).map((p, i) => (
-                <PolyPanel key={`pgw-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} />
+                <PolyPanel key={`pgw-${i}`} corners={p.corners} uvs={p.uvs} material={polyMat(tex.wainscot, wainMetal, false)} paint={endWallPaint(geo.gable, 'partition')} />
               ))}
 
             {/* Wainscot cap/divider trim — same ~2" bar the main building runs
@@ -286,6 +304,35 @@ export function endWallPlane(g: SurfaceSet['gable'], which: LtEndWall): { plane:
   if (which === 'front') return { plane: g.frontPlane, outward: -1 };
   if (which === 'back') return { plane: g.backPlane, outward: 1 };
   return g.partition ? { plane: g.partition.plane, outward: g.partition.faces } : null;
+}
+
+/**
+ * World direction the PAINTED face of an end-type lean-to wall looks: an end
+ * wall outward along the run, the storage partition toward the open part (its
+ * main room). The other face is the unpainted panel back (panelBack.ts).
+ */
+export function endWallPaint(g: SurfaceSet['gable'], which: LtEndWall): Dir3 {
+  const d = endWallPlane(g, which)?.outward ?? (which === 'front' ? -1 : 1);
+  return g.kind === 'eave' ? [0, 0, d] : [d, 0, 0];
+}
+
+/**
+ * Plan rectangle of the lean-to's room: from its connection line at the main
+ * building out to its outer wall sheet, between its end wall sheets. The roof
+ * underside is the panel back inside it and keeps the LIVE soffit outside it
+ * (panelBack.ts roofUnderClip).
+ */
+export function leanToRoomRect(geo: Pick<SurfaceSet, 'wall' | 'gable'>): PlanRect {
+  const g = geo.gable;
+  const a0 = Math.min(g.innerAcross, geo.wall.plane);
+  const a1 = Math.max(g.innerAcross, geo.wall.plane);
+  return g.kind === 'eave' ? { x0: a0, x1: a1, z0: g.frontPlane, z1: g.backPlane } : { x0: g.frontPlane, x1: g.backPlane, z0: a0, z1: a1 };
+}
+
+/** World direction the painted face of the outer long wall looks: away from the main building. */
+export function outerWallPaint(geo: Pick<SurfaceSet, 'wall' | 'gable'>): Dir3 {
+  const outward = Math.sign(geo.wall.plane - geo.gable.innerAcross) || 1;
+  return geo.wall.axis === 'z' ? [outward, 0, 0] : [0, 0, outward];
 }
 
 // ── Geometry builders ──────────────────────────────────────────────────────
@@ -838,27 +885,31 @@ function GableEnd({
   val,
   openings,
   material,
+  back,
 }: {
   geo: SurfaceSet;
   which: LtEndWall;
   val: GableVal;
   openings: LeanToOpening[];
   material: THREE.Material;
+  /** Fresh unpainted-back material (one per panel). */
+  back: () => THREE.Material;
 }) {
   if (val === 'open') return null;
+  const paint = endWallPaint(geo.gable, which);
   if (which === 'partition' && !geo.gable.partition) return null;
   if (!(val === 'closed' && openings.length > 0)) {
     const corners = which === 'front' ? geo.frontGable(val) : which === 'back' ? geo.backGable(val) : partitionGable(geo, val);
     const uvs = which === 'front' ? geo.frontGableUV(val) : which === 'back' ? geo.backGableUV(val) : gableOutline(val, geo.gable.innerAcross, geo.gable.outerAcross, geo.gable.lh, geo.gable.connH);
-    return <PolyPanel corners={corners} uvs={uvs} material={material} />;
+    return <PolyPanel corners={corners} uvs={uvs} material={material} paint={paint} back={back()} />;
   }
   const { strips, triangle } = cutGable(geo, which, openings);
   return (
     <>
       {strips.map((p, i) => (
-        <PolyPanel key={`gs-${i}`} corners={p.corners} uvs={p.uvs} material={material} />
+        <PolyPanel key={`gs-${i}`} corners={p.corners} uvs={p.uvs} material={material} paint={paint} back={back()} />
       ))}
-      <PolyPanel corners={triangle.corners} uvs={triangle.uvs} material={material} />
+      <PolyPanel corners={triangle.corners} uvs={triangle.uvs} material={material} paint={paint} back={back()} />
     </>
   );
 }
@@ -1236,7 +1287,41 @@ function offsetPts(pts: Pt[], n: Pt, d: number): Pt[] {
 }
 
 // ── Polygon mesh (fan-triangulated, world-anchored UVs) ────────────────────
-function PolyPanel({ corners, uvs, material }: { corners: Pt[]; uvs: UV[]; material: THREE.Material }) {
+/** Newell normal of a planar polygon (its counter-clockwise front face). */
+export function polyNormal(corners: readonly Pt[]): Dir3 {
+  let nx = 0;
+  let ny = 0;
+  let nz = 0;
+  for (let i = 0; i < corners.length; i++) {
+    const p = corners[i];
+    const q = corners[(i + 1) % corners.length];
+    nx += (p[1] - q[1]) * (p[2] + q[2]);
+    ny += (p[2] - q[2]) * (p[0] + q[0]);
+    nz += (p[0] - q[0]) * (p[1] + q[1]);
+  }
+  return [nx, ny, nz];
+}
+
+/**
+ * `paint` set = a one-sided wall sheet: `material` on the face looking `paint`
+ * only, `back` (when given: the unpainted panel back) on the other face —
+ * no shadows, capture-ignored. Unset = the DoubleSide panel as before (roofs).
+ */
+function PolyPanel({
+  corners,
+  uvs,
+  material,
+  paint,
+  back,
+  userData,
+}: {
+  corners: Pt[];
+  uvs: UV[];
+  material: THREE.Material;
+  paint?: Dir3;
+  back?: THREE.Material;
+  userData?: Record<string, unknown>;
+}) {
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry();
     const pos: number[] = [];
@@ -1254,5 +1339,12 @@ function PolyPanel({ corners, uvs, material }: { corners: Pt[]; uvs: UV[]; mater
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(corners), JSON.stringify(uvs)]);
 
-  return <mesh geometry={geometry} material={material} castShadow receiveShadow />;
+  if (!paint) return <mesh geometry={geometry} material={material} castShadow receiveShadow userData={userData ?? NO_USERDATA} />;
+  const sides = sheetSides(polyNormal(corners), paint);
+  return (
+    <>
+      <mesh geometry={geometry} material={oneSided(material, sides.paint)} castShadow receiveShadow userData={userData ?? NO_USERDATA} />
+      {back && <mesh geometry={geometry} material={oneSided(back, sides.back)} userData={PANEL_BACK_USERDATA} />}
+    </>
+  );
 }

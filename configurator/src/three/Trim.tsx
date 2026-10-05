@@ -257,6 +257,102 @@ export function Trim({ structure, color, wainscot, openings }: TrimProps) {
   );
 }
 
+/**
+ * The inside variant of a cap bar starts this far OUTSIDE its sheet (never in
+ * the sheet's plane: within a few hundredths it bleeds through the sheet's
+ * panel back as a dotted line at far distances).
+ */
+export const CAP_SHEET_GAP = 0.03;
+
+/** Cap bar cross-section (the classic 0.16 SteelMember). */
+const CAP_SIZE = 0.16;
+const UP = new THREE.Vector3(0, 1, 0);
+
+/** A cap bar's sheet: the axis across it (0 = x, 2 = z), the side its paint looks, the sheet coordinate. */
+export type CapCut = { axis: 0 | 2; sign: 1 | -1; at: number };
+
+/**
+ * The inside variant of a cap bar: the LIVE bar box (0.16 square, centred on
+ * s -> e) cut CAP_SHEET_GAP outside its sheet, so nothing of it is on the
+ * inside of the wall.
+ */
+export function capBarBox(s: [number, number, number], e: [number, number, number], cut: CapCut): { center: [number, number, number]; size: [number, number, number] } {
+  const h = CAP_SIZE / 2;
+  const lo: [number, number, number] = [Math.min(s[0], e[0]) - h, Math.min(s[1], e[1]) - h, Math.min(s[2], e[2]) - h];
+  const hi: [number, number, number] = [Math.max(s[0], e[0]) + h, Math.max(s[1], e[1]) + h, Math.max(s[2], e[2]) + h];
+  // the bar runs along one horizontal axis: only its cross axes are 0.16 wide
+  const along = Math.abs(e[0] - s[0]) > Math.abs(e[2] - s[2]) ? 0 : 2;
+  lo[along] += h;
+  hi[along] -= h;
+  const k = cut.axis;
+  const inner = cut.at + cut.sign * CAP_SHEET_GAP;
+  if (cut.sign > 0) lo[k] = Math.max(lo[k], inner);
+  else hi[k] = Math.min(hi[k], inner);
+  return {
+    center: [(lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2],
+    size: [Math.max(0, hi[0] - lo[0]), Math.max(0, hi[1] - lo[1]), Math.max(0, hi[2] - lo[2])],
+  };
+}
+
+/** Is the camera on the painted side of the bar's sheet? (decides which variant draws) */
+export const capSeenFromPaintedSide = (cut: CapCut, cam: { x: number; z: number }) => cut.sign * ((cut.axis === 0 ? cam.x : cam.z) - cut.at) > 0;
+
+const _cam = new THREE.Vector3();
+/** Draw this variant's material only when `want` matches the camera side (shadow + capture are unaffected). */
+function sideSwitch(cut: CapCut, want: boolean) {
+  return function (this: THREE.Mesh, _r: THREE.WebGLRenderer, _s: THREE.Scene, camera: THREE.Camera, _g: THREE.BufferGeometry, material: THREE.Material) {
+    _cam.setFromMatrixPosition(camera.matrixWorld);
+    const show = capSeenFromPaintedSide(cut, _cam) === want;
+    material.colorWrite = show;
+    // ShellGroup owns depthWrite for the ghosted Structure / Cutaway views.
+    material.depthWrite = show && !material.transparent;
+  };
+}
+
+/**
+ * One wainscot cap bar (panelBack.ts: the wainscot is paint on the OUTSIDE of
+ * the sheet). The classic bar is a 0.16 square tube centred just off its
+ * sheet, so 0.06' of it pokes through the sheet: from inside the building it
+ * showed as a trim-coloured line on the wall. Two variants, chosen per draw
+ * by the side of the sheet the camera is on (onBeforeRender, so the PDF
+ * capture's own renders switch too):
+ *  - camera on the painted side (outside): the LIVE bar, unchanged (same
+ *    transform as SteelMember) — the bar meets its sheet within depth
+ *    precision, so any cut there would re-shade its outside edge;
+ *  - camera on the other side (inside): the bar cut CAP_SHEET_GAP outside
+ *    the sheet (capBarBox), nothing of it inside the wall.
+ * Only the LIVE variant casts shadows and feeds the PDF capture framing, so
+ * neither changes; the inside variant is capture-ignored and casts none.
+ */
+function CapBar({ s, e, cut, color }: { s: [number, number, number]; e: [number, number, number]; cut: CapCut; color: string }) {
+  // SteelMember's transform, verbatim (the LIVE bar).
+  const { position, quaternion, length } = useMemo(() => {
+    const a = new THREE.Vector3(...s);
+    const b = new THREE.Vector3(...e);
+    const dir = new THREE.Vector3().subVectors(b, a);
+    const len = dir.length();
+    const mid = new THREE.Vector3().addVectors(a, b).multiplyScalar(0.5);
+    const quat = new THREE.Quaternion().setFromUnitVectors(UP, dir.clone().normalize());
+    return { position: mid, quaternion: quat, length: len };
+  }, [s, e]);
+  const inside = capBarBox(s, e, cut);
+  const [ca, cs, cat] = [cut.axis, cut.sign, cut.at];
+  const outsideOnly = useMemo(() => sideSwitch({ axis: ca, sign: cs, at: cat }, true), [ca, cs, cat]);
+  const insideOnly = useMemo(() => sideSwitch({ axis: ca, sign: cs, at: cat }, false), [ca, cs, cat]);
+  return (
+    <>
+      <mesh position={position} quaternion={quaternion} castShadow receiveShadow onBeforeRender={outsideOnly}>
+        <boxGeometry args={[CAP_SIZE, length, CAP_SIZE]} />
+        <meshStandardMaterial color={color} metalness={0.4} roughness={0.42} />
+      </mesh>
+      <mesh position={inside.center} receiveShadow userData={CAPTURE_IGNORE} onBeforeRender={insideOnly}>
+        <boxGeometry args={inside.size} />
+        <meshStandardMaterial color={color} metalness={0.4} roughness={0.42} />
+      </mesh>
+    </>
+  );
+}
+
 function WainscotCap({
   structure,
   color,
@@ -299,28 +395,39 @@ function WainscotCap({
     return segs.filter((s) => s.b - s.a > 0.05);
   };
 
-  const bars: { s: [number, number, number]; e: [number, number, number] }[] = [];
+  // Each bar is drawn on the PAINTED side of its sheet only (CapBar; `cut` =
+  // the sheet, the side its paint looks).
+  type Bar = { s: [number, number, number]; e: [number, number, number]; cut: CapCut };
+  const bars: Bar[] = [];
+  const cutOf = (axis: 'x' | 'z', sign: 1 | -1, at: number): CapCut => ({ axis: axis === 'x' ? 0 : 2, sign, at });
   // Eave-side bars run along Z at x = ±(halfW + o2); openings sit at z = -halfL + offset.
   const sideBar = (sd: 'left' | 'right', zStart: number, zEnd: number) => {
-    const sx = (sd === 'left' ? -1 : 1) * (halfW + o2);
+    const sgn: 1 | -1 = sd === 'left' ? -1 : 1;
+    const sx = sgn * (halfW + o2);
     for (const s of splitBar(zStart, zEnd, cutsFor(sd, (o) => -halfL + o.offset)))
-      bars.push({ s: [sx, wy, s.a], e: [sx, wy, s.b] });
+      bars.push({ s: [sx, wy, s.a], e: [sx, wy, s.b], cut: cutOf('x', sgn, sgn * (halfW + SHEET_OUTSET)) });
   };
-  // End-wall bars run along X at a fixed z; back-gable offsets mirror.
-  const endBar = (sd: WallSide, z: number, mirror: boolean) => {
+  // End-wall bars run along X at a fixed z; back-gable offsets mirror. `paintZ`
+  // = the side of the sheet (at `sheetZ`) the paint looks.
+  const endBar = (sd: WallSide, z: number, mirror: boolean, paintZ: 1 | -1, sheetZ: number) => {
     for (const s of splitBar(-halfW, halfW, cutsFor(sd, (o) => (mirror ? halfW - o.offset : -halfW + o.offset))))
-      bars.push({ s: [s.a, wy, z], e: [s.b, wy, z] });
+      bars.push({ s: [s.a, wy, z], e: [s.b, wy, z], cut: cutOf('z', paintZ, sheetZ) });
   };
 
   if (enclosure.sideZ) {
     if (!enclosure.sideOpen.left && enclosure.sideBandFt.left <= 0) sideBar('left', enclosure.sideZ.start, enclosure.sideZ.end);
     if (!enclosure.sideOpen.right && enclosure.sideBandFt.right <= 0) sideBar('right', enclosure.sideZ.start, enclosure.sideZ.end);
   }
-  if (enclosure.front === 'closed') endBar('front', -(halfL + o2), false);
-  if (enclosure.back === 'closed') endBar('back', halfL + o2, true);
+  if (enclosure.front === 'closed') endBar('front', -(halfL + o2), false, -1, -(halfL + SHEET_OUTSET));
+  if (enclosure.back === 'closed') endBar('back', halfL + o2, true, 1, halfL + SHEET_OUTSET);
   // Partition divider (utility split) — full-height wall, gets the full wainscot cap.
-  // (A storage partition's cap is added last, below.)
-  if (enclosure.partitionZ !== null && enclosure.partitionKind !== 'storage') endBar('partition', enclosure.partitionZ, false);
+  // (A storage partition's cap is added last, below.) Painted toward the open
+  // bay (Siding's partWainZ side): no bar inside the enclosed garage.
+  if (enclosure.partitionZ !== null && enclosure.partitionKind !== 'storage') {
+    const pz = enclosure.partitionZ;
+    const toBay: 1 | -1 = structure.openBayZ && (structure.openBayZ.start + structure.openBayZ.end) / 2 < pz ? -1 : 1;
+    endBar('partition', pz, false, toBay, pz);
+  }
   // Open-bay side panels — a wainscot cap belongs ONLY on a side that is FULLY
   // closed (sheeting reaches the ground, so there's a real lower wall section).
   // A partial closure hangs from the eave and stops mid-wall; its bottom edge is
@@ -336,19 +443,23 @@ function WainscotCap({
   // Kept apart from `bars` and tagged captureIgnore (Siding CAPTURE_IGNORE):
   // interior trim must not move the PDF capture framing.
   const sb = storagePartitionWainscot(structure, openings, { enabled: true, heightFt });
-  const partBars: typeof bars = [];
-  if (sb)
+  const partBars: Bar[] = [];
+  if (sb) {
+    // Painted on the main-room face: its sheet is SHEET_OUTSET off the framing line toward the main room.
+    const f: 1 | -1 = sb.plane === 'cross' ? (enclosure.partitionFaces ?? -1) : (enclosure.sidePartition?.faces ?? 1);
+    const cut = cutOf(sb.plane === 'cross' ? 'z' : 'x', f, sb.at - f * 0.02);
     for (const c of sb.cap)
-      partBars.push(sb.plane === 'cross' ? { s: [c.u0, wy, sb.at], e: [c.u1, wy, sb.at] } : { s: [sb.at, wy, c.u0], e: [sb.at, wy, c.u1] });
+      partBars.push(sb.plane === 'cross' ? { s: [c.u0, wy, sb.at], e: [c.u1, wy, sb.at], cut } : { s: [sb.at, wy, c.u0], e: [sb.at, wy, c.u1], cut });
+  }
   return (
     <group>
       {bars.map((b, i) => (
-        <SteelMember key={i} start={b.s} end={b.e} size={0.16} color={color} metalness={0.4} roughness={0.42} />
+        <CapBar key={i} s={b.s} e={b.e} cut={b.cut} color={color} />
       ))}
       {partBars.length > 0 && (
         <group userData={CAPTURE_IGNORE}>
           {partBars.map((b, i) => (
-            <SteelMember key={i} start={b.s} end={b.e} size={0.16} color={color} metalness={0.4} roughness={0.42} />
+            <CapBar key={i} s={b.s} e={b.e} cut={b.cut} color={color} />
           ))}
         </group>
       )}

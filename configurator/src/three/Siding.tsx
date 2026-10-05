@@ -1,9 +1,11 @@
-import { useMemo } from 'react';
+import { useLayoutEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { ROOF_LIFT, SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
 import type { BuildingColors, Opening, PanelOrientation, Wainscot, WallSide } from '@/types/building';
 import { swatchHex, isMetallic, printPanelKey } from '@/config/colors';
 import { createCorrugatedTexture, type RibDirection } from './textures';
+import { useThree } from '@react-three/fiber';
+import { PANEL_BACK_HEX, PANEL_BACK_USERDATA, clipRoofUnder, oneSided, sheetSides, type Dir3, type PlanRect } from './panelBack';
 
 interface SidingProps {
   structure: StructureModel;
@@ -170,6 +172,12 @@ export function storagePartitionWainscot(structure: StructureModel, openings: Op
 export const CAPTURE_IGNORE: Record<string, unknown> = { captureIgnore: true };
 
 const TILE = 3; // feet per texture tile (≈2 ribs/ft)
+const NO_USERDATA: Record<string, unknown> = {};
+/** Painted-face directions of the eave side walls (outward). */
+const LEFT: Dir3 = [-1, 0, 0];
+const UP: Dir3 = [0, 1, 0];
+const DOWN: Dir3 = [0, -1, 0];
+const RIGHT: Dir3 = [1, 0, 0];
 // Vertical gap between the colored top roof skin and the galvalume underside —
 // just enough that each is nearest the camera from its own side (no z-fight).
 const ROOF_UNDER_GAP = 0.06;
@@ -190,11 +198,15 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
   const tex = useMemo(
     () => ({
       roof: createCorrugatedTexture(swatchHex(colors.roof), roofDir),
-      // Underside of the roof is ALWAYS bare galvalume (unpainted panel back),
-      // regardless of the chosen top-side roof color.
+      // Underside of the roof is ALWAYS unpainted, regardless of the chosen
+      // top-side roof color: bare Galvalume under the overhang (the soffit, as
+      // LIVE) and the light panel back over the room (underBack, panelBack.ts).
       underRoof: createCorrugatedTexture(swatchHex('GALVALUME'), roofDir),
+      underBack: createCorrugatedTexture(PANEL_BACK_HEX, roofDir),
       walls: createCorrugatedTexture(swatchHex(colors.walls), wallDir),
       wainscot: createCorrugatedTexture(swatchHex(colors.wainscot), wallDir, printPanelKey(colors.wainscot) ?? undefined),
+      // The inside (unpainted) face of every wall sheet.
+      back: createCorrugatedTexture(PANEL_BACK_HEX, wallDir),
     }),
     [colors.roof, colors.walls, colors.wainscot, wallDir, roofDir],
   );
@@ -278,6 +290,38 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
       : makeMat(base, w / M, 1, metallic, bumped, anchorU / M, 0); // vertical ribs — phase by world along-wall
   const shapeMat = (base: typeof tex.walls, _dir: RibDirection, metallic: boolean, bumped = false) =>
     makeMat(base, 1 / M, 1 / M, metallic, bumped); // gable UVs are in feet → one module per 3 ft
+  // The unpainted back of a wall sheet (light unpainted Galvalume, matte like the painted classic sheets so it reads bright inside, ribs
+  // phased like the painted face): same anchors as the strip it backs.
+  const backMat = (w: number, h: number, anchorU = 0, anchorV = 0) => planeMat(tex.back, w, h, wallDir, false, false, anchorU, anchorV);
+  const backShapeMat = () => shapeMat(tex.back, wallDir, false);
+
+  // Roof underside split at the wall sheet lines (panelBack.ts roofUnderClip):
+  // the soffit keeps its LIVE material, the room sees the panel back.
+  const roomRect: PlanRect = { x0: -(halfW + SHEET_OUTSET), x1: halfW + SHEET_OUTSET, z0: -(halfL + SHEET_OUTSET), z1: halfL + SHEET_OUTSET };
+  /**
+   * One roof slope's underside skin, three ways on the LIVE panel: its upward
+   * face (seen from above only through gaps, e.g. at the ridge) exactly as
+   * LIVE; its downward face the LIVE Galvalume under the overhang (soffit) and
+   * the light panel back over the room. Only the LIVE mesh feeds the PDF
+   * capture framing; all three cast the LIVE shadow (same plane).
+   */
+  const RoofUnder = ({ center, vVec, w, h }: { center: [number, number, number]; vVec: [number, number, number]; w: number; h: number }) => (
+    <>
+      <BasisPanel center={center} uVec={[0, 0, 1]} vVec={vVec} w={w} h={h} material={planeMat(tex.underRoof, w, h, roofDir, true, true)} paint={UP} />
+      <BasisPanel center={center} uVec={[0, 0, 1]} vVec={vVec} w={w} h={h} material={clipRoofUnder(planeMat(tex.underRoof, w, h, roofDir, true, true), roomRect, 'soffit')} paint={DOWN} userData={PANEL_BACK_USERDATA} />
+      <BasisPanel center={center} uVec={[0, 0, 1]} vVec={vVec} w={w} h={h} material={clipRoofUnder(planeMat(tex.underBack, w, h, roofDir, false, true), roomRect, 'inside')} paint={DOWN} userData={PANEL_BACK_USERDATA} />
+    </>
+  );
+  // Clipping planes (soffit split, wainscot cap) need the renderer's local
+  // clipping, as the enhanced rig turns it on; restored on unmount.
+  const gl = useThree((s) => s.gl);
+  useLayoutEffect(() => {
+    const prev = gl.localClippingEnabled;
+    gl.localClippingEnabled = true;
+    return () => {
+      gl.localClippingEnabled = prev;
+    };
+  }, [gl]);
 
   // Lift the roof just enough to clear the rafters (small → eave sits right on
   // the wall top so the eave trim closes the joint with no floating gap).
@@ -341,14 +385,14 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
       {mono ? (
         <>
           <BasisPanel center={monoC} uVec={[0, 0, 1]} vVec={monoV} w={roofLen} h={monoH} material={planeMat(tex.roof, roofLen, monoH, roofDir, roofMetal, true)} />
-          <BasisPanel center={[monoC[0], monoC[1] - ROOF_UNDER_GAP, monoC[2]]} uVec={[0, 0, 1]} vVec={monoV} w={roofLen} h={monoH} material={planeMat(tex.underRoof, roofLen, monoH, roofDir, true, true)} />
+          {RoofUnder({ center: [monoC[0], monoC[1] - ROOF_UNDER_GAP, monoC[2]], vVec: monoV, w: roofLen, h: monoH })}
         </>
       ) : (
         <>
           <BasisPanel center={roofCL} uVec={[0, 0, 1]} vVec={[halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.roof, roofLen, roofH, roofDir, roofMetal, true)} />
           <BasisPanel center={roofCR} uVec={[0, 0, 1]} vVec={[-halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.roof, roofLen, roofH, roofDir, roofMetal, true)} />
-          <BasisPanel center={[roofCL[0], roofCL[1] - ROOF_UNDER_GAP, roofCL[2]]} uVec={[0, 0, 1]} vVec={[halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.underRoof, roofLen, roofH, roofDir, true, true)} />
-          <BasisPanel center={[roofCR[0], roofCR[1] - ROOF_UNDER_GAP, roofCR[2]]} uVec={[0, 0, 1]} vVec={[-halfW, rise, 0]} w={roofLen} h={roofH} material={planeMat(tex.underRoof, roofLen, roofH, roofDir, true, true)} />
+          {RoofUnder({ center: [roofCL[0], roofCL[1] - ROOF_UNDER_GAP, roofCL[2]], vVec: [halfW, rise, 0], w: roofLen, h: roofH })}
+          {RoofUnder({ center: [roofCR[0], roofCR[1] - ROOF_UNDER_GAP, roofCR[2]], vVec: [-halfW, rise, 0], w: roofLen, h: roofH })}
         </>
       )}
 
@@ -378,6 +422,8 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
               w={st.w}
               h={st.h}
               material={planeMat(tex.walls, st.w, st.h, wallDir, wallMetal, false, sideMidZ + st.u - st.w / 2, yBot + bandH / 2 + st.v - st.h / 2)}
+              paint={sd === 'left' ? LEFT : RIGHT}
+              back={backMat(st.w, st.h, sideMidZ + st.u - st.w / 2, yBot + bandH / 2 + st.v - st.h / 2)}
             />
           ));
         })}
@@ -406,6 +452,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
               w={st.w}
               h={st.h}
               material={planeMat(tex.wainscot, st.w, st.h, wallDir, wainMetal, false, sideMidZ + st.u - st.w / 2, wH / 2 + st.v - st.h / 2)}
+              paint={sd === 'left' ? LEFT : RIGHT}
             />
           ));
         })}
@@ -441,6 +488,8 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
                 w={st.w}
                 h={st.h}
                 material={planeMat(tex.walls, st.w, st.h, wallDir, wallMetal, false, midZ + st.u - st.w / 2, band.centerY + st.v - st.h / 2)}
+                paint={sd === 'left' ? LEFT : RIGHT}
+                back={backMat(st.w, st.h, midZ + st.u - st.w / 2, band.centerY + st.v - st.h / 2)}
               />
             ));
           });
@@ -477,6 +526,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
                 w={st.w}
                 h={st.h}
                 material={planeMat(tex.wainscot, st.w, st.h, wallDir, wainMetal, false, midZ + st.u - st.w / 2, bandH / 2 + st.v - st.h / 2)}
+                paint={sd === 'left' ? LEFT : RIGHT}
               />
             ));
           });
@@ -487,6 +537,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
       {enclosure.front !== 'open' && (
         <EndWall
           z={-(halfL + SHEET_OUTSET)}
+          paintZ={-1}
           W={W}
           H={H}
           peak={peakHeight}
@@ -495,6 +546,8 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           holes={gableHoles('front', H)}
           wallStripMat={(w, h, au, av) => planeMat(tex.walls, w, h, wallDir, wallMetal, false, au, av)}
           gableMat={shapeMat(tex.walls, wallDir, wallMetal)}
+          backStripMat={backMat}
+          backGableMat={backShapeMat()}
           wH={enclosure.front === 'closed' ? wH : 0}
           wainZ={-(halfL + wOut)}
           wainHoles={gableHoles('front', wH, true)}
@@ -504,6 +557,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
       {enclosure.back !== 'open' && (
         <EndWall
           z={halfL + SHEET_OUTSET}
+          paintZ={1}
           W={W}
           H={H}
           peak={peakHeight}
@@ -512,6 +566,8 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           holes={gableHoles('back', H)}
           wallStripMat={(w, h, au, av) => planeMat(tex.walls, w, h, wallDir, wallMetal, false, au, av)}
           gableMat={shapeMat(tex.walls, wallDir, wallMetal)}
+          backStripMat={backMat}
+          backGableMat={backShapeMat()}
           wH={enclosure.back === 'closed' ? wH : 0}
           wainZ={halfL + wOut}
           wainHoles={gableHoles('back', wH, true)}
@@ -524,6 +580,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
         // drawn below (storageBand), not by this EndWall.
         <EndWall
           z={enclosure.partitionZ + (enclosure.partitionFaces ?? -1) * SHEET_OUTSET}
+          paintZ={enclosure.partitionFaces ?? -1}
           W={W}
           H={H}
           peak={peakHeight}
@@ -532,6 +589,8 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           holes={gableHoles('partition', H)}
           wallStripMat={(w, h, au, av) => planeMat(tex.walls, w, h, wallDir, wallMetal, false, au, av)}
           gableMat={shapeMat(tex.walls, wallDir, wallMetal)}
+          backStripMat={backMat}
+          backGableMat={backShapeMat()}
           wH={0}
           wainZ={0}
           wainHoles={[]}
@@ -552,12 +611,15 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
               w={L}
               h={topY}
               material={planeMat(tex.walls, L, topY, wallDir, wallMetal, false, -halfL, 0)}
+              paint={[enclosure.sidePartition.faces, 0, 0]}
+              back={backMat(L, topY, -halfL, 0)}
             />
           );
         })()}
       {enclosure.partitionZ !== null && enclosure.partitionKind !== 'storage' && (
         <EndWall
           z={enclosure.partitionZ}
+          paintZ={partWainZ < enclosure.partitionZ ? -1 : 1}
           W={W}
           H={H}
           peak={peakHeight}
@@ -565,6 +627,8 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           holes={gableHoles('partition', H)}
           wallStripMat={(w, h, au, av) => planeMat(tex.walls, w, h, wallDir, wallMetal, false, au, av)}
           gableMat={shapeMat(tex.walls, wallDir, wallMetal)}
+          backStripMat={backMat}
+          backGableMat={backShapeMat()}
           wH={wH}
           wainZ={partWainZ}
           wainHoles={gableHoles('partition', wH, true)}
@@ -586,12 +650,28 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
             const uc = (st.u0 + st.u1) / 2;
             const yc = (st.y0 + st.y1) / 2;
             const material = planeMat(tex.wainscot, w, h, wallDir, wainMetal, false, st.u0, st.y0);
+            // Painted on the main-room face only (the band is paint on that face).
             return storageBand.plane === 'cross' ? (
-              <mesh key={`swain-${i}`} position={[uc, yc, storageBand.at]} material={material} castShadow receiveShadow>
+              <mesh
+                key={`swain-${i}`}
+                position={[uc, yc, storageBand.at]}
+                material={oneSided(material, sheetSides([0, 0, 1], [0, 0, enclosure.partitionFaces ?? -1]).paint)}
+                castShadow
+                receiveShadow
+              >
                 <planeGeometry args={[w, h]} />
               </mesh>
             ) : (
-              <BasisPanel key={`swain-${i}`} center={[storageBand.at, yc, uc]} uVec={[0, 0, 1]} vVec={[0, 1, 0]} w={w} h={h} material={material} />
+              <BasisPanel
+                key={`swain-${i}`}
+                center={[storageBand.at, yc, uc]}
+                uVec={[0, 0, 1]}
+                vVec={[0, 1, 0]}
+                w={w}
+                h={h}
+                material={material}
+                paint={[enclosure.sidePartition?.faces ?? 1, 0, 0]}
+              />
             );
           })}
         </group>
@@ -614,6 +694,9 @@ function EndWall({
   wainZ,
   wainHoles,
   wainStripMat,
+  paintZ,
+  backStripMat,
+  backGableMat,
 }: {
   z: number;
   W: number;
@@ -631,8 +714,15 @@ function EndWall({
   wainZ: number;
   wainHoles: LocalRect[];
   wainStripMat: (w: number, h: number, anchorU: number, anchorV: number) => THREE.Material;
+  /** World Z the painted face looks (outward on an end wall; the main room / open bay on a partition). */
+  paintZ: 1 | -1;
+  /** The unpainted back face of a strip (same anchors) / of the gable triangle. */
+  backStripMat: (w: number, h: number, anchorU: number, anchorV: number) => THREE.Material;
+  backGableMat: THREE.Material;
 }) {
   if (mode === 'open') return null;
+  // Planes / the gable ShapeGeometry face +Z: paint on the face looking paintZ.
+  const sides = sheetSides([0, 0, 1], [0, 0, paintZ]);
   return (
     <group>
       {mode === 'closed' && (
@@ -641,15 +731,14 @@ function EndWall({
         // sits in a void) instead of sheeting covering the opening.
         <>
           {stripsAround(W, H, holes).map((st, i) => (
-            <mesh
+            <SheetPlane
               key={`r-${i}`}
               position={[st.u, H / 2 + st.v, z]}
-              material={wallStripMat(st.w, st.h, st.u - st.w / 2, H / 2 + st.v - st.h / 2)}
-              castShadow
-              receiveShadow
-            >
-              <planeGeometry args={[st.w, st.h]} />
-            </mesh>
+              w={st.w}
+              h={st.h}
+              material={oneSided(wallStripMat(st.w, st.h, st.u - st.w / 2, H / 2 + st.v - st.h / 2), sides.paint)}
+              back={oneSided(backStripMat(st.w, st.h, st.u - st.w / 2, H / 2 + st.v - st.h / 2), sides.back)}
+            />
           ))}
         </>
       )}
@@ -662,25 +751,24 @@ function EndWall({
             .filter((ho) => H / 2 + ho.v + ho.h / 2 > H - B + 0.01)
             .map((ho) => ({ ...ho, v: ho.v - (H - B) / 2 }));
           return stripsAround(W, B, bandHoles).map((st, i) => (
-            <mesh
+            <SheetPlane
               key={`hc-${i}`}
               position={[st.u, H - B + B / 2 + st.v, z]}
-              material={wallStripMat(st.w, st.h, st.u - st.w / 2, H - B + B / 2 + st.v - st.h / 2)}
-              castShadow
-              receiveShadow
-            >
-              <planeGeometry args={[st.w, st.h]} />
-            </mesh>
+              w={st.w}
+              h={st.h}
+              material={oneSided(wallStripMat(st.w, st.h, st.u - st.w / 2, H - B + B / 2 + st.v - st.h / 2), sides.paint)}
+              back={oneSided(backStripMat(st.w, st.h, st.u - st.w / 2, H - B + B / 2 + st.v - st.h / 2), sides.back)}
+            />
           ));
         })()}
       {/* Gable triangle above the eave is never crossed by an opening → keep solid. */}
-      <GableTriangle z={z} halfW={W / 2} H={H} peak={peak} apexX={apexX} material={gableMat} />
+      <GableTriangle z={z} halfW={W / 2} H={H} peak={peak} apexX={apexX} material={oneSided(gableMat, sides.paint)} back={oneSided(backGableMat, sides.back)} />
       {wH > 0 &&
         stripsAround(W, wH, wainHoles).map((st, i) => (
           <mesh
             key={`w-${i}`}
             position={[st.u, wH / 2 + st.v, wainZ]}
-            material={wainStripMat(st.w, st.h, st.u - st.w / 2, wH / 2 + st.v - st.h / 2)}
+            material={oneSided(wainStripMat(st.w, st.h, st.u - st.w / 2, wH / 2 + st.v - st.h / 2), sides.paint)}
             castShadow
             receiveShadow
           >
@@ -698,6 +786,7 @@ function GableTriangle({
   peak,
   apexX = 0,
   material,
+  back,
 }: {
   z: number;
   halfW: number;
@@ -706,6 +795,8 @@ function GableTriangle({
   /** X of the roof peak — 0 for a gable; −halfW for a single-slope (tall −X eave). */
   apexX?: number;
   material: THREE.Material;
+  /** The unpainted back face (drawn on the same triangle, other side). */
+  back: THREE.Material;
 }) {
   const geometry = useMemo(() => {
     const shape = new THREE.Shape();
@@ -715,7 +806,30 @@ function GableTriangle({
     shape.closePath();
     return new THREE.ShapeGeometry(shape);
   }, [halfW, H, peak, apexX]);
-  return <mesh position={[0, 0, z]} geometry={geometry} material={material} castShadow receiveShadow />;
+  return (
+    <>
+      <mesh position={[0, 0, z]} geometry={geometry} material={material} castShadow receiveShadow />
+      <mesh position={[0, 0, z]} geometry={geometry} material={back} userData={PANEL_BACK_USERDATA} />
+    </>
+  );
+}
+
+/**
+ * One cut strip of an end wall: the painted face (the classic strip mesh,
+ * unchanged) + its unpainted back on the same plane (no shadows, capture-
+ * ignored). Each material is already one-sided (EndWall's sheetSides).
+ */
+function SheetPlane({ position, w, h, material, back }: { position: [number, number, number]; w: number; h: number; material: THREE.Material; back: THREE.Material }) {
+  return (
+    <>
+      <mesh position={position} material={material} castShadow receiveShadow>
+        <planeGeometry args={[w, h]} />
+      </mesh>
+      <mesh position={position} material={back} userData={PANEL_BACK_USERDATA}>
+        <planeGeometry args={[w, h]} />
+      </mesh>
+    </>
+  );
 }
 
 function BasisPanel({
@@ -725,6 +839,9 @@ function BasisPanel({
   w,
   h,
   material,
+  paint,
+  back,
+  userData,
 }: {
   center: [number, number, number];
   uVec: [number, number, number];
@@ -732,6 +849,15 @@ function BasisPanel({
   w: number;
   h: number;
   material: THREE.Material;
+  /**
+   * World direction the painted face looks. Set = a one-sided wall sheet: the
+   * paint on that face only, and `back` (when given) on the other face. Unset =
+   * the DoubleSide panel as before (the roof skins).
+   */
+  paint?: Dir3;
+  back?: THREE.Material;
+  /** userData of the (painted / only) mesh — e.g. the capture-ignored roof panel back. */
+  userData?: Record<string, unknown>;
 }) {
   const quaternion = useMemo(() => {
     const u = new THREE.Vector3(...uVec).normalize();
@@ -741,10 +867,26 @@ function BasisPanel({
     return new THREE.Quaternion().setFromRotationMatrix(m);
   }, [uVec, vVec]);
 
+  if (!paint)
+    return (
+      <mesh position={center} quaternion={quaternion} material={material} receiveShadow castShadow userData={userData ?? NO_USERDATA}>
+        <planeGeometry args={[w, h]} />
+      </mesh>
+    );
+  const u = new THREE.Vector3(...uVec);
+  const n = u.cross(new THREE.Vector3(...vVec));
+  const sides = sheetSides([n.x, n.y, n.z], paint);
   return (
-    <mesh position={center} quaternion={quaternion} material={material} receiveShadow castShadow>
-      <planeGeometry args={[w, h]} />
-    </mesh>
+    <>
+      <mesh position={center} quaternion={quaternion} material={oneSided(material, sides.paint)} receiveShadow castShadow userData={userData ?? NO_USERDATA}>
+        <planeGeometry args={[w, h]} />
+      </mesh>
+      {back && (
+        <mesh position={center} quaternion={quaternion} material={oneSided(back, sides.back)} userData={PANEL_BACK_USERDATA}>
+          <planeGeometry args={[w, h]} />
+        </mesh>
+      )}
+    </>
   );
 }
 

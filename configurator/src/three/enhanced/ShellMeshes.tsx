@@ -118,7 +118,7 @@ export function ShellMeshes({ batches, name }: { batches: ShellBatch[]; name: st
       {batches.map((b, i) => (
         <mesh
           key={b.id}
-          ref={b.spec.surface === 'wall' && b.spec.interior ? attachOutsideOnlyDepthOffset : undefined}
+          ref={(b.spec.surface === 'wall' || b.spec.surface === 'panelBack') && b.spec.interior && !(b.spec.surface === 'wall' && b.spec.seal) ? attachOutsideOnlyDepthOffset : undefined}
           geometry={geometries[i]}
           material={material(b.spec)}
           castShadow={b.castShadow}

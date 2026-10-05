@@ -115,7 +115,10 @@ describe('GCH divider unchanged', () => {
 });
 
 describe('the storage partition sheet is its own depth-offset batch (visual verifier r2)', () => {
-  const interior = (b: { spec: unknown }) => (b.spec as { interior?: boolean }).interior === true;
+  // The painted partition sheet (its unpainted back is a 'panelBack' batch: panelBack.test.ts).
+  const seal = (b: { spec: unknown }) => (b.spec as { seal?: boolean }).seal === true;
+  const interior = (b: { spec: unknown }) => (b.spec as { surface?: string }).surface === 'wall' && (b.spec as { interior?: boolean }).interior === true && !seal(b);
+  const interiorBack = (b: { spec: unknown }) => (b.spec as { surface?: string }).surface === 'panelBack' && (b.spec as { interior?: boolean }).interior === true;
   const zs = (b: { position: Float32Array }, k: number) => Array.from({ length: b.position.length / 3 }, (_, i) => b.position[i * 3 + k]);
   it('End Storage: the interior batches hold exactly the partition sheet (wall + wainscot colour); outer walls unchanged', () => {
     const { cfg, s } = build({}, { mode: 'endBack', lengthFt: 12 });
@@ -133,7 +136,8 @@ describe('the storage partition sheet is its own depth-offset batch (visual veri
     expect((offInner[0].spec as { color: string }).color).toBe(off.cfg.colors.walls);
     // the outer walls' batches are byte-for-byte those of the same garage without storage
     const bare = build();
-    const outer = bs.filter((b) => !interior(b));
+    // (the partition's back + crack seal are its own capture-ignored batches: panelBack.test.ts)
+    const outer = bs.filter((b) => !interior(b) && !interiorBack(b) && !(seal(b) && (b.spec as { interior?: boolean }).interior));
     const ref = wallBatches(input(bare.cfg, bare.s));
     expect(outer.map((b) => b.id)).toEqual(ref.map((b) => b.id));
     outer.forEach((b, i) => expect(Array.from(b.position)).toEqual(Array.from(ref[i].position)));

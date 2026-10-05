@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
 import type { Opening, Wainscot } from '@/types/building';
 import type { ViewMode } from '@/store/useEditorStore';
+import { PANEL_BACK_HEX, sheetSides } from './panelBack';
 
 /** Panel opacity per view mode — Exterior draws nothing (the shell has the real sheeting). */
 const GHOST_OPACITY: Record<ViewMode, number> = { exterior: 0, structure: 0.38, cutaway: 0.5 };
@@ -14,7 +15,10 @@ const LIFT = SHEET_OUTSET + 0.03;
  * Left/Right lengthwise wall) in its own plane coordinates (u along the wall,
  * v up), with its openings as holes. Exported for tests.
  */
-export function storageGhostShape(structure: StructureModel, openings: Opening[]): { shape: THREE.Shape; plane: 'cross' | 'side'; at: number } | null {
+export function storageGhostShape(
+  structure: StructureModel,
+  openings: Opening[],
+): { shape: THREE.Shape; plane: 'cross' | 'side'; at: number; faces: 1 | -1 } | null {
   const enc = structure.enclosure;
   const W = structure.width;
   const L = structure.length;
@@ -45,7 +49,7 @@ export function storageGhostShape(structure: StructureModel, openings: Opening[]
       hole.closePath();
       shape.holes.push(hole);
     }
-    return { shape, plane: 'cross', at: enc.partitionZ + f * LIFT };
+    return { shape, plane: 'cross', at: enc.partitionZ + f * LIFT, faces: f };
   }
   if (enc.sidePartition) {
     const { x, faces } = enc.sidePartition;
@@ -56,9 +60,19 @@ export function storageGhostShape(structure: StructureModel, openings: Opening[]
     shape.lineTo(halfL, roofAt(at));
     shape.lineTo(-halfL, roofAt(at));
     shape.closePath();
-    return { shape, plane: 'side', at };
+    return { shape, plane: 'side', at, faces };
   }
   return null;
+}
+
+/**
+ * Which side of the ghost geometry (its (u, v) plane, front face +Z) is the
+ * painted main-room face. A cross wall keeps +Z = world +Z; a lengthwise wall
+ * is turned -90 deg about Y, so +Z = world -X. Exported for tests.
+ */
+export function storageGhostSides(g: { plane: 'cross' | 'side'; faces: 1 | -1 } | null): { paint: THREE.Side; back: THREE.Side } {
+  if (!g) return { paint: THREE.DoubleSide, back: THREE.DoubleSide };
+  return sheetSides(g.plane === 'cross' ? [0, 0, 1] : [-1, 0, 0], g.plane === 'cross' ? [0, 0, g.faces] : [g.faces, 0, 0]);
 }
 
 /** Sorted distinct values (within 1e-6). */
@@ -225,11 +239,19 @@ export function StoragePartitionGhost({
 }) {
   const opacity = GHOST_OPACITY[viewMode];
   const g = useMemo(() => (opacity > 0 ? storageGhostShape(structure, openings) : null), [structure, openings, opacity]);
+  // The painted (wall colour + wainscot) face looks into the MAIN room; the
+  // storage-room face is the unpainted panel back (panelBack.ts).
+  const sides = storageGhostSides(g);
+  const backMat = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: PANEL_BACK_HEX, roughness: 0.85, metalness: 0, transparent: true, opacity, depthWrite: false, side: sides.back }),
+    [opacity, sides.back],
+  );
+  useEffect(() => () => backMat.dispose(), [backMat]);
   const geo = useMemo(() => (g ? new THREE.ShapeGeometry(g.shape) : null), [g]);
   const edges = useMemo(() => (geo ? new THREE.EdgesGeometry(geo) : null), [geo]);
   const mat = useMemo(
-    () => new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide }),
-    [color, opacity],
+    () => new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0, transparent: true, opacity, depthWrite: false, side: sides.paint }),
+    [color, opacity, sides.paint],
   );
   const lineMat = useMemo(() => new THREE.LineBasicMaterial({ color: edgeColor, transparent: true, opacity: Math.min(1, opacity * 1.8) }), [edgeColor, opacity]);
   useEffect(() => () => geo?.dispose(), [geo]);
@@ -249,9 +271,9 @@ export function StoragePartitionGhost({
   const bandMat = useMemo(
     () =>
       split
-        ? new THREE.MeshStandardMaterial({ color: bandColor, roughness: 0.85, metalness: 0, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide })
+        ? new THREE.MeshStandardMaterial({ color: bandColor, roughness: 0.85, metalness: 0, transparent: true, opacity, depthWrite: false, side: sides.paint })
         : null,
-    [split, bandColor, opacity],
+    [split, bandColor, opacity, sides.paint],
   );
   useEffect(
     () => () => {
@@ -275,6 +297,7 @@ export function StoragePartitionGhost({
       ) : (
         <mesh geometry={geo} material={mat} raycast={() => null} renderOrder={2} />
       )}
+      <mesh geometry={geo} material={backMat} raycast={() => null} renderOrder={2} />
       <lineSegments geometry={edges} material={lineMat} raycast={() => null} renderOrder={3} />
       {splitGeo && <lineSegments geometry={splitGeo.cap} material={lineMat} raycast={() => null} renderOrder={3} />}
     </group>

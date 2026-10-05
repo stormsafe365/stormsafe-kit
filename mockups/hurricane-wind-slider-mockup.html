@@ -53,8 +53,8 @@ nav.top{position:sticky;top:0;z-index:200;background:rgba(8,18,29,.97);backdrop-
 @media(min-width:960px){.storm-inner{grid-template-columns:.85fr 1.15fr;column-gap:48px;row-gap:0;align-items:start}.copy{grid-column:1;grid-row:1}.controls{grid-column:1;grid-row:2}.rig{grid-column:2;grid-row:1/3}}
 .rig{order:1}.controls{order:2}
 .copy .lede{margin-bottom:0}@media(min-width:960px){.copy .lede{margin-bottom:28px}}
-.eyebrow{display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--teal);margin-bottom:18px}
-.eyebrow::before{content:"";width:28px;height:1px;background:var(--teal)}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--over);margin-bottom:18px}
+.eyebrow::before{content:"";width:28px;height:1px;background:var(--over)}
 h1{font-family:var(--h);font-weight:900;font-size:clamp(30px,5.6vw,54px);line-height:1.02;text-transform:uppercase;margin-bottom:20px}
 h1 .teal{color:var(--teal);display:block}
 .lede{font-size:clamp(15px,2vw,17px);color:var(--sub);max-width:520px;line-height:1.65;margin-bottom:28px}
@@ -63,14 +63,15 @@ h1 .teal{color:var(--teal);display:block}
 .label{font-family:var(--h);font-size:9.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
 .tiers{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px}
 .tier{background:var(--dark-2);border:1px solid var(--border-vis);border-radius:10px;padding:14px 14px 13px;text-align:left;color:var(--text);cursor:pointer;transition:border-color .2s,background .2s,transform .2s;position:relative}
-.tier:hover{border-color:var(--teal-dim);transform:translateY(-1px)}
-.tier[aria-pressed="true"]{border-color:var(--teal);background:linear-gradient(180deg,rgba(9,214,220,.10),rgba(9,214,220,.02))}
+.tier:hover{border-color:rgba(141,198,63,.6);transform:translateY(-1px)}
+.tier[aria-pressed="true"]{border-color:var(--lime);background:linear-gradient(180deg,rgba(141,198,63,.13),rgba(141,198,63,.02));box-shadow:0 0 0 1px rgba(141,198,63,.25),0 8px 24px rgba(141,198,63,.08)}
 .tier-name{font-family:var(--h);font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
-.tier-mph{font-family:var(--h);font-weight:900;font-size:26px;color:var(--teal);line-height:1.1;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+.tier-mph{font-family:var(--h);font-weight:900;font-size:26px;color:var(--sub);transition:color .2s;line-height:1.1;margin:6px 0 2px;font-variant-numeric:tabular-nums}
 .tier-mph small{font-size:10px;letter-spacing:.14em;color:var(--sub);font-weight:700;margin-left:4px}
 .tier-spec{font-size:12px;color:var(--sub);line-height:1.45}
 .tier-check{position:absolute;top:12px;right:12px;width:16px;height:16px;border-radius:50%;border:1px solid var(--border-vis)}
-.tier[aria-pressed="true"] .tier-check{border-color:var(--teal);background:radial-gradient(circle,var(--teal) 0 4px,transparent 5px)}
+.tier[aria-pressed="true"] .tier-check{border-color:var(--lime);background:radial-gradient(circle,var(--lime) 0 4px,transparent 5px)}
+.tier[aria-pressed="true"] .tier-mph{color:var(--lime)}
 
 /* city lookup */
 .city{display:flex;flex-direction:column;gap:10px}
@@ -78,9 +79,10 @@ h1 .teal{color:var(--teal);display:block}
 .select-wrap::after{content:"▾";position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--teal);pointer-events:none}
 select{width:100%;appearance:none;-webkit-appearance:none;background:var(--dark-3);border:1px solid var(--border-vis);color:var(--text);font-size:15px;padding:13px 40px 13px 14px;border-radius:8px;cursor:pointer}
 select:hover{border-color:var(--teal-dim)}
-.city-result{font-size:13.5px;color:var(--sub);line-height:1.55;min-height:42px;border-left:2px solid var(--border-vis);padding-left:12px}
+.city-result{font-size:13.5px;color:var(--sub);line-height:1.55;min-height:42px;border-left:2px solid var(--border-vis);padding-left:12px;transition:border-color .25s}
+.city-result.has{border-left-color:var(--lime)}
 .city-result b{color:var(--text);font-weight:600}
-.city-result .t{color:var(--teal);font-weight:600}
+.city-result .t{color:var(--lime);font-weight:600}
 .city-result .o{color:var(--over);font-weight:600}
 
 .ctas{display:flex;gap:10px;margin-top:26px;flex-wrap:wrap}
@@ -139,7 +141,7 @@ select:hover{border-color:var(--teal-dim)}
 .ro-v small{font-size:11px;letter-spacing:.12em;color:var(--sub);font-weight:700;margin-left:4px}
 .ro-s{font-size:12px;color:var(--sub);margin-top:2px}
 .status{display:flex;flex-direction:column;justify-content:center}
-.status .ro-v{font-size:15px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;color:var(--teal)}
+.status .ro-v{font-size:15px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;color:var(--lime)}
 .status.over .ro-v{color:var(--over)}
 .meter{height:6px;background:var(--dark-3);border-radius:3px;margin-top:9px;overflow:hidden}
 .meter i{display:block;height:100%;width:0;background:var(--lime);transition:width .15s,background .25s}
@@ -443,7 +445,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 
   sel.addEventListener('change',()=>{
     const out=$('city-result'), mk=$('m-code');
-    if(sel.value===''){ code=null; mk.hidden=true; out.textContent='Pick your city to see the design wind speed your building has to meet.'; return; }
+    if(sel.value===''){ code=null; mk.hidden=true; out.classList.remove('has'); out.textContent='Pick your city to see the design wind speed your building has to meet.'; return; }
     const [c,co,v]=CITIES[+sel.value];
     const hwCounty=HW.includes(co);
     const need = (hwCounty || v>150) ? 'hw' : 'std';
@@ -452,6 +454,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     if(hwCounty) why=`StormSafe builds ${co} County to <span class="t">170 mph</span> as standard.`;
     else if(v>150) why=`That's over 150, so your build needs <span class="t">High-Wind framing</span>.`;
     else why=`<span class="t">Standard framing</span> covers it, with ${150-v} mph to spare.`;
+    out.classList.add('has');
     out.innerHTML=`<b>${c}, ${co} County</b>: code design wind <b>${v} mph</b>. ${why}`;
     setTier(need);
     sweepTo(v);

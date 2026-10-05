@@ -160,6 +160,41 @@ describe('price lock (quote-builder.html)', () => {
     expect(src.includes('rcl, S.src);')).toBe(true);
   });
 
+  it('names the 10/5/26 CCI wainscot change (Sensei per-wall rule) on quotes priced before it', () => {
+    const mk = (g: Record<string, unknown>) => {
+      const mod = { exports: {} as unknown };
+      vm.runInNewContext(src, { module: mod, Date, Math, JSON, parseFloat, parseInt, isNaN, isFinite, String, Number, ACTIVE_MFR: 'CCI', ...g });
+      return mod.exports as {
+        ENGINE_REV: string; RULES: Record<string, { commit: string; date: string; text: string }>;
+        _wainDrift: (data: unknown, rcl: unknown, src: string) => { k: string; label: string; amt: number; rules: string[] } | null;
+      };
+    };
+    const PL = mk({ cciWainscotPre: () => 500 });
+    // snapshots now carry the new engine generation
+    expect(PL.ENGINE_REV).toBe('2026-10-05');
+    expect(PL.RULES['cci-wainscot'].text).toMatch(/^Wainscot \(Sensei per-wall rule, 10\/5\)/);
+    expect(PL.RULES['cci-wainscot'].date).toBe('10/5/26');
+    const part = (amt: number) => ({ k: 'wainscot', label: 'Wainscot (as originally quoted)', amt, rules: ['cci-wainscot'] });
+    // legacy card totals (an older program): the old rule replayed on the reopened build
+    expect(PL._wainDrift({ fields: {} }, { wainP: 1300 }, 'legacy')).toEqual(part(-800));
+    expect(PL._wainDrift({ fields: {} }, { wainP: 500 }, 'legacy')).toBeNull(); // same price under both rules
+    // a 9/30-engine snapshot: its own saved wainscot line is what was charged
+    const old930 = { priced: { v: 1, engineRev: '2026-09-30', lines: { wainscot: 625 } } };
+    expect(PL._wainDrift(old930, { wainP: 1625 }, 'snapshot')).toEqual(part(-1000));
+    expect(PL._wainDrift({ priced: { v: 1, engineRev: '2026-09-30', lines: null } }, { wainP: 1300 }, 'snapshot')).toEqual(part(-800)); // no lines → replay
+    expect(PL._wainDrift({ priced: { v: 1 } }, { wainP: 1300 }, 'snapshot')).toEqual(part(-800)); // no engineRev → older engine
+    // priced by this rule already, manual pricing, or another manufacturer → nothing to name
+    expect(PL._wainDrift({ priced: { v: 1, engineRev: '2026-10-05', lines: { wainscot: 500 } } }, { wainP: 1300 }, 'snapshot')).toBeNull();
+    expect(PL._wainDrift({ fields: {} }, { wainP: 1300, manual: true }, 'legacy')).toBeNull();
+    expect(mk({ ACTIVE_MFR: 'CA', cciWainscotPre: () => 500 })._wainDrift({ fields: {} }, { wainP: 1300 }, 'legacy')).toBeNull();
+    // wired into the drift detectors, and the snapshot path hands them the snapshot
+    expect(src.includes('var wd=wainDrift(data, rcl, src); if(wd) out.push(wd);')).toBe(true);
+    expect(src.includes('source:data.source, priced:pr}:data, rcl, S.src);')).toBe(true);
+    // the old rule the replay uses is the program's own, kept verbatim (8/31 chart 17'+, buckets under 17')
+    expect(html.includes('function cciWainscotPre(){')).toBe(true);
+    expect(html.includes('var _wb=MANUFACTURERS.CCI.wainscotBuckets(w), _wc=0;')).toBe(true);
+  });
+
   it('old CCI lean-to wall formula (before c87e523) reproduces the CCI-corrected points', () => {
     // Tables from the page itself; the DOM-side helpers are stubbed with their chart values.
     const SC = vm.runInNewContext('(' + (html.match(/var SC=(\{[^\n]*\});/) || [])[1] + ')');

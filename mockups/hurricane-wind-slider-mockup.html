@@ -107,6 +107,10 @@ select:hover{border-color:var(--teal-dim)}
 .stage.is3d .face-tag{display:flex}
 .face-tag span{font-family:var(--h);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:rgba(8,18,29,.7);transition:color .25s,border-color .25s}
 .face-tag span.on{color:var(--teal);border-color:var(--teal)}
+.load-lbl{position:absolute;left:0;top:0;display:none;pointer-events:none;font-family:var(--h);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);background:rgba(8,18,29,.82);border:1px solid rgba(9,214,220,.45);border-radius:4px;padding:4px 7px;white-space:nowrap;transition:color .25s,border-color .25s}
+.load-lbl.show{display:block}
+.stage.over .load-lbl{color:var(--over);border-color:rgba(240,136,62,.6)}
+@media(max-width:520px){.load-lbl{font-size:7.5px;padding:3px 5px}}
 .drag-hint{position:absolute;right:14px;bottom:14px;font-size:11px;color:var(--muted);display:none;pointer-events:none}
 .stage.is3d .drag-hint{display:block}
 @media(max-width:520px){.face-tag span{font-size:7.5px;padding:3px 6px}.drag-hint{display:none!important}}
@@ -147,6 +151,7 @@ select:hover{border-color:var(--teal-dim)}
 .mark{position:absolute;top:18px;transform:translateX(-50%);font-family:var(--h);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);white-space:nowrap;text-align:center;pointer-events:none;transition:left .3s}
 .mark::after{content:"";display:block;width:1px;height:12px;background:currentColor;margin:3px auto 0}
 .mark.active{color:var(--teal)}
+@media(max-width:520px){.mark .mk{display:none}}
 .mark.code{color:var(--text)}
 .mark.code{top:0}.mark.code::after{background:none;border-left:1px dashed var(--text);height:30px}
 .mark[hidden]{display:none}
@@ -249,6 +254,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <div class="stage" id="stage">
         <canvas id="c3d" aria-label="3D steel garage turning slowly while wind blows from the left. Drag to spin it."></canvas>
         <div class="face-tag" aria-hidden="true"><span data-f="0">Front</span><span data-f="1">Left</span><span data-f="2">Back</span><span data-f="3">Right</span></div>
+        <div class="load-lbl" id="lbl-wall">Wind pushes this wall →</div>
+        <div class="load-lbl" id="lbl-roof">↑ Wind lifts the roof</div>
         <div class="drag-hint">Drag to spin ⟲</div>
         <svg viewBox="40 96 520 244" role="img" aria-label="End view of a steel building with wind blowing from the left. Arrows show wall pressure and roof uplift growing with wind speed.">
           <g id="streaks"></g>
@@ -295,8 +302,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 
       <div class="slider" id="slider-box">
         <div class="track-wrap">
-          <span class="mark" id="m-std" style="left:83.33%">Std 150</span>
-          <span class="mark" id="m-hw" style="left:94.44%">HW 170</span>
+          <span class="mark" id="m-std" style="left:83.33%"><span class="mk">Std </span>150</span>
+          <span class="mark" id="m-hw" style="left:94.44%"><span class="mk">HW </span>170</span>
           <span class="mark code" id="m-code" hidden>Your code</span>
           <label for="wind" class="label" style="position:absolute;left:-9999px">Wind speed in mph</label>
           <input type="range" id="wind" min="0" max="180" step="1" value="0" aria-valuetext="0 mph">
@@ -624,6 +631,17 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     let visible=true;
     new IntersectionObserver(es=>{ visible=es[0].isIntersecting; },{threshold:0}).observe(canvas);
 
+    const lblWall=$('lbl-wall'), lblRoof=$('lbl-roof'), V=new THREE.Vector3();
+    function placeLbl(el,show,x,y,z,align){
+      el.classList.toggle('show',show); if(!show) return;
+      V.set(x,y,z).project(cam);
+      const w=canvas.clientWidth,h=canvas.clientHeight;
+      let px=(V.x+1)/2*w, py=(1-V.y)/2*h;
+      const ew=el.offsetWidth;
+      if(align==='center') px-=ew/2; else if(align==='right') px-=ew;
+      px=Math.max(8,Math.min(w-ew-8,px));
+      el.style.transform='translate('+px.toFixed(1)+'px,'+(py-10).toFixed(1)+'px)';
+    }
     let t0=performance.now(), jit=0;
     function frame(now){
       requestAnimationFrame(frame);
@@ -672,6 +690,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         P.set(d.x-len/2,y,d.z); S.set(len,1+k*.8,1+k*.8); M.compose(P,Q,S); streaks.setMatrixAt(i,M);
       });
       streaks.instanceMatrix.needsUpdate=true;
+
+      // label the arrows (project 3D anchor points to the overlay)
+      placeLbl(lblWall, psf>=.5, -hx-.8, 11.5, 0, 'right');
+      placeLbl(lblRoof, psf>=.5, 0, TOP+ll+2.2, 0, 'center');
 
       R.render(scene,cam);
     }

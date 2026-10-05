@@ -113,6 +113,12 @@ export interface ShellBatch {
   position: Float32Array;
   normal: Float32Array;
   uv: Float32Array;
+  /**
+   * Drawn, but never drives the PDF capture framing (ShellMeshes tags the mesh
+   * `userData.captureIgnore`). Set only on a storage partition's wainscot
+   * Z-trim; absent everywhere else.
+   */
+  captureIgnore?: true;
 }
 
 export class Emitter {
@@ -1166,6 +1172,12 @@ function cornerZones(layout: ShellLayout): { wall: WallSide; c0: number; c1: num
 export function trimBatches(inp: ShellInput & { trimColor: string }, layout: ShellLayout = shellLayout(inp)): ShellBatch[] {
   const set = new BatchSet();
   const e = set.get({ surface: 'trim', color: inp.trimColor }, true);
+  // A garage / carport storage partition's wainscot Z-trim goes in its OWN
+  // batch, tagged captureIgnore: interior trim must not change the main trim
+  // batch's box, which the PDF capture framing is seeded from.
+  const enc = inp.structure.enclosure;
+  const storageWall = enc.partitionKind === 'storage' || !!enc.sidePartition;
+  const pSet = new BatchSet();
   const T = SHELL.trimT;
   const zones = cornerZones(layout);
   const zoneGaps = (w: ShellWall, y: number): [number, number][] =>
@@ -1176,8 +1188,8 @@ export function trimBatches(inp: ShellInput & { trimColor: string }, layout: She
    * the sheet face. `lapped` (o0 = 0: the plate lies on the sheet): its back
    * face is drawn SHELL.trimLift off the sheet (lapOn).
    */
-  const plate = (w: ShellWall, c0: number, c1: number, y0: number, y1: number, o0: number, o1: number, lapped = false) =>
-    aabb(e, wallPoint(w.plane, c0, y0, o0), wallPoint(w.plane, c1, y1, o1), lapped ? lapOn(w.plane) : undefined);
+  const plate = (w: ShellWall, c0: number, c1: number, y0: number, y1: number, o0: number, o1: number, lapped = false, em: Emitter = e) =>
+    aabb(em, wallPoint(w.plane, c0, y0, o0), wallPoint(w.plane, c1, y1, o1), lapped ? lapOn(w.plane) : undefined);
 
   for (const w of layout.walls) {
     // Base trim: floor-level openings (sill <= 0.1) and corner plates break it.
@@ -1195,12 +1207,13 @@ export function trimBatches(inp: ShellInput & { trimColor: string }, layout: She
 
     // Wainscot Z-trim (classic WainscotCap crossing rule: +-0.08 around the line).
     const z = SHELL.zTrim;
+    const zEm = storageWall && w.plane.id === 'partition' ? pSet.get({ surface: 'trim', color: inp.trimColor }, true) : e;
     for (const run of w.cap) {
       const cuts = w.holes
         .filter((h) => h.y0 < run.y + 0.08 && h.y1 > run.y - 0.08)
         .map((h): [number, number] => [h.c - h.w / 2, h.c + h.w / 2]);
       for (const [a, b] of subtractRanges(run.c0, run.c1, [...cuts, ...zoneGaps(w, run.y)]))
-        plate(w, a, b, run.y - z.below, run.y - z.below + z.face, z.standoff, z.standoff + T);
+        plate(w, a, b, run.y - z.below, run.y - z.below + z.face, z.standoff, z.standoff + T, false, zEm);
     }
   }
 
@@ -1215,7 +1228,7 @@ export function trimBatches(inp: ShellInput & { trimColor: string }, layout: She
     aabb(e, [k.sx * xw, k.y0, k.zw - k.zs * cw], [k.sx * (xw + T), k.y1, k.zw], lapOn(side.plane));
     aabb(e, [k.sx * (xw - cw), k.y0, k.zw], [k.sx * (xw + T), k.y1, k.zw + k.zs * T], lapOn(end.plane));
   }
-  return set.build();
+  return [...set.build(), ...pSet.build().map((b): ShellBatch => ({ ...b, id: `${b.id}|partition-cap`, captureIgnore: true }))];
 }
 
 /** Mesh key of a batch set's input (so the memo only rebuilds when geometry inputs change). */

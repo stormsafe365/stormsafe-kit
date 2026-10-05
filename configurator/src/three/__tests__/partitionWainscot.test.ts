@@ -12,6 +12,8 @@ import { eaveSurfaces, gableWainscotStrips, leanToWainscotCaps, resolveWalls } f
 import { storagePartitionWainscot } from '../Siding';
 import * as THREE from 'three';
 import { storageGhostShape, storageGhostWainscot, storageGhostWainscotGeometries } from '../StoragePartitionGhost';
+import { shellCaptureData } from '../enhanced/ShellMeshes';
+import { captureBoxOf } from '../captureBox';
 
 /**
  * The building's WAINSCOT on interior storage partitions (owner 10/3/26:
@@ -175,9 +177,20 @@ describe('classic: End Storage partition wainscot', () => {
     const src = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
     const siding = src('../Siding.tsx');
     expect(siding).toMatch(/const storageBand = storagePartitionWainscot\(structure, openings, wainscot\);/);
-    // the band block is the group's last child (nothing before it moves)
-    expect(siding).toMatch(/\{storageBand &&[\s\S]*?\}\)\}\s*<\/group>\s*\);\s*\}\s*function EndWall/);
-    expect(src('../Trim.tsx')).toMatch(/storagePartitionWainscot\(structure, openings, \{ enabled: true, heightFt \}\)/);
+    // the band block is the group's last child (nothing before it moves), in a
+    // captureIgnore group (the PDF capture framing never sees it)
+    expect(siding).toMatch(/export const CAPTURE_IGNORE: Record<string, unknown> = \{ captureIgnore: true \};/);
+    expect(siding).toMatch(
+      /\{storageBand && \(\s*<group userData=\{CAPTURE_IGNORE\}>\s*\{storageBand\.strips\.map\([\s\S]*?\}\)\}\s*<\/group>\s*\)\}\s*<\/group>\s*\);\s*\}\s*function EndWall/,
+    );
+    const trim = src('../Trim.tsx');
+    expect(trim).toMatch(/storagePartitionWainscot\(structure, openings, \{ enabled: true, heightFt \}\)/);
+    // the partition's cap bars: their own captureIgnore group, after the outside walls' bars
+    expect(trim).toMatch(/if \(sb\)\s*for \(const c of sb\.cap\)\s*partBars\.push\(/);
+    expect(trim).toMatch(
+      /\{bars\.map\(\(b, i\) => \([\s\S]*?\)\)\}\s*\{partBars\.length > 0 && \(\s*<group userData=\{CAPTURE_IGNORE\}>\s*\{partBars\.map\(/,
+    );
+    expect(trim).not.toMatch(/bars\.push\(sb\./);
   });
 });
 
@@ -389,5 +402,131 @@ describe('lean-to storage partition wainscot (both Looks)', () => {
       [-27, -26],
       [-16, -15],
     ]);
+  });
+});
+
+// ── PDF capture framing (10/5/26 gate) ──────────────────────────────────────
+// CaptureHook seeds its camera from the average of every mesh's box corners.
+// The partition's wainscot pieces sit inside the partition sheet's own box,
+// but as NEW meshes (and the enhanced sheet split in two) they moved that
+// average, so every PDF / contract view of a wainscot + storage build came out
+// ~0.5% re-framed (even views where the partition cannot be seen). They are
+// now kept out of the fit: the framing sees exactly what it saw before.
+
+/** The enhanced layout as LIVE (de56edf) built it: the partition one full-height wall-colour region, no Z-trim line. */
+const liveLayout = (inp: ShellInput) => {
+  const lay = shellLayout(inp);
+  const p = lay.walls.find((w) => w.plane.id === 'partition')!;
+  const c0 = Math.min(...p.regions.map((r) => r.c0));
+  const c1 = Math.max(...p.regions.map((r) => r.c1));
+  const y1 = Math.max(...p.regions.map((r) => r.y1));
+  p.regions = [{ c0, c1, y0: 0, y1, wainscot: false }];
+  p.cap = [];
+  return lay;
+};
+const geo = (b: ShellBatch) => {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(b.position, 3));
+  return g;
+};
+const isInterior = (b: ShellBatch) => b.spec.surface === 'wall' && !!b.spec.interior;
+/** CaptureHook's fit point list for these batches (ShellMeshes userData + captureBoxOf, same corner order). */
+const capturePoints = (bs: ShellBatch[]) => {
+  const geos = bs.map(geo);
+  const data = shellCaptureData(bs, geos);
+  const pts: number[] = [];
+  bs.forEach((_, i) => {
+    const m = new THREE.Mesh(geos[i]);
+    if (data[i]) m.userData = data[i]!;
+    if (m.userData.captureIgnore) return;
+    const bx = captureBoxOf(m)!;
+    for (const X of [bx.min.x, bx.max.x]) for (const Y of [bx.min.y, bx.max.y]) for (const Z of [bx.min.z, bx.max.z]) pts.push(X, Y, Z);
+  });
+  return pts;
+};
+
+describe('PDF capture framing: the partition wainscot never moves it', () => {
+  const cases: [string, { mode: StorageMode; lengthFt: number }, Opening[]][] = [
+    ['End Storage back 30 (roll-up, low + high window)', { mode: 'endBack', lengthFt: 30 }, [rollUp, lowWin, highWin]],
+    ['End Storage front 20 (roll-up)', { mode: 'end', lengthFt: 20 }, [rollUp]],
+    ['Left storage 12', { mode: 'left', lengthFt: 12 }, []],
+    ['Right storage 10', { mode: 'right', lengthFt: 10 }, []],
+  ];
+  for (const [name, storage, openings] of cases) {
+    it(`${name}: enhanced walls + trim give CaptureHook exactly the LIVE fit points`, () => {
+      const { cfg, s } = build(storage, { openings });
+      const inp = input(cfg, s);
+      // walls: the sheet is split in two (wall + wainscot colour) ...
+      const now = wallBatches(inp);
+      const live = wallBatches(inp, liveLayout(inp));
+      const interior = now.filter(isInterior);
+      expect(interior.map((b) => (b.spec.surface === 'wall' ? b.spec.color : '')).sort()).toEqual([cfg.colors.walls, cfg.colors.wainscot].sort());
+      expect(live.filter(isInterior).length).toBe(1);
+      // ... every other wall batch is LIVE's, byte for byte, in LIVE's order
+      const outside = (bs: ShellBatch[]) => bs.filter((b) => !isInterior(b)).map((b) => [b.id, Array.from(b.position)]);
+      expect(outside(now)).toEqual(outside(live));
+      // ... and the fit sees ONE box for the two pieces: LIVE's sheet box
+      expect(capturePoints(now)).toEqual(capturePoints(live));
+      const data = shellCaptureData(now, now.map(geo));
+      expect(data.filter((d) => d?.captureBox).length).toBe(1);
+      expect(data.filter((d) => d?.captureIgnore).length).toBe(1);
+      now.forEach((b, i) => {
+        if (!isInterior(b)) expect(data[i]).toBeUndefined();
+      });
+      // trim: the main batch is LIVE's byte for byte; the partition's Z-trim is its own capture-ignored batch
+      const tNow = trimBatches(inp);
+      const tLive = trimBatches(inp, liveLayout(inp));
+      expect(tLive.some((b) => b.captureIgnore)).toBe(false);
+      expect(tNow.filter((b) => !b.captureIgnore).map((b) => [b.id, Array.from(b.position)])).toEqual(tLive.map((b) => [b.id, Array.from(b.position)]));
+      const zt = tNow.filter((b) => b.captureIgnore);
+      expect(zt.length).toBe(1);
+      expect(zt[0].id).toBe(`${tLive[0].id}|partition-cap`);
+      expect(zt[0].spec).toEqual(tLive[0].spec);
+      expect(zt[0].position.length).toBeGreaterThan(0);
+      expect(new Set(tNow.map((b) => b.id)).size).toBe(tNow.length);
+      expect(capturePoints(tNow)).toEqual(capturePoints(tLive));
+    });
+  }
+
+  it('wainscot off / GCH divider: nothing tagged, the one trim batch (exactly as before)', () => {
+    const off = build({ mode: 'endBack', lengthFt: 30 }, { ...OFF, openings: [rollUp] });
+    const gch = build({ mode: 'endBack', lengthFt: 12 }, { buildingType: 'utility', enclosedLengthFt: 20, openEnd: 'front' });
+    for (const { cfg, s } of [off, gch]) {
+      const w = wallBatches(input(cfg, s));
+      const t = trimBatches(input(cfg, s));
+      expect(shellCaptureData(w, w.map(geo)).every((d) => d === undefined)).toBe(true);
+      expect(t.some((b) => b.captureIgnore)).toBe(false);
+      expect(shellCaptureData(t, t.map(geo)).every((d) => d === undefined)).toBe(true);
+    }
+    // the GCH divider keeps its Z-trim in the main trim batch
+    const g = shellLayout(input(gch.cfg, gch.s)).walls.find((w) => w.plane.id === 'partition')!;
+    expect(g.cap.length).toBeGreaterThan(0);
+  });
+
+  it('captureBoxOf: userData.captureBox wins, else the geometry box (computed once, as before)', () => {
+    const g = new THREE.BoxGeometry(2, 4, 6);
+    const m = new THREE.Mesh(g);
+    expect(g.boundingBox).toBeNull();
+    const b = captureBoxOf(m)!;
+    expect([b.min.toArray(), b.max.toArray()]).toEqual([
+      [-1, -2, -3],
+      [1, 2, 3],
+    ]);
+    expect(g.boundingBox).toBe(b);
+    const proxy = new THREE.Box3(new THREE.Vector3(-5, 0, 0), new THREE.Vector3(5, 9, 1));
+    m.userData = { captureBox: proxy };
+    expect(captureBoxOf(m)).toBe(proxy);
+    m.userData = { captureBox: { min: 0 } }; // not a Box3: ignored
+    expect(captureBoxOf(m)).toBe(g.boundingBox);
+  });
+
+  it('ShellMeshes passes the data as mesh userData; CaptureHook reads boxes through captureBoxOf', () => {
+    const src = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
+    const sm = src('../enhanced/ShellMeshes.tsx');
+    expect(sm).toMatch(/const capture = useMemo\(\(\) => shellCaptureData\(batches, geometries\), \[batches, geometries\]\);/);
+    expect(sm).toMatch(/userData=\{capture\[i\] \?\? NO_TAG\}/);
+    const hook = src('../CaptureHook.tsx');
+    expect(hook).toMatch(/if \(isCaptureIgnored\(m\)\) return;[^\n]*\n\s*const b = captureBoxOf\(m\);/);
+    expect(hook).not.toMatch(/m\.geometry\.boundingBox/);
   });
 });

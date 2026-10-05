@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { ROOF_LIFT, SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
 import type { Opening, Wainscot, WallSide } from '@/types/building';
 import { lappedBoxGeometry } from './lappedBox';
-import { storagePartitionWainscot } from './Siding';
+import { CAPTURE_IGNORE, storagePartitionWainscot } from './Siding';
 import { SteelMember } from './SteelMember';
 
 /**
@@ -333,15 +333,25 @@ function WainscotCap({
   // Storage partition (End Storage cross wall / Left-Right lengthwise wall):
   // the same cap along the top of its band on the main-room face, broken at
   // the openings crossing the line (Siding's storagePartitionWainscot).
+  // Kept apart from `bars` and tagged captureIgnore (Siding CAPTURE_IGNORE):
+  // interior trim must not move the PDF capture framing.
   const sb = storagePartitionWainscot(structure, openings, { enabled: true, heightFt });
+  const partBars: typeof bars = [];
   if (sb)
     for (const c of sb.cap)
-      bars.push(sb.plane === 'cross' ? { s: [c.u0, wy, sb.at], e: [c.u1, wy, sb.at] } : { s: [sb.at, wy, c.u0], e: [sb.at, wy, c.u1] });
+      partBars.push(sb.plane === 'cross' ? { s: [c.u0, wy, sb.at], e: [c.u1, wy, sb.at] } : { s: [sb.at, wy, c.u0], e: [sb.at, wy, c.u1] });
   return (
     <group>
       {bars.map((b, i) => (
         <SteelMember key={i} start={b.s} end={b.e} size={0.16} color={color} metalness={0.4} roughness={0.42} />
       ))}
+      {partBars.length > 0 && (
+        <group userData={CAPTURE_IGNORE}>
+          {partBars.map((b, i) => (
+            <SteelMember key={i} start={b.s} end={b.e} size={0.16} color={color} metalness={0.4} roughness={0.42} />
+          ))}
+        </group>
+      )}
     </group>
   );
 }

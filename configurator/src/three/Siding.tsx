@@ -163,6 +163,12 @@ export function storagePartitionWainscot(structure: StructureModel, openings: Op
   return null;
 }
 
+/**
+ * userData for the storage partition's wainscot meshes (band here, cap bar in
+ * Trim): the PDF capture (CaptureHook) skips them when it frames the building.
+ */
+export const CAPTURE_IGNORE: Record<string, unknown> = { captureIgnore: true };
+
 const TILE = 3; // feet per texture tile (≈2 ribs/ft)
 // Vertical gap between the colored top roof skin and the galvalume underside —
 // just enough that each is nearest the camera from its own side (no z-fight).
@@ -569,22 +575,27 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           lengthwise wall): the outside walls' band on its main-room face, proud
           of the sheet, cut around the partition's openings. Last in the group,
           and nothing at all when wainscot is off, so a build without it draws
-          exactly as before. */}
-      {storageBand &&
-        storageBand.strips.map((st, i) => {
-          const w = st.u1 - st.u0;
-          const h = st.y1 - st.y0;
-          const uc = (st.u0 + st.u1) / 2;
-          const yc = (st.y0 + st.y1) / 2;
-          const material = planeMat(tex.wainscot, w, h, wallDir, wainMetal, false, st.u0, st.y0);
-          return storageBand.plane === 'cross' ? (
-            <mesh key={`swain-${i}`} position={[uc, yc, storageBand.at]} material={material} castShadow receiveShadow>
-              <planeGeometry args={[w, h]} />
-            </mesh>
-          ) : (
-            <BasisPanel key={`swain-${i}`} center={[storageBand.at, yc, uc]} uVec={[0, 0, 1]} vVec={[0, 1, 0]} w={w} h={h} material={material} />
-          );
-        })}
+          exactly as before. captureIgnore: it lies inside the partition sheet's
+          own box, so it must not move the PDF capture framing (CaptureHook
+          seeds its camera from the average of every mesh box). */}
+      {storageBand && (
+        <group userData={CAPTURE_IGNORE}>
+          {storageBand.strips.map((st, i) => {
+            const w = st.u1 - st.u0;
+            const h = st.y1 - st.y0;
+            const uc = (st.u0 + st.u1) / 2;
+            const yc = (st.y0 + st.y1) / 2;
+            const material = planeMat(tex.wainscot, w, h, wallDir, wainMetal, false, st.u0, st.y0);
+            return storageBand.plane === 'cross' ? (
+              <mesh key={`swain-${i}`} position={[uc, yc, storageBand.at]} material={material} castShadow receiveShadow>
+                <planeGeometry args={[w, h]} />
+              </mesh>
+            ) : (
+              <BasisPanel key={`swain-${i}`} center={[storageBand.at, yc, uc]} uVec={[0, 0, 1]} vVec={[0, 1, 0]} w={w} h={h} material={material} />
+            );
+          })}
+        </group>
+      )}
     </group>
   );
 }

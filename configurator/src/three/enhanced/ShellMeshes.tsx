@@ -67,6 +67,36 @@ function toGeometry(b: ShellBatch): THREE.BufferGeometry {
 }
 
 /**
+ * PDF-capture framing data per batch (CaptureHook reads `userData`), so a
+ * storage partition's wainscot never moves the PDF framing:
+ *  - An interior storage partition sheet is ONE wall, but with wainscot on it
+ *    is drawn as two batches (wall colour + wainscot colour). The first
+ *    interior wall batch carries the union of all of them as its `captureBox`
+ *    and the rest are `captureIgnore`, so CaptureHook sees exactly the one box
+ *    it saw before the partition had wainscot.
+ *  - A batch marked `captureIgnore` (the partition's Z-trim) is skipped.
+ * Undefined for every other batch, and for the lone interior batch with
+ * wainscot off (its own geometry box is already that box).
+ */
+export function shellCaptureData(batches: ShellBatch[], geometries: THREE.BufferGeometry[]): (Record<string, unknown> | undefined)[] {
+  const out: (Record<string, unknown> | undefined)[] = batches.map((b) => (b.captureIgnore ? { captureIgnore: true } : undefined));
+  const idx = batches.map((b, i) => (b.spec.surface === 'wall' && b.spec.interior && !b.captureIgnore ? i : -1)).filter((i) => i >= 0);
+  if (idx.length < 2) return out;
+  const box = new THREE.Box3();
+  for (const i of idx) {
+    const g = geometries[i];
+    if (!g.boundingBox) g.computeBoundingBox();
+    if (g.boundingBox) box.union(g.boundingBox);
+  }
+  out[idx[0]] = { captureBox: box };
+  for (const i of idx.slice(1)) out[i] = { captureIgnore: true };
+  return out;
+}
+
+/** Plain userData (the Frame.tsx pattern): a batch that stops carrying capture data drops it on the next render. */
+const NO_TAG: Record<string, unknown> = {};
+
+/**
  * One mesh per batch (= per material), keyed by the batch id so a rebuild
  * (drag, resize, color) swaps geometry on the SAME mesh. Geometries are owned
  * here and disposed as soon as they are replaced or unmounted, and the
@@ -76,6 +106,7 @@ function toGeometry(b: ShellBatch): THREE.BufferGeometry {
 export function ShellMeshes({ batches, name }: { batches: ShellBatch[]; name: string }) {
   const material = useEnhancedMaterials();
   const geometries = useMemo(() => batches.map(toGeometry), [batches]);
+  const capture = useMemo(() => shellCaptureData(batches, geometries), [batches, geometries]);
   useEffect(
     () => () => {
       for (const g of geometries) g.dispose();
@@ -92,6 +123,7 @@ export function ShellMeshes({ batches, name }: { batches: ShellBatch[]; name: st
           material={material(b.spec)}
           castShadow={b.castShadow}
           receiveShadow={false}
+          userData={capture[i] ?? NO_TAG}
         />
       ))}
     </group>

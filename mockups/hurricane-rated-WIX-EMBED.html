@@ -471,7 +471,7 @@ body.embed{padding-bottom:0}
       <div class="city">
         <label class="label" for="city" style="margin:0">Check your city</label>
         <div class="select-wrap">
-          <select id="city"><option value="">Choose your city…</option></select>
+          <select id="city" autocomplete="off"><option value="">Choose your city…</option></select>
         </div>
         <div class="city-result" id="city-result" aria-live="polite">Pick your city to see the design wind speed your building has to meet.</div>
       </div>
@@ -917,6 +917,9 @@ body.embed{padding-bottom:0}
     setTier(need);
     sweepTo(v);
   });
+
+  // if the browser restored a city (back button / reload), show its result too
+  addEventListener('pageshow',()=>{ if(sel.value!=='') sel.dispatchEvent(new Event('change')); });
 
   // animated sweep (load intro + city pick)
   let sweepRaf=null;

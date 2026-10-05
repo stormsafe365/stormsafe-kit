@@ -214,7 +214,7 @@ describe('enhanced walls: painted face outside, panel back inside', () => {
     expect(mb.color.getHexString()).toBe('dfe3e6');
   });
 
-  it('roofUnderClip: the soffit keeps only the overhang ring, the panel back only the room', () => {
+  it('roofUnderClip: the soffit keeps only the overhang strip, the panel back only the room', () => {
     const rect = { x0: -15.18, x1: 15.18, z0: -22.68, z1: 22.68 };
     const cases: [V3, boolean][] = [
       [[0, 10, 0], true], // over the room

@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Wind Load Slider (Mockup) | StormSafe Steel</title>
+<meta name="description" content="Mockup: interactive wind-load slider for the Hurricane-Rated Steel Buildings page.">
+<meta name="theme-color" content="#08121d">
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --teal:#09d6dc;--teal-dim:#07bcc1;--teal-glow:rgba(9,214,220,.10);
+  --dark:#08121d;--dark-2:#111827;--dark-3:#1a2436;--dark-4:#1f2d42;
+  --border:#1e2d42;--border-vis:#2a3d55;
+  --text:#e2e8f0;--sub:#94a3b8;--muted:#64748b;
+  --over:#f0883e;
+  --h:"Orbitron",system-ui,sans-serif;--b:"Inter",system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:var(--dark);color:var(--text);font-family:var(--b);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button,select{font-family:inherit}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+/* mockup banner */
+.mock-banner{background:var(--dark-3);border-bottom:1px dashed var(--border-vis);color:var(--sub);font-size:12px;text-align:center;padding:8px 16px;letter-spacing:.04em}
+.mock-banner b{color:var(--teal);font-weight:600}
+
+/* ─── NAV (same as live page) ─── */
+nav.top{position:sticky;top:0;z-index:200;background:rgba(8,18,29,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border-vis);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:56px}
+@media(min-width:768px){nav.top{padding:0 32px;height:60px}}
+.nav-logo{font-family:var(--h);font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+.nav-logo span{color:var(--teal)}
+.nav-right{display:flex;align-items:center;gap:12px}
+.nav-phone{display:none;font-weight:600;font-size:13px;color:var(--teal)}
+@media(min-width:768px){.nav-phone{display:inline}}
+.nav-links{display:none;align-items:center;gap:24px;font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+@media(min-width:900px){.nav-links{display:flex}}
+.nav-links a:hover{color:var(--teal)}
+.nav-cta{display:none;background:var(--teal);color:#08121d;font-weight:700;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:9px 16px}
+@media(min-width:900px){.nav-cta{display:inline-block}}
+
+/* ─── STORM HERO ─── */
+.storm{position:relative;padding:40px 16px 48px;border-bottom:2px solid var(--teal);overflow:hidden;background:
+  radial-gradient(ellipse 1000px 600px at 78% 12%, rgba(9,214,220,.14), transparent 60%),
+  linear-gradient(180deg, var(--dark-2) 0%, var(--dark) 100%)}
+@media(min-width:768px){.storm{padding:72px 32px 72px}}
+.storm-inner{max-width:1200px;margin:0 auto;display:grid;gap:28px}
+@media(min-width:960px){.storm-inner{grid-template-columns:.85fr 1.15fr;column-gap:48px;row-gap:0;align-items:start}.copy{grid-column:1;grid-row:1}.controls{grid-column:1;grid-row:2}.rig{grid-column:2;grid-row:1/3}}
+.rig{order:1}.controls{order:2}
+.copy .lede{margin-bottom:0}@media(min-width:960px){.copy .lede{margin-bottom:28px}}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--teal);margin-bottom:18px}
+.eyebrow::before{content:"";width:28px;height:1px;background:var(--teal)}
+h1{font-family:var(--h);font-weight:900;font-size:clamp(30px,5.6vw,54px);line-height:1.02;text-transform:uppercase;margin-bottom:20px}
+h1 .teal{color:var(--teal);display:block}
+.lede{font-size:clamp(15px,2vw,17px);color:var(--sub);max-width:520px;line-height:1.65;margin-bottom:28px}
+
+/* tier picker */
+.label{font-family:var(--h);font-size:9.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.tiers{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px}
+.tier{background:var(--dark-2);border:1px solid var(--border-vis);border-radius:10px;padding:14px 14px 13px;text-align:left;color:var(--text);cursor:pointer;transition:border-color .2s,background .2s,transform .2s;position:relative}
+.tier:hover{border-color:var(--teal-dim);transform:translateY(-1px)}
+.tier[aria-pressed="true"]{border-color:var(--teal);background:linear-gradient(180deg,rgba(9,214,220,.10),rgba(9,214,220,.02))}
+.tier-name{font-family:var(--h);font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.tier-mph{font-family:var(--h);font-weight:900;font-size:26px;color:var(--teal);line-height:1.1;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+.tier-mph small{font-size:10px;letter-spacing:.14em;color:var(--sub);font-weight:700;margin-left:4px}
+.tier-spec{font-size:12px;color:var(--sub);line-height:1.45}
+.tier-check{position:absolute;top:12px;right:12px;width:16px;height:16px;border-radius:50%;border:1px solid var(--border-vis)}
+.tier[aria-pressed="true"] .tier-check{border-color:var(--teal);background:radial-gradient(circle,var(--teal) 0 4px,transparent 5px)}
+
+/* city lookup */
+.city{display:flex;flex-direction:column;gap:10px}
+.select-wrap{position:relative}
+.select-wrap::after{content:"▾";position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--teal);pointer-events:none}
+select{width:100%;appearance:none;-webkit-appearance:none;background:var(--dark-3);border:1px solid var(--border-vis);color:var(--text);font-size:15px;padding:13px 40px 13px 14px;border-radius:8px;cursor:pointer}
+select:hover{border-color:var(--teal-dim)}
+.city-result{font-size:13.5px;color:var(--sub);line-height:1.55;min-height:42px;border-left:2px solid var(--border-vis);padding-left:12px}
+.city-result b{color:var(--text);font-weight:600}
+.city-result .t{color:var(--teal);font-weight:600}
+.city-result .o{color:var(--over);font-weight:600}
+
+.ctas{display:flex;gap:10px;margin-top:26px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:13px;letter-spacing:.1em;text-transform:uppercase;padding:15px 20px;min-height:52px;flex:1 1 200px;transition:all .2s}
+.btn-primary{background:var(--teal);color:#08121d}
+.btn-primary:hover{background:var(--teal-dim)}
+.btn-secondary{border:1px solid var(--border-vis);color:var(--text)}
+.btn-secondary:hover{border-color:var(--teal);color:var(--teal)}
+
+/* stage */
+.rig{background:var(--dark-2);border:1px solid var(--border-vis);border-radius:10px;overflow:hidden}
+.rig-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--dark-3)}
+.rig-tag{font-family:var(--h);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+.rig-cat{font-family:var(--h);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--sub);padding:4px 9px;border:1px solid var(--border-vis);border-radius:999px;white-space:nowrap;transition:color .2s,border-color .2s}
+.rig-cat.hot{color:var(--text);border-color:var(--teal)}
+.stage{position:relative;background:var(--dark);}
+.stage svg{display:block;width:100%;height:auto}
+.streak{stroke:var(--sub);stroke-linecap:round}
+.bldg-line{stroke:var(--teal);stroke-width:2;fill:none;stroke-linejoin:round;transition:stroke .25s}
+.bldg-thin{stroke:var(--teal);stroke-width:1;fill:none;opacity:.45;transition:stroke .25s}
+.bldg-fill{fill:var(--dark-2)}
+.door-slat{stroke:rgba(148,163,184,.25);stroke-width:1}
+.arrow{stroke:var(--teal);stroke-width:2;fill:none;stroke-linecap:round;transition:stroke .25s}
+.arrow-head{fill:var(--teal);transition:fill .25s}
+.stage.over .bldg-line,.stage.over .bldg-thin,.stage.over .arrow{stroke:var(--over)}
+.stage.over .arrow-head{fill:var(--over)}
+.stage.over #bldg{animation:shake .12s linear infinite}
+@keyframes shake{0%{transform:translate(0,0)}25%{transform:translate(.8px,-.4px)}50%{transform:translate(-.6px,.3px)}75%{transform:translate(.5px,.5px)}100%{transform:translate(0,0)}}
+.svg-lbl{font-family:var(--h);font-size:9px;letter-spacing:.14em;fill:var(--sub);text-transform:uppercase}
+.svg-val{font-family:var(--h);font-size:12px;font-weight:800;fill:var(--text)}
+
+/* readouts */
+.readouts{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border)}
+@media(min-width:640px){.readouts{grid-template-columns:1fr 1fr 1.25fr}}
+.ro{padding:14px 16px;border-right:1px solid var(--border)}
+.ro:last-child{border-right:none;grid-column:1/-1;border-top:1px solid var(--border)}
+@media(min-width:640px){.ro:last-child{grid-column:auto;border-top:none}}
+.ro-k{font-family:var(--h);font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.ro-v{font-family:var(--h);font-weight:900;font-size:clamp(26px,4vw,36px);line-height:1.05;font-variant-numeric:tabular-nums;margin-top:4px}
+.ro-v small{font-size:11px;letter-spacing:.12em;color:var(--sub);font-weight:700;margin-left:4px}
+.ro-s{font-size:12px;color:var(--sub);margin-top:2px}
+.status{display:flex;flex-direction:column;justify-content:center}
+.status .ro-v{font-size:15px;letter-spacing:.06em;text-transform:uppercase;font-weight:800;color:var(--teal)}
+.status.over .ro-v{color:var(--over)}
+.meter{height:6px;background:var(--dark-3);border-radius:3px;margin-top:9px;overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--teal);transition:width .15s,background .25s}
+.status.over .meter i{background:var(--over)}
+
+/* slider */
+.slider{padding:18px 16px 16px;border-top:1px solid var(--border)}
+.track-wrap{position:relative;padding-top:44px}
+.mark{position:absolute;top:18px;transform:translateX(-50%);font-family:var(--h);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--sub);white-space:nowrap;text-align:center;pointer-events:none;transition:left .3s}
+.mark::after{content:"";display:block;width:1px;height:12px;background:currentColor;margin:3px auto 0}
+.mark.active{color:var(--teal)}
+.mark.code{color:var(--text)}
+.mark.code{top:0}.mark.code::after{background:none;border-left:1px dashed var(--text);height:30px}
+.mark[hidden]{display:none}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;cursor:pointer;display:block}
+input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;background:var(--track,var(--dark-3))}
+input[type=range]::-moz-range-track{height:8px;border-radius:4px;background:var(--track,var(--dark-3))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-9px;border-radius:50%;background:var(--dark);border:3px solid var(--teal);box-shadow:0 0 0 6px rgba(9,214,220,.15)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--dark);border:3px solid var(--teal);box-shadow:0 0 0 6px rgba(9,214,220,.15)}
+.over-thumb input[type=range]::-webkit-slider-thumb{border-color:var(--over);box-shadow:0 0 0 6px rgba(240,136,62,.18)}
+.over-thumb input[type=range]::-moz-range-thumb{border-color:var(--over)}
+.ticks{display:flex;justify-content:space-between;font-family:var(--h);font-size:9px;letter-spacing:.1em;color:var(--muted);margin-top:4px;font-variant-numeric:tabular-nums}
+.hint{font-size:12px;color:var(--muted);margin-top:10px;display:flex;align-items:center;gap:8px}
+.hint::before{content:"";width:14px;height:1px;background:var(--teal)}
+
+/* frame-spacing strip */
+.plan{border-top:1px solid var(--border);padding:12px 16px 14px;display:grid;gap:6px}
+.plan-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.plan-row b{font-family:var(--h);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text)}
+.plan-row span{font-size:12px;color:var(--sub)}
+.rib{stroke:var(--teal);stroke-width:2;transition:opacity .3s}
+.rail{stroke:var(--border-vis);stroke-width:2}
+
+.foot{max-width:1200px;margin:22px auto 0;font-size:11.5px;color:var(--muted);line-height:1.6;display:grid;gap:4px}
+
+/* rest-of-page stub */
+.stub{max-width:1200px;margin:0 auto;padding:40px 16px 60px;color:var(--muted);font-size:13px}
+.stub div{border:1px dashed var(--border-vis);border-radius:10px;padding:22px;text-align:center;letter-spacing:.04em}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition:none!important;animation:none!important}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<div class="mock-banner"><b>MOCKUP</b> · new hero for /hurricane-rated-steel-buildings · wind data: ASCE 7-22 Hazard Tool</div>
+
+<nav class="top">
+  <a href="#" class="nav-logo">Storm<span>Safe</span> Steel</a>
+  <div class="nav-links">
+    <a href="#">Buildings</a><a href="#">Customize</a><a href="#">Why Steel</a><a href="#">About</a><a href="#">Contact</a>
+  </div>
+  <div class="nav-right">
+    <a href="tel:5617715555" class="nav-phone">561-771-5555</a>
+    <a href="#" class="nav-cta">Design Yours →</a>
+  </div>
+</nav>
+
+<section class="storm" aria-labelledby="h1">
+  <div class="storm-inner">
+
+    <!-- copy -->
+    <div class="copy">
+      <div class="eyebrow">Wind Load · ASCE 7-22</div>
+      <h1 id="h1">What Holds Up<span class="teal">At 170+ MPH.</span></h1>
+      <p class="lede">Drag the wind up to your county's design speed and watch the load your building carries. Pick a frame. Check your city.</p>
+    </div>
+
+    <!-- controls -->
+    <div class="controls">
+
+      <div class="label" id="tier-lbl">Your frame</div>
+      <div class="tiers" role="group" aria-labelledby="tier-lbl">
+        <button class="tier" data-tier="std" aria-pressed="false">
+          <span class="tier-check" aria-hidden="true"></span>
+          <div class="tier-name">Standard</div>
+          <div class="tier-mph">150<small>MPH</small></div>
+          <div class="tier-spec">14-ga frames, 5' on center</div>
+        </button>
+        <button class="tier" data-tier="hw" aria-pressed="true">
+          <span class="tier-check" aria-hidden="true"></span>
+          <div class="tier-name">High-Wind</div>
+          <div class="tier-mph">170<small>MPH</small></div>
+          <div class="tier-spec">Frames 4' on center, 12-ga on wide spans</div>
+        </button>
+      </div>
+
+      <div class="city">
+        <label class="label" for="city" style="margin:0">Check your city</label>
+        <div class="select-wrap">
+          <select id="city"><option value="">Choose your city…</option></select>
+        </div>
+        <div class="city-result" id="city-result" aria-live="polite">Pick your city to see the design wind speed your building has to meet.</div>
+      </div>
+
+      <div class="ctas">
+        <a href="#" class="btn btn-primary">Design Your Build →</a>
+        <a href="tel:5617715555" class="btn btn-secondary">Call 561-771-5555</a>
+      </div>
+    </div>
+
+    <!-- RIGHT: the rig -->
+    <div class="rig">
+      <div class="rig-head">
+        <span class="rig-tag">End wall · 30' wide · 12' legs</span>
+        <span class="rig-cat" id="cat">Calm</span>
+      </div>
+
+      <div class="stage" id="stage">
+        <svg viewBox="40 96 520 244" role="img" aria-label="End view of a steel building with wind blowing from the left. Arrows show wall pressure and roof uplift growing with wind speed.">
+          <g id="streaks"></g>
+          <line x1="0" y1="300" x2="600" y2="300" stroke="#2a3d55" stroke-width="1.5"/>
+          <g id="bldg">
+            <!-- shell: 30' wide x 12' legs @ 8px/ft, 3:12 roof -->
+            <path class="bldg-fill" d="M220 300 V204 L340 174 L460 204 V300 Z"/>
+            <!-- truss web -->
+            <path class="bldg-thin" d="M220 214 L460 214 M250 214 L250 196.5 M280 214 L280 189 M310 214 L310 181.5 M340 214 L340 174 M370 214 L370 181.5 M400 214 L400 189 M430 214 L430 196.5 M220 214 L280 189 L310 214 L340 174 L370 214 L400 189 L460 214"/>
+            <!-- roll-up door 10x10 -->
+            <rect x="300" y="220" width="80" height="80" fill="#1a2436"/>
+            <g id="slats"></g>
+            <rect class="bldg-thin" x="300" y="220" width="80" height="80"/>
+            <path class="bldg-line" d="M220 300 V204 L340 174 L460 204 V300"/>
+          </g>
+          <!-- windward wall pressure arrows -->
+          <g id="push"></g>
+          <!-- roof uplift arrows -->
+          <g id="lift"></g>
+          <text class="svg-lbl" x="56" y="116">Wind →</text>
+          <text class="svg-lbl" x="56" y="322">Windward wall</text>
+          <text class="svg-lbl" x="440" y="322" text-anchor="start">Roof uplift ↑</text>
+        </svg>
+      </div>
+
+      <div class="readouts">
+        <div class="ro">
+          <div class="ro-k">Wind (3-sec gust)</div>
+          <div class="ro-v"><span id="v-mph">0</span><small>MPH</small></div>
+          <div class="ro-s" id="v-cat2">Calm</div>
+        </div>
+        <div class="ro">
+          <div class="ro-k">Pressure</div>
+          <div class="ro-v"><span id="v-psf">0</span><small>PSF</small></div>
+          <div class="ro-s">≈ <span id="v-lbs">0</span> lbs on a 10'×10' door</div>
+        </div>
+        <div class="ro status" id="status">
+          <div class="ro-k">Your frame</div>
+          <div class="ro-v" id="v-status">Within rating</div>
+          <div class="ro-s" id="v-status-s">0% of certified wind speed</div>
+          <div class="meter"><i id="meter"></i></div>
+        </div>
+      </div>
+
+      <div class="slider" id="slider-box">
+        <div class="track-wrap">
+          <span class="mark" id="m-std" style="left:83.33%">Std 150</span>
+          <span class="mark" id="m-hw" style="left:94.44%">HW 170</span>
+          <span class="mark code" id="m-code" hidden>Your code</span>
+          <label for="wind" class="label" style="position:absolute;left:-9999px">Wind speed in mph</label>
+          <input type="range" id="wind" min="0" max="180" step="1" value="0" aria-valuetext="0 mph">
+        </div>
+        <div class="ticks"><span>0</span><span>45</span><span>90</span><span>135</span><span>180 mph</span></div>
+        <div class="hint">Drag the wind. Arrow keys work too.</div>
+      </div>
+
+      <div class="plan">
+        <div class="plan-row"><b id="plan-title">Side wall · frames 4' on center</b><span id="plan-count">9 frames on a 30' building</span></div>
+        <svg viewBox="0 0 600 40" aria-hidden="true"><line class="rail" x1="20" y1="34" x2="580" y2="34"/><g id="ribs"></g></svg>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div>Design wind speeds: ASCE 7-22 Hazard Tool, Risk Category II, pulled 10/5/2026. Your permit drawings govern your building's final rating.</div>
+    <div>Pressure shown is basic velocity pressure (0.00256 × mph²) before code factors. Hurricane categories use 1-minute sustained winds; building codes use 3-second gusts, so the two scales don't line up one-to-one.</div>
+  </div>
+</section>
+
+<div class="stub"><div>Page continues as it is today ↓ &nbsp;Truss Style By Building Width · Find Your Frame · Three Things To Know</div></div>
+
+<script>
+(function(){
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const MAX = 180;
+  const TIERS = { std:{mph:150, spacing:5, title:"Side wall · frames 5' on center", gauge:'14-ga'},
+                  hw: {mph:170, spacing:4, title:"Side wall · frames 4' on center", gauge:'12-ga on wide spans'} };
+  // StormSafe high-wind counties (from the quote tool's HW list): we build these to 170 mph.
+  const HW = ['Charlotte','Collier','Duval','Flagler','Indian River','Lake','Lee','Martin','Palm Beach','Pinellas','Sarasota','Seminole','St. Lucie'];
+  // ASCE 7-22, Risk Category II design wind speeds (mph), from the ASCE Hazard Tool.
+  // Broward, Miami-Dade and Monroe are left out: outside StormSafe's install area.
+  const CITIES = [
+    ['Boca Raton','Palm Beach',167],['Daytona Beach','Volusia',137],['Fort Myers','Lee',154],
+    ['Gainesville','Alachua',125],['Jacksonville','Duval',125],['Jupiter','Palm Beach',168],
+    ['Lakeland','Polk',140],['Melbourne','Brevard',151],['Naples','Collier',166],
+    ['Ocala','Marion',130],['Orlando','Orange',137],['Panama City','Bay',140],
+    ['Pensacola','Escambia',157],['Port St. Lucie','St. Lucie',158],['Punta Gorda','Charlotte',151],
+    ['Sarasota','Sarasota',149],['St. Petersburg','Pinellas',146],['Stuart','Martin',162],
+    ['Tallahassee','Leon',118],['Tampa','Hillsborough',141],['Vero Beach','Indian River',157],
+    ['West Palm Beach','Palm Beach',169]
+  ];
+
+  const $ = id => document.getElementById(id);
+  const wind = $('wind'), stage = $('stage'), status = $('status');
+  let tier = 'hw', code = null, mph = 0;
+
+  // city select
+  const sel = $('city');
+  CITIES.forEach(([c,co,v],i) => { const o=document.createElement('option'); o.value=i; o.textContent=`${c} · ${co} Co.`; sel.appendChild(o); });
+
+  // door slats
+  let s=''; for(let y=228;y<300;y+=8) s+=`<line class="door-slat" x1="302" y1="${y}" x2="378" y2="${y}"/>`; $('slats').innerHTML=s;
+
+  function category(v){
+    if(v<39) return v<1?'Calm':'Breeze';
+    if(v<74) return 'Tropical storm';
+    if(v<96) return 'Cat 1';
+    if(v<111) return 'Cat 2';
+    if(v<130) return 'Cat 3';
+    if(v<157) return 'Cat 4';
+    return 'Cat 5';
+  }
+  const psfOf = v => 0.00256*v*v;
+
+  function arrow(x1,y1,x2,y2){
+    const a=Math.atan2(y2-y1,x2-x1), h=7;
+    const p1=[x2-h*Math.cos(a-.45), y2-h*Math.sin(a-.45)], p2=[x2-h*Math.cos(a+.45), y2-h*Math.sin(a+.45)];
+    return `<line class="arrow" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/><path class="arrow-head" d="M${x2} ${y2} L${p1[0]} ${p1[1]} L${p2[0]} ${p2[1]}Z"/>`;
+  }
+
+  function drawLoads(psf){
+    const k = psf/80; // 0..~1
+    let p='';
+    if(psf>0.5){
+      [222,248,274].forEach(y=>{ const L=10+k*120; p+=arrow(214-L,y,214,y); });
+    }
+    $('push').innerHTML=p;
+    let l='';
+    if(psf>0.5){
+      // roof line: y = 204 - (x-220)*0.25 left slope; y = 174 + (x-340)*0.25 right slope
+      [[260,194],[300,184],[380,184],[420,194]].forEach(([x,y])=>{ const L=6+k*42; l+=arrow(x,y-4,x,y-4-L); });
+    }
+    $('lift').innerHTML=l;
+  }
+
+  function drawRibs(){
+    const t=TIERS[tier]; let r='', n=0;
+    for(let ft=0; ft<=30; ft+=t.spacing){ r+=`<line class="rib" x1="${20+ft/30*560}" y1="6" x2="${20+ft/30*560}" y2="34"/>`; n++; }
+    if(30%t.spacing){ r+=`<line class="rib" x1="580" y1="6" x2="580" y2="34"/>`; n++; }
+    $('ribs').innerHTML=r;
+    $('plan-title').textContent=`${t.title} · ${t.gauge}`;
+    $('plan-count').textContent=`${n} frames on a 30' building`;
+  }
+
+  function trackBg(){
+    const rate=TIERS[tier].mph, v=mph;
+    const pv=v/MAX*100, pr=rate/MAX*100;
+    let bg;
+    if(v<=rate) bg=`linear-gradient(90deg,var(--teal) 0 ${pv}%,var(--dark-3) ${pv}% 100%)`;
+    else bg=`linear-gradient(90deg,var(--teal) 0 ${pr}%,var(--over) ${pr}% ${pv}%,var(--dark-3) ${pv}% 100%)`;
+    wind.style.setProperty('--track',bg);
+  }
+
+  function render(){
+    const rate=TIERS[tier].mph, psf=psfOf(mph), over=mph>rate;
+    $('v-mph').textContent=mph;
+    $('v-psf').textContent=psf.toFixed(psf<10?1:0);
+    $('v-lbs').textContent=Math.round(psf*100).toLocaleString();
+    const cat=category(mph);
+    $('cat').textContent=cat; $('v-cat2').textContent=cat==='Calm'||cat==='Breeze'?cat:`${cat} range`;
+    $('cat').classList.toggle('hot',mph>=74);
+    wind.setAttribute('aria-valuetext',`${mph} mph, ${cat}, ${Math.round(psf)} psf`);
+    stage.classList.toggle('over',over);
+    status.classList.toggle('over',over);
+    $('slider-box').classList.toggle('over-thumb',over);
+    $('v-status').textContent = over ? 'Beyond rating' : 'Within rating';
+    $('v-status-s').textContent = over
+      ? (tier==='std' ? 'Step up to High-Wind framing (170 mph)' : 'Engineered-to-order territory. Call us.')
+      : `${Math.round(mph/rate*100)}% of its ${rate} mph certification`;
+    $('meter').style.width=Math.min(100,mph/rate*100)+'%';
+    $('m-std').classList.toggle('active',tier==='std');
+    $('m-hw').classList.toggle('active',tier==='hw');
+    drawLoads(psf); trackBg();
+  }
+
+  function setTier(t){
+    tier=t;
+    document.querySelectorAll('.tier').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tier===t));
+    drawRibs(); render();
+  }
+  document.querySelectorAll('.tier').forEach(b=>b.addEventListener('click',()=>setTier(b.dataset.tier)));
+
+  wind.addEventListener('input',()=>{ cancelSweep(); mph=+wind.value; render(); });
+
+  sel.addEventListener('change',()=>{
+    const out=$('city-result'), mk=$('m-code');
+    if(sel.value===''){ code=null; mk.hidden=true; out.textContent='Pick your city to see the design wind speed your building has to meet.'; return; }
+    const [c,co,v]=CITIES[+sel.value];
+    const hwCounty=HW.includes(co);
+    const need = (hwCounty || v>150) ? 'hw' : 'std';
+    code=v; mk.hidden=false; mk.style.left=(v/MAX*100)+'%'; mk.textContent=`${c.split(' ')[0]} ${v}`;
+    let why;
+    if(hwCounty) why=`StormSafe builds ${co} County to <span class="t">170 mph</span> as standard.`;
+    else if(v>150) why=`That's over 150, so your build needs <span class="t">High-Wind framing</span>.`;
+    else why=`<span class="t">Standard framing</span> covers it, with ${150-v} mph to spare.`;
+    out.innerHTML=`<b>${c}, ${co} County</b>: code design wind <b>${v} mph</b>. ${why}`;
+    setTier(need);
+    sweepTo(v);
+  });
+
+  // animated sweep (load intro + city pick)
+  let sweepRaf=null;
+  function cancelSweep(){ if(sweepRaf){cancelAnimationFrame(sweepRaf); sweepRaf=null;} }
+  function sweepTo(target){
+    cancelSweep();
+    if(reduce){ mph=target; wind.value=target; render(); return; }
+    const from=mph, t0=performance.now(), dur=900+Math.abs(target-from)*6;
+    const step=now=>{ const p=Math.min(1,(now-t0)/dur), e=1-Math.pow(1-p,3);
+      mph=Math.round(from+(target-from)*e); wind.value=mph; render();
+      sweepRaf = p<1 ? requestAnimationFrame(step) : null; };
+    sweepRaf=requestAnimationFrame(step);
+  }
+
+  // wind streaks
+  const N=34, streaks=[], g=$('streaks');
+  for(let i=0;i<N;i++){
+    const ln=document.createElementNS('http://www.w3.org/2000/svg','line');
+    ln.setAttribute('class','streak'); g.appendChild(ln);
+    streaks.push({el:ln, x:Math.random()*600, y:110+Math.random()*185, len:20+Math.random()*50, sp:.6+Math.random()*.8});
+  }
+  function drawStreaks(dt){
+    const k=mph/MAX;
+    streaks.forEach(s=>{
+      s.x += s.sp*(40+k*900)*dt;
+      if(s.x-s.len*(0.4+k*1.6)>600){ s.x=-10; s.y=110+Math.random()*185; }
+      const L=s.len*(0.4+k*1.6);
+      // rise over the roof once past the windward wall
+      const lift = (s.x>200 && s.y>165) ? Math.min(1,(s.x-200)/80)*(s.y-160)*0.9 : 0;
+      const y = s.y - lift;
+      s.el.setAttribute('x1',s.x-L); s.el.setAttribute('y1',y);
+      s.el.setAttribute('x2',s.x); s.el.setAttribute('y2',y);
+      s.el.setAttribute('stroke-width',1+k*1.4);
+      s.el.setAttribute('opacity', mph<1?0:(0.12+k*0.55)*s.sp);
+    });
+  }
+  let last=performance.now();
+  function loop(now){ const dt=Math.min(.05,(now-last)/1000); last=now; drawStreaks(dt); requestAnimationFrame(loop); }
+  if(reduce){ mph=0; drawStreaks(0); } else requestAnimationFrame(loop);
+
+  drawRibs(); render();
+  // intro: sweep up to Standard rating once when the rig scrolls into view
+  const io=new IntersectionObserver(es=>{ if(es[0].isIntersecting){ io.disconnect(); setTimeout(()=>{ if(mph===0) sweepTo(150); },400);} },{threshold:.4});
+  io.observe($('stage'));
+})();
+</script>
+</body>
+</html>

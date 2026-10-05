@@ -699,7 +699,7 @@ function wallBandStrips(geo: SurfaceSet, yBot: number, bandH: number, openings: 
 // Wainscot band on a closed gable end, cut around that wall's openings —
 // replaces the old single uncut polygon so a door / frame-out leaves a real
 // gap in the band (same rule as the main building's gable wainscot).
-function gableWainscotStrips(geo: SurfaceSet, which: LtEndWall, wH: number, openings: LeanToOpening[]): Array<{ corners: Pt[]; uvs: UV[] }> {
+export function gableWainscotStrips(geo: SurfaceSet, which: LtEndWall, wH: number, openings: LeanToOpening[]): Array<{ corners: Pt[]; uvs: UV[] }> {
   const g = geo.gable;
   const ep = endWallPlane(g, which);
   if (!ep) return [];
@@ -745,7 +745,7 @@ function splitSegs(start: number, end: number, cuts: Array<{ a: number; b: numbe
 // Wainscot cap/divider trim bars (~2") at the top of the wainscot band —
 // outer wall + closed gable ends, broken around any opening that crosses the
 // wainscot line (mirrors the main building's WainscotCap rule).
-function leanToWainscotCaps(
+export function leanToWainscotCaps(
   geo: SurfaceSet,
   wH: number,
   walls: LtWalls,

@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { ROOF_LIFT, SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
 import type { Opening, Wainscot, WallSide } from '@/types/building';
 import { lappedBoxGeometry } from './lappedBox';
+import { CAPTURE_IGNORE, storagePartitionWainscot } from './Siding';
 import { SteelMember } from './SteelMember';
 
 /**
@@ -318,7 +319,7 @@ function WainscotCap({
   if (enclosure.front === 'closed') endBar('front', -(halfL + o2), false);
   if (enclosure.back === 'closed') endBar('back', halfL + o2, true);
   // Partition divider (utility split) — full-height wall, gets the full wainscot cap.
-  // (An End Storage partition carries no wainscot, so no cap.)
+  // (A storage partition's cap is added last, below.)
   if (enclosure.partitionZ !== null && enclosure.partitionKind !== 'storage') endBar('partition', enclosure.partitionZ, false);
   // Open-bay side panels — a wainscot cap belongs ONLY on a side that is FULLY
   // closed (sheeting reaches the ground, so there's a real lower wall section).
@@ -329,11 +330,28 @@ function WainscotCap({
     if (structure.eavePanelFt.left >= H - 0.01) sideBar('left', ob.start, ob.end);
     if (structure.eavePanelFt.right >= H - 0.01) sideBar('right', ob.start, ob.end);
   }
+  // Storage partition (End Storage cross wall / Left-Right lengthwise wall):
+  // the same cap along the top of its band on the main-room face, broken at
+  // the openings crossing the line (Siding's storagePartitionWainscot).
+  // Kept apart from `bars` and tagged captureIgnore (Siding CAPTURE_IGNORE):
+  // interior trim must not move the PDF capture framing.
+  const sb = storagePartitionWainscot(structure, openings, { enabled: true, heightFt });
+  const partBars: typeof bars = [];
+  if (sb)
+    for (const c of sb.cap)
+      partBars.push(sb.plane === 'cross' ? { s: [c.u0, wy, sb.at], e: [c.u1, wy, sb.at] } : { s: [sb.at, wy, c.u0], e: [sb.at, wy, c.u1] });
   return (
     <group>
       {bars.map((b, i) => (
         <SteelMember key={i} start={b.s} end={b.e} size={0.16} color={color} metalness={0.4} roughness={0.42} />
       ))}
+      {partBars.length > 0 && (
+        <group userData={CAPTURE_IGNORE}>
+          {partBars.map((b, i) => (
+            <SteelMember key={i} start={b.s} end={b.e} size={0.16} color={color} metalness={0.4} roughness={0.42} />
+          ))}
+        </group>
+      )}
     </group>
   );
 }

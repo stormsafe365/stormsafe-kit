@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
-import type { Opening } from '@/types/building';
+import type { Opening, Wainscot } from '@/types/building';
 import type { ViewMode } from '@/store/useEditorStore';
 
 /** Panel opacity per view mode — Exterior draws nothing (the shell has the real sheeting). */
@@ -61,12 +61,148 @@ export function storageGhostShape(structure: StructureModel, openings: Opening[]
   return null;
 }
 
+/** Sorted distinct values (within 1e-6). */
+function gridLines(vals: number[]): number[] {
+  const s = [...vals].sort((a, b) => a - b);
+  const out: number[] = [];
+  for (const v of s) if (!out.length || v - out[out.length - 1] > 1e-6) out.push(v);
+  return out;
+}
+
+/**
+ * The storage ghost split at the building's wainscot line (owner 10/3/26: the
+ * partition carries the building's wainscot like the outside walls). Same
+ * (u, v) plane as storageGhostShape: `band` = the ghost below the line (the
+ * wainscot colour), `wall` = the rest (the wall colour), both cut around the
+ * partition's openings, as triangle lists (x, y, 0); `cap` = the wainscot
+ * line as line segments, broken where an opening crosses it (the WainscotCap
+ * +-0.08 rule). Both triangle sets come off ONE grid — every hole edge and the
+ * band line split every row / column, and the gable fans from its apex over
+ * every column edge on the eave line — so neighbouring cells share whole
+ * edges (no T-junction cracks in the see-through panel). The eave-line
+ * rectangle is cut, the gable above it never is (classic EndWall rule). null =
+ * wainscot off or no storage partition: the ghost is the single panel, exactly
+ * as before. Exported for tests.
+ */
+export function storageGhostWainscot(
+  structure: StructureModel,
+  openings: Opening[],
+  wainscot: Wainscot,
+): { wall: Float32Array; band: Float32Array; cap: Float32Array } | null {
+  const enc = structure.enclosure;
+  const H = structure.legHeight;
+  const wH = wainscot.enabled ? Math.min(wainscot.heightFt, H - 0.5) : 0;
+  if (!(wH > 0)) return null;
+  const W = structure.width;
+  const halfW = W / 2;
+  const halfL = structure.length / 2;
+  const peak = structure.peakHeight;
+  const mono = structure.monoDropFt > 0.01;
+  const roofAt = (x: number) => (mono ? peak - structure.rise * ((x + halfW) / W) : peak - Math.abs(x) * (structure.rise / halfW));
+
+  let u0: number;
+  let u1: number;
+  let top: number;
+  let apex: [number, number] | null = null;
+  let holes: { a: number; b: number; y0: number; y1: number }[] = [];
+  if (enc.partitionKind === 'storage' && enc.partitionZ !== null) {
+    u0 = -halfW;
+    u1 = halfW;
+    top = Math.min(roofAt(-halfW), roofAt(halfW)); // the eave line
+    apex = mono ? [-halfW, peak] : [0, peak];
+    holes = openings
+      .filter((o) => o.side === 'partition')
+      .map((o) => {
+        const x0 = -halfW + o.offset - o.width / 2;
+        const sill = o.sillHeight ?? 0;
+        return { a: Math.max(-halfW, x0), b: Math.min(halfW, x0 + o.width), y0: Math.max(0, sill), y1: Math.min(top, sill + o.height) };
+      })
+      .filter((h) => h.b - h.a > 1e-6 && h.y1 - h.y0 > 1e-6);
+  } else if (enc.sidePartition) {
+    const { x, faces } = enc.sidePartition;
+    u0 = -halfL;
+    u1 = halfL;
+    top = roofAt(x + faces * LIFT);
+  } else {
+    return null;
+  }
+  if (wH >= top - 0.02) return null;
+
+  const xs = gridLines([u0, u1, ...holes.flatMap((h) => [h.a, h.b])]);
+  const ys = gridLines([0, wH, top, ...holes.flatMap((h) => [h.y0, h.y1])]);
+  const wall: number[] = [];
+  const band: number[] = [];
+  for (let i = 0; i + 1 < xs.length; i++) {
+    const a = xs[i];
+    const b = xs[i + 1];
+    const cx = (a + b) / 2;
+    for (let j = 0; j + 1 < ys.length; j++) {
+      const y0 = ys[j];
+      const y1 = ys[j + 1];
+      const cy = (y0 + y1) / 2;
+      if (holes.some((h) => cx > h.a && cx < h.b && cy > h.y0 && cy < h.y1)) continue;
+      (cy < wH ? band : wall).push(a, y0, 0, b, y0, 0, b, y1, 0, a, y0, 0, b, y1, 0, a, y1, 0);
+    }
+  }
+  if (apex && apex[1] - top > 1e-6) for (let i = 0; i + 1 < xs.length; i++) wall.push(xs[i], top, 0, xs[i + 1], top, 0, apex[0], apex[1], 0);
+
+  // The wainscot line, broken where an opening crosses it (a lengthwise partition has no openings).
+  let segs: [number, number][] = [[u0, u1]];
+  if (apex)
+    for (const o of openings) {
+      if (o.side !== 'partition') continue;
+      const sill = o.sillHeight ?? 0;
+      if (!(sill < wH + 0.08 && sill + o.height > wH - 0.08)) continue;
+      const a = -halfW + o.offset - o.width / 2;
+      const b = a + o.width;
+      const next: [number, number][] = [];
+      for (const [s, e] of segs) {
+        if (b <= s || a >= e) {
+          next.push([s, e]);
+          continue;
+        }
+        if (a > s) next.push([s, a]);
+        if (b < e) next.push([b, e]);
+      }
+      segs = next;
+    }
+  const cap: number[] = [];
+  for (const [s, e] of segs) if (e - s > 0.05) cap.push(s, wH, 0, e, wH, 0);
+  return { wall: new Float32Array(wall), band: new Float32Array(band), cap: new Float32Array(cap) };
+}
+
+/**
+ * BufferGeometries of a storageGhostWainscot split: the two triangle sets lit
+ * like the plain ghost's ShapeGeometry (normal +Z in the (u, v) plane — without
+ * it the lit material renders them black), the cap as plain line positions.
+ * Exported for tests.
+ */
+export function storageGhostWainscotGeometries(split: { wall: Float32Array; band: Float32Array; cap: Float32Array }): {
+  wall: THREE.BufferGeometry;
+  band: THREE.BufferGeometry;
+  cap: THREE.BufferGeometry;
+} {
+  const lit = (p: Float32Array) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+    const n = new Float32Array(p.length);
+    for (let i = 2; i < n.length; i += 3) n[i] = 1;
+    g.setAttribute('normal', new THREE.BufferAttribute(n, 3));
+    return g;
+  };
+  const cap = new THREE.BufferGeometry();
+  cap.setAttribute('position', new THREE.BufferAttribute(split.cap, 3));
+  return { wall: lit(split.wall), band: lit(split.band), cap };
+}
+
 /**
  * Structure / Cutaway ghost the WHOLE shell (16% / 5%), so an interior storage
  * partition vanished with the outside walls. This draws the storage wall as a
  * tinted see-through panel + outline in those two views only, so the storage
  * room reads at a glance (its framing — bent, girts, base rail — is in the
- * Frame). Exterior draws nothing here. GCH dividers are untouched (none drawn).
+ * Frame). With the building's wainscot on, the panel carries the band in the
+ * wainscot colour + its line (storageGhostWainscot), like the real sheet.
+ * Exterior draws nothing here. GCH dividers are untouched (none drawn).
  * Outside ShellGroup, capture-ignored, no shadows, never raycast.
  */
 export function StoragePartitionGhost({
@@ -75,12 +211,17 @@ export function StoragePartitionGhost({
   color,
   edgeColor,
   viewMode,
+  wainscot,
+  wainscotColor,
 }: {
   structure: StructureModel;
   openings: Opening[];
   color: string;
   edgeColor: string;
   viewMode: ViewMode;
+  /** The building's wainscot (absent / off = the single wall-colour panel, as before). */
+  wainscot?: Wainscot;
+  wainscotColor?: string;
 }) {
   const opacity = GHOST_OPACITY[viewMode];
   const g = useMemo(() => (opacity > 0 ? storageGhostShape(structure, openings) : null), [structure, openings, opacity]);
@@ -95,6 +236,30 @@ export function StoragePartitionGhost({
   useEffect(() => () => edges?.dispose(), [edges]);
   useEffect(() => () => mat.dispose(), [mat]);
   useEffect(() => () => lineMat.dispose(), [lineMat]);
+  // Wainscot split — built only while the wainscot is on (nothing extra is
+  // created otherwise, so the plain ghost is exactly the old one).
+  const wainOn = !!wainscot?.enabled;
+  const wainFt = wainscot?.heightFt ?? 0;
+  const split = useMemo(
+    () => (g && wainOn ? storageGhostWainscot(structure, openings, { enabled: true, heightFt: wainFt }) : null),
+    [g, structure, openings, wainOn, wainFt],
+  );
+  const splitGeo = useMemo(() => (split ? storageGhostWainscotGeometries(split) : null), [split]);
+  const bandColor = wainscotColor ?? color;
+  const bandMat = useMemo(
+    () =>
+      split
+        ? new THREE.MeshStandardMaterial({ color: bandColor, roughness: 0.85, metalness: 0, transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide })
+        : null,
+    [split, bandColor, opacity],
+  );
+  useEffect(
+    () => () => {
+      if (splitGeo) for (const k of ['wall', 'band', 'cap'] as const) splitGeo[k].dispose();
+    },
+    [splitGeo],
+  );
+  useEffect(() => () => bandMat?.dispose(), [bandMat]);
   if (!g || !geo || !edges) return null;
   // Shape space (u, v) → world: a cross wall is the XY plane at z = at; a
   // lengthwise wall turns it to run along Z at x = at.
@@ -102,8 +267,16 @@ export function StoragePartitionGhost({
   const rot: [number, number, number] = g.plane === 'cross' ? [0, 0, 0] : [0, -Math.PI / 2, 0];
   return (
     <group position={pos} rotation={rot} userData={{ captureIgnore: true, storageGhost: true }}>
-      <mesh geometry={geo} material={mat} raycast={() => null} renderOrder={2} />
+      {splitGeo && bandMat ? (
+        <>
+          <mesh geometry={splitGeo.wall} material={mat} raycast={() => null} renderOrder={2} />
+          <mesh geometry={splitGeo.band} material={bandMat} raycast={() => null} renderOrder={2} />
+        </>
+      ) : (
+        <mesh geometry={geo} material={mat} raycast={() => null} renderOrder={2} />
+      )}
       <lineSegments geometry={edges} material={lineMat} raycast={() => null} renderOrder={3} />
+      {splitGeo && <lineSegments geometry={splitGeo.cap} material={lineMat} raycast={() => null} renderOrder={3} />}
     </group>
   );
 }

@@ -61,7 +61,8 @@ export interface Enclosure {
    * 'storage' = `partitionZ` is an End Storage partition inside a garage /
    * carport (program "Storage / Add'l End Wall"): framed with its own bent
    * line, sheeted on the MAIN-ROOM face (`partitionFaces`) and offset off the
-   * framing like an end wall; no wainscot, no exterior corner flashing. Absent
+   * framing like an end wall; the building's wainscot on that face (owner
+   * 10/3/26), no exterior corner flashing. Absent
    * = the GCH (utility) divider, drawn exactly as before.
    */
   partitionKind?: 'storage';
@@ -70,7 +71,8 @@ export interface Enclosure {
   /**
    * Left / Right lengthwise storage partition: its framing line `x` and the ±X
    * direction its sheeted face points (toward the main room). Full length,
-   * floor to roof underside; no openings. Absent = none.
+   * floor to roof underside; no openings; the building's wainscot on its
+   * sheeted face. Absent = none.
    */
   sidePartition?: { x: number; faces: -1 | 1 };
   /** Per-side full-open override (garage "Right/Left Eave Side: Open"). */

@@ -113,6 +113,12 @@ export interface ShellBatch {
   position: Float32Array;
   normal: Float32Array;
   uv: Float32Array;
+  /**
+   * Drawn, but never drives the PDF capture framing (ShellMeshes tags the mesh
+   * `userData.captureIgnore`). Set only on a storage partition's wainscot
+   * Z-trim; absent everywhere else.
+   */
+  captureIgnore?: true;
 }
 
 export class Emitter {
@@ -572,11 +578,10 @@ export function shellLayout(inp: ShellInput): ShellLayout {
     zs: -1 | 1,
     mode: 'closed' | 'gableOnly' | 'open' | 'halfClosed',
     holes: WallHole[],
-    wainscot = true,
   ) => {
     if (mode === 'open') return;
     const w = newWall({ id, along: 'x', at: Z0, n: [0, 0, zs], u: [zs, 0, 0] }, holes);
-    if (mode === 'closed') addRun(w, -halfW, halfW, 0, yLow, wainscot);
+    if (mode === 'closed') addRun(w, -halfW, halfW, 0, yLow, true);
     else if (mode === 'halfClosed') addRun(w, -halfW, halfW, H - Math.min(SHELL.halfClosedBandFt, H), yLow, false);
     else if (mode === 'gableOnly' && gablePoly) w.bottom.push({ y: yLow, c0: -halfW, c1: halfW });
     if (gablePoly) w.polys.push(gablePoly);
@@ -590,9 +595,11 @@ export function shellLayout(inp: ShellInput): ShellLayout {
   const storageWall = enc.partitionKind === 'storage';
   if (enc.partitionZ !== null && storageWall) {
     // End Storage partition (garage / carport): an interior end wall sheeted on
-    // its MAIN-ROOM face, off the framing line like an end wall; no wainscot.
+    // its MAIN-ROOM face, off the framing line like an end wall. It carries the
+    // building's wainscot + Z-trim on that face like the outside walls (owner
+    // 10/3/26, Sensei reference), cut around its openings.
     const f = enc.partitionFaces ?? -1;
-    endWall('partition', enc.partitionZ + f * SO, f, 'closed', holesFor('partition', (o) => -halfW + o.offset), false);
+    endWall('partition', enc.partitionZ + f * SO, f, 'closed', holesFor('partition', (o) => -halfW + o.offset));
   } else if (enc.partitionZ !== null) {
     const pz = enc.partitionZ;
     openSign = enc.sideZ
@@ -607,11 +614,12 @@ export function shellLayout(inp: ShellInput): ShellLayout {
 
   // Left/Right lengthwise storage partition: full length, slab to just under
   // the roof (wallTopAt) at its sheet x, facing the main room. No openings.
+  // Wainscot + Z-trim on that face like the outside walls (owner 10/3/26).
   if (enc.sidePartition) {
     const { x, faces } = enc.sidePartition;
     const X0 = x + faces * SO;
     const w = newWall({ id: 'partition', along: 'z', at: X0, n: [faces, 0, 0], u: [0, 0, -faces] }, []);
-    addRun(w, -halfL, halfL, 0, top(X0), false);
+    addRun(w, -halfL, halfL, 0, top(X0), true);
     walls.push(w);
   }
 
@@ -1164,6 +1172,12 @@ function cornerZones(layout: ShellLayout): { wall: WallSide; c0: number; c1: num
 export function trimBatches(inp: ShellInput & { trimColor: string }, layout: ShellLayout = shellLayout(inp)): ShellBatch[] {
   const set = new BatchSet();
   const e = set.get({ surface: 'trim', color: inp.trimColor }, true);
+  // A garage / carport storage partition's wainscot Z-trim goes in its OWN
+  // batch, tagged captureIgnore: interior trim must not change the main trim
+  // batch's box, which the PDF capture framing is seeded from.
+  const enc = inp.structure.enclosure;
+  const storageWall = enc.partitionKind === 'storage' || !!enc.sidePartition;
+  const pSet = new BatchSet();
   const T = SHELL.trimT;
   const zones = cornerZones(layout);
   const zoneGaps = (w: ShellWall, y: number): [number, number][] =>
@@ -1174,8 +1188,8 @@ export function trimBatches(inp: ShellInput & { trimColor: string }, layout: She
    * the sheet face. `lapped` (o0 = 0: the plate lies on the sheet): its back
    * face is drawn SHELL.trimLift off the sheet (lapOn).
    */
-  const plate = (w: ShellWall, c0: number, c1: number, y0: number, y1: number, o0: number, o1: number, lapped = false) =>
-    aabb(e, wallPoint(w.plane, c0, y0, o0), wallPoint(w.plane, c1, y1, o1), lapped ? lapOn(w.plane) : undefined);
+  const plate = (w: ShellWall, c0: number, c1: number, y0: number, y1: number, o0: number, o1: number, lapped = false, em: Emitter = e) =>
+    aabb(em, wallPoint(w.plane, c0, y0, o0), wallPoint(w.plane, c1, y1, o1), lapped ? lapOn(w.plane) : undefined);
 
   for (const w of layout.walls) {
     // Base trim: floor-level openings (sill <= 0.1) and corner plates break it.
@@ -1193,12 +1207,13 @@ export function trimBatches(inp: ShellInput & { trimColor: string }, layout: She
 
     // Wainscot Z-trim (classic WainscotCap crossing rule: +-0.08 around the line).
     const z = SHELL.zTrim;
+    const zEm = storageWall && w.plane.id === 'partition' ? pSet.get({ surface: 'trim', color: inp.trimColor }, true) : e;
     for (const run of w.cap) {
       const cuts = w.holes
         .filter((h) => h.y0 < run.y + 0.08 && h.y1 > run.y - 0.08)
         .map((h): [number, number] => [h.c - h.w / 2, h.c + h.w / 2]);
       for (const [a, b] of subtractRanges(run.c0, run.c1, [...cuts, ...zoneGaps(w, run.y)]))
-        plate(w, a, b, run.y - z.below, run.y - z.below + z.face, z.standoff, z.standoff + T);
+        plate(w, a, b, run.y - z.below, run.y - z.below + z.face, z.standoff, z.standoff + T, false, zEm);
     }
   }
 
@@ -1213,7 +1228,7 @@ export function trimBatches(inp: ShellInput & { trimColor: string }, layout: She
     aabb(e, [k.sx * xw, k.y0, k.zw - k.zs * cw], [k.sx * (xw + T), k.y1, k.zw], lapOn(side.plane));
     aabb(e, [k.sx * (xw - cw), k.y0, k.zw], [k.sx * (xw + T), k.y1, k.zw + k.zs * T], lapOn(end.plane));
   }
-  return set.build();
+  return [...set.build(), ...pSet.build().map((b): ShellBatch => ({ ...b, id: `${b.id}|partition-cap`, captureIgnore: true }))];
 }
 
 /** Mesh key of a batch set's input (so the memo only rebuilds when geometry inputs change). */

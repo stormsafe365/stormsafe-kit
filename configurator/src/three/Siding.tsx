@@ -78,6 +78,97 @@ export function eaveDownBand(H: number, bh: number): { bottom: number; top: numb
   return { bottom: H - h, top: H, centerY: H - h / 2, height: h };
 }
 
+/**
+ * A main-building storage partition's wainscot band (classic Look), in world
+ * coordinates. `u` runs along the wall: world X on an End Storage cross wall,
+ * world Z on a Left / Right lengthwise wall.
+ */
+export interface PartitionWainscot {
+  /** 'cross' = End Storage (an XY plane at z = `at`); 'side' = Left / Right lengthwise (a ZY plane at x = `at`). */
+  plane: 'cross' | 'side';
+  /**
+   * The band's plane: SHEET_OUTSET + 0.02 off the framing line on the
+   * partition's MAIN-ROOM face — proud of its sheet, exactly as the outside
+   * walls' band sits off theirs. The cap bar is centred on it (WainscotCap o2).
+   */
+  at: number;
+  /** Band height (ft): the outside walls' clamp, min(height, H − 0.5). */
+  wH: number;
+  /** Solid band strips, cut around the openings that reach down into the band (sill below wH), like the outside walls. */
+  strips: { u0: number; u1: number; y0: number; y1: number }[];
+  /** Cap (wainscot divider trim) runs along u at y = wH, broken where an opening crosses the line (WainscotCap ±0.08 rule). */
+  cap: { u0: number; u1: number }[];
+}
+
+/** [lo, hi] minus the cut ranges; pieces of 0.05 ft or less are dropped (WainscotCap's bar split). */
+function splitRun(lo: number, hi: number, cuts: { a: number; b: number }[]): { u0: number; u1: number }[] {
+  let segs = [{ a: Math.min(lo, hi), b: Math.max(lo, hi) }];
+  for (const c of cuts) {
+    const next: typeof segs = [];
+    for (const s of segs) {
+      if (c.b <= s.a || c.a >= s.b) {
+        next.push(s);
+        continue;
+      }
+      if (c.a > s.a) next.push({ a: s.a, b: c.a });
+      if (c.b < s.b) next.push({ a: c.b, b: s.b });
+    }
+    segs = next;
+  }
+  return segs.filter((s) => s.b - s.a > 0.05).map((s) => ({ u0: s.a, u1: s.b }));
+}
+
+/**
+ * The building's wainscot on a garage / carport STORAGE partition (owner
+ * 10/3/26, Sensei reference: "if I add wainscot to the building it would also
+ * go on the partition wall"). The End Storage cross wall and the Left / Right
+ * lengthwise wall are sheeted on their main-room face only, so that face gets
+ * the same band + cap as the outside walls; an End Storage partition's
+ * openings cut the band and break the cap exactly as on an outside wall (a
+ * lengthwise partition has no openings). null = wainscot off, or no storage
+ * partition (the GCH divider keeps its own band in Siding / WainscotCap).
+ */
+export function storagePartitionWainscot(structure: StructureModel, openings: Opening[], wainscot: Wainscot): PartitionWainscot | null {
+  const { width: W, length: L, legHeight: H, peakHeight, rise, enclosure: enc } = structure;
+  const wH = wainscot.enabled ? Math.min(wainscot.heightFt, H - 0.5) : 0;
+  if (!(wH > 0)) return null;
+  const halfW = W / 2;
+  const halfL = L / 2;
+  const o2 = SHEET_OUTSET + 0.02;
+  if (enc.partitionKind === 'storage' && enc.partitionZ !== null) {
+    const f = enc.partitionFaces ?? -1;
+    const ops = openings.filter((o) => o.side === 'partition');
+    const holes: LocalRect[] = ops
+      .filter((o) => o.sillHeight < wH - 0.01)
+      .map((o) => ({ u: -halfW + o.offset, v: o.sillHeight + o.height / 2 - wH / 2, w: o.width, h: o.height }));
+    const strips = stripsAround(W, wH, holes).map((st) => ({
+      u0: st.u - st.w / 2,
+      u1: st.u + st.w / 2,
+      y0: wH / 2 + st.v - st.h / 2,
+      y1: wH / 2 + st.v + st.h / 2,
+    }));
+    const cuts = ops
+      .filter((o) => o.sillHeight < wH + 0.08 && o.sillHeight + o.height > wH - 0.08)
+      .map((o) => ({ a: -halfW + o.offset - o.width / 2, b: -halfW + o.offset + o.width / 2 }));
+    return { plane: 'cross', at: enc.partitionZ + f * o2, wH, strips, cap: splitRun(-halfW, halfW, cuts) };
+  }
+  if (enc.sidePartition) {
+    const { x, faces } = enc.sidePartition;
+    // Its sheet's top (the roofline at the sheet x — Siding's lengthwise panel).
+    const xs = x + faces * SHEET_OUTSET;
+    const topY = structure.monoDropFt > 0.01 ? peakHeight - rise * ((xs + halfW) / W) : peakHeight - Math.abs(xs) * (rise / halfW);
+    if (wH >= topY - 0.02) return null;
+    return { plane: 'side', at: x + faces * o2, wH, strips: [{ u0: -halfL, u1: halfL, y0: 0, y1: wH }], cap: [{ u0: -halfL, u1: halfL }] };
+  }
+  return null;
+}
+
+/**
+ * userData for the storage partition's wainscot meshes (band here, cap bar in
+ * Trim): the PDF capture (CaptureHook) skips them when it frames the building.
+ */
+export const CAPTURE_IGNORE: Record<string, unknown> = { captureIgnore: true };
+
 const TILE = 3; // feet per texture tile (≈2 ribs/ft)
 // Vertical gap between the colored top roof skin and the galvalume underside —
 // just enough that each is nearest the camera from its own side (no z-fight).
@@ -218,6 +309,8 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
   const sideMidZ = side ? (side.start + side.end) / 2 : 0;
   const wH = wainscot.enabled ? Math.min(wainscot.heightFt, H - 0.5) : 0;
   const wOut = SHEET_OUTSET + 0.02;
+  // Storage partition (End Storage / Left-Right) wainscot band — null when off.
+  const storageBand = storagePartitionWainscot(structure, openings, wainscot);
   // Partition wainscot faces the open carport bay — offset its band toward that
   // side so it sits in front of the divider's visible (open-bay) face.
   const partWainZ =
@@ -427,7 +520,8 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
       )}
       {enclosure.partitionZ !== null && enclosure.partitionKind === 'storage' && (
         // End Storage partition: an interior end wall sheeted on its MAIN-ROOM
-        // face, off its framing line like an end wall (no wainscot — interior).
+        // face, off its framing line like an end wall. Its wainscot band is
+        // drawn below (storageBand), not by this EndWall.
         <EndWall
           z={enclosure.partitionZ + (enclosure.partitionFaces ?? -1) * SHEET_OUTSET}
           W={W}
@@ -476,6 +570,31 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           wainHoles={gableHoles('partition', wH, true)}
           wainStripMat={(w, h, au, av) => planeMat(tex.wainscot, w, h, wallDir, wainMetal, false, au, av)}
         />
+      )}
+      {/* Storage partition wainscot (End Storage cross wall / Left-Right
+          lengthwise wall): the outside walls' band on its main-room face, proud
+          of the sheet, cut around the partition's openings. Last in the group,
+          and nothing at all when wainscot is off, so a build without it draws
+          exactly as before. captureIgnore: it lies inside the partition sheet's
+          own box, so it must not move the PDF capture framing (CaptureHook
+          seeds its camera from the average of every mesh box). */}
+      {storageBand && (
+        <group userData={CAPTURE_IGNORE}>
+          {storageBand.strips.map((st, i) => {
+            const w = st.u1 - st.u0;
+            const h = st.y1 - st.y0;
+            const uc = (st.u0 + st.u1) / 2;
+            const yc = (st.y0 + st.y1) / 2;
+            const material = planeMat(tex.wainscot, w, h, wallDir, wainMetal, false, st.u0, st.y0);
+            return storageBand.plane === 'cross' ? (
+              <mesh key={`swain-${i}`} position={[uc, yc, storageBand.at]} material={material} castShadow receiveShadow>
+                <planeGeometry args={[w, h]} />
+              </mesh>
+            ) : (
+              <BasisPanel key={`swain-${i}`} center={[storageBand.at, yc, uc]} uVec={[0, 0, 1]} vVec={[0, 1, 0]} w={w} h={h} material={material} />
+            );
+          })}
+        </group>
       )}
     </group>
   );

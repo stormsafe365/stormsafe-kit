@@ -1,0 +1,680 @@
+{
+ "live": "de56edf (LIVE)",
+ "new": "partition-wainscot",
+ "colors": {
+  "cw": {
+   "value": "#A63A20",
+   "text": "Barn Red"
+  },
+  "cwn": {
+   "value": "#F2F1EA",
+   "text": "White"
+  },
+  "ct": {
+   "value": "#1D1E20",
+   "text": "Black"
+  },
+  "cr": {
+   "value": "#B9BCBB",
+   "text": "Galvalume"
+  }
+ },
+ "identical": 44,
+ "changed": [
+  "b-endstorage-30back-26x50x12-wain--classic-interior",
+  "b-endstorage-30back-26x50x12-wain--classic-cutaway",
+  "b-endstorage-30back-26x50x12-wain--classic-structure",
+  "b-endstorage-30back-26x50x12-wain--enhanced-interior",
+  "b-endstorage-30back-26x50x12-wain--enhanced-cutaway",
+  "b-endstorage-30back-26x50x12-wain--enhanced-structure",
+  "c-leftstorage-12-26x50x12-wain--classic-interior",
+  "c-leftstorage-12-26x50x12-wain--classic-cutaway",
+  "c-leftstorage-12-26x50x12-wain--classic-structure",
+  "c-leftstorage-12-26x50x12-wain--enhanced-interior",
+  "c-leftstorage-12-26x50x12-wain--enhanced-cutaway",
+  "c-leftstorage-12-26x50x12-wain--enhanced-structure"
+ ],
+ "total": 56,
+ "problemsLive": [
+  {
+   "kind": "log",
+   "text": "Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:5820/favicon.ico"
+  },
+  {
+   "kind": "log",
+   "text": "Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:5820/favicon.ico"
+  }
+ ],
+ "problemsNew": [
+  {
+   "kind": "log",
+   "text": "Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:5820/favicon.ico"
+  },
+  {
+   "kind": "log",
+   "text": "Failed to load resource: the server responded with a status of 404 (Not Found) http://127.0.0.1:5820/favicon.ico"
+  }
+ ],
+ "rows": [
+  {
+   "shot": "d-leanto-storage-back12-30x40x12-wain--classic-iso",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "d-leanto-storage-back12-30x40x12-wain--classic-front",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "d-leanto-storage-back12-30x40x12-wain--classic-left",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "d-leanto-storage-back12-30x40x12-wain--classic-leanto-partition",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "d-leanto-storage-back12-30x40x12-wain--enhanced-iso",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "d-leanto-storage-back12-30x40x12-wain--enhanced-front",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "d-leanto-storage-back12-30x40x12-wain--enhanced-left",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "d-leanto-storage-back12-30x40x12-wain--enhanced-leanto-partition",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "e-leanto-storage-back12-30x40x12-off--classic-iso",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "e-leanto-storage-back12-30x40x12-off--classic-front",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "e-leanto-storage-back12-30x40x12-off--classic-left",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "e-leanto-storage-back12-30x40x12-off--classic-leanto-partition",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "e-leanto-storage-back12-30x40x12-off--enhanced-iso",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "e-leanto-storage-back12-30x40x12-off--enhanced-front",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "e-leanto-storage-back12-30x40x12-off--enhanced-left",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "e-leanto-storage-back12-30x40x12-off--enhanced-leanto-partition",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,485.00",
+   "ptotNew": "$23,485.00"
+  },
+  {
+   "shot": "a-gch-28x40x14-enc20-wain--classic-iso",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$34,490.00",
+   "ptotNew": "$34,490.00"
+  },
+  {
+   "shot": "a-gch-28x40x14-enc20-wain--classic-interior",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$34,490.00",
+   "ptotNew": "$34,490.00"
+  },
+  {
+   "shot": "a-gch-28x40x14-enc20-wain--classic-cutaway",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$34,490.00",
+   "ptotNew": "$34,490.00"
+  },
+  {
+   "shot": "a-gch-28x40x14-enc20-wain--classic-structure",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$34,490.00",
+   "ptotNew": "$34,490.00"
+  },
+  {
+   "shot": "a-gch-28x40x14-enc20-wain--enhanced-iso",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$34,490.00",
+   "ptotNew": "$34,490.00"
+  },
+  {
+   "shot": "a-gch-28x40x14-enc20-wain--enhanced-interior",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$34,490.00",
+   "ptotNew": "$34,490.00"
+  },
+  {
+   "shot": "a-gch-28x40x14-enc20-wain--enhanced-cutaway",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$34,490.00",
+   "ptotNew": "$34,490.00"
+  },
+  {
+   "shot": "a-gch-28x40x14-enc20-wain--enhanced-structure",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$34,490.00",
+   "ptotNew": "$34,490.00"
+  },
+  {
+   "shot": "b-endstorage-30back-26x50x12-wain--classic-interior",
+   "pixelIdentical": false,
+   "differing": 72671,
+   "pct": 6.975,
+   "bbox": [
+    48,
+    643,
+    1050,
+    764
+   ],
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "b-endstorage-30back-26x50x12-wain--classic-cutaway",
+   "pixelIdentical": false,
+   "differing": 6528,
+   "pct": 0.627,
+   "bbox": [
+    446,
+    366,
+    743,
+    683
+   ],
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "b-endstorage-30back-26x50x12-wain--classic-structure",
+   "pixelIdentical": false,
+   "differing": 6616,
+   "pct": 0.635,
+   "bbox": [
+    446,
+    366,
+    743,
+    683
+   ],
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "b-endstorage-30back-26x50x12-wain--classic-iso",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "b-endstorage-30back-26x50x12-wain--enhanced-interior",
+   "pixelIdentical": false,
+   "differing": 95967,
+   "pct": 9.211,
+   "bbox": [
+    49,
+    320,
+    1049,
+    756
+   ],
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "b-endstorage-30back-26x50x12-wain--enhanced-cutaway",
+   "pixelIdentical": false,
+   "differing": 7420,
+   "pct": 0.712,
+   "bbox": [
+    446,
+    368,
+    755,
+    686
+   ],
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "b-endstorage-30back-26x50x12-wain--enhanced-structure",
+   "pixelIdentical": false,
+   "differing": 7578,
+   "pct": 0.727,
+   "bbox": [
+    446,
+    368,
+    755,
+    686
+   ],
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "b-endstorage-30back-26x50x12-wain--enhanced-iso",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "c-leftstorage-12-26x50x12-wain--classic-interior",
+   "pixelIdentical": false,
+   "differing": 66513,
+   "pct": 6.384,
+   "bbox": [
+    0,
+    527,
+    455,
+    935
+   ],
+   "camSame": true,
+   "ptotLive": "$36,774.00",
+   "ptotNew": "$36,774.00"
+  },
+  {
+   "shot": "c-leftstorage-12-26x50x12-wain--classic-cutaway",
+   "pixelIdentical": false,
+   "differing": 19809,
+   "pct": 1.901,
+   "bbox": [
+    307,
+    416,
+    891,
+    743
+   ],
+   "camSame": true,
+   "ptotLive": "$36,774.00",
+   "ptotNew": "$36,774.00"
+  },
+  {
+   "shot": "c-leftstorage-12-26x50x12-wain--classic-structure",
+   "pixelIdentical": false,
+   "differing": 20070,
+   "pct": 1.926,
+   "bbox": [
+    307,
+    415,
+    891,
+    744
+   ],
+   "camSame": true,
+   "ptotLive": "$36,774.00",
+   "ptotNew": "$36,774.00"
+  },
+  {
+   "shot": "c-leftstorage-12-26x50x12-wain--enhanced-interior",
+   "pixelIdentical": false,
+   "differing": 74873,
+   "pct": 7.187,
+   "bbox": [
+    0,
+    0,
+    454,
+    918
+   ],
+   "camSame": true,
+   "ptotLive": "$36,774.00",
+   "ptotNew": "$36,774.00"
+  },
+  {
+   "shot": "c-leftstorage-12-26x50x12-wain--enhanced-cutaway",
+   "pixelIdentical": false,
+   "differing": 23283,
+   "pct": 2.235,
+   "bbox": [
+    281,
+    253,
+    892,
+    743
+   ],
+   "camSame": true,
+   "ptotLive": "$36,774.00",
+   "ptotNew": "$36,774.00"
+  },
+  {
+   "shot": "c-leftstorage-12-26x50x12-wain--enhanced-structure",
+   "pixelIdentical": false,
+   "differing": 25564,
+   "pct": 2.454,
+   "bbox": [
+    279,
+    252,
+    894,
+    743
+   ],
+   "camSame": true,
+   "ptotLive": "$36,774.00",
+   "ptotNew": "$36,774.00"
+  },
+  {
+   "shot": "e-endstorage-30back-26x50x12-off--classic-interior",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "e-endstorage-30back-26x50x12-off--classic-cutaway",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "e-endstorage-30back-26x50x12-off--classic-structure",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "e-endstorage-30back-26x50x12-off--classic-iso",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "e-endstorage-30back-26x50x12-off--enhanced-interior",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "e-endstorage-30back-26x50x12-off--enhanced-cutaway",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "e-endstorage-30back-26x50x12-off--enhanced-structure",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "e-endstorage-30back-26x50x12-off--enhanced-iso",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$23,180.00",
+   "ptotNew": "$23,180.00"
+  },
+  {
+   "shot": "e-leftstorage-12-26x50x12-off--classic-interior",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$36,242.00",
+   "ptotNew": "$36,242.00"
+  },
+  {
+   "shot": "e-leftstorage-12-26x50x12-off--classic-cutaway",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$36,242.00",
+   "ptotNew": "$36,242.00"
+  },
+  {
+   "shot": "e-leftstorage-12-26x50x12-off--classic-structure",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$36,242.00",
+   "ptotNew": "$36,242.00"
+  },
+  {
+   "shot": "e-leftstorage-12-26x50x12-off--enhanced-interior",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$36,242.00",
+   "ptotNew": "$36,242.00"
+  },
+  {
+   "shot": "e-leftstorage-12-26x50x12-off--enhanced-cutaway",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$36,242.00",
+   "ptotNew": "$36,242.00"
+  },
+  {
+   "shot": "e-leftstorage-12-26x50x12-off--enhanced-structure",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$36,242.00",
+   "ptotNew": "$36,242.00"
+  },
+  {
+   "shot": "e-gch-28x40x14-enc20-off--classic-interior",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$34,490.00",
+   "ptotNew": "$34,490.00"
+  },
+  {
+   "shot": "e-gch-28x40x14-enc20-off--classic-cutaway",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$34,490.00",
+   "ptotNew": "$34,490.00"
+  },
+  {
+   "shot": "e-gch-28x40x14-enc20-off--enhanced-interior",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$34,490.00",
+   "ptotNew": "$34,490.00"
+  },
+  {
+   "shot": "e-gch-28x40x14-enc20-off--enhanced-cutaway",
+   "pixelIdentical": true,
+   "differing": 0,
+   "pct": 0,
+   "bbox": null,
+   "camSame": true,
+   "ptotLive": "$34,490.00",
+   "ptotNew": "$34,490.00"
+  }
+ ]
+}

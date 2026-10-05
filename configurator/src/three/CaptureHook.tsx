@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useEditorStore, type RenderStyle } from '@/store/useEditorStore';
+import { captureBoxOf } from './captureBox';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -107,8 +108,7 @@ export function CaptureHook() {
           const m = ob as THREE.Mesh;
           if (!m.isMesh || !m.geometry) return;
           if (isCaptureIgnored(m)) return; // tagged scenery never drives the framing
-          if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
-          const b = m.geometry.boundingBox;
+          const b = captureBoxOf(m);
           if (!b || !isFinite(b.min.x) || !isFinite(b.max.x)) return;
           m.updateWorldMatrix(true, false);
           const corners: THREE.Vector3[] = [];

@@ -1,0 +1,20 @@
+
+/* ═════════ WIX EMBED OVERRIDES ═════════ */
+body.embed{padding-bottom:0}
+.embed .anat-stick{position:relative;top:auto;height:340px;margin:0}
+@media(min-width:900px){.embed .anat-stick{height:560px}}
+.embed .anat-stage{border-radius:12px}
+.embed .anat-grid{align-items:center}
+.embed .anat-steps{margin-top:18px;display:grid;gap:8px}
+@media(min-width:900px){.embed .anat-steps{margin-top:0}}
+.embed .anat-step{min-height:0;padding:14px 16px;border:1px solid var(--border-vis);border-radius:10px;cursor:pointer;opacity:.55;background:var(--dark)}
+.embed .anat-step:hover{opacity:.85}
+.embed .anat-step.on{opacity:1;border-color:var(--lime);background:linear-gradient(180deg,rgba(141,198,63,.08),var(--dark))}
+.embed .anat-step h3{font-size:15px;margin-bottom:0}
+.embed .anat-step .st-n{margin-bottom:6px}
+.embed .anat-step p,.embed .anat-step .chips{display:none}
+.embed .anat-step.on p{display:block;margin-top:8px;font-size:13.5px;margin-bottom:0}
+.embed .anat-step.on .chips{display:flex}
+.embed .faq summary{cursor:default;pointer-events:none;padding-right:0;color:var(--text)}
+.embed .faq summary::after{display:none}
+.embed .faq details p{padding-bottom:20px}

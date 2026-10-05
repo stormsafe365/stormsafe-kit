@@ -415,38 +415,29 @@ footer{background:var(--dark-2);border-top:1px solid var(--border-vis);padding:4
 .mob-cta-sub{font-family:var(--b);font-size:10px;font-weight:500;opacity:.75;letter-spacing:.02em;text-transform:none}
 
 @media (prefers-reduced-motion: reduce){.reveal{opacity:1;transform:none}}
+
+/* ═════════ WIX EMBED OVERRIDES ═════════ */
+body.embed{padding-bottom:0}
+.embed .anat-stick{position:relative;top:auto;height:340px;margin:0}
+@media(min-width:900px){.embed .anat-stick{height:560px}}
+.embed .anat-stage{border-radius:12px}
+.embed .anat-grid{align-items:center}
+.embed .anat-steps{margin-top:18px;display:grid;gap:8px}
+@media(min-width:900px){.embed .anat-steps{margin-top:0}}
+.embed .anat-step{min-height:0;padding:14px 16px;border:1px solid var(--border-vis);border-radius:10px;cursor:pointer;opacity:.55;background:var(--dark)}
+.embed .anat-step:hover{opacity:.85}
+.embed .anat-step.on{opacity:1;border-color:var(--lime);background:linear-gradient(180deg,rgba(141,198,63,.08),var(--dark))}
+.embed .anat-step h3{font-size:15px;margin-bottom:0}
+.embed .anat-step .st-n{margin-bottom:6px}
+.embed .anat-step p,.embed .anat-step .chips{display:none}
+.embed .anat-step.on p{display:block;margin-top:8px;font-size:13.5px;margin-bottom:0}
+.embed .anat-step.on .chips{display:flex}
+.embed .faq summary{cursor:default;pointer-events:none;padding-right:0;color:var(--text)}
+.embed .faq summary::after{display:none}
+.embed .faq details p{padding-bottom:20px}
 </style>
 </head>
-<body>
-
-<nav class="top">
-  <a href="https://www.stormsafesteel.com/" class="nav-logo">Storm<span>Safe</span> Steel</a>
-  <div class="nav-links">
-    <a href="https://www.stormsafesteel.com/buildings">Buildings</a>
-    <a href="https://www.stormsafesteel.com/customize">Customize</a>
-    <a href="https://www.stormsafesteel.com/why-steel">Why Steel</a>
-    <a href="https://www.stormsafesteel.com/about-us">About</a>
-    <a href="https://www.stormsafesteel.com/contact">Contact</a>
-  </div>
-  <div class="nav-right">
-    <a href="tel:5617715555" class="nav-phone">561-771-5555</a>
-    <a href="https://www.stormsafesteel.com/customize" class="nav-cta">Design Yours →</a>
-    <button class="nav-menu-btn" onclick="toggleMenu()" aria-label="Menu" aria-expanded="false" aria-controls="mm">☰</button>
-  </div>
-</nav>
-
-<div class="mobile-menu" id="mm">
-  <a href="https://www.stormsafesteel.com/" onclick="closeMenu()">Home</a>
-  <a href="https://www.stormsafesteel.com/buildings" onclick="closeMenu()">Buildings</a>
-  <a href="https://www.stormsafesteel.com/customize" onclick="closeMenu()">Customize</a>
-  <a href="https://www.stormsafesteel.com/hurricane-rated-steel-buildings" onclick="closeMenu()">Hurricane-Rated</a>
-  <a href="https://www.stormsafesteel.com/custom-steel-buildings" onclick="closeMenu()">Custom Builds</a>
-  <a href="https://www.stormsafesteel.com/why-steel" onclick="closeMenu()">Why Steel</a>
-  <a href="https://www.stormsafesteel.com/about-us" onclick="closeMenu()">About</a>
-  <a href="https://www.stormsafesteel.com/blog" onclick="closeMenu()">Blog</a>
-  <a href="https://www.stormsafesteel.com/contact" onclick="closeMenu()">Contact</a>
-  <a href="tel:5617715555" class="mm-cta" onclick="closeMenu()">Call 561-771-5555</a>
-</div>
+<body class="embed">
 
 <section class="storm" id="storm-test" aria-labelledby="h1">
   <div class="storm-inner">
@@ -607,7 +598,7 @@ footer{background:var(--dark-2);border-top:1px solid var(--border-vis);padding:4
     <div class="section-header reveal">
       <div class="section-eyebrow">Anatomy</div>
       <h2 class="h2" id="anat-h">How A 170 MPH<br><span class="teal">Building Goes Together.</span></h2>
-      <p class="sub">Scroll. Your building assembles one layer at a time, from the anchors up.</p>
+      <p class="sub">Your building assembles one layer at a time, from the anchors up. Tap any layer.</p>
     </div>
     <div class="anat-grid">
       <div class="anat-stick">
@@ -779,13 +770,13 @@ footer{background:var(--dark-2);border-top:1px solid var(--border-vis);padding:4
       <p class="sub">Still have a question? Call <a href="tel:5617715555" class="tl">561-771-5555</a> and talk to someone who builds these.</p>
     </div>
     <div class="faq reveal" data-delay="1">
-      <details><summary>What does "hurricane-rated" actually mean?</summary><p>Your building is engineered and certified to a design wind speed: 150 mph on our Standard frame, 170 mph on High-Wind. The engineering drawings are stamped for your county, and that's what your permit office reviews.</p></details>
-      <details><summary>Is a 170 mph building rated for a Category 5?</summary><p>The two scales don't line up one-to-one. Building codes rate wind as a 3-second gust, while the hurricane category scale uses 1-minute sustained wind, which reads lower for the same storm. The number that matters is your county's code design wind speed, and your building's rating has to meet or beat it.</p></details>
-      <details><summary>What wind rating do I need?</summary><p>It depends on your exact location. West Palm Beach is 169 mph, Stuart 162, Tampa 141 and Orlando 137 (ASCE 7-22, Risk Category II). Use the city check at the top of this page. If your code number is over 150, you need High-Wind framing.</p></details>
-      <details><summary>Do I need engineered plans for a permit?</summary><p>In hurricane-prone Florida counties, yes. Every StormSafe building comes with engineered drawings for your county's wind zone, ready for permitting.</p></details>
-      <details><summary>Do I need impact-rated doors and windows?</summary><p>In coastal impact counties, yes. We spec Hi-Impact rated windows and walk doors there automatically, so your build passes the first time.</p></details>
-      <details><summary>Do I need a concrete slab?</summary><p>Concrete gets wedge anchors at every post. Without a slab, 30" helical earth augers bolt through the base rail. Your drawings call out the anchoring for your site.</p></details>
-      <details><summary>Can I customize a hurricane-rated building?</summary><p>Yes. Size, doors, windows, colors and insulation are all yours to pick. The rating comes from the frame and anchoring, so you can configure freely and the engineering follows.</p></details>
+      <details open><summary>What does "hurricane-rated" actually mean?</summary><p>Your building is engineered and certified to a design wind speed: 150 mph on our Standard frame, 170 mph on High-Wind. The engineering drawings are stamped for your county, and that's what your permit office reviews.</p></details>
+      <details open><summary>Is a 170 mph building rated for a Category 5?</summary><p>The two scales don't line up one-to-one. Building codes rate wind as a 3-second gust, while the hurricane category scale uses 1-minute sustained wind, which reads lower for the same storm. The number that matters is your county's code design wind speed, and your building's rating has to meet or beat it.</p></details>
+      <details open><summary>What wind rating do I need?</summary><p>It depends on your exact location. West Palm Beach is 169 mph, Stuart 162, Tampa 141 and Orlando 137 (ASCE 7-22, Risk Category II). Use the city check at the top of this page. If your code number is over 150, you need High-Wind framing.</p></details>
+      <details open><summary>Do I need engineered plans for a permit?</summary><p>In hurricane-prone Florida counties, yes. Every StormSafe building comes with engineered drawings for your county's wind zone, ready for permitting.</p></details>
+      <details open><summary>Do I need impact-rated doors and windows?</summary><p>In coastal impact counties, yes. We spec Hi-Impact rated windows and walk doors there automatically, so your build passes the first time.</p></details>
+      <details open><summary>Do I need a concrete slab?</summary><p>Concrete gets wedge anchors at every post. Without a slab, 30" helical earth augers bolt through the base rail. Your drawings call out the anchoring for your site.</p></details>
+      <details open><summary>Can I customize a hurricane-rated building?</summary><p>Yes. Size, doors, windows, colors and insulation are all yours to pick. The rating comes from the frame and anchoring, so you can configure freely and the engineering follows.</p></details>
     </div>
   </div>
 </section>
@@ -803,25 +794,6 @@ footer{background:var(--dark-2);border-top:1px solid var(--border-vis);padding:4
     <p class="fine">Prices subject to change based on steel market conditions and local engineering requirements.</p>
   </div>
 </section>
-
-<footer>
-  <div class="foot-grid">
-    <div>
-      <div class="nav-logo">Storm<span>Safe</span> Steel</div>
-      <p class="tag">Custom hurricane-rated steel buildings, engineered for Florida.</p>
-    </div>
-    <div><h4>Quick links</h4><a href="https://www.stormsafesteel.com/">Home</a><a href="https://www.stormsafesteel.com/customize">Customize</a><a href="https://www.stormsafesteel.com/why-steel">Why Steel</a><a href="https://www.stormsafesteel.com/about-us">About</a><a href="https://www.stormsafesteel.com/blog">Blog</a></div>
-    <div><h4>Buildings</h4><a href="https://www.stormsafesteel.com/residential-garages">Garages</a><a href="https://www.stormsafesteel.com/carports-rv-covers">Carports &amp; RV</a><a href="https://www.stormsafesteel.com/commercial-steel-buildings">Commercial</a><a href="https://www.stormsafesteel.com/agricultural-steel-buildings">Agricultural</a><a href="https://www.stormsafesteel.com/custom-steel-buildings">Custom</a></div>
-    <div><h4>Contact</h4><a href="tel:5617715555" class="tl">561-771-5555</a><span>West Palm Beach, FL</span><a href="https://www.stormsafesteel.com/contact">Contact form</a></div>
-  </div>
-  <p class="copyright">© <span id="yr"></span> StormSafe Steel. All rights reserved.</p>
-</footer>
-
-<div class="mob-cta">
-  <a href="tel:5617715555"><span>Call</span><span class="mob-cta-sub">561-771-5555</span></a>
-  <a href="https://www.stormsafesteel.com/customize" class="primary"><span>Design Yours</span><span class="mob-cta-sub">60 seconds · no email</span></a>
-</div>
-
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>

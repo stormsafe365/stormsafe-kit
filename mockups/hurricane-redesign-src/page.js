@@ -1,7 +1,10 @@
 /* ─── NAV ─── */
 function toggleMenu(){var m=document.getElementById('mm');var o=m.classList.toggle('open');document.querySelector('.nav-menu-btn').setAttribute('aria-expanded',o);}
 function closeMenu(){document.getElementById('mm').classList.remove('open');document.querySelector('.nav-menu-btn').setAttribute('aria-expanded','false');}
-document.getElementById('yr').textContent=new Date().getFullYear();
+var EMBED=document.body.classList.contains('embed');
+if(document.getElementById('yr'))document.getElementById('yr').textContent=new Date().getFullYear();
+// in-page links: scroll the target into view (also works inside a Wix iframe)
+document.addEventListener('click',function(e){var a=e.target.closest('a[href^="#"]');if(!a)return;var t=document.querySelector(a.getAttribute('href'));if(!t)return;e.preventDefault();t.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});});
 var REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ─── DATA PLATE ─── */
@@ -129,11 +132,22 @@ var REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
     dots.forEach(function(d,j){d.classList.toggle('on',j===i);});stepsEl.forEach(function(s,j){s.classList.toggle('on',j===i);});}
   // active step = the one whose middle is closest to the viewport middle
   function pickStep(){var mid=innerHeight/2,best=0,bd=1e9;stepsEl.forEach(function(s,j){var r=s.getBoundingClientRect(),d=Math.abs(r.top+r.height/2-mid);if(d<bd){bd=d;best=j;}});if(best!==step)setStep(best);}
-  addEventListener('scroll',pickStep,{passive:true});addEventListener('resize',pickStep);
-  setStep(0);pickStep();
+  var userPicked=false,lastAuto=0;
+  if(EMBED){
+    // Wix embed: fixed-height iframe never scrolls, so the steps are a tap/auto-play stepper
+    stepsEl.forEach(function(s,j){s.setAttribute('tabindex','0');s.setAttribute('role','button');
+      var go=function(){userPicked=true;setStep(j);};s.addEventListener('click',go);
+      s.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}});});
+    setStep(0);
+  }else{
+    addEventListener('scroll',pickStep,{passive:true});addEventListener('resize',pickStep);
+    setStep(0);pickStep();
+  }
 
   var visible=false;
-  function onScreen(){var r=canvas.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight;}
+  // inside a cross-origin iframe, IntersectionObserver still reports real on-screen visibility
+  var ioVis=false;new IntersectionObserver(function(es){ioVis=es[0].isIntersecting;},{threshold:.25}).observe(canvas);
+  function onScreen(){if(EMBED)return ioVis;var r=canvas.getBoundingClientRect();return r.bottom>0&&r.top<innerHeight;}
 
   function resize(){var w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;var pr=R.getPixelRatio();
     if(canvas.width!==Math.round(w*pr)||canvas.height!==Math.round(h*pr)){R.setSize(w,h,false);cam.aspect=w/h;
@@ -145,6 +159,7 @@ var REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
     var dt=Math.min(.05,(now-t0)/1000);t0=now;
     visible=onScreen();if(!visible)return;started=true;
     T+=dt;resize();
+    if(EMBED&&!userPicked&&!REDUCE&&T-lastAuto>3.4){lastAuto=T;if(T>1)setStep((step+1)%5);}
     root.rotation.y=REDUCE?-.3:-.3+Math.sin(T*.22)*.38;
     LAYERS.forEach(function(o,j){
       var tv=started&&j<=step?1:0,th=j===step?1:0;

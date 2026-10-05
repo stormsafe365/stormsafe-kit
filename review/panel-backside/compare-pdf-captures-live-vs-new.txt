@@ -1,0 +1,25 @@
+a-openFront-end9--classic-back.png                           IDENTICAL
+a-openFront-end9--classic-front.png                          diff 914336px (17.529%) >8:806841 max 185 bbox [382,211,2817,1462]
+a-openFront-end9--classic-iso.png                            diff 169405px (2.444%) >8:131625 max 194 bbox [2219,809,2866,1315]
+a-openFront-end9--classic-left.png                           IDENTICAL
+a-openFront-end9--classic-right.png                          IDENTICAL
+b-carport-oneSide--classic-back.png                          diff 817728px (15.32%) >8:817728 max 171 bbox [354,181,2879,1531]
+b-carport-oneSide--classic-front.png                         diff 786907px (14.725%) >8:786907 max 179 bbox [339,192,2826,1522]
+b-carport-oneSide--classic-iso.png                           IDENTICAL
+b-carport-oneSide--classic-left.png                          diff 729411px (16.91%) >8:729411 max 191 bbox [806,405,2393,980]
+b-carport-oneSide--classic-right.png                         IDENTICAL
+c-closedGarage--classic-back.png                             diff 156673px (2.996%) >8:114036 max 182 bbox [1518,816,2698,1307]
+c-closedGarage--classic-front.png                            diff 11615px (0.222%) >8:10120 max 186 bbox [682,649,2602,1297]
+c-closedGarage--classic-iso.png                              diff 498px (0.007%) >8:339 max 145 bbox [579,839,2784,1696]
+c-closedGarage--classic-left.png                             diff 108544px (2.74%) >8:76705 max 180 bbox [856,618,1344,911]
+c-closedGarage--classic-right.png                            diff 21399px (0.541%) >8:12108 max 44 bbox [838,708,2503,861]
+c0-closedGarage-doorsOnly--classic-back.png                  IDENTICAL
+c0-closedGarage-doorsOnly--classic-front.png                 diff 1128px (0.022%) >8:806 max 86 bbox [671,712,2612,1347]
+c0-closedGarage-doorsOnly--classic-iso.png                   diff 511px (0.007%) >8:346 max 145 bbox [1883,839,2784,1696]
+c0-closedGarage-doorsOnly--classic-left.png                  IDENTICAL
+c0-closedGarage-doorsOnly--classic-right.png                 IDENTICAL
+d-gch--classic-back.png                                      diff 26227px (0.423%) >8:25939 max 38 bbox [2472,502,2910,1316]
+d-gch--classic-front.png                                     diff 310702px (5.01%) >8:310702 max 74 bbox [349,202,2853,888]
+d-gch--classic-iso.png                                       diff 2646px (0.037%) >8:10 max 45 bbox [600,751,703,1166]
+d-gch--classic-left.png                                      diff 72106px (1.64%) >8:72106 max 81 bbox [741,369,1593,493]
+d-gch--classic-right.png                                     diff 93632px (2.133%) >8:83132 max 78 bbox [825,365,2465,986]

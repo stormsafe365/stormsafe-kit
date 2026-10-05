@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { SHEET_OUTSET, COMPONENT_OUTSET, type LeanToStructure, type StructureModel, type Vec3 } from '@/engine/geometry';
 import { leanToWallSettings, rendersLeanToFixture, type LeanToStorageSpan } from '@/engine/leanToFixtures';
 import { clampPartitionCenter, partitionGeom } from '@/engine/partitionFit';
+import { OPENING_ID_KEY, clampWallCenter, openingIdsUnder, pressBelongsToSmaller } from '@/engine/wallFit';
 import type { BuildingColors, LeanToOpening, OpeningType, PanelOrientation, Wainscot } from '@/types/building';
 import { swatchHex, isMetallic, printPanelKey } from '@/config/colors';
 import { TRUSS_CLEARANCE_FT } from '@/config/constants';
@@ -1030,6 +1031,17 @@ export function DraggableLeanToOpening({
     // (partTakesPress) — a lean-to wall never is one, so from inside a press
     // where a lean-to part projects looks around instead of grabbing it. Taken:
     // `dragging` keeps the look-around off.
+    // Overlapping openings (an old saved quote): the press goes to the SMALLER
+    // opening under the pointer, like the main building (Openings.tsx) — not
+    // stopped here, so that opening (the same ray goes through it) takes it.
+    {
+      const under = openingIdsUnder(e.intersections);
+      const sibs = (lt.openings ?? [])
+        .filter((o) => o.wall === opening.wall && o.id !== opening.id && under.has(o.id))
+        .map((o) => ({ offset: o.offsetFt, width: o.widthFt, sill: o.sillFt, height: o.heightFt }));
+      const self = { offset: opening.offsetFt, width: opening.widthFt, sill: opening.sillFt, height: opening.heightFt };
+      if (pressBelongsToSmaller(self, info.coord(e.point) - info.start, e.point.y, sibs)) return;
+    }
     if (!partTakesPress({ inside: useEditorStore.getState().interiorView, room: interiorRoom(building), span: leanToOpeningSpan(geo, opening) })) return;
     e.stopPropagation();
     selectLeanToOpening(opening.id);
@@ -1049,7 +1061,6 @@ export function DraggableLeanToOpening({
       // A partition opening counts as moved only once it really lands on a new
       // spot (below): one with no valid spot anywhere never writes back, so its
       // program position is never replaced by the 3D's on-wall display spot.
-      if (opening.wall !== 'partition' && !useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
       const rect = gl.domElement.getBoundingClientRect();
       const nx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
       const ny = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
@@ -1071,7 +1082,20 @@ export function DraggableLeanToOpening({
           off = clampPartitionCenter(raw, opening, partitionGeom(lt, bs.legHeight), sibs, curOff);
           if (Math.abs(off - curOff) < 1e-9) return; // no new spot: nothing moves, nothing to write back
           if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
-        } else off = Math.max(info.w / 2, Math.min(info.wallLen - info.w / 2, raw));
+        } else {
+          // Outer / end walls: the no-overlap rule (owner 10/2/26) — 1' clear of
+          // each corner post and of every other opening on this wall; the
+          // nearest spot that keeps it (the program checks the same spots).
+          const bs = useBuildingStore.getState();
+          const cur = bs.leanTos.flatMap((l) => l.openings ?? []).find((o) => o.id === oid);
+          const curOff = cur?.offsetFt ?? opening.offsetFt;
+          const sibs = lt.openings
+            .filter((o) => o.wall === opening.wall && o.id !== oid)
+            .map((o) => ({ offset: o.offsetFt, width: o.widthFt }));
+          off = clampWallCenter(raw, info.w, info.wallLen, sibs, curOff);
+          if (Math.abs(off - curOff) < 1e-9) return; // no new spot: nothing moves, nothing to write back
+          if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
+        }
         updateLeanToOpening(oid, { offsetFt: off });
       }
     };
@@ -1093,7 +1117,7 @@ export function DraggableLeanToOpening({
   };
 
   return (
-    <>
+    <group userData={{ [OPENING_ID_KEY]: opening.id }}>
       {enhanced ? (
         <group position={pos} rotation={[0, rotY, 0]}>
           <EnhancedFixture
@@ -1130,7 +1154,7 @@ export function DraggableLeanToOpening({
         />
       )}
       {selected && !showSpacing && <LeanToOpeningGuides geo={geo} lt={lt} opening={opening} />}
-    </>
+    </group>
   );
 }
 

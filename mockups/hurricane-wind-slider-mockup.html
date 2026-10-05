@@ -169,12 +169,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .hint::before{content:"";width:14px;height:1px;background:var(--teal)}
 
 /* frame-spacing strip */
-.plan{border-top:1px solid var(--border);padding:12px 16px 14px;display:grid;gap:6px}
-.plan-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
-.plan-row b{font-family:var(--h);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--text)}
-.plan-row span{font-size:12px;color:var(--sub)}
-.rib{stroke:var(--teal);stroke-width:2;transition:opacity .3s}
-.rail{stroke:var(--border-vis);stroke-width:2}
 
 .foot{max-width:1200px;margin:22px auto 0;font-size:11.5px;color:var(--muted);line-height:1.6;display:grid;gap:4px}
 
@@ -314,10 +308,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         <div class="hint">Drag the wind. Arrow keys work too.</div>
       </div>
 
-      <div class="plan">
-        <div class="plan-row"><b id="plan-title">Side wall · frames 4' on center</b><span id="plan-count">9 frames on a 30' building</span></div>
-        <svg viewBox="0 0 600 40" aria-hidden="true"><line class="rail" x1="20" y1="34" x2="580" y2="34"/><g id="ribs"></g></svg>
-      </div>
     </div>
   </div>
 
@@ -394,15 +384,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     $('lift').innerHTML=l;
   }
 
-  function drawRibs(){
-    const t=TIERS[tier]; let r='', n=0;
-    for(let ft=0; ft<=30; ft+=t.spacing){ r+=`<line class="rib" x1="${20+ft/30*560}" y1="6" x2="${20+ft/30*560}" y2="34"/>`; n++; }
-    if(30%t.spacing){ r+=`<line class="rib" x1="580" y1="6" x2="580" y2="34"/>`; n++; }
-    $('ribs').innerHTML=r;
-    $('plan-title').textContent=`${t.title} · ${t.gauge}`;
-    $('plan-count').textContent=`${n} frames on a 30' building`;
-  }
-
   function trackBg(){
     const rate=TIERS[tier].mph, v=mph;
     const pv=v/MAX*100, pr=rate/MAX*100;
@@ -437,7 +418,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   function setTier(t){
     tier=t;
     document.querySelectorAll('.tier').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tier===t));
-    drawRibs(); render();
+    render();
   }
   document.querySelectorAll('.tier').forEach(b=>b.addEventListener('click',()=>setTier(b.dataset.tier)));
 
@@ -703,7 +684,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     requestAnimationFrame(frame);
   })();
 
-  drawRibs(); render();
+  render();
   // intro: sweep up to Standard rating once when the rig scrolls into view
   const io=new IntersectionObserver(es=>{ if(es[0].isIntersecting){ io.disconnect(); setTimeout(()=>{ if(mph===0) sweepTo(150); },400);} },{threshold:.4});
   io.observe($('stage'));

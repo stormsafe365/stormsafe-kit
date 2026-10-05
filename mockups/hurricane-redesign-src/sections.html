@@ -1,0 +1,253 @@
+
+<!-- DATA PLATE -->
+<section class="block plate-sec" id="spec">
+  <div class="section-inner plate-grid">
+    <div class="reveal">
+      <div class="section-eyebrow">Data Plate</div>
+      <h2 class="h2">Every Number,<br><span class="teal">Stamped.</span></h2>
+      <p class="sub">No mystery rating. These are the numbers your building is engineered to, and the numbers on the stamped drawings you hand your permit office.</p>
+      <div class="seg" role="group" aria-label="Frame type">
+        <button class="seg-btn" data-plate="std" aria-pressed="false">Standard</button>
+        <button class="seg-btn" data-plate="hw" aria-pressed="true">High-Wind</button>
+      </div>
+    </div>
+    <div class="plate reveal" data-delay="1" aria-live="polite">
+      <i class="rivet r1"></i><i class="rivet r2"></i><i class="rivet r3"></i><i class="rivet r4"></i>
+      <div class="plate-head">
+        <span class="plate-logo">Storm<b>Safe</b> Steel</span>
+        <span class="plate-model" id="pl-model">Model: High-Wind</span>
+      </div>
+      <div class="plate-big"><span id="pl-mph">170</span><small>MPH<br>Certified wind</small></div>
+      <dl class="plate-rows">
+        <div><dt>Frame</dt><dd id="pl-frame">12-ga tube on wide spans</dd></div>
+        <div><dt>Frame spacing</dt><dd id="pl-oc">4' on center</dd></div>
+        <div><dt>Certification</dt><dd>Florida Building Code</dd></div>
+        <div><dt>Drawings</dt><dd>Engineer-stamped for your county</dd></div>
+        <div><dt>Building warranty</dt><dd>Lifetime</dd></div>
+        <div><dt>Rust warranty</dt><dd>20 years</dd></div>
+      </dl>
+      <div class="plate-foot">West Palm Beach, FL · 561-771-5555</div>
+    </div>
+  </div>
+</section>
+
+<!-- ANATOMY (scroll-driven 3D build-up) -->
+<section class="anatomy" id="anatomy" aria-labelledby="anat-h">
+  <div class="section-inner">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">Anatomy</div>
+      <h2 class="h2" id="anat-h">How A 170 MPH<br><span class="teal">Building Goes Together.</span></h2>
+      <p class="sub">Scroll. Your building assembles one layer at a time, from the anchors up.</p>
+    </div>
+    <div class="anat-grid">
+      <div class="anat-stick">
+        <div class="anat-stage">
+          <canvas id="c-anat" aria-label="3D steel building assembling layer by layer: foundation, frame, bracing, panels, openings."></canvas>
+          <div class="anat-hud"><span id="anat-n">01</span><span id="anat-t">Foundation</span></div>
+          <div class="anat-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+      <ol class="anat-steps">
+        <li class="anat-step" id="layer-1" data-step="0">
+          <div class="st-n">01 · Foundation</div>
+          <h3>Anchored at every post.</h3>
+          <p>On concrete: a 4" slab at 2,500 psi with a thickened 12" × 12" edge and two #5 rebar running continuous. A ½" × 5½" wedge anchor goes within 6" of every side-wall post.</p>
+          <p>No slab? 30" helical earth augers bolt through the base rail at each post.</p>
+          <div class="chips"><span>4" slab · 2,500 psi</span><span>12" × 12" edge</span><span>(2) #5 rebar</span></div>
+        </li>
+        <li class="anat-step" id="layer-2" data-step="1">
+          <div class="st-n">02 · Frame</div>
+          <h3>Steel tube, 4' on center.</h3>
+          <p>Frames repeat down the full length of your building: 5' apart on Standard builds, 4' apart on High-Wind. 14-gauge tube is standard. Wide spans in high-wind counties step up to 12-gauge.</p>
+          <p>The truss gets heavier as your building gets wider. <a href="#finder">Find your frame ↓</a></p>
+          <div class="chips"><span>14-ga standard</span><span>12-ga high-wind</span><span>4' or 5' o.c.</span></div>
+        </li>
+        <li class="anat-step" id="layer-3" data-step="2">
+          <div class="st-n">03 · Bracing</div>
+          <h3>Knee braces lock the corners.</h3>
+          <p>A knee brace ties each post to its rafter at 45° to 60°. It's 24" minimum on posts up to 7' and 48" minimum on taller posts. That stiff corner is what keeps the frame square when the wind loads the wall.</p>
+          <div class="chips"><span>45°–60°</span><span>24" / 48" min</span></div>
+        </li>
+        <li class="anat-step" id="layer-4" data-step="3">
+          <div class="st-n">04 · Skin</div>
+          <h3>Panels fastened to every frame.</h3>
+          <p>Ribbed galvanized steel panels screw to the frame and girts. Corner, rake and eave trim close every edge, and a ridge cap seals the peak.</p>
+          <div class="chips"><span>Galvanized steel</span><span>Full trim package</span></div>
+        </li>
+        <li class="anat-step" id="layer-5" data-step="4">
+          <div class="st-n">05 · Openings</div>
+          <h3>Doors framed like structure.</h3>
+          <p>Every roll-up door gets a 12-gauge post on each side. Side-wall roll-ups up to 16' wide get a structural header. In coastal counties, your doors and windows are Hi-Impact rated.</p>
+          <div class="chips"><span>12-ga door posts</span><span>Structural header</span><span>Hi-Impact on the coast</span></div>
+        </li>
+      </ol>
+    </div>
+    <p class="note">Specs shown are from a typical Florida certified engineering set. Your stamped drawings, sized for your building and county, govern.</p>
+  </div>
+</section>
+
+<!-- COUNTIES -->
+<section class="block counties" id="counties">
+  <div class="section-inner">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">Your County · Your Code</div>
+      <h2 class="h2">What Florida<br><span class="teal">Has To Hold.</span></h2>
+      <p class="sub">Design wind speeds by city, from the ASCE 7-22 Hazard Tool. Anything past 150 mph needs High-Wind framing. Tap a city to load it into the storm test.</p>
+    </div>
+    <div class="chart reveal" data-delay="1">
+      <div class="chart-top">
+        <div class="legend"><span><i class="lg-l"></i>Standard covers it</span><span><i class="lg-o"></i>Past 150: High-Wind</span></div>
+        <div class="sort" role="group" aria-label="Sort cities">
+          <button class="seg-btn sm" data-sort="mph" aria-pressed="true">By wind</button>
+          <button class="seg-btn sm" data-sort="az" aria-pressed="false">A–Z</button>
+        </div>
+      </div>
+      <div class="chart-body">
+        <div class="axis" aria-hidden="true">
+          <span class="ax" style="--p:0">110</span><span class="ax" style="--p:.25">125</span><span class="ax" style="--p:.5">140</span>
+          <span class="ax ln150" style="--p:.6667">150</span><span class="ax ln170" style="--p:1">170</span>
+        </div>
+        <ul class="rows" id="rows"></ul>
+      </div>
+      <p class="chart-note"><b class="hwtag">HW</b> marks counties StormSafe builds to 170 mph as standard, whatever the code minimum.</p>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARE -->
+<section class="block compare-sec" id="compare">
+  <div class="section-inner">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">Two Ratings</div>
+      <h2 class="h2">Standard Or<br><span class="teal">High-Wind?</span></h2>
+    </div>
+    <div class="compare reveal" data-delay="1">
+      <div class="cmp-col">
+        <div class="cmp-head"><span class="cmp-name">Standard</span><span class="cmp-mph">150<small>MPH</small></span></div>
+        <ul>
+          <li><span>Frame spacing</span><b>5' on center</b></li>
+          <li><span>Frame</span><b>14-ga steel tube</b></li>
+          <li><span>Built for</span><b>Code wind of 150 mph or less</b></li>
+          <li><span>Where</span><b>Inland Florida: Orlando, Tampa, Ocala, Gainesville</b></li>
+        </ul>
+      </div>
+      <div class="cmp-col hw">
+        <div class="cmp-badge">Coastal standard</div>
+        <div class="cmp-head"><span class="cmp-name">High-Wind</span><span class="cmp-mph">170<small>MPH</small></span></div>
+        <ul>
+          <li><span>Frame spacing</span><b>4' on center</b></li>
+          <li><span>Frame</span><b>12-ga on spans over 24' in high-wind counties</b></li>
+          <li><span>Built for</span><b>Code wind up to 170 mph</b></li>
+          <li><span>Where</span><b>Palm Beach, Martin, St. Lucie, Lee, Collier and every StormSafe high-wind county</b></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FINDER (truss by width, from Truss style sheets) -->
+<section class="block finder" id="finder">
+  <div class="section-inner">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">Find Your Frame</div>
+      <h2 class="h2">Wider Building,<br><span class="teal">Heavier Truss.</span></h2>
+      <p class="sub">Drag to your building width. The end frame redraws live so you can see what's holding your roof up before you configure anything.</p>
+    </div>
+    <div class="finder-wrap reveal" data-delay="1">
+      <div>
+        <div class="finder-stage">
+          <span class="stage-tag" id="stage-tag">End frame · 30' wide · 12' legs</span>
+          <div id="finder-svg"></div>
+        </div>
+        <div class="slider-row">
+          <div class="slider-labels"><span>6' WIDE</span><span>60' WIDE</span></div>
+          <input type="range" class="width" id="width" min="6" max="60" step="1" value="30" aria-label="Building width in feet">
+          <div class="tier-bar" id="tier-bar"></div>
+          <div class="tier-ticks" id="tier-ticks"></div>
+        </div>
+      </div>
+      <div class="finder-read">
+        <div class="read-eyebrow">Your build</div>
+        <div class="read-width"><span id="r-width">30</span>'<small>WIDE</small></div>
+        <div class="read-name"><span id="r-name">Truss</span><span class="pill" id="r-pill">Truss</span></div>
+        <p class="read-desc" id="r-desc"></p>
+        <div class="read-specs">
+          <div class="spec"><div class="spec-k">Legs</div><div class="spec-v" id="r-legs"></div></div>
+          <div class="spec"><div class="spec-k">Width range</div><div class="spec-v" id="r-range"></div></div>
+        </div>
+        <div class="read-cta">
+          <a href="https://www.stormsafesteel.com/customize" class="btn btn-primary" id="r-cta">Customize a 30' Build →</a>
+          <small>Free 3D rendering with every quote · no email gate</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROCESS -->
+<section class="block process" id="process">
+  <div class="section-inner">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">Quote To Pad</div>
+      <h2 class="h2">From Click<br><span class="teal">To Certified.</span></h2>
+    </div>
+    <ol class="steps">
+      <li class="step reveal"><span class="step-n">01</span><h3>Configure</h3><p>Build it on the site in about 60 seconds. Size, doors, colors. No email gate to see your price.</p></li>
+      <li class="step reveal"><span class="step-n">02</span><h3>See it in 3D</h3><p>Every quote comes with a free 3D rendering of your actual building before you sign anything.</p></li>
+      <li class="step reveal"><span class="step-n">03</span><h3>Engineering + permit</h3><p>Engineer-stamped drawings for your county's wind zone, and we guide you through the permit.</p></li>
+      <li class="step reveal"><span class="step-n">04</span><h3>Installed</h3><p>Anchored to your pad, framed, skinned and trimmed: the same layers you just scrolled through.</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="block faq-sec" id="faq">
+  <div class="section-inner faq-grid">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">FAQ</div>
+      <h2 class="h2">Straight<br><span class="teal">Answers.</span></h2>
+      <p class="sub">Still have a question? Call <a href="tel:5617715555" class="tl">561-771-5555</a> and talk to someone who builds these.</p>
+    </div>
+    <div class="faq reveal" data-delay="1">
+      <details><summary>What does "hurricane-rated" actually mean?</summary><p>Your building is engineered and certified to a design wind speed: 150 mph on our Standard frame, 170 mph on High-Wind. The engineering drawings are stamped for your county, and that's what your permit office reviews.</p></details>
+      <details><summary>Is a 170 mph building rated for a Category 5?</summary><p>The two scales don't line up one-to-one. Building codes rate wind as a 3-second gust, while the hurricane category scale uses 1-minute sustained wind, which reads lower for the same storm. The number that matters is your county's code design wind speed, and your building's rating has to meet or beat it.</p></details>
+      <details><summary>What wind rating do I need?</summary><p>It depends on your exact location. West Palm Beach is 169 mph, Stuart 162, Tampa 141 and Orlando 137 (ASCE 7-22, Risk Category II). Use the city check at the top of this page. If your code number is over 150, you need High-Wind framing.</p></details>
+      <details><summary>Do I need engineered plans for a permit?</summary><p>In hurricane-prone Florida counties, yes. Every StormSafe building comes with engineered drawings for your county's wind zone, ready for permitting.</p></details>
+      <details><summary>Do I need impact-rated doors and windows?</summary><p>In coastal impact counties, yes. We spec Hi-Impact rated windows and walk doors there automatically, so your build passes the first time.</p></details>
+      <details><summary>Do I need a concrete slab?</summary><p>Concrete gets wedge anchors at every post. Without a slab, 30" helical earth augers bolt through the base rail. Your drawings call out the anchoring for your site.</p></details>
+      <details><summary>Can I customize a hurricane-rated building?</summary><p>Yes. Size, doors, windows, colors and insulation are all yours to pick. The rating comes from the frame and anchoring, so you can configure freely and the engineering follows.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- BIG CTA -->
+<section class="bigcta">
+  <div class="bigcta-inner reveal">
+    <span class="bigcta-eyebrow">Hurricane season comes every year</span>
+    <h2>Know Your Number.<br><span class="teal">Build Past It.</span></h2>
+    <p>Configure your building in about 60 seconds. Get your price and a free 3D rendering of your actual build.</p>
+    <div class="ctas center">
+      <a href="https://www.stormsafesteel.com/customize" class="btn btn-primary">Design Your Build →</a>
+      <a href="tel:5617715555" class="btn btn-secondary">Call 561-771-5555</a>
+    </div>
+    <p class="fine">Prices subject to change based on steel market conditions and local engineering requirements.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-grid">
+    <div>
+      <div class="nav-logo">Storm<span>Safe</span> Steel</div>
+      <p class="tag">Custom hurricane-rated steel buildings, engineered for Florida.</p>
+    </div>
+    <div><h4>Quick links</h4><a href="https://www.stormsafesteel.com/">Home</a><a href="https://www.stormsafesteel.com/customize">Customize</a><a href="https://www.stormsafesteel.com/why-steel">Why Steel</a><a href="https://www.stormsafesteel.com/about-us">About</a><a href="https://www.stormsafesteel.com/blog">Blog</a></div>
+    <div><h4>Buildings</h4><a href="https://www.stormsafesteel.com/residential-garages">Garages</a><a href="https://www.stormsafesteel.com/carports-rv-covers">Carports &amp; RV</a><a href="https://www.stormsafesteel.com/commercial-steel-buildings">Commercial</a><a href="https://www.stormsafesteel.com/agricultural-steel-buildings">Agricultural</a><a href="https://www.stormsafesteel.com/custom-steel-buildings">Custom</a></div>
+    <div><h4>Contact</h4><a href="tel:5617715555" class="tl">561-771-5555</a><span>West Palm Beach, FL</span><a href="https://www.stormsafesteel.com/contact">Contact form</a></div>
+  </div>
+  <p class="copyright">© <span id="yr"></span> StormSafe Steel. All rights reserved.</p>
+</footer>
+
+<div class="mob-cta">
+  <a href="tel:5617715555"><span>Call</span><span class="mob-cta-sub">561-771-5555</span></a>
+  <a href="https://www.stormsafesteel.com/customize" class="primary"><span>Design Yours</span><span class="mob-cta-sub">60 seconds · no email</span></a>
+</div>

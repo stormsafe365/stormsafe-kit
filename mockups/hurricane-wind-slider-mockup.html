@@ -98,6 +98,18 @@ select:hover{border-color:var(--teal-dim)}
 .rig-cat.hot{color:var(--text);border-color:var(--teal)}
 .stage{position:relative;background:var(--dark);}
 .stage svg{display:block;width:100%;height:auto}
+.stage canvas{display:none;width:100%;height:100%;touch-action:pan-y;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.stage.is3d{aspect-ratio:16/10;background:radial-gradient(ellipse 70% 60% at 50% 62%,#0f2030 0%,var(--dark) 75%)}
+.stage.is3d canvas{display:block}
+.stage.is3d > svg{display:none}
+.face-tag{position:absolute;left:14px;bottom:12px;display:none;gap:6px;pointer-events:none}
+.stage.is3d .face-tag{display:flex}
+.face-tag span{font-family:var(--h);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:rgba(8,18,29,.7);transition:color .25s,border-color .25s}
+.face-tag span.on{color:var(--teal);border-color:var(--teal)}
+.drag-hint{position:absolute;right:14px;bottom:14px;font-size:11px;color:var(--muted);display:none;pointer-events:none}
+.stage.is3d .drag-hint{display:block}
+@media(max-width:520px){.face-tag span{font-size:7.5px;padding:3px 6px}.drag-hint{display:none!important}}
 .streak{stroke:var(--sub);stroke-linecap:round}
 .bldg-line{stroke:var(--teal);stroke-width:2;fill:none;stroke-linejoin:round;transition:stroke .25s}
 .bldg-thin{stroke:var(--teal);stroke-width:1;fill:none;opacity:.45;transition:stroke .25s}
@@ -230,11 +242,14 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
     <!-- RIGHT: the rig -->
     <div class="rig">
       <div class="rig-head">
-        <span class="rig-tag">End wall · 30' wide · 12' legs</span>
+        <span class="rig-tag">30' × 40' × 12' garage</span>
         <span class="rig-cat" id="cat">Calm</span>
       </div>
 
       <div class="stage" id="stage">
+        <canvas id="c3d" aria-label="3D steel garage turning slowly while wind blows from the left. Drag to spin it."></canvas>
+        <div class="face-tag" aria-hidden="true"><span data-f="0">Front</span><span data-f="1">Left</span><span data-f="2">Back</span><span data-f="3">Right</span></div>
+        <div class="drag-hint">Drag to spin ⟲</div>
         <svg viewBox="40 96 520 244" role="img" aria-label="End view of a steel building with wind blowing from the left. Arrows show wall pressure and roof uplift growing with wind speed.">
           <g id="streaks"></g>
           <line x1="0" y1="300" x2="600" y2="300" stroke="#2a3d55" stroke-width="1.5"/>
@@ -305,6 +320,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 
 <div class="stub"><div>Page continues as it is today ↓ &nbsp;Truss Style By Building Width · Find Your Frame · Three Things To Know</div></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (function(){
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -472,6 +488,195 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   let last=performance.now();
   function loop(now){ const dt=Math.min(.05,(now-last)/1000); last=now; drawStreaks(dt); requestAnimationFrame(loop); }
   if(reduce){ mph=0; drawStreaks(0); } else requestAnimationFrame(loop);
+
+  // ───────── 3D turntable (falls back to the 2D drawing without WebGL) ─────────
+  (function init3D(){
+    if(!window.THREE) return;
+    const canvas=$('c3d'); let R;
+    try{ R=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true}); }catch(e){ return; }
+    stage.classList.add('is3d');
+    R.setPixelRatio(Math.min(devicePixelRatio,2));
+    R.outputEncoding=THREE.sRGBEncoding;
+
+    const scene=new THREE.Scene();
+    const cam=new THREE.PerspectiveCamera(30,1.6,1,400);
+    cam.position.set(0,27,96); cam.lookAt(0,8.5,0);
+    scene.add(new THREE.HemisphereLight(0xffffff,0x3b4a5c,1.0));
+    const key=new THREE.DirectionalLight(0xffffff,.55); key.position.set(35,45,60); scene.add(key);
+    const rim=new THREE.DirectionalLight(0xbfefff,.25); rim.position.set(-40,25,-40); scene.add(rim);
+
+    // building dims (ft): 30 wide (X) x 40 long (Z) x 12 legs, 3:12 roof
+    const W=30,L=40,H=12,PITCH=.25,RISE=W/2*PITCH,TOP=H+RISE;
+
+    // ribbed panel texture: 3 major ribs per 3 ft tile
+    function ribTex(base,dark,light,vertical){
+      const c=document.createElement('canvas'); c.width=vertical?96:4; c.height=vertical?4:96;
+      const g=c.getContext('2d'); g.fillStyle=base; g.fillRect(0,0,c.width,c.height);
+      const bar=(p,w,col,a)=>{ g.globalAlpha=a; g.fillStyle=col; vertical?g.fillRect(p,0,w,4):g.fillRect(0,p,4,w); };
+      [0,32,64].forEach(p=>{ bar(p,5,dark,.55); bar(p+5,2,light,.7); bar(p+18,1,dark,.18); });
+      g.globalAlpha=1;
+      const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.encoding=THREE.sRGBEncoding;
+      t.anisotropy=R.capabilities.getMaxAnisotropy(); return t;
+    }
+    function slatTex(){
+      const c=document.createElement('canvas'); c.width=4; c.height=64; const g=c.getContext('2d');
+      g.fillStyle='#eef1f4'; g.fillRect(0,0,4,64); g.fillStyle='#b8c0ca'; g.fillRect(0,0,4,3); g.fillStyle='#ffffff'; g.fillRect(0,3,4,2);
+      const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.encoding=THREE.sRGBEncoding; return t;
+    }
+    const WALL='#d9dee5', ROOF='#4a5361', TRIM=0x2a3039;
+    const std=(o)=>new THREE.MeshStandardMaterial(Object.assign({roughness:.55,metalness:.25},o));
+    const wallMat=(rep)=>{ const t=ribTex(WALL,'#9aa4b1','#ffffff',true); t.repeat.set(rep,1); return std({map:t}); };
+    const trimMat=std({color:TRIM,roughness:.5});
+    const whiteMat=std({color:0xf1f4f7,roughness:.45});
+    const glassMat=std({color:0x1d3347,roughness:.15,metalness:.6});
+
+    const bldg=new THREE.Group(); scene.add(bldg);
+    const box=(w,h,d,m,x,y,z,parent=bldg)=>{ const me=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); me.position.set(x,y,z); parent.add(me); return me; };
+
+    // slab
+    box(W+1.5,.5,L+1.5,std({color:0x9ea7b1,roughness:.9,metalness:0}),0,-.25,0);
+
+    // side walls
+    const sideGeo=new THREE.PlaneGeometry(L,H);
+    [[W/2,Math.PI/2],[-W/2,-Math.PI/2]].forEach(([x,ry])=>{ const m=new THREE.Mesh(sideGeo,wallMat(L/3)); m.position.set(x,H/2,0); m.rotation.y=ry; bldg.add(m); });
+
+    // end walls (pentagon; ShapeGeometry UVs are in feet)
+    const sh=new THREE.Shape(); sh.moveTo(-W/2,0); sh.lineTo(W/2,0); sh.lineTo(W/2,H); sh.lineTo(0,TOP); sh.lineTo(-W/2,H); sh.closePath();
+    const endGeo=new THREE.ShapeGeometry(sh);
+    [[L/2,0],[-L/2,Math.PI]].forEach(([z,ry])=>{ const t=ribTex(WALL,'#9aa4b1','#ffffff',true); t.repeat.set(1/3,1); const m=new THREE.Mesh(endGeo,std({map:t})); m.position.z=z; m.rotation.y=ry; bldg.add(m); });
+
+    // roof: vertical panels (ribs run ridge to eave)
+    const slope=Math.hypot(W/2,RISE), ang=Math.atan(PITCH), OH=.8;
+    [1,-1].forEach(sd=>{
+      const t=ribTex(ROOF,'#2b323c','#6b7584',false); t.repeat.set(1,(L+2*OH)/3);
+      const piv=new THREE.Group(); piv.position.set(sd*W/4,H+RISE/2+.12,0); piv.rotation.z=-sd*ang; bldg.add(piv);
+      const p=new THREE.Mesh(new THREE.PlaneGeometry(slope+OH,L+2*OH),std({map:t,side:THREE.DoubleSide,roughness:.5,metalness:.35}));
+      p.rotation.x=-Math.PI/2; p.position.x=sd*OH/2; piv.add(p);
+      // rake trim on both gable ends + eave trim
+      [L/2+OH,-(L/2+OH)].forEach(z=>box(slope+OH,.45,.3,trimMat,sd*OH/2,.05,z,piv));
+      box(.35,.5,L+2*OH,trimMat,sd*(slope/2+OH),-.1,0,piv);
+    });
+    box(1.4,.35,L+2*OH,trimMat,0,TOP+.2,0); // ridge cap
+
+    // corner trim
+    [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([a,b])=>box(.5,H,.5,trimMat,a*W/2,H/2,b*L/2));
+
+    // FRONT (+Z): 10x10 roll-up with hood and jambs
+    const st=slatTex(); st.repeat.set(1,10/.75);
+    box(10,10,.2,std({map:st,roughness:.45}),0,5,L/2+.1);
+    box(10.8,.9,.7,trimMat,0,10.45,L/2+.35);
+    [-5.2,5.2].forEach(x=>box(.4,10,.3,trimMat,x,5,L/2+.15));
+    // walk door + window helpers (group faces its local +Z)
+    function walkDoor(x,z,ry){ const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=ry; bldg.add(g);
+      box(3,7,.15,whiteMat,0,3.5,.08,g); box(3.4,.3,.2,trimMat,0,7.15,.1,g);
+      [-1.6,1.6].forEach(px=>box(.25,7,.2,trimMat,px,3.5,.1,g)); box(.25,.25,.35,trimMat,1.05,3.4,.2,g); }
+    function windowAt(x,z,ry,y=5.5){ const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=ry; bldg.add(g);
+      box(3.5,3.5,.12,whiteMat,0,y,.06,g); box(3,3,.18,glassMat,0,y,.1,g); box(.12,3,.2,whiteMat,0,y,.12,g); }
+    // RIGHT side (+X): walk door + window
+    walkDoor(W/2+.02,10,Math.PI/2); windowAt(W/2+.02,-4,Math.PI/2);
+    // LEFT side (-X): two windows
+    windowAt(-W/2-.02,8,-Math.PI/2); windowAt(-W/2-.02,-8,-Math.PI/2);
+    // BACK (-Z): walk door + window
+    walkDoor(-6,-L/2-.02,Math.PI); windowAt(7,-L/2-.02,Math.PI);
+
+    // soft contact shadow (rotates with the building)
+    (function(){ const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
+      const gr=g.createRadialGradient(64,64,10,64,64,64); gr.addColorStop(0,'rgba(0,0,0,.55)'); gr.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=gr; g.fillRect(0,0,128,128);
+      const m=new THREE.Mesh(new THREE.PlaneGeometry(W*1.9,L*1.7),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false}));
+      m.rotation.x=-Math.PI/2; m.position.y=-.48; bldg.add(m); })();
+
+    // spec-sheet ground: teal polar grid (stays still so you read the spin)
+    const grid=new THREE.PolarGridHelper(38,16,5,96,0x09d6dc,0x09d6dc);
+    grid.material.transparent=true; grid.material.opacity=.13; grid.position.y=-.5; scene.add(grid);
+
+    // arrows (cylinder + cone); local +Y = direction
+    const arrowMat=new THREE.MeshBasicMaterial({color:0x09d6dc});
+    function mkArrow(){ const g=new THREE.Group();
+      const s=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,1,10),arrowMat); g.add(s);
+      const hd=new THREE.Mesh(new THREE.ConeGeometry(.55,1.3,14),arrowMat); g.add(hd);
+      g.userData={sh:s,hd}; scene.add(g); return g; }
+    function setLen(a,len){ const hl=1.3, s=Math.max(.01,len-hl); a.userData.sh.scale.y=s; a.userData.sh.position.y=s/2; a.userData.hd.position.y=s+hl/2; a.visible=len>.3; }
+    const push=[[4,7],[8,0],[5,-7]].map(([y,z])=>{ const a=mkArrow(); a.rotation.z=-Math.PI/2; a.userData.y=y; a.userData.z=z; return a; });
+    const lift=[[-7,9],[7,9],[-7,-9],[7,-9]].map(([x,z])=>{ const a=mkArrow(); a.userData.x=x; a.userData.z=z; return a; });
+
+    // wind streaks: one instanced mesh of thin bars, world-fixed, blowing +X
+    const NS=70, XMAX=48;
+    const sMat=new THREE.MeshBasicMaterial({color:0xb9c6d4,transparent:true,opacity:0,depthWrite:false});
+    const streaks=new THREE.InstancedMesh(new THREE.BoxGeometry(1,.09,.09),sMat,NS); scene.add(streaks);
+    const SD=[...Array(NS)].map(()=>({x:-XMAX+Math.random()*2*XMAX,y:.6+Math.random()*24,z:-30+Math.random()*60,len:3+Math.random()*7,sp:.6+Math.random()*.8}));
+    const M=new THREE.Matrix4(), P=new THREE.Vector3(), Q=new THREE.Quaternion(), S=new THREE.Vector3();
+
+    // turntable: hold on each face, then turn 90 degrees
+    const FACES=document.querySelectorAll('.face-tag span');
+    const HOLD=1.9, TURN=1.6, OFF=-0.28; // slight 3/4 so you read depth
+    let theta=OFF, phase='hold', timer=0, from=OFF, to=OFF, auto=!reduce, idle=0, dragging=false, lastX=0;
+    const ease=p=>p<.5?4*p*p*p:1-Math.pow(-2*p+2,3)/2;
+    canvas.addEventListener('pointerdown',e=>{ dragging=true; auto=false; lastX=e.clientX; canvas.setPointerCapture(e.pointerId); });
+    canvas.addEventListener('pointermove',e=>{ if(!dragging) return; theta+=(e.clientX-lastX)*.012; lastX=e.clientX; });
+    const up=()=>{ dragging=false; idle=0; };
+    canvas.addEventListener('pointerup',up); canvas.addEventListener('pointercancel',up);
+
+    function resize(){ const w=canvas.clientWidth,h=canvas.clientHeight; if(!w||!h) return;
+      const pr=R.getPixelRatio();
+      if(canvas.width!==Math.round(w*pr)||canvas.height!==Math.round(h*pr)){ R.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); } }
+
+    let visible=true;
+    new IntersectionObserver(es=>{ visible=es[0].isIntersecting; },{threshold:0}).observe(canvas);
+
+    let t0=performance.now(), jit=0;
+    function frame(now){
+      requestAnimationFrame(frame);
+      const dt=Math.min(.05,(now-t0)/1000); t0=now;
+      if(!visible) return;
+      resize();
+      const rate=TIERS[tier].mph, over=mph>rate, k=mph/MAX, psf=psfOf(mph);
+
+      // spin
+      if(!auto && !dragging && !reduce){ idle+=dt; if(idle>2.2){ auto=true; phase='hold'; timer=HOLD; } }
+      if(auto){
+        timer+=dt;
+        if(phase==='hold' && timer>=HOLD){ phase='turn'; timer=0; from=theta;
+          const q=Math.PI/2; to=Math.floor((theta-OFF)/q+1e-3)*q+OFF+q; }
+        if(phase==='turn'){ const p=Math.min(1,timer/TURN); theta=from+(to-from)*ease(p); if(p>=1){ phase='hold'; timer=0; } }
+      }
+      bldg.rotation.y=theta;
+      const fi=((Math.round((theta-OFF)/(Math.PI/2))%4)+4)%4;
+      FACES.forEach(f=>f.classList.toggle('on',+f.dataset.f===fi));
+
+      // shake past the rating
+      if(over && !reduce){ jit+=dt*60; bldg.position.set(Math.sin(jit*1.7)*.06,Math.cos(jit*2.3)*.03,0); } else bldg.position.set(0,0,0);
+
+      // loads
+      arrowMat.color.set(over?0xf0883e:0x09d6dc);
+      const c=Math.abs(Math.cos(theta)), s=Math.abs(Math.sin(theta));
+      const hx=W/2*c+L/2*s+.6;              // windward face distance along -X
+      const lw=psf<.5?0:2+psf/80*12;
+      push.forEach(a=>{ setLen(a,lw); a.position.set(-hx-lw,a.userData.y,a.userData.z); });
+      const ll=psf<.5?0:1.5+psf/80*7;
+      lift.forEach(a=>{ const x=a.userData.x,z=a.userData.z;
+        const lx=x*Math.cos(theta)-z*Math.sin(theta); // world -> building local X
+        const rh=H+Math.max(0,(W/2-Math.abs(lx)))*PITCH;
+        a.position.set(x,rh+.5,z); setLen(a,ll); });
+
+      // streaks
+      streaks.visible=mph>=1;
+      sMat.opacity=.15+k*.6;
+      const hz=W/2*s+L/2*c;
+      SD.forEach((d,i)=>{
+        if(!reduce) d.x+=d.sp*(6+k*95)*dt;
+        const len=d.len*(.5+k*1.8);
+        if(d.x-len>XMAX){ d.x=-XMAX-Math.random()*8; d.y=.6+Math.random()*24; d.z=-30+Math.random()*60; }
+        let y=d.y;
+        if(Math.abs(d.z)<hz+2 && y<TOP+2){ const u=1-Math.pow(d.x/(hx+10),2); if(u>0) y+=(TOP+2-y)*Math.sqrt(u); }
+        P.set(d.x-len/2,y,d.z); S.set(len,1+k*.8,1+k*.8); M.compose(P,Q,S); streaks.setMatrixAt(i,M);
+      });
+      streaks.instanceMatrix.needsUpdate=true;
+
+      R.render(scene,cam);
+    }
+    requestAnimationFrame(frame);
+  })();
 
   drawRibs(); render();
   // intro: sweep up to Standard rating once when the rig scrolls into view

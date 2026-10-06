@@ -596,9 +596,13 @@ function OpeningDimensions({
     if (oL >= R - 1e-6) rightN = Math.min(rightN ?? Infinity, oL);
   }
 
-  // Truss/post positions on this wall.
+  // Truss/post positions on this wall — EVERY frame line (owner 10/5/26: "a
+  // truss doesn't appear from the back gable towards the front for 8'"), the
+  // program's own spots (getTrussPositions, from the front gable). The ones
+  // within 1.5' of the part draw as before; the rest are fainter.
   const trusses = wall.trussLines.map((t) => t.posFt);
-  const guideTrusses = trusses.filter((p) => p >= L - 1.5 && p <= R + 1.5);
+  const nearPart = (p: number) => p >= L - 1.5 && p <= R + 1.5;
+  const guideTrusses = trusses.filter((p) => (p > 0.05 && p < span - 0.05) || nearPart(p)); // corners: only when near, as before
   // A door needs a side frame when an INTERIOR frame leg is inside the opening
   // OR within the jamb clearance (2") of either edge — shared checkCollision()
   // so the 3D guide, the building flag and the quote's side-frame pricing all
@@ -616,13 +620,14 @@ function OpeningDimensions({
       {/* Vertical truss/post guides (only while editing this component) */}
       {guideTrusses.map((p, i) => {
         const conflict = isInterior(p) && edgeDist(p) < TRUSS_CLEARANCE_FT;
+        const near = nearPart(p);
         return (
           <GuideLine
             key={`tr-${i}`}
             a={pt(p, 0)}
             b={pt(p, eave)}
             color={conflict ? RED : RED_DIM}
-            thick={conflict ? 0.07 : 0.04}
+            thick={conflict ? 0.07 : near ? 0.04 : 0.025}
           />
         );
       })}

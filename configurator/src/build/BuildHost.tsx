@@ -21,7 +21,7 @@ import { useEditorStore } from '@/store/useEditorStore';
 import type { BuildingType, EndSheeting, FoundationType, OpeningType, WallOverrides, WallSide } from '@/types/building';
 import { leanToWalkDoorLook, leanToWindowLook, readLeanToStorage, type ProgramTypeRow } from './leanToAccessory';
 import { NO_STORAGE, partitionLocationAllowed, readMainStorage } from './mainStorage';
-import { dragWritePosValue, dragWriteSide } from './dragWriteBack';
+import { gableLeanToOffset3D, offset3DToProgramX, programXTo3DOffset, programXToTyped, typedValueText } from './positionMap';
 import { spreadAutoOverlaps } from '@/engine/autoSpread';
 
 // Cache-bust the pricing iframe on the WEB (CRM embed) so a redeploy shows up
@@ -140,6 +140,9 @@ interface DesiredOpening {
   /** Source program entry + item index — lets a 3D drag write back to the program. */
   entry: Element;
   itemIndex: number;
+  /** Program location + wall length (ft): the drag write-back's inverse mapping (positionMap). */
+  loc: string;
+  face: number;
 }
 
 /** A program item's spot is "typed" when its position row has a value (getPosItems' own test). */
@@ -232,14 +235,13 @@ function readOpenings(
     const face = faceFor(loc);
     const items = getPos(el, qty, itemW, face, itemH, type, extraH);
     items.forEach((it, i) => {
-      const center = it.x + it.w / 2; // centerline from the program's frame edge
-      // The LEFT eave and BACK gable are the "far" walls — viewed from the
-      // opposite side, so their position-along-the-wall is mirrored vs the
-      // program's frame. This is about the OFFSET (length axis), independent of
-      // which X-side wall, so key it off the program LOCATION — not `side`,
-      // which is now swapped above for the screen left/right convention.
-      const mirror = loc === 'Left Eave Side' || loc === 'Back Gable End';
-      const offset = mirror ? face - center : center;
+      // ONE definition (positionMap, owner 10/5/26): the program's x
+      // (getPosItems) → the 3D centerline. Every wall but the Right Eave runs
+      // the opposite way in the 3D — Left Eave x from the back gable; front
+      // gable / partition x from the LEFT eave corner (3D +X); back gable x
+      // from the RIGHT eave corner (3D −X). Keyed off the program LOCATION,
+      // not `side` (swapped above for the screen left/right convention).
+      const offset = programXTo3DOffset(loc, it.x, it.w, face);
       // getPosItems attaches style/color per item: wtd has style + white/black
       // color; win has white/black color; rollup's color is the .rco key.
       let color: string | undefined;
@@ -267,6 +269,8 @@ function readOpenings(
         impact,
         entry: el,
         itemIndex: i,
+        loc,
+        face,
       };
       out.push(d);
       faceOf.set(d, face);
@@ -370,7 +374,7 @@ type BuilderWindow = Window & {
   __ssWrapped?: boolean;
   __ssViewHooked?: boolean;
   __ssOpenSig?: string;
-  __ssOpenMap?: Record<string, { entry: Element; itemIndex: number; side: WallSide; width: number }>;
+  __ssOpenMap?: Record<string, { entry: Element; itemIndex: number; side: WallSide; width: number; loc: string; face: number }>;
   __ssLeanToSig?: string;
   /** Lean-to opening id → its source accessory entry + item index, for drag writeback. */
   __ssLeanToOpenMap?: Record<string, { entry: Element; itemIndex: number; width: number }>;
@@ -379,8 +383,9 @@ type BuilderWindow = Window & {
 /**
  * Write a 3D drag back into the program: convert the opening's 3D centerline to
  * the program's "from-edge" position and set the entry's position inputs + side
- * toggles. The reverse of readOpenings' mapping → round-trips exactly:
- *   program pos = centerline − width/2 ; side = 'right' on back gable, else 'left'.
+ * toggles. The exact inverse of readOpenings' mapping (positionMap): 3D
+ * centerline → the program's x → the number for the button the rep picked on
+ * that row (its reference is never switched; an Auto row uses its first button).
  *
  * To keep multi-quantity rows stable, ALL items in the dragged entry are frozen
  * to their current 3D positions (written explicitly) — so moving one no longer
@@ -390,7 +395,7 @@ type BuilderWindow = Window & {
 function writeBackDrag(win: BuilderWindow, id: string | null) {
   const map = win.__ssOpenMap;
   if (!id || !map || !map[id]) return;
-  const { entry, side } = map[id];
+  const { entry } = map[id];
 
   // Every opening sourced from this same entry (one row may hold several items).
   const siblings = Object.keys(map)
@@ -406,17 +411,22 @@ function writeBackDrag(win: BuilderWindow, id: string | null) {
   }
 
   const openings = useBuildingStore.getState().openings;
-  const targetSide = dragWriteSide(side); // uniform per wall
   let wrote = false;
   for (const sib of siblings) {
     const op = openings.find((o) => o.id === sib.oid);
     const row = rows[sib.itemIndex];
     if (!op || !row) continue;
+    // The 3D spot → the program's x (positionMap inverse) → the number for the
+    // button the rep picked on this row (an Auto row keeps its first button).
+    // A drag never switches "From Back Gable" to "From Front Gable" any more.
+    const active = row.querySelector('.pos-toggle button.active') as HTMLElement | null;
+    const keep: 'left' | 'right' = active?.dataset.side === 'right' ? 'right' : 'left';
+    const x = offset3DToProgramX(sib.loc, op.offset, op.width, sib.face);
     const input = row.querySelector('input') as HTMLInputElement | null;
-    if (input) input.value = dragWritePosValue(op.offset, op.width); // nearest inch, tidy "4.333"
+    if (input) input.value = typedValueText(programXToTyped(sib.loc, x, op.width, sib.face, keep)); // nearest inch, tidy "4.333"
     row.querySelectorAll('.pos-toggle button').forEach((b) => {
       const btn = b as HTMLElement;
-      btn.classList.toggle('active', btn.dataset.side === targetSide);
+      btn.classList.toggle('active', btn.dataset.side === keep);
     });
     wrote = true;
   }
@@ -700,7 +710,15 @@ function readLeanTos(win: Window & { document: Document }): LeanToRead[] {
       attachedSide: type === 'attached' ? attachedSide : undefined,
       widthFt,
       lengthFt,
-      offsetFt: type === 'attached' ? offsetFt : undefined,
+      // Gable lean-to "Starts At": from your-left corner facing that gable (front:
+      // the left eave corner, mirrored onto the engine's −X start; back: the
+      // right eave corner = −X). Eave lean-tos run from the front, unchanged.
+      offsetFt:
+        type !== 'attached'
+          ? undefined
+          : attachedSide === 'Front Gable' || attachedSide === 'Back Gable'
+            ? gableLeanToOffset3D(attachedSide, offsetFt, lengthFt, useBuildingStore.getState().width)
+            : offsetFt,
       lowLegHeightFt: lowHeightFt,
       tallLegHeightFt: type === 'attached' ? tallHeightFt : undefined,
       roofPitch: roofPitchStr,
@@ -969,7 +987,7 @@ function syncFromBuilder(win: BuilderWindow) {
     for (const d of desired) {
       const id = cur.addOpening(d.type, d.side);
       cur.updateOpening(id, { offset: d.offset, width: d.width, height: d.height, sillHeight: d.sillHeight, color: d.color, doorStyle: d.doorStyle, cut45: d.cut45, impact: d.impact });
-      map[id] = { entry: d.entry, itemIndex: d.itemIndex, side: d.side, width: d.width };
+      map[id] = { entry: d.entry, itemIndex: d.itemIndex, side: d.side, width: d.width, loc: d.loc, face: d.face };
     }
     win.__ssOpenMap = map;
   }

@@ -1344,9 +1344,12 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     (sidePart ? L * roofYAt(sidePart.x) : 0);
 
   // --- Per-wall layouts for the editor + opening placement ---
-  const sideTruss = enclosure.sideZ
-    ? eaveTrussLines(framePositionsZ, enclosure.sideZ.start, enclosure.sideZ.end)
-    : [];
+  // Eave frame lines in the SAME frame as eave openings (offset from the FRONT
+  // gable, openingWorldTransform) and the program's getTrussPositions — every
+  // frame along the whole length. (They used to start at the enclosed bay's
+  // own end, so on a GCH with the open bay in front the guides and the
+  // "on truss" check sat a whole bay off from the program's truss positions.)
+  const sideTruss = enclosure.sideZ ? eaveTrussLines(framePositionsZ, -halfL, halfL) : [];
 
   const walls: Record<WallSide, WallLayout> = {
     left: {

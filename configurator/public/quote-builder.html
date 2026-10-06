@@ -7831,7 +7831,7 @@ function aLT(){
     '</select></div>'+
     '<div class="row"><label>Length (ft)</label>'+
     '<input type="number" class="ltl2" placeholder="e.g. 30" min="10" max="300" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
-    '<div class="row lt-off-row" title="Only matters when the lean-to is shorter than the wall it sits on"><label>Starts At (ft from front / left corner)</label>'+
+    '<div class="row lt-off-row" title="Only matters when the lean-to is shorter than the wall it sits on. Eave lean-to: feet from the front corner. Gable lean-to: feet from the corner on your left as you stand outside facing that gable (front gable: the left eave corner; back gable: the right eave corner)."><label>Starts At (ft from front / your-left corner)</label>'+
     '<input type="number" class="ltoff" placeholder="0 = at the corner" min="0" step="1" oninput="rc()" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
     '<div class="row lt-lowleg-row"><label>Low Leg Height (ft)</label>'+
     '<select class="lth" onchange="updateLTNote(this.closest(\'.lte\'));refreshLTAccSizes(this.closest(\'.lte\'));rc()">'+
@@ -9429,17 +9429,44 @@ function updatePosSection(entry, qty, labelOverride){
 // NOTE: data-side values stay as 'left'/'right' — getPosItems and runTrussChecks flip
 // the interpretation automatically for Left Eave Side (where x=0 = BACK, x=L = FRONT),
 // so "From Front Gable" (data-side=left) always physically means near the front end.
+// ── ONE definition of a typed position (owner 10/5/26) ─────────────────────
+// The number a rep types = feet from the named END of the wall to the NEAR
+// edge of the opening. Every reader uses it: getPosItems (every elevation /
+// spacing page / contract plan / the 3D), runTrussChecks (side frames), the
+// no-overlap model, the Section 5 card and the revision schedule.
+//   Eaves (both):        left button = from the FRONT gable, right = from the BACK gable.
+//   Front gable, and the partition (seen from the front):
+//                        left button = from the LEFT EAVE corner, right = from the RIGHT EAVE corner
+//                        (your left / right standing outside, facing the front).
+//   Back gable (seen from behind, standing outside facing it):
+//                        left button = from the RIGHT EAVE corner, right = from the LEFT EAVE corner.
+// getPosItems' x for a wall is measured from the end its left button names
+// (Left Eave: flipped, x runs from the back gable).
+function posRefName(loc, side){
+  var r=(side==='right');
+  if(loc==='Left Eave Side'||loc==='Right Eave Side') return r?'back gable':'front gable';
+  if(loc==='Back Gable End') return r?'left eave corner':'right eave corner';
+  return r?'right eave corner':'left eave corner'; // Front Gable End / Partition Wall
+}
+function posRefLabel(loc, side){
+  var n=posRefName(loc, side);
+  return 'From '+n.replace(' corner','').replace(/\b\w/g,function(c){ return c.toUpperCase(); });
+}
+// "9′ from the back gable to its near edge" — what the typed number means.
+function posDescribe(loc, val, side){
+  var v=parseFloat(val); if(!isFinite(v)) return '';
+  return _dimFtIn(v)+' from the '+posRefName(loc, side)+' to its near edge';
+}
 function refreshPosLabels(entry){
   if(!entry) return;
   var locEl = entry.querySelector('.wloc, .nloc, .rloc, .fo-loc');
   if(!locEl) return;
-  var isEave = (locEl.value === 'Left Eave Side' || locEl.value === 'Right Eave Side');
-  var leftLbl = isEave ? 'From Front Gable' : 'From Left';
-  var rightLbl = isEave ? 'From Back Gable' : 'From Right';
+  var leftLbl = posRefLabel(locEl.value, 'left');
+  var rightLbl = posRefLabel(locEl.value, 'right');
   entry.querySelectorAll('.pos-toggle').forEach(function(toggle){
     var btns = toggle.querySelectorAll('button');
-    if(btns[0]) btns[0].textContent = leftLbl;
-    if(btns[1]) btns[1].textContent = rightLbl;
+    if(btns[0]){ btns[0].textContent = leftLbl; btns[0].title = 'Feet from the '+posRefName(locEl.value,'left')+' to the near edge of the opening'; }
+    if(btns[1]){ btns[1].textContent = rightLbl; btns[1].title = 'Feet from the '+posRefName(locEl.value,'right')+' to the near edge of the opening'; }
   });
 }
 
@@ -9787,11 +9814,17 @@ function ltAccXs(ae){
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 function _ovlNm(it){ return 'the '+it.d.what+(it.d.qty>1?(' #'+(it.i+1)):''); }
+// Main gables: x runs from the corner posRefName names (front / partition: the
+// left eave corner; back, seen from behind: the right eave corner).
+var _OVL_GLOC={'m:front':'Front Gable End','m:back':'Back Gable End','m:partition':'Partition Wall'};
 function _ovlSpan(Wl,it){
   var a=(Wl.frame==='back')?(Wl.len-it.x-it.w):it.x;
-  return _ovlFt(a)+'–'+_ovlFt(a+it.w)+' '+(Wl.frame==='left'?'from the left':'from the front gable');
+  var g=_OVL_GLOC[Wl.key];
+  return _ovlFt(a)+'–'+_ovlFt(a+it.w)+' '+(g?('from the '+posRefName(g,'left')):Wl.frame==='left'?'from the left':'from the front gable');
 }
 function _ovlEnd(Wl,end){
+  var g=_OVL_GLOC[Wl.key];
+  if(g) return posRefName(g,end?'right':'left').replace(' corner','');
   if(Wl.frame==='left') return end?'right':'left';
   if(Wl.frame==='front') return end?'back':'front';
   return end?'front':'back';
@@ -10965,7 +10998,7 @@ async function printRevisedLayout(){
       if(posRows[i]){
         var inp=posRows[i].querySelector('input');
         var side=posRows[i].querySelector('.pos-toggle button.active');
-        if(inp&&inp.value) pos=inp.value+"' from "+(side?side.textContent.trim():'left');
+        if(inp&&inp.value) pos=posDescribe(loc, inp.value, side?side.dataset.side:'left');
       }
       walls[wallKey(loc)].push({tag:tagNum++, type:'Roll-Up Door', size:sz.replace('x',"' × ")+"'", pos:pos});
     }
@@ -10979,7 +11012,7 @@ async function printRevisedLayout(){
       if(posRows[i]){
         var inp=posRows[i].querySelector('input');
         var side=posRows[i].querySelector('.pos-toggle button.active');
-        if(inp&&inp.value) pos=inp.value+"' from "+(side?side.textContent.trim():'left');
+        if(inp&&inp.value) pos=posDescribe(loc, inp.value, side?side.dataset.side:'left');
       }
       walls[wallKey(loc)].push({tag:tagNum++, type:'Walk-Through Door', size:"3' × 7'", pos:pos});
     }
@@ -10993,7 +11026,7 @@ async function printRevisedLayout(){
       if(posRows[i]){
         var inp=posRows[i].querySelector('input');
         var side=posRows[i].querySelector('.pos-toggle button.active');
-        if(inp&&inp.value) pos=inp.value+"' from "+(side?side.textContent.trim():'left');
+        if(inp&&inp.value) pos=posDescribe(loc, inp.value, side?side.dataset.side:'left');
       }
       walls[wallKey(loc)].push({tag:tagNum++, type:'Window', size:"3' × 4'", pos:pos});
     }
@@ -11016,7 +11049,7 @@ async function printRevisedLayout(){
       if(posRows[i]){
         var inp=posRows[i].querySelector('input');
         var side=posRows[i].querySelector('.pos-toggle button.active');
-        if(inp&&inp.value) pos=inp.value+"' from "+(side?side.textContent.trim():'left');
+        if(inp&&inp.value) pos=posDescribe(loc, inp.value, side?side.dataset.side:'left');
       }
       walls[wallKey(loc)].push({tag:tagNum++, type:comp, size:sizeNote||'—', pos:pos});
     }
@@ -12464,12 +12497,13 @@ function dimPlanSVG(sel, it, lts, W, L, part, open){
   var o='<svg viewBox="0 0 200 260" style="width:100%;height:auto;display:block" xmlns="http://www.w3.org/2000/svg">';
   o+='<rect x="'+px(0)+'" y="'+py(L)+'" width="'+(W*s).toFixed(1)+'" height="'+(L*s).toFixed(1)+'" fill="rgba(255,255,255,.03)"/>';
   lts.forEach(function(l){
-    var a=l.start, e=l.start+l.len, w=l.w*s, hl=(sel==='ltpart:'+l.n), r;
+    // a back-gable lean-to starts from the RIGHT eave corner (seen from behind, posRefName) = plan right
+    var bk=(l.k==='back'), a=bk?(W-l.start-l.len):l.start, e=a+l.len, w=l.w*s, hl=(sel==='ltpart:'+l.n), r;
     if(l.k==='left') r=[px(0)-w,py(e),w,l.len*s]; else if(l.k==='right') r=[px(W),py(e),w,l.len*s];
     else if(l.k==='front') r=[px(a),py(0),l.len*s,w]; else r=[px(a),py(L)-w,l.len*s,w];
     o+='<rect x="'+r[0].toFixed(1)+'" y="'+r[1].toFixed(1)+'" width="'+r[2].toFixed(1)+'" height="'+r[3].toFixed(1)+'" fill="rgba(167,139,250,'+(hl?'.12':'.04')+')" stroke="'+DIM_K.lt+'" stroke-opacity="'+(hl?'1':'.7')+'" stroke-width="'+(hl?'1.6':'.9')+'"'+(l.walls.sideClosed?'':' stroke-dasharray="3 3"')+'/>';
     if(l.stor){
-      var d=l.stor.at, ln=l.eave?[r[0],py(d),r[0]+w,py(d)]:[px(d),r[1],px(d),r[1]+w];
+      var d=bk?(W-l.stor.at):l.stor.at, ln=l.eave?[r[0],py(d),r[0]+w,py(d)]:[px(d),r[1],px(d),r[1]+w];
       o+='<line x1="'+ln[0].toFixed(1)+'" y1="'+ln[1].toFixed(1)+'" x2="'+ln[2].toFixed(1)+'" y2="'+ln[3].toFixed(1)+'" stroke="'+(hl?DIM_C.teal:DIM_K.lt)+'" stroke-opacity="'+(hl?'1':'.7')+'" stroke-width="'+(hl?'2.6':'1')+'"'+(hl?'':' stroke-dasharray="2 2"')+' stroke-linecap="round"/>';
     }
     o+=_dimT(r[0]+r[2]/2, r[1]+r[3]/2+3, 'LT'+l.n, {anchor:'middle',size:8,fill:DIM_K.ltText});
@@ -12493,7 +12527,7 @@ function dimPlanSVG(sel, it, lts, W, L, part, open){
     (it[k]||[]).forEach(function(u){
       var a,c;
       if(k==='front'){a=[px(u.x),py(0)+6];c=[px(u.x+u.w),py(0)+6];}
-      else if(k==='back'){a=[px(u.x),py(L)-6];c=[px(u.x+u.w),py(L)-6];}
+      else if(k==='back'){a=[px(W-u.x),py(L)-6];c=[px(W-u.x-u.w),py(L)-6];} // seen from behind: x from the right eave corner
       else if(k==='left'){a=[px(0)-6,py(L-u.x)];c=[px(0)-6,py(L-u.x-u.w)];}
       else {a=[px(W)+6,py(u.x)];c=[px(W)+6,py(u.x+u.w)];}
       o+='<line x1="'+a[0]+'" y1="'+a[1]+'" x2="'+c[0]+'" y2="'+c[1]+'" stroke="'+(DIM_K[u.type]||DIM_K.fo)+'" stroke-width="3.2"/>';
@@ -12746,17 +12780,20 @@ function dimSpacingPageHTML(theme){
     '</div>';
   }
   var html='';
-  html+=card('Front','front',dimElevSVG(W,H,peakH,true,it.front,isGCH,null,clr,{pitch:pitch,ends:['LEFT','RIGHT'],open:open.front&&!isGCH,
+  // Gable views are drawn as you stand OUTSIDE facing that wall (posRefName): the
+  // front with the Left Eave on your left, the back with the RIGHT Eave on your
+  // left — x (getPosItems) runs from the drawing's left corner on both.
+  html+=card('Front','front',dimElevSVG(W,H,peakH,true,it.front,isGCH,null,clr,{pitch:pitch,ends:['LEFT EAVE','RIGHT EAVE'],open:open.front&&!isGCH,
     sideLeans:eaveLTs.map(function(l){return {l:l,onLeft:l.side==='Left Eave',closed:l.walls.frontClosed};}),
     foot:gableLTs.filter(function(l){return l.side==='Front Gable';}).map(function(l){return {l:l,x0:l.start};})}));
-  html+=card('Back','back',dimElevSVG(W,H,peakH,true,it.back,false,null,clr,{pitch:pitch,ends:['LEFT','RIGHT'],open:open.back,
-    sideLeans:eaveLTs.map(function(l){return {l:l,onLeft:l.side==='Left Eave',closed:l.walls.backClosed};}),
+  html+=card('Back · seen from behind','back',dimElevSVG(W,H,peakH,true,it.back,false,null,clr,{pitch:pitch,ends:['RIGHT EAVE','LEFT EAVE'],open:open.back,
+    sideLeans:eaveLTs.map(function(l){return {l:l,onLeft:l.side==='Right Eave',closed:l.walls.backClosed};}),
     foot:gableLTs.filter(function(l){return l.side==='Back Gable';}).map(function(l){return {l:l,x0:l.start};})}));
   // End Storage partition doors (10/1/26): their own view, measured like the
   // Front view (seen from the front), placed only where the wall is drawn.
   if(_sp && _sp.on && _sp.kind==='end' && it.partition && it.partition.length){
     html+=card('Storage Partition (interior)'+(_sp.unset?'':' — '+_sp.depthFt+'′ from the '+_sp.end+' end')+' · seen from the front','partition',
-      dimElevSVG(W,H,peakH,true,it.partition,false,null,clr,{pitch:pitch,ends:['LEFT','RIGHT']}));
+      dimElevSVG(W,H,peakH,true,it.partition,false,null,clr,{pitch:pitch,ends:['LEFT EAVE','RIGHT EAVE']}));
   }
   // Eave views keep getPosItems' convention: Right Eave x runs from the FRONT
   // (front on the left of the drawing), Left Eave x from the BACK.
@@ -13477,8 +13514,9 @@ async function printContract(){
       var ti=(typeof getTrussInfo==='function')?getTrussInfo():null;
       if(!ti||!ti.spacing) return;
       var Sp=ti.spacing;
+      // Frames run from the FRONT gable (getTrussPositions; the front is the bottom of this plan).
       for(var z=Sp; z<L-0.01; z+=Sp){
-        var ty=by+z*scale;
+        var ty=by+bl-z*scale;
         s+='<line x1="'+(bx+wt)+'" y1="'+ty+'" x2="'+(bx+bw-wt)+'" y2="'+ty+'" stroke="#b6c4d4" stroke-width="1" stroke-dasharray="3,4"/>';
       }
       s+='<text x="'+(bx+bw-8)+'" y="'+(by+Sp*scale-4)+'" text-anchor="end" font-family="Arial" font-size="7.5" font-weight="700" fill="#8aa0b5" letter-spacing="0.5">TRUSS LINES — '+Sp+'′ OC</text>';
@@ -13495,6 +13533,7 @@ async function printContract(){
         x=(lt.side==='Left Eave')?bx-w2:bx+bw;
       } else {
         var runW=Math.min(lt.ll,W), ox=Math.max(0,Math.min(lt.off,W-runW));
+        if(lt.side==='Back Gable') ox=W-runW-ox; // back gable: starts from the right eave corner (seen from behind) = plan right
         x=bx+ox*scale; w2=runW*scale; h2=lt.lw*scale;
         y=(lt.side==='Back Gable')?by-h2:by+bl;
       }
@@ -13570,7 +13609,8 @@ async function printContract(){
     //   - RIGHT eave: item.x=0 = FRONT = bottom → fp = wallLen - item.x - item.w  (FLIP)
     function toFp(items, wallKey, wallLen){
       return items.map(function(it){
-        var fp = (wallKey==='right') ? (wallLen - it.x - it.w) : it.x;
+        // BACK gable: x runs from the RIGHT eave corner (seen from behind, posRefName) = plan right → flip too.
+        var fp = (wallKey==='right'||wallKey==='back') ? (wallLen - it.x - it.w) : it.x;
         return { fp: fp, size: it.w, type: it.type, w: it.w, h: it.h };
       });
     }
@@ -16176,7 +16216,7 @@ function bpLeanTos(lts,wt,ox,oy,wH,fw,sc){
   }
   return s;
 }
-function drawBlueprintWall(wt,fw,wh,items,wn,bw){var SW=540,MX=50,MT=38,MB=26,dW=SW-MX*2,sc=dW/fw,wH=wh*sc,ie=(wt==='front'||wt==='back'),rH=ie?(fw/2)*(_pitchRise()/12)*sc:0,rb=ie?0:Math.max(12,wH*.09),tH=wH+(ie?rH:rb),SH=Math.round(MT+tH+MB+15),ox=MX,oy=MT+tH,tOC=getTrussOC(),uid=wt+(Math.random()*9999|0);var s='<svg viewBox="0 0 '+SW+' '+SH+'" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto"><defs><pattern id="bp'+uid+'" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="9" cy="9" r=".55" fill="#162840" opacity=".9"/></pattern></defs><rect width="'+SW+'" height="'+SH+'" fill="#06101a"/><rect width="'+SW+'" height="'+SH+'" fill="url(#bp'+uid+')"/><rect x="3" y="3" width="'+(SW-6)+'" height="'+(SH-6)+'" fill="none" stroke="#1a3050" stroke-width="1.2"/>';s+='<g stroke="#1c3650" stroke-width=".6">';var gy=2;while(gy<wh){s+='<line x1="'+ox+'" y1="'+(oy-gy*sc)+'" x2="'+(ox+fw*sc)+'" y2="'+(oy-gy*sc)+'"/>';gy+=2;}s+='</g>';var trussX=[];var truss_oc=tOC;if(ie){s+='<g stroke="#1c3650" stroke-width=".6">';var sx=2;while(sx<fw){s+='<line x1="'+(ox+sx*sc)+'" y1="'+(oy-wH)+'" x2="'+(ox+sx*sc)+'" y2="'+oy+'"/>';sx+=2;}s+='</g>';s+='<g stroke="#4a7ba8" stroke-width="1.4" opacity=".75">';for(var px=truss_oc;px<fw;px+=truss_oc){var pxPos=ox+px*sc;s+='<line x1="'+pxPos+'" y1="'+(oy-wH)+'" x2="'+pxPos+'" y2="'+oy+'"/>';trussX.push(px);}s+='</g>';var rXmid=ox+fw/2*sc,rYmid=oy-wH-rH;s+='<g stroke="#3a6388" stroke-width=".7" opacity=".55">';for(var rrx=truss_oc;rrx<fw;rrx+=truss_oc){var rrxPos=ox+rrx*sc;var sideRY=oy-wH;s+='<line x1="'+rrxPos+'" y1="'+sideRY+'" x2="'+rXmid+'" y2="'+rYmid+'"/>';}s+='</g>';}else{s+='<g stroke="#4a7ba8" stroke-width="1.4" opacity=".75">';var tt=truss_oc;while(tt<fw){var ttPos=ox+tt*sc;s+='<line x1="'+ttPos+'" y1="'+(oy-wH)+'" x2="'+ttPos+'" y2="'+oy+'"/>';trussX.push(tt);tt+=truss_oc;}s+='</g>';s+='<g stroke="#3a6388" stroke-width=".6" opacity=".5">';for(var tnx=truss_oc;tnx<fw;tnx+=truss_oc){var tnxPos=ox+tnx*sc;s+='<line x1="'+tnxPos+'" y1="'+(oy-wH-rb)+'" x2="'+tnxPos+'" y2="'+(oy-wH)+'"/>';s+='<line x1="'+(tnxPos-4)+'" y1="'+(oy-wH-rb/2)+'" x2="'+(tnxPos+4)+'" y2="'+(oy-wH-rb/2)+'"/>';}s+='</g>';}if(wn){var wbH=2*sc;s+='<line x1="'+ox+'" y1="'+(oy-wbH)+'" x2="'+(ox+fw*sc)+'" y2="'+(oy-wbH)+'" stroke="#1fcec4" stroke-width="1.2" opacity=".6"/>';}items.forEach(function(it){var ix=ox+it.x*sc,iw=it.w*sc,ih=it.h*sc,iy;if(it.type==='win'){iy=oy-6.67*sc;ih=it.h*sc;s+='<rect x="'+ix+'" y="'+iy+'" width="'+iw+'" height="'+ih+'" fill="#06101a"/><rect x="'+ix+'" y="'+iy+'" width="'+iw+'" height="'+ih+'" fill="none" stroke="#4a90b8" stroke-width="1"/><line x1="'+ix+'" y1="'+iy+'" x2="'+(ix+iw)+'" y2="'+iy+'" stroke="#4a90b8" stroke-width="1.6"/><line x1="'+(ix+iw/2)+'" y1="'+iy+'" x2="'+(ix+iw/2)+'" y2="'+(iy+ih)+'" stroke="#253a5a" stroke-width=".7"/><line x1="'+ix+'" y1="'+(iy+ih/2)+'" x2="'+(ix+iw)+'" y2="'+(iy+ih/2)+'" stroke="#253a5a" stroke-width=".7"/>';}else{iy=oy-ih;s+='<rect x="'+ix+'" y="'+iy+'" width="'+iw+'" height="'+ih+'" fill="#06101a"/>';if(it.type==='rollup'){s+='<rect x="'+ix+'" y="'+iy+'" width="'+iw+'" height="'+ih+'" fill="none" stroke="#4a90b8" stroke-width="1"/><line x1="'+ix+'" y1="'+iy+'" x2="'+(ix+iw)+'" y2="'+iy+'" stroke="#4a90b8" stroke-width="1.8"/>';var pn=Math.max(5,Math.round(it.h/1.4));for(var p=1;p<pn;p++){s+='<line x1="'+ix+'" y1="'+(iy+(ih/pn)*p)+'" x2="'+(ix+iw)+'" y2="'+(iy+(ih/pn)*p)+'" stroke="#253a5a" stroke-width=".6"/>';}s+='<text x="'+(ix+iw/2)+'" y="'+(iy-3)+'" text-anchor="middle" fill="#3a7090" font-size="6.5" font-family="Arial">R.U.</text>';}else if(it.type==='wtd'){s+='<rect x="'+ix+'" y="'+iy+'" width="'+iw+'" height="'+ih+'" fill="none" stroke="#4a90b8" stroke-width="1"/><line x1="'+ix+'" y1="'+iy+'" x2="'+(ix+iw)+'" y2="'+iy+'" stroke="#4a90b8" stroke-width="1.8"/><text x="'+(ix+iw/2)+'" y="'+(iy-3)+'" text-anchor="middle" fill="#3a7090" font-size="6.5" font-family="Arial">W.D.</text>';}}var hits=trussX.filter(function(tp){return tp>it.x+0.05&&tp<it.x+it.w-0.05;});if(hits.length){var hITop=(it.type==='win')?(oy-6.67*sc):iy;s+='<line x1="'+(ix-3)+'" y1="'+(hITop-5)+'" x2="'+(ix+iw+3)+'" y2="'+(hITop-5)+'" stroke="#ff7a5c" stroke-width="2.4"/>';s+='<line x1="'+(ix-3)+'" y1="'+(hITop-5)+'" x2="'+(ix-3)+'" y2="'+(hITop-1)+'" stroke="#ff7a5c" stroke-width="1.5"/>';s+='<line x1="'+(ix+iw+3)+'" y1="'+(hITop-5)+'" x2="'+(ix+iw+3)+'" y2="'+(hITop-1)+'" stroke="#ff7a5c" stroke-width="1.5"/>';s+='<text x="'+(ix+iw/2)+'" y="'+(hITop-8)+'" text-anchor="middle" fill="#ffa088" font-size="6" font-weight="700" font-family="Arial" letter-spacing=".5">HEADER REQ\'D</text>';}});s+='<line x1="'+ox+'" y1="'+(oy-wH)+'" x2="'+ox+'" y2="'+oy+'" stroke="#9bc8e0" stroke-width="2.4"/><line x1="'+(ox+fw*sc)+'" y1="'+(oy-wH)+'" x2="'+(ox+fw*sc)+'" y2="'+oy+'" stroke="#9bc8e0" stroke-width="2.4"/><line x1="'+(ox-6)+'" y1="'+(oy-wH)+'" x2="'+(ox+fw*sc+6)+'" y2="'+(oy-wH)+'" stroke="#8ab8d0" stroke-width="1.8"/><line x1="'+ox+'" y1="'+oy+'" x2="'+(ox+fw*sc)+'" y2="'+oy+'" stroke="#8ab8d0" stroke-width="1.8"/>';if(ie){var rX=ox+fw/2*sc,rY=oy-wH-rH;s+='<line x1="'+ox+'" y1="'+(oy-wH)+'" x2="'+rX+'" y2="'+rY+'" stroke="#8ab8d0" stroke-width="1.5"/><line x1="'+rX+'" y1="'+rY+'" x2="'+(ox+fw*sc)+'" y2="'+(oy-wH)+'" stroke="#8ab8d0" stroke-width="1.5"/><circle cx="'+rX+'" cy="'+rY+'" r="2.5" fill="#1fcec4" opacity=".7"/>';}else{s+='<line x1="'+(ox-8)+'" y1="'+(oy-wH-rb)+'" x2="'+(ox+fw*sc+8)+'" y2="'+(oy-wH-rb)+'" stroke="#8ab8d0" stroke-width="1.5"/>';}s+='<line x1="'+(ox-10)+'" y1="'+oy+'" x2="'+(ox+fw*sc+10)+'" y2="'+oy+'" stroke="#1e3a55" stroke-width=".8" opacity=".7"/>';var dTY=oy-wH-(ie?rH:rb)-10;s+='<line x1="'+ox+'" y1="'+dTY+'" x2="'+(ox+fw*sc)+'" y2="'+dTY+'" stroke="#1c3858" stroke-width=".7"/><text x="'+(ox+fw*sc/2)+'" y="'+(dTY-2)+'" text-anchor="middle" fill="#2a5070" font-size="6.5" font-family="Arial">'+fw+"'</text>";var hX=ox-17;s+='<line x1="'+hX+'" y1="'+(oy-wH)+'" x2="'+hX+'" y2="'+oy+'" stroke="#1c3858" stroke-width=".7"/><text x="'+(hX-4)+'" y="'+(oy-wH/2)+'" text-anchor="middle" fill="#2a5070" font-size="6.5" font-family="Arial" transform="rotate(-90,'+(hX-4)+','+(oy-wH/2)+')">'+wh+"'</text>";var trussLbl=(truss_oc===4?'4\' O.C. FRAMING':'5\' O.C. FRAMING');s+='<text x="'+(SW-8)+'" y="'+(SH-8)+'" text-anchor="end" fill="#2a5878" font-size="6" font-family="Arial" letter-spacing="1">'+trussLbl+'</text>';var wL={front:'FRONT',back:'BACK',left:'LEFT EAVE',right:'RIGHT EAVE'};s+='<text x="'+(SW/2)+'" y="'+(SH-8)+'" text-anchor="middle" fill="#2a5878" font-size="7" font-family="Arial" letter-spacing="1.5">'+(wL[wt]||'VIEW')+'</text></svg>';return s;}
+function drawBlueprintWall(wt,fw,wh,items,wn,bw){var SW=540,MX=50,MT=38,MB=26,dW=SW-MX*2,sc=dW/fw,wH=wh*sc,ie=(wt==='front'||wt==='back'),rH=ie?(fw/2)*(_pitchRise()/12)*sc:0,rb=ie?0:Math.max(12,wH*.09),tH=wH+(ie?rH:rb),SH=Math.round(MT+tH+MB+15),ox=MX,oy=MT+tH,tOC=getTrussOC(),uid=wt+(Math.random()*9999|0);var s='<svg viewBox="0 0 '+SW+' '+SH+'" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto"><defs><pattern id="bp'+uid+'" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="9" cy="9" r=".55" fill="#162840" opacity=".9"/></pattern></defs><rect width="'+SW+'" height="'+SH+'" fill="#06101a"/><rect width="'+SW+'" height="'+SH+'" fill="url(#bp'+uid+')"/><rect x="3" y="3" width="'+(SW-6)+'" height="'+(SH-6)+'" fill="none" stroke="#1a3050" stroke-width="1.2"/>';s+='<g stroke="#1c3650" stroke-width=".6">';var gy=2;while(gy<wh){s+='<line x1="'+ox+'" y1="'+(oy-gy*sc)+'" x2="'+(ox+fw*sc)+'" y2="'+(oy-gy*sc)+'"/>';gy+=2;}s+='</g>';var trussX=[];var truss_oc=tOC;if(ie){s+='<g stroke="#1c3650" stroke-width=".6">';var sx=2;while(sx<fw){s+='<line x1="'+(ox+sx*sc)+'" y1="'+(oy-wH)+'" x2="'+(ox+sx*sc)+'" y2="'+oy+'"/>';sx+=2;}s+='</g>';s+='<g stroke="#4a7ba8" stroke-width="1.4" opacity=".75">';for(var px=truss_oc;px<fw;px+=truss_oc){var pxPos=ox+px*sc;s+='<line x1="'+pxPos+'" y1="'+(oy-wH)+'" x2="'+pxPos+'" y2="'+oy+'"/>';trussX.push(px);}s+='</g>';var rXmid=ox+fw/2*sc,rYmid=oy-wH-rH;s+='<g stroke="#3a6388" stroke-width=".7" opacity=".55">';for(var rrx=truss_oc;rrx<fw;rrx+=truss_oc){var rrxPos=ox+rrx*sc;var sideRY=oy-wH;s+='<line x1="'+rrxPos+'" y1="'+sideRY+'" x2="'+rXmid+'" y2="'+rYmid+'"/>';}s+='</g>';}else{s+='<g stroke="#4a7ba8" stroke-width="1.4" opacity=".75">';var tt=truss_oc;while(tt<fw){var _tx=(wt==='left')?fw-tt:tt;var ttPos=ox+_tx*sc;s+='<line x1="'+ttPos+'" y1="'+(oy-wH)+'" x2="'+ttPos+'" y2="'+oy+'"/>';trussX.push(_tx);tt+=truss_oc;}s+='</g>';s+='<g stroke="#3a6388" stroke-width=".6" opacity=".5">';for(var tnx=truss_oc;tnx<fw;tnx+=truss_oc){var tnxPos=ox+((wt==='left')?fw-tnx:tnx)*sc;s+='<line x1="'+tnxPos+'" y1="'+(oy-wH-rb)+'" x2="'+tnxPos+'" y2="'+(oy-wH)+'"/>';s+='<line x1="'+(tnxPos-4)+'" y1="'+(oy-wH-rb/2)+'" x2="'+(tnxPos+4)+'" y2="'+(oy-wH-rb/2)+'"/>';}s+='</g>';}if(wn){var wbH=2*sc;s+='<line x1="'+ox+'" y1="'+(oy-wbH)+'" x2="'+(ox+fw*sc)+'" y2="'+(oy-wbH)+'" stroke="#1fcec4" stroke-width="1.2" opacity=".6"/>';}items.forEach(function(it){var ix=ox+it.x*sc,iw=it.w*sc,ih=it.h*sc,iy;if(it.type==='win'){iy=oy-6.67*sc;ih=it.h*sc;s+='<rect x="'+ix+'" y="'+iy+'" width="'+iw+'" height="'+ih+'" fill="#06101a"/><rect x="'+ix+'" y="'+iy+'" width="'+iw+'" height="'+ih+'" fill="none" stroke="#4a90b8" stroke-width="1"/><line x1="'+ix+'" y1="'+iy+'" x2="'+(ix+iw)+'" y2="'+iy+'" stroke="#4a90b8" stroke-width="1.6"/><line x1="'+(ix+iw/2)+'" y1="'+iy+'" x2="'+(ix+iw/2)+'" y2="'+(iy+ih)+'" stroke="#253a5a" stroke-width=".7"/><line x1="'+ix+'" y1="'+(iy+ih/2)+'" x2="'+(ix+iw)+'" y2="'+(iy+ih/2)+'" stroke="#253a5a" stroke-width=".7"/>';}else{iy=oy-ih;s+='<rect x="'+ix+'" y="'+iy+'" width="'+iw+'" height="'+ih+'" fill="#06101a"/>';if(it.type==='rollup'){s+='<rect x="'+ix+'" y="'+iy+'" width="'+iw+'" height="'+ih+'" fill="none" stroke="#4a90b8" stroke-width="1"/><line x1="'+ix+'" y1="'+iy+'" x2="'+(ix+iw)+'" y2="'+iy+'" stroke="#4a90b8" stroke-width="1.8"/>';var pn=Math.max(5,Math.round(it.h/1.4));for(var p=1;p<pn;p++){s+='<line x1="'+ix+'" y1="'+(iy+(ih/pn)*p)+'" x2="'+(ix+iw)+'" y2="'+(iy+(ih/pn)*p)+'" stroke="#253a5a" stroke-width=".6"/>';}s+='<text x="'+(ix+iw/2)+'" y="'+(iy-3)+'" text-anchor="middle" fill="#3a7090" font-size="6.5" font-family="Arial">R.U.</text>';}else if(it.type==='wtd'){s+='<rect x="'+ix+'" y="'+iy+'" width="'+iw+'" height="'+ih+'" fill="none" stroke="#4a90b8" stroke-width="1"/><line x1="'+ix+'" y1="'+iy+'" x2="'+(ix+iw)+'" y2="'+iy+'" stroke="#4a90b8" stroke-width="1.8"/><text x="'+(ix+iw/2)+'" y="'+(iy-3)+'" text-anchor="middle" fill="#3a7090" font-size="6.5" font-family="Arial">W.D.</text>';}}var hits=trussX.filter(function(tp){return tp>it.x+0.05&&tp<it.x+it.w-0.05;});if(hits.length){var hITop=(it.type==='win')?(oy-6.67*sc):iy;s+='<line x1="'+(ix-3)+'" y1="'+(hITop-5)+'" x2="'+(ix+iw+3)+'" y2="'+(hITop-5)+'" stroke="#ff7a5c" stroke-width="2.4"/>';s+='<line x1="'+(ix-3)+'" y1="'+(hITop-5)+'" x2="'+(ix-3)+'" y2="'+(hITop-1)+'" stroke="#ff7a5c" stroke-width="1.5"/>';s+='<line x1="'+(ix+iw+3)+'" y1="'+(hITop-5)+'" x2="'+(ix+iw+3)+'" y2="'+(hITop-1)+'" stroke="#ff7a5c" stroke-width="1.5"/>';s+='<text x="'+(ix+iw/2)+'" y="'+(hITop-8)+'" text-anchor="middle" fill="#ffa088" font-size="6" font-weight="700" font-family="Arial" letter-spacing=".5">HEADER REQ\'D</text>';}});s+='<line x1="'+ox+'" y1="'+(oy-wH)+'" x2="'+ox+'" y2="'+oy+'" stroke="#9bc8e0" stroke-width="2.4"/><line x1="'+(ox+fw*sc)+'" y1="'+(oy-wH)+'" x2="'+(ox+fw*sc)+'" y2="'+oy+'" stroke="#9bc8e0" stroke-width="2.4"/><line x1="'+(ox-6)+'" y1="'+(oy-wH)+'" x2="'+(ox+fw*sc+6)+'" y2="'+(oy-wH)+'" stroke="#8ab8d0" stroke-width="1.8"/><line x1="'+ox+'" y1="'+oy+'" x2="'+(ox+fw*sc)+'" y2="'+oy+'" stroke="#8ab8d0" stroke-width="1.8"/>';if(ie){var rX=ox+fw/2*sc,rY=oy-wH-rH;s+='<line x1="'+ox+'" y1="'+(oy-wH)+'" x2="'+rX+'" y2="'+rY+'" stroke="#8ab8d0" stroke-width="1.5"/><line x1="'+rX+'" y1="'+rY+'" x2="'+(ox+fw*sc)+'" y2="'+(oy-wH)+'" stroke="#8ab8d0" stroke-width="1.5"/><circle cx="'+rX+'" cy="'+rY+'" r="2.5" fill="#1fcec4" opacity=".7"/>';}else{s+='<line x1="'+(ox-8)+'" y1="'+(oy-wH-rb)+'" x2="'+(ox+fw*sc+8)+'" y2="'+(oy-wH-rb)+'" stroke="#8ab8d0" stroke-width="1.5"/>';}s+='<line x1="'+(ox-10)+'" y1="'+oy+'" x2="'+(ox+fw*sc+10)+'" y2="'+oy+'" stroke="#1e3a55" stroke-width=".8" opacity=".7"/>';var dTY=oy-wH-(ie?rH:rb)-10;s+='<line x1="'+ox+'" y1="'+dTY+'" x2="'+(ox+fw*sc)+'" y2="'+dTY+'" stroke="#1c3858" stroke-width=".7"/><text x="'+(ox+fw*sc/2)+'" y="'+(dTY-2)+'" text-anchor="middle" fill="#2a5070" font-size="6.5" font-family="Arial">'+fw+"'</text>";var hX=ox-17;s+='<line x1="'+hX+'" y1="'+(oy-wH)+'" x2="'+hX+'" y2="'+oy+'" stroke="#1c3858" stroke-width=".7"/><text x="'+(hX-4)+'" y="'+(oy-wH/2)+'" text-anchor="middle" fill="#2a5070" font-size="6.5" font-family="Arial" transform="rotate(-90,'+(hX-4)+','+(oy-wH/2)+')">'+wh+"'</text>";var trussLbl=(truss_oc===4?'4\' O.C. FRAMING':'5\' O.C. FRAMING');s+='<text x="'+(SW-8)+'" y="'+(SH-8)+'" text-anchor="end" fill="#2a5878" font-size="6" font-family="Arial" letter-spacing="1">'+trussLbl+'</text>';var wL={front:'FRONT',back:'BACK',left:'LEFT EAVE',right:'RIGHT EAVE'};s+='<text x="'+(SW/2)+'" y="'+(SH-8)+'" text-anchor="middle" fill="#2a5878" font-size="7" font-family="Arial" letter-spacing="1.5">'+(wL[wt]||'VIEW')+'</text></svg>';return s;}
 function getBPItems(wt,W,L){var fw=(wt==='front'||wt==='back')?W:L,items=[];document.querySelectorAll('.re').forEach(function(el){var loc=el.querySelector('.rloc').value,wm=(loc==='Front Gable End'&&wt==='front')||(loc==='Back Gable End'&&wt==='back')||(loc==='Left Eave Side'&&wt==='left')||(loc==='Right Eave Side'&&wt==='right');if(!wm)return;var sz=(el.querySelector('.rsz').value||'10x8').split('x'),dW=parseFloat(sz[0])||10,dH=parseFloat(sz[1])||8,qty=parseInt(el.querySelector('.rqt').value)||1;var its=getPosItems(el,qty,dW,fw,dH,'rollup');var _is45=(el.querySelector('.r45')&&el.querySelector('.r45').value==='yes');its.forEach(function(it){if(_is45)it.angle45=true;items.push(it);});});document.querySelectorAll('.we').forEach(function(el){var loc=el.querySelector('.wloc').value,wm=(loc==='Front Gable End'&&wt==='front')||(loc==='Back Gable End'&&wt==='back')||(loc==='Left Eave Side'&&wt==='left')||(loc==='Right Eave Side'&&wt==='right');if(!wm)return;var its=getPosItems(el,(parseInt((el.querySelector('.wqt')||{}).value)||1),3,fw,6.67,'wtd');its.forEach(function(it){items.push(it);});});document.querySelectorAll('.ne').forEach(function(el){var loc=el.querySelector('.nloc').value,wm=(loc==='Front Gable End'&&wt==='front')||(loc==='Back Gable End'&&wt==='back')||(loc==='Left Eave Side'&&wt==='left')||(loc==='Right Eave Side'&&wt==='right');if(!wm)return;var qty=parseInt(el.querySelector('.nqt')?el.querySelector('.nqt').value:1)||1;var its=getPosItems(el,qty,2.5,fw,2.5,'win',winSillFt(el));its.forEach(function(it){items.push(it);});});return items;}
 function renderBlueprintViews(){adjustViewProportions();var W=parseInt(G('bw').value)||30,L=parseInt(G('bl').value)||40,H=parseInt(G('bh').value)||10,wn=G('wain')&&G('wain').value==='yes';var _bpLTs=collectLTsForViews();['front','back','right','left'].forEach(function(w){var fw=(w==='front'||w==='back')?W:L,el=G('bp-'+w);if(el)el.innerHTML=drawBlueprintWall(w,fw,H,getBPItems(w,W,L),wn,W,_bpLTs[w]);});}
 var _bvMode='color';function setBldViewMode(m){_bvMode=m;var cv=G('bld-views'),bv=G('bld-blueprint-views'),cb=G('bvt-color'),bb=G('bvt-bp');if(m==='color'){if(cv)cv.style.display='grid';if(bv)bv.style.display='none';if(cb)cb.classList.add('active');if(bb)bb.classList.remove('active');renderBuildingViews();}else{if(cv)cv.style.display='none';if(bv)bv.style.display='grid';if(cb)cb.classList.remove('active');if(bb)bb.classList.add('active');renderBlueprintViews();}}
@@ -16431,7 +16471,7 @@ function runTrussChecks(){
       var hits = checkTrussHitFromFront(distFromFront, itemW, L);
       if(hits.length > 0){ hitCount++; allHits = allHits.concat(hits); }
     }
-    setTrussState(el, hitCount > 0, allHits);
+    setTrussState(el, hitCount > 0, allHits, 'from the front gable'); // eave frames: getTrussPositions, from the front
     if(wsfEl) autoSetSfByTruss(wsfEl, hitCount, qty);
   });
 
@@ -16472,7 +16512,7 @@ function runTrussChecks(){
       var hits = checkTrussHitFromFront(distFromFront, itemW, L);
       if(hits.length > 0){ hitCount++; allHits = allHits.concat(hits); }
     }
-    setTrussState(el, hitCount > 0, allHits);
+    setTrussState(el, hitCount > 0, allHits, 'from the front gable'); // eave frames: getTrussPositions, from the front
     if(nsfEl) autoSetSfByTruss(nsfEl, hitCount, qty);
   });
 
@@ -16523,7 +16563,7 @@ function runTrussChecks(){
       var hits = checkTrussHitFromFront(distFromFront, itemW, L);
       if(hits.length > 0){ hitCount++; allHits = allHits.concat(hits); }
     }
-    setTrussState(el, hitCount > 0, allHits);
+    setTrussState(el, hitCount > 0, allHits, 'from the front gable'); // eave frames: getTrussPositions, from the front
     foSfVis(el); // re-applies the wide-CCI "included" rule on every recalc
     var _foWideCCI=(typeof ACTIVE_MFR!=='undefined'&&ACTIVE_MFR==='CCI')&&(parseInt(G('bw').value)||0)>30;
     if(_foWideCCI){ if(sfEl) sfEl.value='0'; }
@@ -16628,7 +16668,7 @@ function autoSetSfByTruss(sfEl, hitCount, maxQty){
   sfEl.value = String(hitCount);
 }
 
-function setTrussState(el, isHit, hitPositions){
+function setTrussState(el, isHit, hitPositions, ref){
   // Show/hide red warning only — no separate header checkbox (headers are counted via Side Frame dropdown)
   var warn = el.querySelector('.truss-warn');
   if(!warn){
@@ -16644,7 +16684,7 @@ function setTrussState(el, isHit, hitPositions){
   if(isHit){
     var oc = getTrussOC();
     warn.style.display = 'block';
-    warn.innerHTML = '\u26A0\uFE0F Truss collision at '+hitPositions.map(function(p){return p+"'";}).join(', ')+' ('+oc+"' OC) \u2014 side frame auto-set";
+    warn.innerHTML = '\u26A0\uFE0F Truss collision at '+hitPositions.map(function(p){return p+"'";}).join(', ')+(ref?' '+ref:'')+' ('+oc+"' OC) \u2014 side frame auto-set";
   } else {
     warn.style.display = 'none';
   }
@@ -16671,6 +16711,17 @@ rc = function(){
   _origRC2();
   } finally { _ovlPassDepth--; if(!_ovlPassDepth) _ovlPassModel=null; }
 };
+
+// Owner 10/5/26: a frame-out typed at 9' printed at 4'6". Chrome / the desktop
+// app step a FOCUSED number box on every mouse-wheel notch (step 0.5' on the
+// position boxes), so scrolling the panel with the pointer still over the box
+// just typed in silently rewrote the position — and re-priced its side frame.
+// The wheel never changes a number box now: the box lets go of focus and the
+// panel scrolls as usual. Typing and the arrow keys work exactly as before.
+document.addEventListener('wheel', function(e){
+  var t=e.target;
+  if(t && t.tagName==='INPUT' && t.type==='number' && document.activeElement===t) t.blur();
+}, {capture:true, passive:true});
 
 // Also hook into position changes on eave sides
 document.querySelector('.left').addEventListener('input', function(e){
@@ -16720,7 +16771,8 @@ drawBlueprintWall = function(wt, fw, wh, items, wn, bw, lts){
   var markers = '';
   if(wt === 'left' || wt === 'right'){
     var trusses = [];
-    for(var t = oc; t < fw; t += oc) trusses.push(t);
+    // Frames run from the FRONT gable; the Left Eave view has the BACK on its left.
+    for(var t = oc; t < fw; t += oc) trusses.push(wt === 'left' ? fw - t : t);
     items.forEach(function(item){
       var ix = item.x, iw = item.w;
       trusses.forEach(function(t){
@@ -17831,7 +17883,7 @@ body.s5-new .s5-card .row select option{background:var(--d4);color:var(--tx)}
 body.s5-new .s5-card ::placeholder{color:#5f7385;font-weight:400}
 /* positions */
 body.s5-new .s5-card .pos-section{padding:0;display:flex;flex-direction:column;gap:6px}
-body.s5-new .s5-card .pos-section:not(:empty)::before{content:"Position on the wall — leave blank for auto";font-size:12.5px;font-weight:500;color:var(--sb);margin-bottom:1px}
+body.s5-new .s5-card .pos-section:not(:empty)::before{content:"Position — feet from the end you pick to the near edge of the opening (blank = auto)";font-size:12.5px;font-weight:500;color:var(--sb);margin-bottom:1px}
 body.s5-new .s5-card .pos-row{margin:0;gap:6px;font-size:13px;flex-wrap:wrap}
 body.s5-new .s5-card .pos-row label{width:auto;min-width:44px;font-size:13px;color:var(--tx)}
 body.s5-new .s5-card .pos-row input[type=number]{width:70px;min-height:36px;padding:6px 9px;background:var(--d);border:1px solid var(--bv);border-radius:6px;font-size:14px;color:var(--tx)}
@@ -18009,11 +18061,13 @@ function linePrice(el,k){
 /* ---------- describe one entry from its real fields ---------- */
 function posText(el){
   var rows=el.querySelectorAll('.pos-section .pos-row'); if(!rows.length) return '';
-  var parts=[], anySet=false;
+  var parts=[], anySet=false, locEl=el.querySelector('.wloc, .nloc, .rloc, .fo-loc'), loc=locEl?locEl.value:'';
   Array.prototype.forEach.call(rows,function(r){
     var inp=r.querySelector('input'), b=r.querySelector('.pos-toggle button.active');
     var v=inp?inp.value:'';
-    if(v===''){ parts.push('auto'); } else { anySet=true; parts.push(ft(v)+' '+(b?b.textContent.trim().toLowerCase():'')); }
+    // The program's one definition (posRefName): feet from the named end to the opening's near edge.
+    if(v===''){ parts.push('auto'); }
+    else { anySet=true; parts.push(ft(v)+' from '+(typeof window.posRefName==='function'?window.posRefName(loc,b?b.dataset.side:'left')+' to near edge':(b?b.textContent.trim().toLowerCase():''))); }
   });
   if(!anySet) return rows.length>1?'auto-spaced':'auto position';
   return parts.join(', ');

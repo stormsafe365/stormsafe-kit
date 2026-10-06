@@ -5308,6 +5308,9 @@ var CCI_GA12_V=[410,530,650,770,890,940,1060,1180,1300,1420,1540,1660,1780,1830,
 // Attached: the LOW leg (continuous-roof lean-tos use their auto-computed
 // .lth-cont value, e.g. 8'10"). Free-standing: low / high legs.
 function _ltFtIn(v){ return _dimFtIn(v); } // one dimension formatter (10/6/26)
+// A lean-to frame-out size on the quote / contract rows: whole feet stay "9x8'" (as before); anything else
+// prints in feet-inches to the 1/8" (a typed 6.6667 was printed "6.6667'") - text only, never the price.
+function _ltFoSzTxt(w,h){ return (w===Math.round(w)&&h===Math.round(h))?(w+'x'+h+"'"):(_dimFtIn(w)+' x '+_dimFtIn(h)); }
 function _ltLegTxt(el){
   var free=((el.querySelector('.lt-type')||{}).value==='freestanding');
   var cont=((el.querySelector('.ltst')||{}).value==='cont');
@@ -11996,8 +11999,8 @@ async function printQuote(){
           var afoH2=parseFloat(ae.querySelector('.lt-acc-fo-h')&&ae.querySelector('.lt-acc-fo-h').value)||10;
           var afoKey2=(ae.querySelector('.lt-acc-fo-type')||{}).value||'';
           var afp=ltAccFoUnitPrice(ae, aloc);
-          var afoLbl=afoKey2?afoKey2.replace('Framed Opening — ',''):(afoW2+'x'+afoH2+"' opening");
-          var afoSz=(ltFoDefaults(afoKey2).noRender)?'':' '+afoW2+'x'+afoH2+"'";
+          var afoLbl=afoKey2?afoKey2.replace('Framed Opening — ',''):(_ltFoSzTxt(afoW2,afoH2)+' opening');
+          var afoSz=(ltFoDefaults(afoKey2).noRender)?'':' '+_ltFoSzTxt(afoW2,afoH2);
           if(afp) rows+=row('  Lean-To: Framed Opening — '+afoLbl+afoSz+' ('+alocLabel+')',aqty,afp,afp*aqty);
         }
         // Side frames (wtd / win / frameout on the outer wall, truss auto-set)
@@ -13341,8 +13344,8 @@ async function printContract(){
           var afoH2=parseFloat(ae.querySelector('.lt-acc-fo-h')&&ae.querySelector('.lt-acc-fo-h').value)||10;
           var afoKey2=(ae.querySelector('.lt-acc-fo-type')||{}).value||'';
           var afp=ltAccFoUnitPrice(ae, aloc);
-          var afoLbl=afoKey2?afoKey2.replace('Framed Opening — ',''):(afoW2+'x'+afoH2+"' opening");
-          var afoSz=(ltFoDefaults(afoKey2).noRender)?'':' '+afoW2+'x'+afoH2+"'";
+          var afoLbl=afoKey2?afoKey2.replace('Framed Opening — ',''):(_ltFoSzTxt(afoW2,afoH2)+' opening');
+          var afoSz=(ltFoDefaults(afoKey2).noRender)?'':' '+_ltFoSzTxt(afoW2,afoH2);
           if(afp) row('  Lean-To: Framed Opening — '+afoLbl+afoSz+' ('+alocLabel+')',aqty,afp,afp*aqty);
         }
         // Side frames (wtd / win / frameout on the outer wall, truss auto-set)

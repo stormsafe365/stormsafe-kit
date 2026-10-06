@@ -1,0 +1,124 @@
+WIX SEO SETTINGS: Hurricane Rated Steel Buildings page
+
+Embed website address:
+https://stormsafe365.github.io/customize/hurricane-rated.html
+
+Embed size: desktop W 980 / H 8520 (X = 0)   |   mobile H 11750
+
+SEO title (Page Settings > SEO basics):
+Hurricane-Rated Steel Buildings in Florida | StormSafe Steel
+
+Meta description:
+Steel buildings engineered to 150 or 170 mph, certified to Florida code. Check your city's wind speed and see how a hurricane-rated build goes together.
+
+URL slug: leave as hurricane-rated-steel-buildings
+
+Structured data (Page Settings > SEO > Advanced SEO > Structured data markup > Add new markup > Custom), paste everything below:
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "HomeAndConstructionBusiness",
+      "@id": "https://www.stormsafesteel.com/#business",
+      "name": "StormSafe Steel",
+      "url": "https://www.stormsafesteel.com/",
+      "telephone": "+1-561-771-5555",
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "West Palm Beach",
+        "addressRegion": "FL",
+        "addressCountry": "US"
+      },
+      "areaServed": {
+        "@type": "State",
+        "name": "Florida"
+      },
+      "description": "Custom hurricane-rated steel buildings: garages, carports, RV covers, commercial, agricultural and custom builds, engineered for Florida wind codes."
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://www.stormsafesteel.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Buildings",
+          "item": "https://www.stormsafesteel.com/buildings"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Hurricane-Rated Steel Buildings",
+          "item": "https://www.stormsafesteel.com/hurricane-rated-steel-buildings"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://www.stormsafesteel.com/hurricane-rated-steel-buildings#faq",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What does \"hurricane-rated\" actually mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Your building is engineered and certified to a design wind speed: 150 mph on our Standard frame, 170 mph on High-Wind. The engineering drawings are stamped for your county, and that's what your permit office reviews."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is a 170 mph building rated for a Category 5?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The two scales don't line up one-to-one. Building codes rate wind as a 3-second gust, while the hurricane category scale uses 1-minute sustained wind, which reads lower for the same storm. The number that matters is your county's code design wind speed, and your building's rating has to meet or beat it."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What wind rating do I need?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "It depends on your exact location. West Palm Beach is 169 mph, Stuart 162, Tampa 141 and Orlando 137 (ASCE 7-22, Risk Category II). Use the city check at the top of this page. If your code number is over 150, you need High-Wind framing."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need engineered plans for a permit?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "In hurricane-prone Florida counties, yes. Every StormSafe building comes with engineered drawings for your county's wind zone, ready for permitting."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need impact-rated doors and windows?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "In coastal impact counties, yes. We spec Hi-Impact rated windows and walk doors there automatically, so your build passes the first time."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need a concrete slab?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Concrete gets wedge anchors at every post. Without a slab, 30\" helical earth augers bolt through the base rail. Your drawings call out the anchoring for your site."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I customize a hurricane-rated building?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Size, doors, windows, colors and insulation are all yours to pick. The rating comes from the frame and anchoring, so you can configure freely and the engineering follows."
+          }
+        }
+      ]
+    }
+  ]
+}

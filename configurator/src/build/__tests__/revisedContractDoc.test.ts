@@ -42,7 +42,7 @@ function grabVar(name: string): string {
   return m[0].replace(/\/\/.*$/, '') + '\n';
 }
 
-const FNS = ['rvMoney', 'rvTotal', 'rvDate', 'rvKind', 'rvPos', 'rvMoveText', 'rvCap', 'rvLine', 'rvLineHTML', 'rvAgreementTitle', 'rvBoxHTML',
+const FNS = ['rvBalance', 'rvMoney', 'rvTotal', 'rvDate', 'rvKind', 'rvPos', 'rvMoveText', 'rvCap', 'rvLine', 'rvLineHTML', 'rvAgreementTitle', 'rvBoxHTML',
   'rvPayRowsHTML', 'rvRowAttr', 'rvRowTag', 'rvOldAmt', 'rvRemovedRowsHTML', 'rvSummaryHTML', 'rvTagRow', '_dim8', '_dimFtIn', 'posRefName', '_esc', 'fC', 'fD'];
 const ctx = vm.createContext({});
 vm.runInContext(grabVar('RV_BOX_MAX') + grabVar('RV_TAGS') + FNS.map(grabFn).join(''), ctx);
@@ -51,6 +51,7 @@ const P = ctx as unknown as {
   rvLine: (l: Line) => { kind: string; sym: string; verb: string; text: string; amt: number | null };
   rvBoxHTML: (o: Record<string, unknown>) => string;
   rvPayRowsHTML: (o: Record<string, unknown>) => string;
+  rvBalance: (t: number, d: number, p: number) => { paid: number; additional: number; balance: number; refund: number };
   rvRemovedRowsHTML: (doc: unknown) => string;
   rvSummaryHTML: (o: Record<string, unknown>) => string;
   rvRowTag: (it: unknown) => string;
@@ -158,10 +159,22 @@ describe('REVISED CONTRACT box', () => {
 
 describe('payment summary + itemized rows', () => {
   it('Original contract total → Changes → Revised total → Deposit already paid → New balance due', () => {
-    const p = text(P.rvPayRowsHTML({ doc: DOC, origTot: 21962.63, revTot: 17622.63, paid: 3506 }));
+    const p = text(P.rvPayRowsHTML({ doc: DOC, origTot: 21962.63, revTot: 17622.63, dep: 2813, paid: 3506 }));
     expect(p).toBe('Original contract total $21,962.63 Changes −$4,340.00 Revised contract total $17,622.63 Deposit already paid −$3,506.00 New balance due $14,116.63');
-    const u = text(P.rvPayRowsHTML({ doc: { ...DOC, signed: false }, origTot: 1000, revTot: 1200, paid: 0 }));
-    expect(u).toBe('Original quote total $1,000.00 Changes +$200.00 Revised contract total $1,200.00 New balance due $1,200.00');
+    const u = text(P.rvPayRowsHTML({ doc: { ...DOC, signed: false }, origTot: 1000, revTot: 1200, dep: 204, paid: 0 }));
+    expect(u).toBe('Original quote total $1,000.00 Changes +$200.00 Revised contract total $1,200.00 Additional deposit due now −$204.00 New balance due (at scheduling) $996.00');
+  });
+  it('one balance rule: paid money is credited; overpaid → refund, never a negative balance', () => {
+    // price decrease, paid more than the revised deposit: the excess comes off the balance
+    expect({ ...P.rvBalance(17622.63, 2813, 3506) }).toEqual({ paid: 3506, additional: 0, balance: 14116.63, refund: 0 });
+    // price increase: the rest of the deposit is due now; the balance is what is left after it
+    expect({ ...P.rvBalance(25000, 4000, 3506) }).toEqual({ paid: 3506, additional: 494, balance: 21000, refund: 0 });
+    // paid more than the whole revised total
+    expect({ ...P.rvBalance(3000, 500, 3506) }).toEqual({ paid: 3506, additional: 0, balance: 0, refund: 506 });
+    const r = text(P.rvPayRowsHTML({ doc: DOC, origTot: 3700, revTot: 3000, dep: 500, paid: 3506 }));
+    expect(r).toContain('New balance due $0.00 Refund due to buyer $506.00');
+    const g = text(P.rvPayRowsHTML({ doc: DOC, origTot: 20000, revTot: 25000, dep: 4000, paid: 3506 }));
+    expect(g).toContain('Deposit already paid −$3,506.00 Additional deposit due now −$494.00 New balance due (at scheduling) $21,000.00');
   });
   it('ADDED rows: light green tint + tag; CHANGED: previous amount struck → new; plain rows untouched', () => {
     expect(P.rvRowAttr({ hl: false })).toBe('');
@@ -209,5 +222,9 @@ describe('printContract wiring', () => {
     expect(src).toContain('rowsHTML+=rvRemovedRowsHTML(_ssRvDoc)');
     expect(src).toContain("_header('Change Summary','')+rvSummaryHTML(");
     expect(src).not.toContain('Added items are highlighted below');
+    // the right box uses the same balance rule as the left (paid money credited, refund line)
+    expect(src).toContain('fD(_rvBalC?_rvBalC.balance:bal)');
+    expect(src).toContain('Refund Due to Buyer');
+    expect(src).toContain('rvBalance(tot-addDiscAmountPrint,dep,_rvDepPaid).additional');
   });
 });

@@ -22,6 +22,7 @@ import type { BuildingType, EndSheeting, FoundationType, OpeningType, WallOverri
 import { leanToWalkDoorLook, leanToWindowLook, readLeanToStorage, type ProgramTypeRow } from './leanToAccessory';
 import { NO_STORAGE, partitionLocationAllowed, readMainStorage } from './mainStorage';
 import { gableLeanToOffset3D, offset3DToProgramX, programXTo3DOffset, programXToTyped, typedValueText } from './positionMap';
+import { dimQ } from '@/three/dimLabels';
 import { spreadAutoOverlaps } from '@/engine/autoSpread';
 
 // Cache-bust the pricing iframe on the WEB (CRM embed) so a redeploy shows up
@@ -389,8 +390,9 @@ type BuilderWindow = Window & {
  *
  * To keep multi-quantity rows stable, ALL items in the dragged entry are frozen
  * to their current 3D positions (written explicitly) — so moving one no longer
- * re-auto-spaces its siblings. Positions snap to the nearest inch (exact enough
- * for a quote; matches what the drag shows).
+ * re-auto-spaces its siblings. The drag itself put the opening a whole-inch gap
+ * from its nearest neighbour (wallFit snapGapInto); the number written is that
+ * exact spot on the 1/8" grid, so every printout shows what the drag showed.
  */
 function writeBackDrag(win: BuilderWindow, id: string | null) {
   const map = win.__ssOpenMap;
@@ -423,7 +425,7 @@ function writeBackDrag(win: BuilderWindow, id: string | null) {
     const keep: 'left' | 'right' = active?.dataset.side === 'right' ? 'right' : 'left';
     const x = offset3DToProgramX(sib.loc, op.offset, op.width, sib.face);
     const input = row.querySelector('input') as HTMLInputElement | null;
-    if (input) input.value = typedValueText(programXToTyped(sib.loc, x, op.width, sib.face, keep)); // nearest inch, tidy "4.333"
+    if (input) input.value = typedValueText(programXToTyped(sib.loc, x, op.width, sib.face, keep)); // 1/8" grid, tidy "4.3333"
     row.querySelectorAll('.pos-toggle button').forEach((b) => {
       const btn = b as HTMLElement;
       btn.classList.toggle('active', btn.dataset.side === keep);
@@ -485,8 +487,8 @@ function writeBackLeanToOpening(win: BuilderWindow, id: string | null) {
     const pos =
       partXs && sib.oid !== id && Number.isFinite(partXs[sib.itemIndex])
         ? partXs[sib.itemIndex] // not dragged: where the program has it
-        : Math.max(0, Math.round((op.offsetFt - op.widthFt / 2) * 12) / 12); // nearest inch
-    input.value = String(Number(pos.toFixed(3)));
+        : op.offsetFt - op.widthFt / 2; // the 3D drag already put it a whole-inch gap from its neighbour (snapGapInto)
+    input.value = typedValueText(pos); // 1/8" grid, read back exactly
     input.dispatchEvent(new Event('input', { bubbles: true }));
     wrote = true;
   }
@@ -661,6 +663,11 @@ function readLeanTos(win: Window & { document: Document }): LeanToRead[] {
         const ltSill = parseFloat(strVal(ae, '.lt-acc-fo-sill'));
         sill = foType.includes('Window') ? (Number.isFinite(ltSill) && ltSill >= 0 ? ltSill : 4.16667) : 0;
       }
+      // The 1/8" grid the program draws and prints on (its ltPartDims / dimQ,
+      // owner 10/6/26): 6.67 ft is 80", 4.16667 ft is 50", a 3.02 ft frame-out 36¼".
+      w = dimQ(w);
+      h = dimQ(h);
+      sill = dimQ(sill);
       // Wall the opening sits on determines the run length it's positioned along
       // (the partition runs across the lean-to like an end wall: its width —
       // the program's ltAccWallLen).

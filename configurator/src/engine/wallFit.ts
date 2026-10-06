@@ -35,8 +35,8 @@ export function wallSpotOk(center: number, width: number, len: number, siblings:
 
 /**
  * Where a DRAGGED opening may go: the valid spot nearest the pointer
- * (`rawCenter`), its left edge on a whole inch (the program stores a drag as the
- * nearest-inch left edge, so the stored spot is valid too). No valid spot on the
+ * (`rawCenter`), a whole-inch gap to its nearest neighbour (snapGapInto; the
+ * program stores the drag on the same 1/8" grid, so the stored spot is valid too). No valid spot on the
  * wall -> stays at `currentCenter` (nothing moves, nothing is written back).
  */
 export function clampWallCenter(rawCenter: number, width: number, len: number, siblings: WallSpan[], currentCenter: number): number {
@@ -60,24 +60,59 @@ export function clampWallCenter(rawCenter: number, width: number, len: number, s
     }
     ivs = next;
   }
-  // Whole inches, rounded INTO each interval.
-  const snapped = ivs
-    .map(([p, q]) => [Math.ceil(p * 12 - 1e-6) / 12, Math.floor(q * 12 + 1e-6) / 12] as [number, number])
-    .filter(([p, q]) => q >= p - 1e-9);
-  if (!snapped.length) return currentCenter;
-  const rawX = rawCenter - w / 2;
-  const want = Math.round(rawX * 12) / 12;
-  let best = snapped[0][0];
+  // Whole-inch GAP to the nearest neighbour (owner 10/6/26 — see snapGapInto).
+  const best = snapGapInto(ivs, rawCenter - w / 2, w, len, siblings);
+  return best === null ? currentCenter : best + w / 2;
+}
+
+/**
+ * Where a dragged opening's LEFT EDGE settles inside the allowed intervals
+ * `ivs`: the edge facing its NEAREST neighbour (another opening, or the wall
+ * end) sits a WHOLE INCH from it (owner 10/6/26: "still showing 8' 11.75
+ * instead of 9'"). Snapping the left edge to the inch from the wall start
+ * (as before) left a fractional gap beside any opening whose width isn't a
+ * whole inch (a 36¼" window): the 3D said 9' while every printout said
+ * 8'11.75". Rule bounds (1' from a corner / a sibling) are whole-inch gaps
+ * themselves, so a spot is always found when the interval is an inch wide.
+ * Every edge in the program is on the 1/8" grid, so the result is too.
+ * null = no allowed spot.
+ */
+export function snapGapInto(ivs: Array<[number, number]>, rawX: number, w: number, len: number, siblings: WallSpan[]): number | null {
+  const T = 1e-6;
+  const sib = siblings.filter((s) => s.width > 0);
+  const facingRight = [0, ...sib.map((s) => s.offset + s.width / 2)]; // edges a gap to our LEFT is measured from
+  const facingLeft = [len, ...sib.map((s) => s.offset - s.width / 2)]; // edges a gap to our RIGHT is measured from
+  const snapIn = (x: number, p: number, q: number): number | null => {
+    const eL = Math.max(...facingRight.filter((a) => a <= x + T), -Infinity);
+    const eR = Math.min(...facingLeft.filter((a) => a >= x + w - T), Infinity);
+    const useL = isFinite(eL) && (!isFinite(eR) || x - eL <= eR - (x + w));
+    if (!useL && !isFinite(eR)) return null;
+    const g = useL ? (x - eL) * 12 : (eR - x - w) * 12;
+    const at = (gi: number) => (useL ? eL + gi / 12 : eR - w - gi / 12);
+    for (const gi of [Math.round(g), Math.floor(g + T), Math.ceil(g - T)]) {
+      const c = at(gi);
+      if (c >= p - T && c <= q + T) return c;
+    }
+    // An allowed stretch narrower than an inch: the nearest 1/8" spot in it.
+    const lo8 = Math.ceil((p - T) * 96) / 96;
+    const hi8 = Math.floor((q + T) * 96) / 96;
+    return lo8 <= hi8 + T ? Math.min(hi8, Math.max(lo8, Math.round(x * 96) / 96)) : null;
+  };
+  let best: number | null = null;
   let bestD = Infinity;
-  for (const [p, q] of snapped) {
-    const x = Math.max(p, Math.min(q, want));
-    const d = Math.abs(x - rawX);
-    if (d < bestD - 1e-9) {
-      bestD = d;
-      best = x;
+  for (const [p, q] of ivs) {
+    if (q < p - 1e-9) continue;
+    for (const c0 of [Math.max(p, Math.min(q, rawX)), p, q]) {
+      const c = snapIn(c0, p, q);
+      if (c === null) continue;
+      const d = Math.abs(c - rawX);
+      if (d < bestD - 1e-9) {
+        bestD = d;
+        best = c;
+      }
     }
   }
-  return best + w / 2;
+  return best;
 }
 
 /**

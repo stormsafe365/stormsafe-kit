@@ -48,6 +48,8 @@ const constLine = HTML.match(/var LT_PART_CLR=[^;]+;/);
 type ProgItem = { ae: unknown; x: number; w: number; h: number; sill: number; kind: 'door' | 'win'; what: string; n: number; i: number };
 const program = new Function(
   `${constLine ? constLine[0] : ''}
+   ${programFn('dimQ')}
+   ${programFn('_dim8')}
    ${programFn('_dimFtIn')}
    ${programFn('_ltPartIn')}
    ${programFn('_ltPartFt')}
@@ -269,22 +271,23 @@ describe('partition fit — 3D drag clamp (clampPartitionCenter)', () => {
         : t === 'walkDoor' ? op({ type: t, widthFt: 3, heightFt: 6.67 })
         : t === 'window' ? op({ type: t, widthFt: 2.5, heightFt: rnd() < 0.5 ? 2.5 : 3, sillFt: 4.16667 })
         : op({ type: t, widthFt: 2 + Math.round(rnd() * 16) / 2, heightFt: 2 + Math.round(rnd() * 16) / 2, sillFt: rnd() < 0.3 ? 4.17 : 0 });
-      const sibs = rnd() < 0.5 ? [op({ id: 's', type: 'walkDoor', widthFt: 3, heightFt: 6.67, offsetFt: 1.5 + rnd() * (len - 3) })] : [];
+      // siblings sit where the program puts them: on the 1/8" grid (dimQ, 10/6/26)
+      const sibs = rnd() < 0.5 ? [op({ id: 's', type: 'walkDoor', widthFt: 3, heightFt: 6.67, offsetFt: Math.round((1.5 + rnd() * (len - 3)) * 96) / 96 })] : [];
       const cur = rnd() * len;
       const c = clampPartitionCenter(rnd() * (len + 6) - 3, o, g, sibs, cur);
       checked++;
       if (c === cur) {
-        // Stayed put: then there is no valid whole-inch spot at all.
+        // Stayed put: then there is no valid spot on the 1/8" grid at all.
         let any = false;
-        for (let xi = 0; xi <= len * 12 && !any; xi++) any = partitionSpotOk(xi / 12 + o.widthFt / 2, o, g, sibs);
+        for (let xi = 0; xi <= len * 96 && !any; xi++) any = partitionSpotOk(xi / 96 + o.widthFt / 2, o, g, sibs);
         expect(any).toBe(false);
         continue;
       }
       moved++;
       expect(partitionSpotOk(c, o, g, sibs)).toBe(true);
       expect(programOk(g, o, c, sibs)).toBe(true);
-      // The program stores the drag as the left edge to 3 decimals (writeBackLeanToOpening): still valid there.
-      const stored = Number((Math.round((c - o.widthFt / 2) * 12) / 12).toFixed(3)) + o.widthFt / 2;
+      // The program stores the drag as the left edge on the 1/8" grid, 4 decimals (typedValueText): still valid there.
+      const stored = Number((Math.round((c - o.widthFt / 2) * 96) / 96).toFixed(4)) + o.widthFt / 2;
       expect(programOk(g, o, stored, sibs)).toBe(true);
     }
     expect(checked).toBe(4000);

@@ -54,10 +54,15 @@ export function programXToTyped(loc: string, x: number, w: number, face: number,
   return eff === 'right' ? face - x - w : x;
 }
 
-/** Nearest inch, never negative; tidy input text ("4.333", not "4.33333333"). */
+/**
+ * The text a 3D drag writes into a position box: the 1/8" grid every
+ * dimension lives on (owner 10/6/26), never negative, 4 decimals — enough
+ * that the program reads it back to the exact 1/8" (1/8" = 0.0104 ft):
+ * 4'4" -> "4.3333", 60'7¾" -> "60.6458", 9' -> "9".
+ */
 export function typedValueText(ft: number): string {
-  const v = Math.max(0, Math.round(ft * 12) / 12);
-  return String(Number(v.toFixed(3)));
+  const v = Math.max(0, Math.round(ft * 96) / 96);
+  return String(Number(v.toFixed(4)));
 }
 
 /**

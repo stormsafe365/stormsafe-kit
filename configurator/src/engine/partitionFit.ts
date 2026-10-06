@@ -7,6 +7,7 @@ import {
   LT_PARTITION_WINDOW_HEADER_FT as WIN_HDR,
   LT_PARTITION_EPS_FT as EPS,
 } from '@/config/constants';
+import { snapGapInto } from './wallFit';
 
 /**
  * Lean-to STORAGE PARTITION fit rules in the 3D (owner 9/30/26: "same spacing
@@ -101,8 +102,8 @@ export function partitionSpotOk(
 
 /**
  * Where a DRAGGED partition opening may go: the valid spot nearest the pointer
- * (`rawCenter`), with its left edge on a whole inch (the program stores the
- * drag as the nearest-inch left edge, so the stored spot is valid too). No
+ * (`rawCenter`), a whole-inch gap to its nearest neighbour (wallFit
+ * snapGapInto; the program stores the drag on the same 1/8" grid). No
  * valid spot on the whole partition -> stays at `currentCenter` (the program
  * already flags that opening).
  */
@@ -140,22 +141,7 @@ export function clampPartitionCenter(
     }
     ivs = next;
   }
-  // Whole inches, rounded INTO each interval.
-  const snapped = ivs
-    .map(([p, q]) => [Math.ceil(p * 12 - 1e-6) / 12, Math.floor(q * 12 + 1e-6) / 12] as [number, number])
-    .filter(([p, q]) => q >= p - 1e-9);
-  if (!snapped.length) return currentCenter;
-  const rawX = rawCenter - w / 2;
-  const want = Math.round(rawX * 12) / 12;
-  let best = snapped[0][0];
-  let bestD = Infinity;
-  for (const [p, q] of snapped) {
-    const x = Math.max(p, Math.min(q, want));
-    const d = Math.abs(x - rawX);
-    if (d < bestD - 1e-9) {
-      bestD = d;
-      best = x;
-    }
-  }
-  return best + w / 2;
+  // Whole-inch GAP to the nearest neighbour (wallFit snapGapInto, owner 10/6/26).
+  const best = snapGapInto(ivs, rawCenter - w / 2, w, g.len, siblings.map((s) => ({ offset: s.offsetFt, width: s.widthFt })));
+  return best === null ? currentCenter : best + w / 2;
 }

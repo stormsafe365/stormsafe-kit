@@ -12,7 +12,7 @@ import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures';
 import { CLICK_DRAG_THRESHOLD_PX, swingAngle, walkDoorHingeX, walkDoorKnobX } from './openingAnim';
-import { ftIn, roofLengthLabel } from './dimLabels';
+import { ftIn, inchLabel, roofLengthLabel } from './dimLabels';
 import { useOpenAmount } from './useOpenAmount';
 import { OpeningHitPlane } from './OpeningFixture';
 import { partitionSpacingVisible } from './spacingVisibility';
@@ -654,7 +654,7 @@ const SPACING_SIDES: WallSide[] = ['front', 'back', 'left', 'right', 'partition'
 
 /** Size chip text: walk doors + windows in inches (36"x80"), big doors in ft. */
 function sizeLabel(o: Opening): string {
-  if (o.type === 'walkDoor' || o.type === 'window') return `${Math.round(o.width * 12)}"x${Math.round(o.height * 12)}"`;
+  if (o.type === 'walkDoor' || o.type === 'window') return `${inchLabel(o.width)}x${inchLabel(o.height)}`;
   return `${ftIn(o.width)}x${ftIn(o.height)}`;
 }
 
@@ -804,7 +804,7 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
     : null;
 
   // Spacing chain: every corner/edge stop; label each GAP (openings get a size chip instead).
-  const r3 = (v: number) => Math.round(v * 1000) / 1000;
+  const r3 = (v: number) => Math.round(v * 96) / 96; // the 1/8" grid every spot is on (10/6/26)
   const stops = Array.from(
     new Set([0, span, ...items.flatMap((o) => [r3(o.offset - o.width / 2), r3(o.offset + o.width / 2)])]),
   ).sort((a, b) => a - b);
@@ -813,7 +813,7 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
   const gaps: Array<[number, number]> = [];
   for (let i = 0; i < stops.length - 1; i++) {
     const a = stops[i], b = stops[i + 1];
-    if (b - a > 0.05 && !isOpening(a, b)) gaps.push([a, b]);
+    if (b - a > 1 / 192 && !isOpening(a, b)) gaps.push([a, b]); // every gap down to 1/8", so the chain adds up
   }
   const gapY = Math.min(1.3, eave * 0.25);
   const allY = 0.3;

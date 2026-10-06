@@ -41,7 +41,7 @@ function grabFn(name: string): string {
 type Row = { val: string; side: 'left' | 'right' };
 type Item = { x: number; w: number; h: number };
 const ctx = vm.createContext({});
-vm.runInContext(grabFn('getPosItems') + 'function MFR(){ return { wtdTypes: [], winTypes: [] }; }', ctx);
+vm.runInContext(grabFn('getPosItems') + grabFn('dimQ') + 'function MFR(){ return { wtdTypes: [], winTypes: [] }; }', ctx);
 const getPosItems = ctx.getPosItems as (entry: unknown, qty: number, itemW: number, faceW: number, itemH: number, type: string) => Item[];
 
 /** The slice of an entry's DOM that getPosItems reads (location, pos rows, roll-up color). */
@@ -76,9 +76,9 @@ describe('Partition Wall drag → program position (round trip through the progr
     expect(writeBack(19, 10, 'left').val).toBe('2');
     expect(writeBack(19, 10, 'right').val).toBe('14');
   });
-  it('nearest inch, never negative; tidy input text', () => {
-    expect(writeBack(26 - (7 + 1 / 3), 10).val).toBe('2.333');
-    expect(writeBack(26 - 7.3, 10).val).toBe('2.333'); // 2.3' → 2' 4"
+  it('the 1/8" grid, never negative; 4-decimal input text the program reads back exactly (10/6/26)', () => {
+    expect(writeBack(26 - (7 + 1 / 3), 10).val).toBe('2.3333'); // 2' 4"
+    expect(writeBack(26 - 7.3, 10).val).toBe('2.3021'); // 2.3' → 2' 3⅝" (the drag itself lands on whole-inch gaps: snapGapInto)
     expect(writeBack(22, 10).val).toBe('0'); // clamped at the corner
     expect(writeBack(26 - 9, 3).val).toBe('7.5');
   });

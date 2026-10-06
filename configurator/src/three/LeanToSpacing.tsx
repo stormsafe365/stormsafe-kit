@@ -6,6 +6,7 @@ import type { LeanToOpening } from '@/types/building';
 import { useEditorStore } from '@/store/useEditorStore';
 import { endWallPlane, eaveSurfaces, gableSurfaces, resolveWalls, type SurfaceSet } from './LeanToSiding';
 import { Chip3D, Measure, ftIn } from './Openings';
+import { inchLabel } from './dimLabels';
 
 /**
  * "Spacing" overlay for LEAN-TO walls (render-upgrade Phase 7; owner rule:
@@ -82,13 +83,13 @@ export function partitionVisible(walls: { side: string; front: string; back: str
 
 /** Size chip text (same rule as the main building): walk doors + windows in inches, big doors in ft-in. */
 export function leanToSizeLabel(o: Pick<LeanToOpening, 'type' | 'widthFt' | 'heightFt'>): string {
-  if (o.type === 'walkDoor' || o.type === 'window') return `${Math.round(o.widthFt * 12)}"x${Math.round(o.heightFt * 12)}"`;
+  if (o.type === 'walkDoor' || o.type === 'window') return `${inchLabel(o.widthFt)}x${inchLabel(o.heightFt)}`;
   return `${ftIn(o.widthFt)}x${ftIn(o.heightFt)}`;
 }
 
 /** Gaps along a wall: every stretch between the corners and the opening edges that is not an opening. */
 export function leanToGaps(len: number, openings: Array<Pick<LeanToOpening, 'offsetFt' | 'widthFt'>>): Array<[number, number]> {
-  const r3 = (v: number) => Math.round(v * 1000) / 1000;
+  const r3 = (v: number) => Math.round(v * 96) / 96; // the 1/8" grid every spot is on (10/6/26)
   const stops = Array.from(new Set([0, r3(len), ...openings.flatMap((o) => [r3(o.offsetFt - o.widthFt / 2), r3(o.offsetFt + o.widthFt / 2)])])).sort((a, b) => a - b);
   const isOpening = (a: number, b: number) =>
     openings.some((o) => Math.abs(o.offsetFt - o.widthFt / 2 - a) < 0.02 && Math.abs(o.offsetFt + o.widthFt / 2 - b) < 0.02);
@@ -96,7 +97,7 @@ export function leanToGaps(len: number, openings: Array<Pick<LeanToOpening, 'off
   for (let i = 0; i < stops.length - 1; i++) {
     const a = stops[i];
     const b = stops[i + 1];
-    if (b - a > 0.05 && !isOpening(a, b)) gaps.push([a, b]);
+    if (b - a > 1 / 192 && !isOpening(a, b)) gaps.push([a, b]); // every gap down to 1/8"
   }
   return gaps;
 }

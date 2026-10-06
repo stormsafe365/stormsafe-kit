@@ -67,7 +67,7 @@ function grabFn(name: string): string {
 
 let code = '';
 for (const v of ['DIM_K', 'DIM_C', '_dimSvgN']) code += grabVar(v);
-for (const f of ['_dimFtIn', '_dimIn', '_dimT', 'dimElevSVG']) code += grabFn(f);
+for (const f of ['dimQ', '_dim8', '_dimFtIn', '_dimIn', '_dimT', 'dimElevSVG']) code += grabFn(f);
 code += 'this.dimElevSVG=dimElevSVG;';
 const ctx: any = { console };
 vm.createContext(ctx);

@@ -55,7 +55,7 @@ function grabFn(name: string): string {
 const fields: Record<string, string> = { bw: '30', bl: '80', btype: 'standard', 'oc-spacing': '4oc' };
 const ctx = vm.createContext({});
 vm.runInContext(
-  ['getPosItems', 'posRefName', 'posRefLabel', 'posDescribe', '_dimFtIn', 'getTrussOC', 'getTrussPositions', 'checkTrussHitFromFront'].map(grabFn).join('') +
+  ['getPosItems', 'dimQ', '_dim8', 'posRefName', 'posRefLabel', 'posDescribe', '_dimFtIn', 'getTrussOC', 'getTrussPositions', 'checkTrussHitFromFront'].map(grabFn).join('') +
     'function MFR(){ return { wtdTypes: [], winTypes: [] }; }\n' +
     'var __f = {}; function G(id){ return (id in __f) ? { value: __f[id] } : null; }\n',
   ctx,
@@ -119,7 +119,7 @@ describe('the typed number means the same spot in the program and the 3D, on eve
     for (const side of ['left', 'right'] as const) {
       it(`${loc} · ${P.posRefLabel(loc, side)}`, () => {
         const face = isEave(loc) ? L : W;
-        for (const [v, w] of [[9, 3], [0, 3], [4.5, 2.5], [12.75, 3], [2, 8], [1.25, 3.0208333]] as const) {
+        for (const [v, w] of [[9, 3], [0, 3], [4.5, 2.5], [12.75, 3], [2, 8], [1.25, 36.25 / 12]] as const) {
           const [it] = P.getPosItems(entry(loc, String(v), side), 1, w, face, 6.67, 'fo');
           const off = programXTo3DOffset(loc, it.x, it.w, face);
           const pos = openingWorldTransform(SIDE_3D[loc], off, 3, st).pos;

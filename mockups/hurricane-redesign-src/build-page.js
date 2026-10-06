@@ -91,6 +91,8 @@ cut(/<footer>[\s\S]*?<\/footer>\s*/,'footer');
 cut(/<div class="mob-cta">[\s\S]*?<\/div>\s*/,'mob-cta');
 e=e.replace('<body>','<body class="embed">');
 e=e.split('<details>').join('<details open>');
+// links open the real site in the parent window, not inside the embed frame
+e=e.replace(/<a\b([^>]*?)\bhref="https:\/\/www\.stormsafesteel\.com([^"]*)"(?![^>]*target=)/g,(m,pre,p)=>'<a'+pre+'href="https://www.stormsafesteel.com'+p+'" target="_parent"');
 e=e.replace('</style>',rd(path.join(D,'embed.css'))+'</style>');
 e=e.replace('Scroll. Your building assembles one layer at a time, from the anchors up.','Your building assembles one layer at a time, from the anchors up. Tap any layer.');
 const out2=ROOT+'/mockups/hurricane-rated-WIX-EMBED.html';

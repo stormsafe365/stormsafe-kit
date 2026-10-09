@@ -67,7 +67,7 @@ function grabFn(name: string): string {
 
 let code = '';
 for (const v of ['DIM_K', 'DIM_C', '_dimSvgN']) code += grabVar(v);
-for (const f of ['dimQ', '_dim8', '_dimFtIn', '_dimIn', '_dimT', 'dimElevSVG']) code += grabFn(f);
+for (const f of ['dimQ', '_dim8', '_dimFtIn', '_dimIn', '_dimT', '_dimPeakTxt', 'dimElevSVG']) code += grabFn(f);
 code += 'this.dimElevSVG=dimElevSVG;';
 const ctx: any = { console };
 vm.createContext(ctx);
@@ -169,5 +169,38 @@ describe('spacing page — lean-to footprint label never covers an opening (roun
     const lab = p.ltLabels[0], fp = p.footprints[0];
     expect(lab.x0).toBeGreaterThan(fp.x0); expect(lab.x1).toBeLessThan(fp.x1); expect(lab.y0).toBeGreaterThan(fp.y0); expect(lab.y1).toBeLessThan(fp.y1);
     expect(p.ticks.length).toBe(0);
+  });
+});
+
+// Lean-tos seen END-ON (owner 10/9/26): the owner's screenshot case — 30′ main, 16′ leg, LT1 on the left eave
+// and LT2 on the right eave, 12′ wide, 10′ low leg, 2:12 (conn = min(16, 10 + 12·2/12) = 12′), back gable view.
+describe('spacing page — lean-to heights on a gable with lean-tos end-on (10/9/26)', () => {
+  const lt = (n: number) => ({ n, w: 12, ll: 40, len: 40, low: 10, pitch: 2, conn: Math.min(16, 10 + 12 * 2 / 12) });
+  const svg = dimElevSVG(30, 16, 16 + 15 * 3 / 12, true, [{ type: 'rollup', x: 10, w: 10, h: 10 }], false, null, { center: 17.1667, peak: 20.25, to: 'roof' },
+    { pitch: 3, ends: ['RIGHT EAVE', 'LEFT EAVE'], sideLeans: [{ l: lt(2), onLeft: true, closed: true }, { l: lt(1), onLeft: false, closed: true }], foot: [] });
+  const p = parse(svg);
+  const T = (s: string) => p.texts.find((t) => t.t === s);
+  it('the main leg is on the main wall corner, named "Main", never past a lean-to', () => {
+    const leg = p.texts.filter((t) => / leg$/.test(t.t));
+    expect(leg.map((t) => t.t)).toEqual(["Main 16' leg"]);
+    const x30 = Math.max(...[...svg.matchAll(/<polygon points="([^"]+)" fill="rgba\(255,255,255/g)].flatMap((m) => m[1].split(' ').map((q) => +q.split(',')[0])));
+    expect(leg[0].x1).toBeLessThanOrEqual(x30 + 1); // inside the main wall (or right at its corner)
+  });
+  it('each lean-to: HIGH at the attachment, LOW at the outer post (program values)', () => {
+    for (const s of ["LT1 high 12'", "LT1 low 10'", "LT2 high 12'", "LT2 low 10'"]) expect(T(s), s).toBeTruthy();
+    expect(T("LT2 low 10'")!.x1).toBeLessThan(T("LT2 high 12'")!.x0 + 1); // left lean-to: low further out than high
+    expect(T("LT1 low 10'")!.x0).toBeGreaterThan(T("LT1 high 12'")!.x0);
+  });
+  it('bottom: LT2 12′ | 30′ main | LT1 12′ and 54′ overall; peak + center clearance kept', () => {
+    for (const s of ["LT2 12'", "30' main", "LT1 12'", "54' overall", 'Center clearance ≈ 17\'2"']) expect(T(s), s).toBeTruthy();
+    expect(T("LT2 12'")!.x).toBeLessThan(T("30' main")!.x); expect(T("30' main")!.x).toBeLessThan(T("LT1 12'")!.x);
+    expect(p.texts.some((t) => t.t.startsWith('Peak ≈ 20\'3" (top of roof)'))).toBe(true);
+  });
+  it('no two labels overlap and every label stays in the drawing', () => {
+    for (let i = 0; i < p.texts.length; i++) {
+      const a = p.texts[i];
+      expect(a.x0).toBeGreaterThanOrEqual(0); expect(a.x1).toBeLessThanOrEqual(p.vb[0]);
+      for (let j = i + 1; j < p.texts.length; j++) expect(overlaps(a, p.texts[j]), `"${a.t}" over "${p.texts[j].t}"`).toBe(false);
+    }
   });
 });

@@ -118,7 +118,7 @@ const PVc = JSON.parse(JSON.stringify(shared.PV));
 for (let i = 0; i < 10; i++) { PVc[26][i] = PVc[25][i]; PVc[46][i] = PVc[45][i]; }
 const checks = [
   ['PV[46][5] (22x46 Vert) == 5890', PVc[46][5] === 5890],
-  ['CCI commercialBase[46][?60 combLen]', MAN.CCI.commercialBase.rows[46][2] + MAN.CCI.commercialBase.rows[46][3] === 27790],
+  ['CCI commercialBase 46x60 = 28+32 = 27,890 (Price Book 2)', MAN.CCI.commercialBase.rows[46][2] + MAN.CCI.commercialBase.rows[46][3] === 27890],
   ['SC[6][20] == 440', shared.SC[6][20] === 440],
   ['EC[12][6] == 540', shared.EC[12][6] === 540],
   ['RDP_STD 10x10 == 1050', shared.RDP_STD['10x10'] === 1050],

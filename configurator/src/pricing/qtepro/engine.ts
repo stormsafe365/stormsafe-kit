@@ -25,7 +25,8 @@ export function commercialBaseFn(t: CommercialBase, w: number, l: number): numbe
   if (!t || !t.rows[w]) return null; // width outside table
 
   // CONNECTED UNITS (cciWide.ts): 62'–100' wide at every length (CCI sheet 4/30/26), and
-  // 32'–60' wide PAST 104' LONG — CCI Dealer Handbook p6 "32W-60W Combinations"
+  // 32'–60' wide past 104' long (up to 104' the combLen pairs below ARE the handbook pairs) —
+  // CCI Dealer Handbook p6 "32W-60W Combinations"
   // (108 = 36+36+36, 112 = 36+36+40, 116 = 36+40+40, 120 = 40+40+40; past 120' the same rule
   // extended). The old [104 + rest] recursion found no price for 105'–123'. Up to 104' the
   // combLen pairs below (= the handbook pairs) stay.

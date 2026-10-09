@@ -86,7 +86,7 @@ const SC_COLS = [20, 25, 30, 35, 40];
 /**
  * Side close, per SIDE (Closed eave side). Builder `scLookup` line 3884.
  * Returns the per-side price (wide-span tables are both-sides and halved).
- * `pair` = true returns BOTH sides — only on the CCI 32'–60' past-104' path (see scPairLookup).
+ * `pair` = true returns BOTH sides — only on the CCI 32'–60' path (see scPairLookup).
  */
 export function scLookup(h: number, l: number, w: number, mfr: MfrConfig, pair = false): number {
   let w2 = w || 0;
@@ -108,9 +108,10 @@ export function scLookup(h: number, l: number, w: number, mfr: MfrConfig, pair =
   // chart, indexed by LENGTH — CCI corrected Tejada 30x40x20 sides pair to
   // $5,810 = BSC[20][40'] exactly (8/17/26).
   if (w2 >= 32 || (mfr.key === 'CCI' && h >= 17)) {
-    // CCI 32'–60' wide PAST 104' LONG: connected units (CCI Dealer Handbook p6) on the brochure's
-    // BOTH SIDES CLOSED chart — the pair straight from the chart, one side = half (10/9/26).
-    if (mfr.key === 'CCI' && w2 >= 32 && w2 <= 60 && l > 104) {
+    // CCI 32'–60' wide, EVERY length: connected units (CCI Dealer Handbook p6) on the brochure's
+    // BOTH SIDES CLOSED chart (Price Book 2 p6) — the pair straight from the chart, one side = half
+    // (10/9/26). No extended chart, no straight line past 100', no CA width stretch. CA keeps extBsc.
+    if (mfr.key === 'CCI' && w2 >= 32 && w2 <= 60) {
       const unitsPair = cciWideUnitSum(l, BSC[hk] || BSC[16]);
       return pair ? unitsPair : Math.round(unitsPair / 2);
     }
@@ -192,14 +193,14 @@ export function scLookup(h: number, l: number, w: number, mfr: MfrConfig, pair =
 }
 
 /**
- * BOTH eave sides closed. Builder `scPairLookup`: CCI 62'–100' and CCI 32'–60' past 104' read the
- * pair straight from the chart (no $1 rounding drift); everything else = 2 × one side.
+ * BOTH eave sides closed. Builder `scPairLookup`: CCI 32'–100' read the pair straight from the
+ * chart (no $1 rounding drift); everything else = 2 × one side.
  */
 export function scPairLookup(h: number, l: number, w: number, mfr: MfrConfig): number {
   let w2 = w || 0;
   if (w2 % 2 === 1) w2++;
   if (mfr.key === 'CCI' && w2 >= 62 && w2 <= 100) return cciWideSCBothSides(h, l);
-  if (mfr.key === 'CCI' && w2 >= 32 && w2 <= 60 && l > 104) return scLookup(h, l, w, mfr, true);
+  if (mfr.key === 'CCI' && w2 >= 32 && w2 <= 60) return scLookup(h, l, w, mfr, true);
   return scLookup(h, l, w, mfr) * 2;
 }
 

@@ -14,7 +14,8 @@ import type { PricingConfig } from '../config';
  * The TS port (PriceCheck dev tool) = the pricing program for CCI wide span:
  *  - 62'–100' wide: CCI "Pricing for 62'-100' Buildings" (4/30/26) — connected units, HEIGHT chart,
  *    12GA included, freight 3%, Site Specific Plans max $6,500, gable ends, side openings.
- *  - 32'–60' wide past 104' long: connected units (CCI Dealer Handbook p6) for base, legs, sides.
+ *  - 32'–60' wide: connected units (CCI Dealer Handbook p6) x Price Book 2 for base, legs, sides and 12-gauge at
+ *    every length (10/9/26).
  * Parity is checked against the builder's OWN functions (public/quote-builder.html in a node vm).
  */
 const CCI = getMfr('CCI');
@@ -69,7 +70,8 @@ vm.createContext(ctx);
 vm.runInContext(
   ['EXT_SH', 'EC', 'CCI_WIDE_SC', 'CCI_WIDE_EC', 'CCI_WIDE_H'].map(grabVar).join('') +
     grabArr('EXT_L') +
-    ['cciWideOn', 'cciWideUnits', 'cciWideUnitSum', 'cciWideHeight', 'cciWideSCBothSides', 'cciWideEC', 'eBkt', 'gLeg', 'scLookup', 'scPairLookup', 'ecLookup']
+    grabArr('CCI_COM_12GA') +
+    ['cciWideOn', 'cciWideUnits', 'cciWideUnitSum', 'cciWideHeight', 'cciWideSCBothSides', 'cciWideEC', 'eBkt', 'gLeg', 'scLookup', 'scPairLookup', 'ecLookup', 'cciCom12GA']
       .map(grabFn)
       .join('') +
     'function G(id){ return (id in __f) ? { value: __f[id] } : null; }\n' +
@@ -94,7 +96,7 @@ const cfg = (over: Partial<PricingConfig>): PricingConfig => ({
 
 describe('TS port = the pricing program, CCI wide span (base / legs / sides / ends)', () => {
   const W = [32, 33, 40, 46, 52, 59, 60, 61, 62, 70, 72, 80, 90, 99, 100];
-  const L = [20, 21, 40, 52, 53, 56, 60, 61, 80, 100, 101, 104, 105, 106, 108, 110, 112, 115, 116, 120, 121, 124, 140, 156, 157, 160];
+  const L = [20, 21, 40, 45, 49, 50, 52, 53, 56, 60, 61, 64, 65, 80, 85, 88, 90, 95, 100, 101, 104, 105, 106, 108, 110, 112, 115, 116, 120, 121, 124, 140, 156, 157, 160];
   it('every width x length x height', () => {
     for (const w of W) for (const l of L) {
       expect(gBase({ width: w, length: l, roofStyle: 'Vertical' }, CCI), `base ${w}x${l}`).toBe(prog.base(w, l));
@@ -108,7 +110,18 @@ describe('TS port = the pricing program, CCI wide span (base / legs / sides / en
   });
 });
 
-describe('CCI 32-60 wide past 104 = handbook combinations', () => {
+describe('CCI 32-60 wide = handbook combinations x Price Book 2', () => {
+  it('12-gauge: TS priceBuilding = the program (brochure row, per unit past 52)', () => {
+    for (const w of [32, 45, 60]) for (let l = 20; l <= 160; l += 3) {
+      const q = priceBuilding(cfg({ width: w, length: l, height: 12, framingGauge: '12' }), CCI);
+      expect(q.lineItems.framingUpgrade, w + 'x' + l).toBe(run('cciCom12GA(' + l + ')'));
+    }
+    expect(run('cciCom12GA(60)')).toBe(2280);
+  });
+  it('7-10 tall legs = the 10 row (40x60x10 = 1,295); 60x49x16 = 6,020 (no width stretch)', () => {
+    expect(gLeg(cfg({ width: 40, length: 60, height: 10 }), CCI)).toBe(1295);
+    expect(gLeg(cfg({ width: 60, length: 49, height: 16 }), CCI)).toBe(6020);
+  });
   it('60x110: base 36+36+40 = $64,385, legs (16) $13,150, sides pair (16) $11,420', () => {
     expect([...cciWideUnits(110)].sort((a, b) => a - b)).toEqual([36, 36, 40]);
     expect(gBase({ width: 60, length: 110, roofStyle: 'Vertical' }, CCI)).toBe(64385);
@@ -116,7 +129,7 @@ describe('CCI 32-60 wide past 104 = handbook combinations', () => {
     expect(scPairLookup(16, 110, 60, CCI)).toBe(11420);
     expect(gWalls(cfg({}), CCI)).toBe(2 * 5155 + 11420);
   });
-  it('up to 104 unchanged (60x104 = 52+52)', () => {
+  it('60x104 = 52+52', () => {
     expect(gBase({ width: 60, length: 104, roofStyle: 'Vertical' }, CCI)).toBe(26495 * 2);
   });
   it('CA wide span untouched', () => {

@@ -16,7 +16,7 @@ import { gBase } from './engine';
 import { gLeg, gVertUpgrade, gWalls, gConnectionFees, gableLTrimCost } from './shell';
 import { gRUD, gWTD, gWIN } from './openings';
 import { gInsul, gSidePanels, gLT, gAC } from './extras';
-import { cciWideOn } from './cciWide';
+import { cciWideOn, cciCom12GA } from './cciWide';
 
 export interface QuoteLineItems {
   base: number;
@@ -80,6 +80,8 @@ function framingUpgradeCost(config: PricingConfig, mfr?: MfrConfig): number {
   const l = config.length || 0;
   // CCI 62'–100' wide: 12-gauge (and 26-gauge) are IN the base price (sheet 4/30/26).
   if (config.buildingType === 'widespan' && cciWideOn(mfr, w)) return 0;
+  // CCI 32'–60' wide: CCI's own brochure row, per connected unit past 52' (Price Book 2 p6; 10/9/26).
+  if (config.buildingType === 'widespan' && mfr?.key === 'CCI' && w >= 32 && w <= 60) return cciCom12GA(l);
   if (config.buildingType === 'widespan') {
     // Master Price Book 7/16/26 §4H: 360…840 through 40', then 44' 1560 ·
     // 48' 1680 · 52' 1800.

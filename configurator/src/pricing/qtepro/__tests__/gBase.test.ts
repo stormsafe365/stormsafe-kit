@@ -88,8 +88,8 @@ describe('gBase — CCI commercial (32–100W, Vertical)', () => {
     expect(gBase(inp(32, 20), CCI)).toBe(7295);
   });
 
-  it('46×60 → combLen [28,32] = $27,790 (matches Sensei)', () => {
-    expect(gBase(inp(46, 60), CCI)).toBe(27790);
+  it('46×60 → combLen [28,32] = $27,890 (Price Book 2: 46x28 $13,295 + 46x32 $14,595; was $27,790)', () => {
+    expect(gBase(inp(46, 60), CCI)).toBe(27890);
   });
 
   it('100×200 → recursive split [104,96] = $190,180 (matches Sensei)', () => {
@@ -98,7 +98,7 @@ describe('gBase — CCI commercial (32–100W, Vertical)', () => {
 });
 
 describe('gBase — CA wide-span combinations (32–60W, L > 53)', () => {
-  it('46×60 → CA combo [29,33], ~$100 above CCI', () => {
+  it('46×60 → CA combo [29,33] = $27,890', () => {
     // PV[29][17] + PV[33][17] = 13295 + 14595 = 27890
     expect(gBase(inp(46, 60), CA)).toBe(27890);
   });

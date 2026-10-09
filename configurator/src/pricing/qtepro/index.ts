@@ -42,7 +42,7 @@ export { SHARED, MFR_DATA } from './data';
 export { WIDTHS, LENGTHS, PV, PR, PB, STD_TIERS, WS_TIERS, nearestStd, nearestWS, baseTableFor } from './tables';
 
 export { gBase, commercialBaseFn } from './engine';
-export { cciWideOn, cciWideUnits, cciWideUnitSum, cciWideHeight, cciWideGableOnly, CCI_WIDE_COLS } from './cciWide';
+export { cciWideOn, cciWideUnits, cciWideUnitSum, cciWideHeight, cciWideGableOnly, cciCom12GA, CCI_COM_12GA, CCI_WIDE_COLS } from './cciWide';
 export {
   ecLookup,
   scLookup,

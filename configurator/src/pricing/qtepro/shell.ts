@@ -55,9 +55,11 @@ export function gLeg(config: PricingConfig, mfr: MfrConfig): number {
   // book data — CCI kicked back a 30x40x20 at the grid's $4,896; their correct
   // charge $7,190 = SH[20][40'] exactly (verified 8/14/26). ≤16' keeps the grids.
   if (w >= 32 || (mfr.key === 'CCI' && h >= 17)) {
-    // CCI 32'–60' wide PAST 104' LONG: connected units (CCI Dealer Handbook p6 — 108 = 36+36+36 …
-    // 120 = 40+40+40), each unit on the brochure SIDE HEIGHT chart (10/9/26). Up to 104' unchanged.
-    if (mfr.key === 'CCI' && w >= 32 && w <= 60 && l > 104) return cciWideUnitSum(l, SHT[hk] || SHT[16]);
+    // CCI 32'–60' wide, EVERY length: connected units (CCI Dealer Handbook p6 — 56 = 28+28 … 104 = 52+52,
+    // 108 = 36+36+36 … 120 = 40+40+40), each unit on the brochure SIDE HEIGHT chart (Price Book 2 p6;
+    // 10/9/26). No EXT_SH (5' columns / 30'-wide Sensei rows / 16' row for 7'–10'), no straight line past
+    // 100', no CA width stretch. EXT_SH stays for CA and CCI 17'+ standard widths.
+    if (mfr.key === 'CCI' && w >= 32 && w <= 60) return cciWideUnitSum(l, SHT[hk] || SHT[16]);
     if (l > mfr.shExtThresh) {
       const extRow = EXT_SH[hk] || EXT_SH[16] || [];
       let bestI = extRow.length - 1;
@@ -302,8 +304,8 @@ export function gWalls(config: PricingConfig, mfr: MfrConfig): number {
       }
     }
   } else {
-    // Both sides closed = the pair (builder scPairLookup: CCI 62'–100' and CCI 32'–60' past 104'
-    // straight from the chart, otherwise 2 × one side).
+    // Both sides closed = the pair (builder scPairLookup: CCI 32'–100' straight from the chart,
+    // otherwise 2 × one side).
     if (rev === 'Closed' && lev === 'Closed') t += scPairLookup(h, l, w, mfr);
     else if (rev === 'Closed' || lev === 'Closed') t += scLookup(h, l, w, mfr);
   }

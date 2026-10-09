@@ -10,8 +10,8 @@
  *
  * Where the program uses it:
  *  - 62'–100' wide (CCI "Pricing for 62'-100' Buildings", 4/30/26): base, height, sides at every length.
- *  - 32'–60' wide (10/9/26): base, legs, sides PAST 104' long only (up to 104' the older
- *    combLen pairs / extended charts stay).
+ *  - 32'–60' wide (10/9/26): base, legs, sides and 12-gauge at every length (base up to 104' via the
+ *    combLen pairs = the handbook pairs).
  */
 
 import type { MfrConfig } from './types';
@@ -50,6 +50,16 @@ export function cciWideHeight(h: number, l: number): number {
   if (!(h > 8) || !l) return 0;
   const hk = Math.min(24, Math.max(10, Math.ceil(h / 2) * 2));
   return cciWideUnitSum(l, SHARED.CCI_WIDE_H.rows[hk]);
+}
+
+/**
+ * CCI 32'–60' wide 12-GAUGE framing — Price Book 2 p6 (FL Commercial 170 MPH, "OPTIONS"): 12 Gauge 20' $840 ·
+ * 24' $960 · 28' $1,080 · 32' $1,200 · 36' $1,320 · 40' $1,440 · 44' $1,560 · 48' $1,680 · 52' $1,800; per
+ * connected unit past 52' (handbook p6). Builder `cciCom12GA` (10/9/26; it was the CA book series).
+ */
+export const CCI_COM_12GA = [840, 960, 1080, 1200, 1320, 1440, 1560, 1680, 1800];
+export function cciCom12GA(l: number): number {
+  return l ? cciWideUnitSum(l, CCI_COM_12GA) : 0;
 }
 
 /** 62'–100' gable-only (per end) by width band: 62-70 $1,050 · 72-80 $1,200 · 82-90 $1,350 · 92-100 $1,500. */

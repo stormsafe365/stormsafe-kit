@@ -44,6 +44,8 @@ export interface SharedTables {
   EC: Num2DTable;
   CCI_WIDE_SC: CciWideTable;
   CCI_WIDE_EC: CciWideTable;
+  /** CCI 62'–100' leg HEIGHT chart — height → row by length (sheet 4/30/26 p3). */
+  CCI_WIDE_H: CciWideTable;
   HI_LIFT_WIDTHS: number[];
   HI_LIFT_HEIGHTS: number[];
 }

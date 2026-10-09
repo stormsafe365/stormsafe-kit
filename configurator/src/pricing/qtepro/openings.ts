@@ -112,7 +112,7 @@ export function gRUD(config: PricingConfig, mfr: MfrConfig): number {
     // Eave-side structural header.
     if (ea) {
       const doorW = parseInt((sz || '').split('x')[0], 10) || 0;
-      t += eaveHeaderCost(doorW, bldgW) * qty;
+      t += eaveHeaderCost(doorW, bldgW, mfr) * qty; // CCI 62'–100': $750 per side opening
     }
   }
   return t;

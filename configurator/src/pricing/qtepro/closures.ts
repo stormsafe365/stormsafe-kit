@@ -11,6 +11,7 @@
 
 import type { MfrConfig } from './types';
 import { SHARED } from './data';
+import { cciWideOn, cciWideUnitSum } from './cciWide';
 
 const { EC, SC, EXT_BSC_30, EXT_L, CCI_WIDE_SC, CCI_WIDE_EC } = SHARED;
 
@@ -33,53 +34,24 @@ function cciWideEC(w: number, h: number): number {
   return row[hi] || 0;
 }
 
-/** CCI 62'–100' side close, BOTH sides combined (caller halves). Builder line 3235. */
-function cciWideSCBothSides(h: number, l: number, commercialBase?: MfrConfig['commercialBase']): number {
+/**
+ * CCI 62'–100' side close, BOTH sides combined (caller halves). Builder `cciWideSCBothSides`:
+ * lengths over 52' = connected units (cciWide.ts) — identical to the old combLen pairs up to
+ * 104'; past 104' the old [104 + rest] split under-priced.
+ */
+function cciWideSCBothSides(h: number, l: number): number {
   let heven = h % 2 === 0 ? h : h + 1;
   heven = Math.max(8, Math.min(24, heven));
   const row = CCI_WIDE_SC.rows[heven];
-  if (!row) return 0;
-  const cols = CCI_WIDE_SC.cols;
-
-  const idx = cols.indexOf(l);
-  if (idx >= 0) return row[idx];
-
-  const cb = commercialBase;
-  if (l > 52 && l <= 104 && cb && cb.combLen) {
-    if (cb.combLen[l]) {
-      const pair = cb.combLen[l];
-      const i1 = cols.indexOf(pair[0]);
-      const i2 = cols.indexOf(pair[1]);
-      if (i1 >= 0 && i2 >= 0) return row[i1] + row[i2];
-    }
-    const combLens = Object.keys(cb.combLen)
-      .map(Number)
-      .sort((a, b) => a - b);
-    for (const k of combLens) {
-      if (l <= k) {
-        const p2 = cb.combLen[k];
-        const c1 = cols.indexOf(p2[0]);
-        const c2 = cols.indexOf(p2[1]);
-        if (c1 >= 0 && c2 >= 0) return row[c1] + row[c2];
-      }
-    }
-  }
-  if (l > 104) {
-    const p104 = row[cols.indexOf(52)] * 2;
-    const pRem = cciWideSCBothSides(h, l - 104, commercialBase);
-    return p104 + pRem;
-  }
-  for (let c = 0; c < cols.length; c++) {
-    if (cols[c] >= l) return row[c];
-  }
-  return row[cols.length - 1];
+  if (!row || !l) return 0;
+  return cciWideUnitSum(l, row);
 }
 
 /**
  * Each-end close, per END (Closed gable). Builder `ecLookup` line 3867.
  */
 export function ecLookup(w: number, h: number, mfr: MfrConfig): number {
-  if (mfr.key === 'CCI' && w >= 62 && w <= 100) return cciWideEC(w, h);
+  if (cciWideOn(mfr, w)) return cciWideEC(w, h); // 61 prices as 62
   if (mfr.key === 'CA' && w >= 62 && w <= 70) {
     if (w === 70 && h === 20) return 6115;
     return 0;
@@ -114,13 +86,14 @@ const SC_COLS = [20, 25, 30, 35, 40];
 /**
  * Side close, per SIDE (Closed eave side). Builder `scLookup` line 3884.
  * Returns the per-side price (wide-span tables are both-sides and halved).
+ * `pair` = true returns BOTH sides — only on the CCI 32'–60' past-104' path (see scPairLookup).
  */
-export function scLookup(h: number, l: number, w: number, mfr: MfrConfig): number {
+export function scLookup(h: number, l: number, w: number, mfr: MfrConfig, pair = false): number {
   let w2 = w || 0;
   if (w2 % 2 === 1) w2++;
 
   if (mfr.key === 'CCI' && w2 >= 62 && w2 <= 100) {
-    const both = cciWideSCBothSides(h, l, mfr.commercialBase);
+    const both = cciWideSCBothSides(h, l);
     return Math.round(both / 2);
   }
   if (mfr.key === 'CA' && w2 >= 62 && w2 <= 70) {
@@ -135,6 +108,12 @@ export function scLookup(h: number, l: number, w: number, mfr: MfrConfig): numbe
   // chart, indexed by LENGTH — CCI corrected Tejada 30x40x20 sides pair to
   // $5,810 = BSC[20][40'] exactly (8/17/26).
   if (w2 >= 32 || (mfr.key === 'CCI' && h >= 17)) {
+    // CCI 32'–60' wide PAST 104' LONG: connected units (CCI Dealer Handbook p6) on the brochure's
+    // BOTH SIDES CLOSED chart — the pair straight from the chart, one side = half (10/9/26).
+    if (mfr.key === 'CCI' && w2 >= 32 && w2 <= 60 && l > 104) {
+      const unitsPair = cciWideUnitSum(l, BSC[hk] || BSC[16]);
+      return pair ? unitsPair : Math.round(unitsPair / 2);
+    }
     if (l > mfr.shExtThresh) {
       const ebRow = mfr.extBsc[hk] || mfr.extBsc[16] || [];
       let ebI = ebRow.length - 1;
@@ -213,13 +192,27 @@ export function scLookup(h: number, l: number, w: number, mfr: MfrConfig): numbe
 }
 
 /**
+ * BOTH eave sides closed. Builder `scPairLookup`: CCI 62'–100' and CCI 32'–60' past 104' read the
+ * pair straight from the chart (no $1 rounding drift); everything else = 2 × one side.
+ */
+export function scPairLookup(h: number, l: number, w: number, mfr: MfrConfig): number {
+  let w2 = w || 0;
+  if (w2 % 2 === 1) w2++;
+  if (mfr.key === 'CCI' && w2 >= 62 && w2 <= 100) return cciWideSCBothSides(h, l);
+  if (mfr.key === 'CCI' && w2 >= 32 && w2 <= 60 && l > 104) return scLookup(h, l, w, mfr, true);
+  return scLookup(h, l, w, mfr) * 2;
+}
+
+/**
  * Structural-header cost for a roll-up door on an eave (side) wall.
  * Builder `eaveHeaderCost` line 4123 — width-bucketed by DOOR width.
+ * CCI 62'–100' wide (sheet 4/30/26): "Side Openings With Garage Door" $750 per opening.
  */
-export function eaveHeaderCost(doorWidthFt: number, bldgWidthFt: number): number {
+export function eaveHeaderCost(doorWidthFt: number, bldgWidthFt: number, mfr?: Pick<MfrConfig, 'key'>): number {
   const dw = Math.trunc(doorWidthFt) || 0;
   const bw = Math.trunc(bldgWidthFt) || 0;
   if (dw <= 0) return 0;
+  if (cciWideOn(mfr, bw)) return 750;
   if (bw >= 32) {
     if (dw <= 4) return 360;
     if (dw <= 16) return 425;

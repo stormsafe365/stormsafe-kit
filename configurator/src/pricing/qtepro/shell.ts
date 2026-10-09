@@ -11,7 +11,8 @@ import type { MfrConfig, UtilityChart } from './types';
 import type { PricingConfig } from './config';
 import { SHARED } from './data';
 import { nearestStd, LENGTHS } from './tables';
-import { ecLookup, scLookup, vertSideUpcharge, vertEndUpcharge } from './closures';
+import { ecLookup, scLookup, scPairLookup, vertSideUpcharge, vertEndUpcharge } from './closures';
+import { cciWideOn, cciWideHeight, cciWideUnitSum, cciWideGableOnly } from './cciWide';
 
 const { HU, EXT_SH, EXT_SH_30, EXT_L } = SHARED;
 
@@ -42,6 +43,10 @@ export function gLeg(config: PricingConfig, mfr: MfrConfig): number {
     return 0;
   }
 
+  // CCI 62'–100' wide: the sheet's HEIGHT chart by length, per connected unit (Sensei
+  // 70x110x20 = 11,395 + 11,395 + 12,585 = $35,375). Replaced the provisional EXT_SH × 2 rule.
+  if (cciWideOn(mfr, w)) return cciWideHeight(h, l);
+
   const hk = h <= 10 ? 10 : h <= 12 ? 12 : h <= 14 ? 14 : h <= 16 ? 16 : h <= 18 ? 18 : 20;
 
   // Wide span (32–60ft+): SH table; EXT_SH for l > shExtThresh.
@@ -50,6 +55,9 @@ export function gLeg(config: PricingConfig, mfr: MfrConfig): number {
   // book data — CCI kicked back a 30x40x20 at the grid's $4,896; their correct
   // charge $7,190 = SH[20][40'] exactly (verified 8/14/26). ≤16' keeps the grids.
   if (w >= 32 || (mfr.key === 'CCI' && h >= 17)) {
+    // CCI 32'–60' wide PAST 104' LONG: connected units (CCI Dealer Handbook p6 — 108 = 36+36+36 …
+    // 120 = 40+40+40), each unit on the brochure SIDE HEIGHT chart (10/9/26). Up to 104' unchanged.
+    if (mfr.key === 'CCI' && w >= 32 && w <= 60 && l > 104) return cciWideUnitSum(l, SHT[hk] || SHT[16]);
     if (l > mfr.shExtThresh) {
       const extRow = EXT_SH[hk] || EXT_SH[16] || [];
       let bestI = extRow.length - 1;
@@ -64,8 +72,6 @@ export function gLeg(config: PricingConfig, mfr: MfrConfig): number {
         const extRate = (extRow[extRow.length - 1] - extRow[extRow.length - 2]) / (EXT_L[EXT_L.length - 1] - EXT_L[EXT_L.length - 2]);
         extVal = Math.round(extRow[extRow.length - 1] + extRate * (l - 100));
       }
-      // PROVISIONAL: CCI 62–100 wide ≈ 2× (verified at 100×200×20 ≈ $62,740).
-      if (mfr.key === 'CCI' && w >= 62 && w <= 100) extVal = Math.round(extVal * 2);
       return extVal;
     }
     const shIdx = mfr.shIndexByLength ? l : w;
@@ -265,7 +271,8 @@ export function gWalls(config: PricingConfig, mfr: MfrConfig): number {
   const { frontGable: fgv, backGable: bgv, rightEave: rev, leftEave: lev } = config;
   // Master Price Book 7/16/26 §4H: CA gable-only is $225 up to 24' wide,
   // $300 at 26'+ — flat (the vertical adder applies to GA only). CCI flat.
-  const gablP = mfr.key === 'CA' ? (w <= 24 ? 225 : 300) : mfr.gableOnlyPrice || 300;
+  // CCI 62'–100' wide (sheet 4/30/26 "Gable Ends", per end): 1,050 / 1,200 / 1,350 / 1,500 by width band.
+  const gablP = mfr.key === 'CA' ? (w <= 24 ? 225 : 300) : cciWideOn(mfr, w) ? cciWideGableOnly(w) : mfr.gableOnlyPrice || 300;
   const halfP = mfr.halfGablePrice || 0;
 
   // Gables (front + back).
@@ -295,8 +302,10 @@ export function gWalls(config: PricingConfig, mfr: MfrConfig): number {
       }
     }
   } else {
-    if (rev === 'Closed') t += scLookup(h, l, w, mfr);
-    if (lev === 'Closed') t += scLookup(h, l, w, mfr);
+    // Both sides closed = the pair (builder scPairLookup: CCI 62'–100' and CCI 32'–60' past 104'
+    // straight from the chart, otherwise 2 × one side).
+    if (rev === 'Closed' && lev === 'Closed') t += scPairLookup(h, l, w, mfr);
+    else if (rev === 'Closed' || lev === 'Closed') t += scLookup(h, l, w, mfr);
   }
   return Math.round(t);
 }

@@ -4,7 +4,8 @@
  * the DOM. Numbers come from tables.ts / manufacturers.ts (transcribed 1:1).
  *
  * Ported so far:
- *  - commercialBaseFn (builder line 2565)
+ *  - commercialBaseFn (builder line 2565) — + CCI connected units (cciWide.ts): 62'–100' wide at
+ *    every length (sheet 4/30/26), 32'–60' wide past 104' long (handbook p6, 10/9/26)
  *  - gBase            (builder line 3656)
  *
  * Not yet ported (tracked in BUILDER_SPEC §4): gLeg, gWalls, gRUD, gWTD, gWIN,
@@ -13,6 +14,7 @@
 
 import type { BasePriceInput, CommercialBase, MfrConfig } from './types';
 import { WIDTHS, baseTableFor, nearestStd, nearestWS } from './tables';
+import { cciWideOn, cciWideUnitSum } from './cciWide';
 
 /**
  * CCI commercial base lookup (32'–100' wide). Returns null when the width is
@@ -21,6 +23,13 @@ import { WIDTHS, baseTableFor, nearestStd, nearestWS } from './tables';
  */
 export function commercialBaseFn(t: CommercialBase, w: number, l: number): number | null {
   if (!t || !t.rows[w]) return null; // width outside table
+
+  // CONNECTED UNITS (cciWide.ts): 62'–100' wide at every length (CCI sheet 4/30/26), and
+  // 32'–60' wide PAST 104' LONG — CCI Dealer Handbook p6 "32W-60W Combinations"
+  // (108 = 36+36+36, 112 = 36+36+40, 116 = 36+40+40, 120 = 40+40+40; past 120' the same rule
+  // extended). The old [104 + rest] recursion found no price for 105'–123'. Up to 104' the
+  // combLen pairs below (= the handbook pairs) stay.
+  if (w >= 62 || l > 104) return cciWideUnitSum(l, t.rows[w]);
 
   // Direct length match (table columns).
   const idx = t.cols.indexOf(l);
@@ -56,13 +65,7 @@ export function commercialBaseFn(t: CommercialBase, w: number, l: number): numbe
     }
   }
 
-  // L > 104: recursively split as [104, l-104] sections (matches Sensei).
-  if (l > 104) {
-    const p104 = t.rows[w][t.cols.indexOf(52)] * 2; // [52,52]
-    const pRem = commercialBaseFn(t, w, l - 104);
-    if (pRem != null) return p104 + pRem;
-  }
-
+  // (Past 104' long: connected units at the top.)
   return null;
 }
 
@@ -89,7 +92,13 @@ export function gBase(input: BasePriceInput, mfr: MfrConfig): number {
     return 0;
   }
 
-  // ── CCI commercial (32'–60'+ wide, Vertical only) ──
+  // ── CCI 62'–100' wide: the sheet's base whatever the roof-style field says ──
+  if (cciWideOn(mfr, w) && mfr.commercialBase) {
+    const cw = commercialBaseFn(mfr.commercialBase, w, l);
+    return cw && cw > 0 ? cw : 0;
+  }
+
+  // ── CCI commercial (32'–60' wide, Vertical only) ──
   if (mfr.commercialBase && w >= 32 && input.roofStyle === 'Vertical') {
     const cciPrice = commercialBaseFn(mfr.commercialBase, w, l);
     if (cciPrice !== null && cciPrice > 0) return cciPrice;

@@ -105,6 +105,8 @@ export interface AdditionalComponent {
   /** Label key (matches mfr.acPrices). */
   label: string;
   qty: number;
+  /** Wall placement (framed openings). CCI 62'–100' wide prices EAVE-side openings from the sheet. */
+  location?: Location;
   /** For "(Custom Size)" / "Custom — see notes" entries that price $0 + typed price. */
   customPrice?: number;
 }

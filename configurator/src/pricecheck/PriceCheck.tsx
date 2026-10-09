@@ -48,6 +48,7 @@ const LABELS: Record<string, string> = {
   fasteners: 'Fasteners',
   overhang: "1' overhang",
   sidePanels: 'Side panels',
+  freight: "Freight (CCI 62'–100' wide, 3%)",
 };
 
 const C = {

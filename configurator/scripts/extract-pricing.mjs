@@ -77,7 +77,7 @@ function grab(varName) {
 }
 
 const SHARED = ['WIDTHS','LENGTHS','PV','PR','PB','HU','RDP_STD','RDP_CHAIN','RDP_HI',
-  'EXT_SH','EXT_SH_30','EXT_BSC_30','EXT_L','SC','EC','CCI_WIDE_SC','CCI_WIDE_EC',
+  'EXT_SH','EXT_SH_30','EXT_BSC_30','EXT_L','SC','EC','CCI_WIDE_SC','CCI_WIDE_EC','CCI_WIDE_H',
   'HI_LIFT_WIDTHS','HI_LIFT_HEIGHTS'];
 
 const shared = {};

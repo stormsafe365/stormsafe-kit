@@ -11,6 +11,7 @@ import type { PricingConfig, LeanTo } from './config';
 import { nearestStd, LENGTHS } from './tables';
 import { scLookup } from './closures';
 import { getDoorPrice } from './openings';
+import { cciWideOn } from './cciWide';
 
 /** Astro-Armour insulation rate, $/sqft. Builder `INSUL_RATE` line 4230. */
 const INSUL_RATE = 1.5;
@@ -183,11 +184,19 @@ export function gLT(config: PricingConfig, mfr: MfrConfig): number {
 /** Additional components / framed openings. Builder `gAC` line 4956. */
 export function gAC(config: PricingConfig, mfr: MfrConfig): number {
   let t = 0;
+  let bw = config.width || 0;
+  if (bw % 2 === 1) bw++;
   for (const c of config.additionalComponents || []) {
     const comp = c.label;
     const qty = c.qty || 1;
     let unitP = mfr.acPrices[comp] !== undefined ? mfr.acPrices[comp] : 0;
     if (comp === 'Custom — see notes' || comp.indexOf('(Custom Size)') >= 0) unitP = c.customPrice || 0;
+    // CCI 62'–100' wide (sheet 4/30/26), EAVE-side framed openings — builder `acUnitPrice`:
+    // "Side Openings With Garage Door" $750 · "Side Opening Without Garage Door Up to 20'" $1,250.
+    else if (cciWideOn(mfr, bw) && comp.indexOf('Framed Opening') === 0 && (c.location === 'Left Eave Side' || c.location === 'Right Eave Side')) {
+      if (comp.indexOf('Side Opening, No Door') >= 0) unitP = 1250;
+      else if (comp.indexOf('Garage Door (') >= 0) unitP = 750;
+    }
     t += unitP * qty;
   }
   return t;

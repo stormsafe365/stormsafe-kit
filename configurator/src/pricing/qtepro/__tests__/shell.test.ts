@@ -67,8 +67,10 @@ describe('gLeg (leg/eave-height upcharge)', () => {
   it('h≤6 → $0', () => {
     expect(gLeg(cfg({ height: 6 }), CA)).toBe(0);
   });
-  it('CCI 100×200×20 widespan ≈ $62,740 (verified vs Sensei)', () => {
-    expect(gLeg(cfg({ width: 100, length: 200, height: 20, buildingType: 'widespan' }), CCI)).toBe(62740);
+  it("CCI 100×200×20 widespan = $62,200 — the 62'–100' HEIGHT chart, 52+52+48+48 (Sensei 10/9/26)", () => {
+    // Was $62,740 under the provisional "2 × EXT_SH" rule (fitted to this one size); the CCI sheet
+    // of 4/30/26 prices height per connected unit: 16,150 + 16,150 + 14,950 + 14,950.
+    expect(gLeg(cfg({ width: 100, length: 200, height: 20, buildingType: 'widespan' }), CCI)).toBe(62200);
   });
   it('CCI tall legs (17\'+) on standard widths use the SH chart by length', () => {
     // CCI kickback on the Tejada 30x40x20 order: correct charge is $7,190

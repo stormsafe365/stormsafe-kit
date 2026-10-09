@@ -16,6 +16,7 @@ import { gBase } from './engine';
 import { gLeg, gVertUpgrade, gWalls, gConnectionFees, gableLTrimCost } from './shell';
 import { gRUD, gWTD, gWIN } from './openings';
 import { gInsul, gSidePanels, gLT, gAC } from './extras';
+import { cciWideOn } from './cciWide';
 
 export interface QuoteLineItems {
   base: number;
@@ -40,6 +41,8 @@ export interface QuoteLineItems {
   fasteners: number;
   overhang: number;
   sidePanels: number;
+  /** CCI 62'–100' wide: freight 3% of the building price (sheet 4/30/26), to the cent; else 0. */
+  freight: number;
 }
 
 export interface PricedQuote {
@@ -71,10 +74,12 @@ export interface PricedQuote {
 // ── rc()-inline upcharges ────────────────────────────────────────────────────
 
 /** 12-ga framing upgrade. Builder rc() line 5158. */
-function framingUpgradeCost(config: PricingConfig): number {
+function framingUpgradeCost(config: PricingConfig, mfr?: MfrConfig): number {
   if (config.framingGauge !== '12') return 0;
   const w = config.width || 0;
   const l = config.length || 0;
+  // CCI 62'–100' wide: 12-gauge (and 26-gauge) are IN the base price (sheet 4/30/26).
+  if (config.buildingType === 'widespan' && cciWideOn(mfr, w)) return 0;
   if (config.buildingType === 'widespan') {
     // Master Price Book 7/16/26 §4H: 360…840 through 40', then 44' 1560 ·
     // 48' 1680 · 52' 1800.
@@ -196,8 +201,11 @@ export function planCost(mfr: MfrConfig, planType: string, sub: number, isCommer
     if (isCommercial) return 750;
     return w > 40 ? 500 : 400;
   }
-  // CCI
-  if (planType === 'Site Specific Plans') return Math.max(175, Math.ceil(sub * 0.05));
+  // CCI — 62'–100' wide: 5% of the full retail price, max $6,500 (CCI letter 4/30/26).
+  if (planType === 'Site Specific Plans') {
+    const ssp = Math.max(175, Math.ceil(sub * 0.05));
+    return cciWideOn(mfr, w) ? Math.min(6500, ssp) : ssp;
+  }
   if (planType === 'Generic Plans') return 175;
   return 0; // Master Files = $0
 }
@@ -229,7 +237,7 @@ export function priceBuilding(input: PricingConfig, mfr: MfrConfig): PricedQuote
   const win = wn.win;
   const sf = wd.sf + wn.sf; // gRUD never contributes side-frame
   const lapSiding = config.lapSiding ? Math.round(base * 0.1) : 0;
-  const framingUpgrade = framingUpgradeCost(config);
+  const framingUpgrade = framingUpgradeCost(config, mfr);
   const ocUpgrade = ocUpgradeCost(config, mfr);
   const pitchUpgrade = pitchUpgradeCost(mfr, base, w, l, config.pitch || 'standard');
   const wainscot = wainscotCost(mfr, config, w, l);
@@ -255,7 +263,10 @@ export function priceBuilding(input: PricingConfig, mfr: MfrConfig): PricedQuote
   const fastenerFree = !!mfr.fastenerAlwaysFree || subPreFastener >= freeThresh;
   const fasteners = config.fastenerAdd && !fastenerFree ? 150 : 0;
 
-  const subtotal = preSheetSub + sheetingUpgrade + fasteners;
+  // CCI 62'–100' wide: "Always add freight at 3%" (sheet 4/30/26) — its own line, to the cent.
+  const subBeforeFreight = preSheetSub + sheetingUpgrade + fasteners;
+  const freight = cciWideOn(mfr, w) ? Math.round(subBeforeFreight * 3) / 100 : 0;
+  const subtotal = subBeforeFreight + freight;
 
   const discountPct = config.discountPct || 0;
   const discount = Math.round(subtotal * (discountPct / 100));
@@ -282,7 +293,8 @@ export function priceBuilding(input: PricingConfig, mfr: MfrConfig): PricedQuote
 
   let plan = 0;
   if (config.permit?.required) {
-    const planType = config.permit.planType || mfr.defaultPlan || 'No Permit Required';
+    // CCI 62'–100' wide: Site Specific Plans are required (forced, like the builder's doPerm).
+    const planType = cciWideOn(mfr, w) ? 'Site Specific Plans' : config.permit.planType || mfr.defaultPlan || 'No Permit Required';
     plan = planCost(mfr, planType, subtotal, config.permit.isCommercial || false, w);
   }
 
@@ -309,6 +321,7 @@ export function priceBuilding(input: PricingConfig, mfr: MfrConfig): PricedQuote
     fasteners,
     overhang,
     sidePanels,
+    freight,
   };
 
   return {

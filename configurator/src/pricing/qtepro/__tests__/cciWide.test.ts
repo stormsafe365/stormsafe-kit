@@ -138,18 +138,18 @@ describe('CCI 32-60 wide = handbook combinations x Price Book 2', () => {
 });
 
 describe('CCI 32-60 wide book items in the TS quote (10-9b audit)', () => {
-  it('8 ft legs $0 (handbook p6); Gable End 600/750/900, Half Closed >= gable, extended gable frame 2x gable (PB p6, HB p14)', () => {
+  it('8 ft legs $0 (handbook p6); 32-60 side openings $325 / $425 (PB p6); gable-only / Half Closed / extended gable frame unchanged (owner question)', () => {
     expect(gLeg(cfg({ width: 40, length: 40, height: 8 }), CCI)).toBe(0);
     expect(gLeg(cfg({ width: 40, length: 40, height: 9 }), CCI)).toBe(865);
-    expect(gWalls(cfg({ width: 50, length: 40, frontGable: 'Gable Only', backGable: 'Gable Only', rightEave: 'Open', leftEave: 'Open' }), CCI)).toBe(1500);
-    expect(gWalls(cfg({ width: 100, length: 40, frontGable: 'Half Closed', backGable: 'Half Closed', rightEave: 'Open', leftEave: 'Open' }), CCI)).toBe(3000);
+    expect(gWalls(cfg({ width: 50, length: 40, frontGable: 'Gable Only', backGable: 'Gable Only', rightEave: 'Open', leftEave: 'Open' }), CCI)).toBe(2 * (CCI.gableOnlyPrice || 300));
+    expect(gWalls(cfg({ width: 100, length: 40, frontGable: 'Half Closed', backGable: 'Half Closed', rightEave: 'Open', leftEave: 'Open' }), CCI)).toBe(2 * CCI.halfGablePrice);
     const ac = priceBuilding(cfg({ width: 40, length: 40, additionalComponents: [
       { label: 'Extended Gable Frame Charge — 32W-60W (per end — 2× gable cost)', qty: 1 },
       { label: "Framed Opening — Side Opening, No Door (6'-10' Wide)", qty: 1, location: 'Left Eave Side' },
       { label: "Framed Opening — Garage Door (6'-10' Wide)", qty: 1, location: 'Right Eave Side' },
       { label: "Framed Opening — Side Opening, No Door (20' Wide)", qty: 1, location: 'Right Eave Side' },
     ] }), CCI);
-    expect(ac.lineItems.additionalComponents).toBe(1200 + 425 + 325 + (CCI.acPrices["Framed Opening — Side Opening, No Door (20' Wide)"] || 0));
+    expect(ac.lineItems.additionalComponents).toBe(0 + 425 + 325 + (CCI.acPrices["Framed Opening — Side Opening, No Door (20' Wide)"] || 0));
   });
 });
 

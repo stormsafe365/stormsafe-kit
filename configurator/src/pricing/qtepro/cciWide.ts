@@ -63,12 +63,6 @@ export function cciCom12GA(l: number): number {
 }
 
 /** 62'–100' gable-only (per end) by width band: 62-70 $1,050 · 72-80 $1,200 · 82-90 $1,350 · 92-100 $1,500. */
-/** CCI 32'–60' wide "Gable End" per end (Price Book 2 p6): 32'–40' $600 · 42'–50' $750 · 52'–60' $900 (10-9b audit M3/M7). */
-export function cciComGableEnd(w: number): number {
-  const we = w % 2 === 1 ? w + 1 : w;
-  return we <= 40 ? 600 : we <= 50 ? 750 : 900;
-}
-
 export function cciWideGableOnly(w: number): number {
   const we = w % 2 === 1 ? w + 1 : w;
   return we <= 70 ? 1050 : we <= 80 ? 1200 : we <= 90 ? 1350 : 1500;

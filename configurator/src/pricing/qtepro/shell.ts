@@ -12,7 +12,7 @@ import type { PricingConfig } from './config';
 import { SHARED } from './data';
 import { nearestStd, LENGTHS } from './tables';
 import { ecLookup, scLookup, scPairLookup, vertSideUpcharge, vertEndUpcharge } from './closures';
-import { cciWideOn, cciWideHeight, cciWideUnitSum, cciWideGableOnly, cciComGableEnd } from './cciWide';
+import { cciWideOn, cciWideHeight, cciWideUnitSum, cciWideGableOnly } from './cciWide';
 
 const { HU, EXT_SH, EXT_SH_30, EXT_L } = SHARED;
 
@@ -276,11 +276,9 @@ export function gWalls(config: PricingConfig, mfr: MfrConfig): number {
   // Master Price Book 7/16/26 §4H: CA gable-only is $225 up to 24' wide,
   // $300 at 26'+ — flat (the vertical adder applies to GA only). CCI flat.
   // CCI 62'–100' wide (sheet 4/30/26 "Gable Ends", per end): 1,050 / 1,200 / 1,350 / 1,500 by width band.
-  // CCI 32'–60' (Price Book 2 p6 "Gable End"): $600 / $750 / $900 per end (10-9b audit M3/M7).
-  const gablP =
-    mfr.key === 'CA' ? (w <= 24 ? 225 : 300) : cciWideOn(mfr, w) ? cciWideGableOnly(w) : w >= 32 && w <= 60 ? cciComGableEnd(w) : mfr.gableOnlyPrice || 300;
-  // CCI Half Closed = gable + a 6' panel: never less than the Gable End price (10-9b audit M8; no Half Closed price in CCI's books).
-  const halfP = mfr.key === 'CCI' ? Math.max(mfr.halfGablePrice || 0, gablP) : mfr.halfGablePrice || 0;
+  // 32'–60' gable-only / Half Closed: owner question (CCI's flat Gable End table vs Sensei's half end), unchanged (10-9b).
+  const gablP = mfr.key === 'CA' ? (w <= 24 ? 225 : 300) : cciWideOn(mfr, w) ? cciWideGableOnly(w) : mfr.gableOnlyPrice || 300;
+  const halfP = mfr.halfGablePrice || 0;
 
   // Gables (front + back).
   if (fgv === 'Closed') t += ecLookup(w, h, mfr);

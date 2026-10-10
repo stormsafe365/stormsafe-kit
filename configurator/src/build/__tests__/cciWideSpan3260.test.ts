@@ -208,6 +208,15 @@ describe('CCI 32-60 wide 12-gauge = the brochure row, per unit past 52', () => {
 });
 
 describe('everything else unchanged', () => {
+  it('CCI 62-100 at 22 / 24 tall (W62-4, Sensei 70x40): the sheet rows - Height 15,085 / 17,590, Sides 9,050 / 9,900, End 7,320 / 7,520', () => {
+    expect(legs(70, 40, 22)).toBe(15085);
+    expect(legs(70, 40, 24)).toBe(17590);
+    expect(sidePair(70, 40, 22)).toBe(9050);
+    expect(sidePair(70, 40, 24)).toBe(9900);
+    expect(run('cciWideEC(70,22)')).toBe(7320);
+    expect(run('cciWideEC(70,24)')).toBe(7520);
+    expect(legs(70, 40, 8)).toBe(0); // 8' base height (Sensei 'Height - 8'H ... $0.00')
+  });
   it('CCI 62-100 wide keeps the 4/30/26 sheet (Audrey 70x110x20)', () => {
     expect(base(70, 110)).toBe(89485);
     expect(legs(70, 110, 20)).toBe(35375);

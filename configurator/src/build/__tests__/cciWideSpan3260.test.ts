@@ -155,9 +155,11 @@ describe('CCI 32-60 wide base = Price Book 2 x handbook combinations', () => {
 });
 
 describe('CCI 32-60 wide legs = SIDE HEIGHT chart x handbook units, every length', () => {
-  it('7-10 tall read the 10 row (40x60x10 = 605 + 690 = $1,295, was the 16 row $7,125)', () => {
+  it('9-10 tall read the 10 row (40x60x10 = 605 + 690 = $1,295, was the 16 row $7,125); 8 = the base height, $0 (handbook p6, audit M1)', () => {
     expect(legs(40, 60, 10)).toBe(1295);
-    expect(legs(40, 60, 8)).toBe(1295);
+    expect(legs(40, 60, 9)).toBe(1295);
+    expect(legs(40, 60, 8)).toBe(0);
+    expect(legs(60, 100, 8)).toBe(0);
     expect(legs(40, 110, 10)).toBe(780 + 780 + 865);
   });
   it('17-20 tall at 85-100 follow the 32W-60W combinations (100 = 48+52), not the 30-wide re-sample', () => {
@@ -170,7 +172,7 @@ describe('CCI 32-60 wide legs = SIDE HEIGHT chart x handbook units, every length
   });
   it('every width x length 20-160 x height', () => {
     for (const w of [32, 45, 54, 60]) for (let l = 20; l <= 160; l++) for (const h of [7, 8, 10, 11, 12, 14, 16, 17, 18, 20]) {
-      expect(legs(w, l, h), `${w}x${l}x${h}`).toBe(hbUnits(l).reduce((s, u) => s + at(SH[shRow(h)], u), 0));
+      expect(legs(w, l, h), `${w}x${l}x${h}`).toBe(h <= 8 ? 0 : hbUnits(l).reduce((s, u) => s + at(SH[shRow(h)], u), 0));
     }
   });
 });
@@ -226,5 +228,32 @@ describe('everything else unchanged', () => {
     const rate = (row[row.length - 1] - row[row.length - 2]) / 5;
     expect(legs(30, 110, 18)).toBe(Math.round(row[row.length - 1] + rate * 10));
     expect(legs(30, 100, 18)).toBe(15360);
+  });
+});
+
+describe('10-9b audit helpers in the program', () => {
+  const h = vm.createContext({});
+  vm.runInContext(['certLabel', 'cciUnits', 'cciUnitSum', 'cciColUp', 'cci12x4Row', 'cciPanelTiers'].map(grabFn).join(''), h);
+  const r = (js: string) => vm.runInContext(js, h);
+  it('"Up to 170 MPH" on every 170 MPH certification (owner 10/9/26); 150 MPH unchanged', () => {
+    expect(r("certLabel('170 MPH')")).toBe('Up to 170 MPH');
+    expect(r("certLabel('170 MPH (Auto)')")).toBe('Up to 170 MPH (Auto)');
+    expect(r("certLabel('150 MPH')")).toBe('150 MPH');
+    expect(r("certLabel('N/A')")).toBe('N/A');
+  });
+  it('CCI option columns round UP (PB-9): 24 -> 25 col, 39 -> 40 col; combined row per unit past 40', () => {
+    expect(r('cciColUp(20)')).toBe(0);
+    expect(r('cciColUp(21)')).toBe(1);
+    expect(r('cciColUp(24)')).toBe(1);
+    expect(r('cciColUp(39)')).toBe(4);
+    expect(r('cci12x4Row(24)')).toBe(480);
+    expect(r('cci12x4Row(39)')).toBe(840);
+    expect(r('cci12x4Row(45)')).toBe(360 + 480); // 46 roof = 21 + 26
+    expect(r('cci12x4Row(90)')).toBe(600 * 3); // 91 roof = 31 + 31 + 31
+  });
+  it('side panels one per unit; a unit under 20 = the 21 panel, a 41 roof unit keeps the 36 price', () => {
+    expect(Array.from(r('cciPanelTiers(100)') as number[])).toEqual([36, 36, 31]);
+    expect(Array.from(r('cciPanelTiers(15)') as number[])).toEqual([21]);
+    expect(Array.from(r('cciPanelTiers(80)') as number[])).toEqual([36, 36]);
   });
 });

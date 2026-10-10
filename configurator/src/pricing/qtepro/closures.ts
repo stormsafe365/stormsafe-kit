@@ -214,11 +214,15 @@ export function eaveHeaderCost(doorWidthFt: number, bldgWidthFt: number, mfr?: P
   const bw = Math.trunc(bldgWidthFt) || 0;
   if (dw <= 0) return 0;
   if (cciWideOn(mfr, bw)) return 750;
+  // CCI 32'–60': "Side Openings Up To 16' — With Garage Door $325" (Price Book 2 p6; 10-9b audit M4/O2).
+  if (mfr?.key === 'CCI' && bw >= 32 && bw <= 60 && dw <= 16) return 325;
   if (bw >= 32) {
     if (dw <= 4) return 360;
     if (dw <= 16) return 425;
     return 850;
   }
+  // CCI 12'–30': "Side Openings — With Garage Door" 6'–10' $150 · 12' $200 · 14' $250 · 16' $300 (Price Book 2 p2/p4; audit M15).
+  if (mfr?.key === 'CCI' && dw <= 16) return dw <= 10 ? 150 : dw <= 12 ? 200 : dw <= 14 ? 250 : 300;
   if (dw <= 12) return 200;
   if (dw <= 16) return 360;
   return 720;

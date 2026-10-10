@@ -11,7 +11,7 @@ import type { PricingConfig, LeanTo } from './config';
 import { nearestStd, LENGTHS } from './tables';
 import { scLookup } from './closures';
 import { getDoorPrice } from './openings';
-import { cciWideOn } from './cciWide';
+import { cciWideOn, cciComGableEnd } from './cciWide';
 
 /** Astro-Armour insulation rate, $/sqft. Builder `INSUL_RATE` line 4230. */
 const INSUL_RATE = 1.5;
@@ -196,6 +196,19 @@ export function gAC(config: PricingConfig, mfr: MfrConfig): number {
     else if (cciWideOn(mfr, bw) && comp.indexOf('Framed Opening') === 0 && (c.location === 'Left Eave Side' || c.location === 'Right Eave Side')) {
       if (comp.indexOf('Side Opening, No Door') >= 0) unitP = 1250;
       else if (comp.indexOf('Garage Door (') >= 0) unitP = 750;
+    }
+    // CCI 32'–60' (10-9b audit M9/M5/M10): Extended Gable frame charge = 2 x the Gable End (handbook p14, Price Book 2
+    // p6); EAVE framed openings up to 16': with garage door $325, without $425 (Price Book 2 p6; handbook p17/p22).
+    else if (mfr.key === 'CCI' && bw >= 32 && bw <= 60) {
+      if (comp.indexOf('Extended Gable Frame Charge') === 0 && comp.indexOf('32W-60W') >= 0) unitP = 2 * cciComGableEnd(bw);
+      else if (comp.indexOf('Framed Opening') === 0 && (c.location === 'Left Eave Side' || c.location === 'Right Eave Side')) {
+        const m = /\((\d+)'?(?:-(\d+)')? Wide\)/.exec(comp);
+        const ow = m ? parseInt(m[2] || m[1], 10) : 0;
+        if (ow && ow <= 16) {
+          if (comp.indexOf('Side Opening, No Door') >= 0) unitP = 425;
+          else if (comp.indexOf('Garage Door (') >= 0) unitP = 325;
+        }
+      }
     }
     t += unitP * qty;
   }

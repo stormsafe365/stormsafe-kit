@@ -294,6 +294,8 @@ export function priceBuilding(input: PricingConfig, mfr: MfrConfig): PricedQuote
     needsScheduling && balance > 0 ? { half: Math.round(balance / 2), remainder: balance - Math.round(balance / 2) } : null;
 
   let plan = 0;
+  // CCI 62'–100': "Always add 5% … for site specific plans" (62'–100' sheet p3), permit or not (10-9b audit W62-1).
+  if (!config.permit?.required && cciWideOn(mfr, w)) plan = planCost(mfr, 'Site Specific Plans', subtotal, false, w);
   if (config.permit?.required) {
     // CCI 62'–100' wide: Site Specific Plans are required (forced, like the builder's doPerm).
     const planType = cciWideOn(mfr, w) ? 'Site Specific Plans' : config.permit.planType || mfr.defaultPlan || 'No Permit Required';

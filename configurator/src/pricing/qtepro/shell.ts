@@ -12,7 +12,7 @@ import type { PricingConfig } from './config';
 import { SHARED } from './data';
 import { nearestStd, LENGTHS } from './tables';
 import { ecLookup, scLookup, scPairLookup, vertSideUpcharge, vertEndUpcharge } from './closures';
-import { cciWideOn, cciWideHeight, cciWideUnitSum, cciWideGableOnly } from './cciWide';
+import { cciWideOn, cciWideHeight, cciWideUnitSum, cciWideGableOnly, cciComGableEnd } from './cciWide';
 
 const { HU, EXT_SH, EXT_SH_30, EXT_L } = SHARED;
 
@@ -59,7 +59,9 @@ export function gLeg(config: PricingConfig, mfr: MfrConfig): number {
     // 108 = 36+36+36 … 120 = 40+40+40), each unit on the brochure SIDE HEIGHT chart (Price Book 2 p6;
     // 10/9/26). No EXT_SH (5' columns / 30'-wide Sensei rows / 16' row for 7'–10'), no straight line past
     // 100', no CA width stretch. EXT_SH stays for CA and CCI 17'+ standard widths.
-    if (mfr.key === 'CCI' && w >= 32 && w <= 60) return cciWideUnitSum(l, SHT[hk] || SHT[16]);
+    // 8' is the base height (handbook p6 "All 32-60 wide units start at 8' Tall"; the p6 SIDE HEIGHT chart starts at 10'):
+    // no leg charge at 8' (10-9b audit M1). 9' reads the 10' row.
+    if (mfr.key === 'CCI' && w >= 32 && w <= 60) return h <= 8 ? 0 : cciWideUnitSum(l, SHT[hk] || SHT[16]);
     if (l > mfr.shExtThresh) {
       const extRow = EXT_SH[hk] || EXT_SH[16] || [];
       let bestI = extRow.length - 1;
@@ -274,8 +276,11 @@ export function gWalls(config: PricingConfig, mfr: MfrConfig): number {
   // Master Price Book 7/16/26 §4H: CA gable-only is $225 up to 24' wide,
   // $300 at 26'+ — flat (the vertical adder applies to GA only). CCI flat.
   // CCI 62'–100' wide (sheet 4/30/26 "Gable Ends", per end): 1,050 / 1,200 / 1,350 / 1,500 by width band.
-  const gablP = mfr.key === 'CA' ? (w <= 24 ? 225 : 300) : cciWideOn(mfr, w) ? cciWideGableOnly(w) : mfr.gableOnlyPrice || 300;
-  const halfP = mfr.halfGablePrice || 0;
+  // CCI 32'–60' (Price Book 2 p6 "Gable End"): $600 / $750 / $900 per end (10-9b audit M3/M7).
+  const gablP =
+    mfr.key === 'CA' ? (w <= 24 ? 225 : 300) : cciWideOn(mfr, w) ? cciWideGableOnly(w) : w >= 32 && w <= 60 ? cciComGableEnd(w) : mfr.gableOnlyPrice || 300;
+  // CCI Half Closed = gable + a 6' panel: never less than the Gable End price (10-9b audit M8; no Half Closed price in CCI's books).
+  const halfP = mfr.key === 'CCI' ? Math.max(mfr.halfGablePrice || 0, gablP) : mfr.halfGablePrice || 0;
 
   // Gables (front + back).
   if (fgv === 'Closed') t += ecLookup(w, h, mfr);

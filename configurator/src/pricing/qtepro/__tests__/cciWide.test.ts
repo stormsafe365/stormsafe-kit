@@ -137,6 +137,22 @@ describe('CCI 32-60 wide = handbook combinations x Price Book 2', () => {
   });
 });
 
+describe('CCI 32-60 wide book items in the TS quote (10-9b audit)', () => {
+  it('8 ft legs $0 (handbook p6); Gable End 600/750/900, Half Closed >= gable, extended gable frame 2x gable (PB p6, HB p14)', () => {
+    expect(gLeg(cfg({ width: 40, length: 40, height: 8 }), CCI)).toBe(0);
+    expect(gLeg(cfg({ width: 40, length: 40, height: 9 }), CCI)).toBe(865);
+    expect(gWalls(cfg({ width: 50, length: 40, frontGable: 'Gable Only', backGable: 'Gable Only', rightEave: 'Open', leftEave: 'Open' }), CCI)).toBe(1500);
+    expect(gWalls(cfg({ width: 100, length: 40, frontGable: 'Half Closed', backGable: 'Half Closed', rightEave: 'Open', leftEave: 'Open' }), CCI)).toBe(3000);
+    const ac = priceBuilding(cfg({ width: 40, length: 40, additionalComponents: [
+      { label: 'Extended Gable Frame Charge — 32W-60W (per end — 2× gable cost)', qty: 1 },
+      { label: "Framed Opening — Side Opening, No Door (6'-10' Wide)", qty: 1, location: 'Left Eave Side' },
+      { label: "Framed Opening — Garage Door (6'-10' Wide)", qty: 1, location: 'Right Eave Side' },
+      { label: "Framed Opening — Side Opening, No Door (20' Wide)", qty: 1, location: 'Right Eave Side' },
+    ] }), CCI);
+    expect(ac.lineItems.additionalComponents).toBe(1200 + 425 + 325 + (CCI.acPrices["Framed Opening — Side Opening, No Door (20' Wide)"] || 0));
+  });
+});
+
 describe('CCI 62-100 wide (sheet 4/30/26) in the TS quote', () => {
   it('Audrey 70x110x20: base 89,485 · height 35,375 · ends 2 x 7,125 · sides 23,045 · 12GA $0 · freight 3%', () => {
     const q = priceBuilding(cfg({ width: 70, height: 20, framingGauge: '12', permit: { required: true, planType: 'Generic Plans' } }), CCI);
@@ -153,7 +169,7 @@ describe('CCI 62-100 wide (sheet 4/30/26) in the TS quote', () => {
     expect(gWalls(cfg({ width: 92, frontGable: 'Gable Only', backGable: 'Open', rightEave: 'Open', leftEave: 'Open' }), CCI)).toBe(1500);
     expect(eaveHeaderCost(10, 70, CCI)).toBe(750);
     expect(eaveHeaderCost(10, 70, CA)).toBe(425);
-    expect(eaveHeaderCost(10, 60, CCI)).toBe(425);
+    expect(eaveHeaderCost(10, 60, CCI)).toBe(325); // CCI 32'-60': Price Book 2 p6 $325 (10-9b audit M4)
     const ac = priceBuilding(cfg({ width: 80, additionalComponents: [
       { label: "Framed Opening — Side Opening, No Door (12' Wide)", qty: 1, location: 'Left Eave Side' },
       { label: "Framed Opening — Garage Door (12' Wide)", qty: 1, location: 'Right Eave Side' },
@@ -162,6 +178,11 @@ describe('CCI 62-100 wide (sheet 4/30/26) in the TS quote', () => {
     expect(ac.lineItems.additionalComponents).toBe(1250 + 750 + (CCI.acPrices["Framed Opening — Garage Door (12' Wide)"] || 0));
     expect(planCost(CCI, 'Site Specific Plans', 164625, false, 70)).toBe(6500);
     expect(planCost(CCI, 'Site Specific Plans', 164625, false, 60)).toBe(8232);
+  });
+  it('plans on 62-100 even without a permit (sheet p3 "Always add 5%"; 10-9b audit W62-1)', () => {
+    const q = priceBuilding(cfg({ width: 70, height: 20 }), CCI);
+    expect(q.planCost).toBe(6500);
+    expect(priceBuilding(cfg({ width: 60, height: 20 }), CCI).planCost).toBe(0);
   });
   it('no freight below 61 wide', () => {
     expect(priceBuilding(cfg({ width: 60 }), CCI).lineItems.freight).toBe(0);

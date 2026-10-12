@@ -440,6 +440,13 @@ interface LeanToModel {
   walls: LtWall[];
   /** Hip miter at an end shared with another lean-to (two lean-tos wrapping a corner). */
   miter: Partial<Record<'front' | 'back', Miter>>;
+  /**
+   * WRAP-AROUND (StructureModel.leanToWraps): the roof continues this far
+   * past that run end (the partner lean-to's width) over the open corner
+   * square, mitered on the hip from the main corner to the drip corner.
+   * 0 = not wrapped (the roof ends as before).
+   */
+  ext: { front: number; back: number };
 }
 
 /** Main corner (sx, zs) an end wall shares its plane with (the lean-to runs to that main corner), else null. */
@@ -472,7 +479,7 @@ function buildModels(s: StructureModel, wainscotFt: number, wallOrientation: Pan
   for (const lt of s.leanTos ?? []) {
     const f = leanToFrame(lt, m);
     if (!f) continue;
-    models.push({ f, walls: leanToWalls(f, s.roofOverhangFt, wainscotFt, vertical), miter: {} });
+    models.push({ f, walls: leanToWalls(f, s.roofOverhangFt, wainscotFt, vertical), miter: {}, ext: { front: 0, back: 0 } });
   }
   const junctions: Junction[] = [];
   for (const a of models) {
@@ -496,6 +503,25 @@ function buildModels(s: StructureModel, wainscotFt: number, wallOrientation: Pan
         }
       }
     }
+  }
+  // Wrap-around corners: each roof runs on over the corner square (the
+  // partner's width + the overhang) and the two meet on a 45° hip through the
+  // FRAMING corner (the main corner — so the hip is straight even when the eave
+  // lean-to is flush) to the drip corner; each keeps the side where it is the
+  // lower roof. The junction above (end walls / inside corner) still applies:
+  // the ends stay in line with the main ends and the corner stays open.
+  for (const c of s.leanToWraps ?? []) {
+    const a = models.find((md) => md.f.lt.id === c.eaveId);
+    const b = models.find((md) => md.f.lt.id === c.gableId);
+    if (!a || !b || !a.f.eave || b.f.eave) continue;
+    const ea = c.zs < 0 ? 'front' : 'back'; // eave lean-to: front = its spanStart (-Z)
+    const eb = c.sx < 0 ? 'front' : 'back'; // gable lean-to: front = its spanStart (-X)
+    a.ext[ea] = Math.abs(b.f.outer - b.f.inner);
+    b.ext[eb] = Math.abs(a.f.outer - a.f.inner);
+    const P: Plan = [a.f.inner, b.f.inner];
+    const Q: Plan = [a.f.drip, b.f.drip];
+    a.miter[ea] = { P, Q, keep: [Q[0], P[1]] };
+    b.miter[eb] = { P, Q, keep: [P[0], Q[1]] };
   }
   return { m, models, junctions };
 }
@@ -966,8 +992,8 @@ export function leanToBatches(inp: LeanToShellInput): ShellBatch[] {
   const claimed = new Set(junctions.map((j) => `${j.sx},${j.zs}`));
   for (const md of models) {
     const { f } = md;
-    const rS = f.r0 - f.oh;
-    const rE = f.r1 + f.oh;
+    const rS = f.r0 - f.oh - md.ext.front; // a wrapped end runs on over the corner square
+    const rE = f.r1 + f.oh + md.ext.back;
     const uDir: V3 = f.eave ? [0, 0, -f.out] : [f.out, 0, 0];
     const flip = roofOrient === 'vertical' && litFromRight(f.n, uDir);
     const acrossOf = (p: Plan) => (f.eave ? p[0] : p[1]);
@@ -1143,7 +1169,9 @@ export function leanToBatchKey(inp: LeanToShellInput): string {
       lt.customWalls ?? null,
       (lt.openings ?? []).map((o) => [o.type, o.wall, o.widthFt, o.heightFt, o.sillFt, o.offsetFt]),
       lt.storage ?? null,
+      lt.wrap ?? null,
     ]),
+    s.leanToWraps ?? null,
     s.width,
     s.length,
     s.legHeight,

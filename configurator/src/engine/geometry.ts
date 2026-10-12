@@ -1,4 +1,4 @@
-import type { BuildingType, EndSheeting, LeanToOpening, OpenEnd, Opening, StorageMode, WallOverrides, WallSide } from '@/types/building';
+import type { BuildingType, EndSheeting, LeanToOpening, LeanToWrapCorner, OpenEnd, Opening, StorageMode, WallOverrides, WallSide } from '@/types/building';
 import type { ResolvedBuilding } from './ruleEngine';
 import { leanToWallSettings, rendersLeanToFixture, type LeanToStorageSpan } from './leanToFixtures';
 
@@ -128,6 +128,40 @@ export interface LeanToStructure {
    * before).
    */
   storage?: LeanToStorageSpan;
+  /**
+   * WRAP-AROUND corner at a run end (VIEW-ONLY; LeanTo.wrapCorners, resolved
+   * by deriveStructure): `start` = the spanStart end, `end` = the spanEnd end.
+   * The roof continues `ext` ft past that end (the partner lean-to's width —
+   * the open corner square) and meets the partner's roof on a hip from the
+   * main corner (sx·W/2, zs·L/2) to the outer corner. The walls, span, posts
+   * and openings are NOT moved (Sensei: the ends stay in line with the main
+   * building's ends, the corner stays open). Absent = no wrap (every lean-to
+   * derives exactly as before).
+   */
+  wrap?: { start?: LeanToWrapEnd; end?: LeanToWrapEnd };
+}
+
+/** One wrapped end of a lean-to (LeanToStructure.wrap). */
+export interface LeanToWrapEnd {
+  corner: LeanToWrapCorner;
+  sx: 1 | -1;
+  zs: 1 | -1;
+  /** Roof continuation past this end (ft) = the partner lean-to's width. */
+  ext: number;
+  partnerId: string;
+}
+
+/** A wrapped main corner (StructureModel.leanToWraps): the corner square sx·[W/2, W/2+w] × zs·[L/2, L/2+w]. */
+export interface LeanToWrap {
+  corner: LeanToWrapCorner;
+  sx: 1 | -1;
+  zs: 1 | -1;
+  widthFt: number;
+  lowLegHeightFt: number;
+  /** Connection (high) height of both lean-tos = the hip's top at the main corner. */
+  connH: number;
+  eaveId: string;
+  gableId: string;
 }
 
 export interface StructureModel {
@@ -166,6 +200,8 @@ export interface StructureModel {
   areas: { roof: number; walls: number };
   /** Lean-to panel data for 3D rendering (derived from config.leanTos). */
   leanTos: LeanToStructure[];
+  /** Wrapped main corners (VIEW-ONLY; absent when no lean-to wraps a corner). */
+  leanToWraps?: LeanToWrap[];
 }
 
 const dist = (a: Vec3, b: Vec3): number => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -1415,6 +1451,8 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   // Re-spacing them to the OC from the lean-to start is an owner decision that
   // has not been made, so it is deliberately NOT done here.
   const derivedLeanTos: LeanToStructure[] = [];
+  /** Wrap-around candidates (only lean-tos that carry wrapCorners): resolved after the loop. */
+  const wrapInfo: { d: LeanToStructure; corners: LeanToWrapCorner[]; side: string; lw: number; lh: number; connH: number; spanA: number; spanB: number }[] = [];
   for (const lt of config.leanTos ?? []) {
     if (!lt.widthFt || !lt.lengthFt || !lt.lowLegHeightFt) continue;
 
@@ -1587,6 +1625,65 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       // Only a lean-to WITH a storage section gets the key (no-storage output unchanged).
       ...(storage ? { storage } : {}),
     });
+    if (lt.wrapCorners?.length) {
+      wrapInfo.push({ d: derivedLeanTos[derivedLeanTos.length - 1], corners: lt.wrapCorners, side, lw, lh, connH, spanA, spanB });
+    }
+  }
+
+  // --- WRAP-AROUND corners (VIEW-ONLY; the program prices them) ---
+  // A corner draws only when BOTH lean-tos carry it, run to that main corner,
+  // and share width, low leg and connection height (so the hip is straight at
+  // 45°). Framing (a drawing assumption — no CCI detail): a corner post at the
+  // outer corner (the lean-to leg rule), a hip rafter from the main corner down
+  // to it, both lean-tos' purlins carried on to the hip, the two outer edges of
+  // the square, and base rails out to the corner post. No walls: the corner
+  // stays open (Sensei), the lean-tos' end walls stay in line with the main ends.
+  const leanToWraps: LeanToWrap[] = [];
+  const WRAP_AT: Record<LeanToWrapCorner, [1 | -1, 1 | -1]> = { FL: [1, -1], FR: [-1, -1], BL: [1, 1], BR: [-1, 1] };
+  for (const k of ['FL', 'FR', 'BL', 'BR'] as const) {
+    const [sx, zs] = WRAP_AT[k];
+    const e = wrapInfo.find((i) => i.side === (sx > 0 ? 'Left Eave' : 'Right Eave') && i.corners.includes(k));
+    const g = wrapInfo.find((i) => i.side === (zs < 0 ? 'Front Gable' : 'Back Gable') && i.corners.includes(k));
+    if (!e || !g) continue;
+    const eReach = zs < 0 ? Math.abs(e.spanA + halfL) < 0.01 : Math.abs(e.spanB - halfL) < 0.01;
+    const gReach = sx < 0 ? Math.abs(g.spanA + halfW) < 0.01 : Math.abs(g.spanB - halfW) < 0.01;
+    if (!eReach || !gReach || Math.abs(e.lw - g.lw) > 0.01 || Math.abs(e.lh - g.lh) > 0.01 || Math.abs(e.connH - g.connH) > 0.01) continue;
+    const w = e.lw;
+    const lh = e.lh;
+    const cH = e.connH;
+    const mx = sx * halfW;
+    const mz = zs * halfL;
+    const ox = sx * (halfW + w);
+    const oz = zs * (halfL + w);
+    const slope = w > 0 ? (cH - lh) / w : 0;
+    // Corner post (single, or doubled / laddered inboard along the diagonal by the lean-to leg rule).
+    members.push(member('leg', [ox, 0, oz], [ox, lh, oz]));
+    const style = legStyleFor(w, lh);
+    if (style !== 'single') {
+      const d = (style === 'ladder' ? ladderDepth(lh) : DOUBLE_D) / Math.SQRT2;
+      const top2 = lh + slope * d;
+      members.push(member('leg', [ox - sx * d, 0, oz - zs * d], [ox - sx * d, top2, oz - zs * d]));
+    }
+    // Hip rafter: main corner (connection height) -> corner post top (low eave).
+    members.push(member('rafter', [mx, cH, mz], [ox, lh, oz]));
+    // The two outer edges of the square (eave lines), out from each lean-to's end post.
+    members.push(member('purlin', [ox, lh, mz], [ox, lh, oz]));
+    members.push(member('purlin', [mx, lh, oz], [ox, lh, oz]));
+    // Each lean-to's purlins (1/3, 2/3 of the slope) continue past the main end line to the hip.
+    for (let p = 1; p <= 2; p++) {
+      const t = p / 3;
+      const y = cH + (lh - cH) * t;
+      members.push(member('purlin', [sx * (halfW + w * t), y, mz], [sx * (halfW + w * t), y, zs * (halfL + w * t)]));
+      members.push(member('purlin', [mx, y, zs * (halfL + w * t)], [sx * (halfW + w * t), y, zs * (halfL + w * t)]));
+    }
+    // Base rails along the open corner's two outer sides, out to the corner post.
+    members.push(member('baseRail', [ox, 0, mz], [ox, 0, oz]));
+    members.push(member('baseRail', [mx, 0, oz], [ox, 0, oz]));
+    const eEnd = zs < 0 ? 'start' : 'end';
+    const gEnd = sx < 0 ? 'start' : 'end';
+    e.d.wrap = { ...(e.d.wrap ?? {}), [eEnd]: { corner: k, sx, zs, ext: g.lw, partnerId: g.d.id } };
+    g.d.wrap = { ...(g.d.wrap ?? {}), [gEnd]: { corner: k, sx, zs, ext: e.lw, partnerId: e.d.id } };
+    leanToWraps.push({ corner: k, sx, zs, widthFt: w, lowLegHeightFt: lh, connH: cH, eaveId: e.d.id, gableId: g.d.id });
   }
 
   return {
@@ -1634,6 +1731,8 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     walls,
     areas: { roof: 2 * rafterLength * L, walls: sideWallArea + endWallArea },
     leanTos: derivedLeanTos,
+    // Only a build WITH a wrapped corner gets the key (every other build derives exactly as before).
+    ...(leanToWraps.length ? { leanToWraps } : {}),
   };
 }
 

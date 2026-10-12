@@ -18,7 +18,7 @@ import { useEffect, useRef } from 'react';
 import { Viewport } from '@/components/Viewport';
 import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
-import type { BuildingType, EndSheeting, FoundationType, OpeningType, WallOverrides, WallSide } from '@/types/building';
+import type { BuildingType, EndSheeting, FoundationType, LeanToWrapCorner, OpeningType, WallOverrides, WallSide } from '@/types/building';
 import { leanToWalkDoorLook, leanToWindowLook, readLeanToStorage, type ProgramTypeRow } from './leanToAccessory';
 import { NO_STORAGE, partitionLocationAllowed, readMainStorage } from './mainStorage';
 import { gableLeanToOffset3D, offset3DToProgramX, programXTo3DOffset, programXToTyped, typedValueText } from './positionMap';
@@ -541,6 +541,22 @@ interface LeanToRead {
   openings?: Array<LeanToOpeningRead>;
   /** VIEW-ONLY storage section (only present when the program prices one). */
   storage?: { end: 'front' | 'back'; lengthFt: number };
+  /** VIEW-ONLY wrap-around corners (only present when the program prices one). */
+  wrapCorners?: LeanToWrapCorner[];
+}
+
+/** The wrap-around corners the program prices for one lean-to entry (its ltWrapOf), in FL/FR/BL/BR order. */
+function readLeanToWrap(win: Window, el: Element): LeanToWrapCorner[] {
+  const fn = (win as unknown as { ltWrapOf?: (e: Element) => { len?: number; meets?: Array<{ k?: string }> } }).ltWrapOf;
+  if (typeof fn !== 'function') return [];
+  try {
+    const w = fn(el);
+    if (!w || !(Number(w.len) > 0)) return [];
+    const ks = (w.meets ?? []).map((m) => m.k);
+    return (['FL', 'FR', 'BL', 'BR'] as const).filter((k) => ks.includes(k));
+  } catch {
+    return [];
+  }
 }
 
 function readLeanTos(win: Window & { document: Document }): LeanToRead[] {
@@ -603,6 +619,9 @@ function readLeanTos(win: Window & { document: Document }): LeanToRead[] {
     const customWalls = enclosure === 'custom' ? { front: customFront, back: customBack, side: customSide } : undefined;
     // Storage section (attached only; the program's own validity + length).
     const storage = type === 'attached' ? readLeanToStorage(win, el) : undefined;
+    // Wrap-around corners the program PRICES for this lean-to (ltWrapOf: both lean-tos
+    // run to the corner, same width / height / pitch). Older programs: none.
+    const wrapCorners = type === 'attached' ? readLeanToWrap(win, el) : [];
 
     // ── Lean-to accessories (doors / windows / roll-ups) → openings ──
     // Each `.lt-acc-e` entry: type + size + which wall + position + quantity.
@@ -735,6 +754,8 @@ function readLeanTos(win: Window & { document: Document }): LeanToRead[] {
       // Only a lean-to with a priced storage section gets the key (no-storage
       // signature + store entry unchanged).
       ...(storage ? { storage } : {}),
+      // Same for a wrap-around corner: no key = drawn exactly as before.
+      ...(wrapCorners.length ? { wrapCorners } : {}),
     });
   });
 
@@ -1024,6 +1045,7 @@ function syncFromBuilder(win: BuilderWindow) {
         customWalls: lt.customWalls as any, // per-wall settings (front/back/side)
         openings: lt.openings as any, // lean-to doors/windows/roll-ups
         ...(lt.storage ? { storage: lt.storage } : {}), // VIEW-ONLY storage section
+        ...(lt.wrapCorners ? { wrapCorners: lt.wrapCorners } : {}), // VIEW-ONLY wrap-around corners
       });
     }
   }

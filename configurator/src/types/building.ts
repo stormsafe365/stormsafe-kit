@@ -155,7 +155,19 @@ export interface LeanTo {
    * no storage section (every quote made before this feature).
    */
   storage?: LeanToStorage;
+  /**
+   * VIEW-ONLY (drawing; priced by the program): the WRAP-AROUND corners this
+   * lean-to takes part in — FL = Left Eave + Front Gable, FR = Right Eave +
+   * Front Gable, BL = Left Eave + Back Gable, BR = Right Eave + Back Gable.
+   * Set only on a corner the program prices (both lean-tos run to it, same
+   * width / height / pitch); unset on every lean-to without a wrap, so those
+   * derive and draw exactly as before.
+   */
+  wrapCorners?: LeanToWrapCorner[];
 }
+
+/** A wrap-around corner key (program #lt-wraps): Front/Back + Left/Right. */
+export type LeanToWrapCorner = 'FL' | 'FR' | 'BL' | 'BR';
 
 /** A lean-to's storage section (see LeanTo.storage). */
 export interface LeanToStorage {

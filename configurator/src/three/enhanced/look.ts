@@ -130,7 +130,7 @@ export interface Footprint {
   z1: number;
 }
 
-type SiteInput = Pick<StructureModel, 'width' | 'length' | 'leanTos'>;
+type SiteInput = Pick<StructureModel, 'width' | 'length' | 'leanTos'> & Partial<Pick<StructureModel, 'leanToWraps'>>;
 
 /**
  * Plan rectangles of everything standing on the slab: the main building,
@@ -145,6 +145,15 @@ export function siteRects(s: SiteInput): Footprint[] {
     const eave = lt.attachedSide === 'Left Eave' || lt.attachedSide === 'Right Eave';
     const xs = eave ? [lt.inner.x, lt.outer.x] : [lt.spanStart, lt.spanEnd];
     const zs = eave ? [lt.spanStart, lt.spanEnd] : [lt.inner.z, lt.outer.z];
+    if (![...xs, ...zs].every(Number.isFinite)) continue;
+    rects.push({ x0: Math.min(xs[0], xs[1]), x1: Math.max(xs[0], xs[1]), z0: Math.min(zs[0], zs[1]), z1: Math.max(zs[0], zs[1]) });
+  }
+  // Wrap-around corners: the open corner square stands on the slab too (its corner post).
+  for (const c of s.leanToWraps ?? []) {
+    const hw = s.width / 2;
+    const hl = s.length / 2;
+    const xs = [c.sx * hw, c.sx * (hw + c.widthFt)];
+    const zs = [c.zs * hl, c.zs * (hl + c.widthFt)];
     if (![...xs, ...zs].every(Number.isFinite)) continue;
     rects.push({ x0: Math.min(xs[0], xs[1]), x1: Math.max(xs[0], xs[1]), z0: Math.min(zs[0], zs[1]), z1: Math.max(zs[0], zs[1]) });
   }

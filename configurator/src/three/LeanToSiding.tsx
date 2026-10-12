@@ -409,10 +409,21 @@ function leanToTrim(
   toPt: (across: number, up: number, run: number) => Pt,
   eaveIsZ: boolean,
   storage?: LeanToStorageSpan,
+  /** Wrap-around ends (LeanToStructure.wrap): roof continuation (ft) past the rf / rb end — 0 = not wrapped. */
+  wrapF = 0,
+  wrapB = 0,
 ): BoxSpec[] {
   const specs: BoxSpec[] = [];
   const runMid = (rf + rb) / 2;
-  const runLen = Math.abs(rb - rf);
+  // The drip edge runs on round a wrapped corner to the hip's outer end; the
+  // flashing stops at the main corner there (no wall beyond it).
+  const dF = Math.sign(rf - rb) || -1; // outward along the run at the rf end
+  const drF = rf + dF * wrapF;
+  const drB = rb - dF * wrapB;
+  const dripMid = (drF + drB) / 2;
+  const dripLen = Math.abs(drB - drF);
+  const flF = wrapF ? r0 : rf;
+  const flB = wrapB ? r1 : rb;
   const outwardA = Math.sign(outerAcross - innerAcross) || -1;
 
   // Axis-aligned box sized in the local (across, up, run) frame → world.
@@ -426,15 +437,15 @@ function leanToTrim(
 
   // ── Eave fascia: a clean board TUCKED under the eave so the roof hangs over
   // it (recessed inboard + dropped below the drip lip), plus a thin dark drip. ──
-  specs.push(box(outerAcrossOh - outwardA * TUCK, lipUp - FASCIA_H / 2 - 0.03, runMid, TRIM_T, FASCIA_H, runLen));
-  specs.push(box(outerAcrossOh - outwardA * (TUCK * 0.4), lipUp - 0.07, runMid, 0.05, 0.04, runLen, true));
+  specs.push(box(outerAcrossOh - outwardA * TUCK, lipUp - FASCIA_H / 2 - 0.03, dripMid, TRIM_T, FASCIA_H, dripLen));
+  specs.push(box(outerAcrossOh - outwardA * (TUCK * 0.4), lipUp - 0.07, dripMid, 0.05, 0.04, dripLen, true));
 
   // ── Ridge/attachment flashing: caps the joint where the lean-to roof meets
   // the main building's wall (the lean-to's "ridge") — a flashing band along
   // the high edge, tight against the building face. ── It sits just INSIDE
   // the main wall's cladding (hidden by it from outside), so from the walk-in
   // Interior view it showed as a dark band along the wall: not drawn there.
-  specs.push({ ...box(innerAcross - outwardA * 0.02, innerUp + 0.07, runMid, 0.12, 0.24, runLen), hideInside: true });
+  specs.push({ ...box(innerAcross - outwardA * 0.02, innerUp + 0.07, (flF + flB) / 2, 0.12, 0.24, Math.abs(flB - flF)), hideInside: true });
 
   // ── Rake boards: follow each gable-end roof slope, tucked UNDER the roof so
   // the gable edge overhangs them (recessed inboard along the run + dropped). ──
@@ -445,11 +456,26 @@ function leanToTrim(
   const midA = (outerAcrossOh + innerAcross) / 2;
   const midU = (lipUp + innerUp) / 2;
   for (const end of [rf, rb] as const) {
+    if ((end === rf && wrapF) || (end === rb && wrapB)) continue; // a wrapped end has no rake: the roof turns the corner
     const tuckedRun = end + Math.sign(runMid - end) * TUCK;
     specs.push({
       pos: toPt(midA, midU - RAKE_H / 2 + 0.02, tuckedRun),
       size: eaveIsZ ? [rakeLen, RAKE_H, TRIM_T] : [TRIM_T, RAKE_H, rakeLen],
       rot: eaveIsZ ? [0, 0, ang] : [-ang, 0, 0],
+    });
+  }
+
+  // ── Hip cap over each wrapped corner: main corner (inner, high) -> the drip corner ──
+  for (const [wr, rIn, rOut] of [[wrapF, r0, drF], [wrapB, r1, drB]] as const) {
+    if (!wr) continue;
+    const A = toPt(innerAcross, innerUp + 0.04, rIn);
+    const B = toPt(outerAcrossOh, lipUp + 0.04, rOut);
+    const d = [B[0] - A[0], B[1] - A[1], B[2] - A[2]];
+    const len = Math.hypot(d[0], d[1], d[2]) || 1;
+    specs.push({
+      pos: [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, (A[2] + B[2]) / 2],
+      size: [len, 0.05, 0.5],
+      rot: [0, Math.atan2(-d[2], d[0]), Math.asin(d[1] / len)],
     });
   }
 
@@ -541,29 +567,36 @@ export function eaveSurfaces(lt: LeanToStructure, oh: number, walls: LtWalls): S
   const lhOh = lh - eaveDrop;
   const zf = z0 - oh;
   const zb = z1 + oh;
+  // Wrap-around ends: the roof runs on over the corner square to the hip (main corner -> drip corner).
+  const wF = lt.wrap?.start?.ext ?? 0;
+  const wB = lt.wrap?.end?.ext ?? 0;
+  const zfO = wF ? z0 - wF - oh : zf;
+  const zbO = wB ? z1 + wB + oh : zb;
+  const zfI = wF ? z0 : zf;
+  const zbI = wB ? z1 : zb;
 
   // Roof corners (outer-low lip → inner-high), lifted along the up normal.
   const baseRoof: Pt[] = [
-    [outerXoh, lhOh, zf],
-    [outerXoh, lhOh, zb],
-    [innerX, connH, zb],
-    [innerX, connH, zf],
+    [outerXoh, lhOh, zfO],
+    [outerXoh, lhOh, zbO],
+    [innerX, connH, zbI],
+    [innerX, connH, zfI],
   ];
   const n = upNormal(baseRoof[0], baseRoof[1], baseRoof[2]);
   const roofTop = offsetPts(baseRoof, n, ROOF_LIFT);
   const roofUnder = offsetPts(baseRoof, n, ROOF_LIFT - ROOF_UNDER_GAP);
   const rl = Math.hypot(innerX - outerXoh, connH - lhOh);
   const roofUV: UV[] = [
-    [zf, 0],
-    [zb, 0],
-    [zb, rl],
-    [zf, rl],
+    [zfO, 0],
+    [zbO, 0],
+    [zbI, rl],
+    [zfI, rl],
   ];
 
   const trim = leanToTrim(
     outerXoh, lhOh + roofLiftY, innerX, connH + roofLiftY,
     outerX, lh, connH, z0, z1, zf, zb,
-    walls, (a, u, r) => [a, u, r], true, lt.storage,
+    walls, (a, u, r) => [a, u, r], true, lt.storage, wF, wB,
   );
 
   return {
@@ -617,29 +650,36 @@ export function gableSurfaces(lt: LeanToStructure, oh: number, walls: LtWalls): 
   const lhOh = lh - eaveDrop;
   const xf = x0 - oh;
   const xb = x1 + oh;
+  // Wrap-around ends: the roof runs on over the corner square to the hip (main corner -> drip corner).
+  const wF = lt.wrap?.start?.ext ?? 0;
+  const wB = lt.wrap?.end?.ext ?? 0;
+  const xfO = wF ? x0 - wF - oh : xf;
+  const xbO = wB ? x1 + wB + oh : xb;
+  const xfI = wF ? x0 : xf;
+  const xbI = wB ? x1 : xb;
 
   const baseRoof: Pt[] = [
-    [xf, lhOh, outerZoh],
-    [xb, lhOh, outerZoh],
-    [xb, connH, innerZ],
-    [xf, connH, innerZ],
+    [xfO, lhOh, outerZoh],
+    [xbO, lhOh, outerZoh],
+    [xbI, connH, innerZ],
+    [xfI, connH, innerZ],
   ];
   const n = upNormal(baseRoof[0], baseRoof[1], baseRoof[2]);
   const roofTop = offsetPts(baseRoof, n, ROOF_LIFT);
   const roofUnder = offsetPts(baseRoof, n, ROOF_LIFT - ROOF_UNDER_GAP);
   const rl = Math.hypot(innerZ - outerZoh, connH - lhOh);
   const roofUV: UV[] = [
-    [xf, 0],
-    [xb, 0],
-    [xb, rl],
-    [xf, rl],
+    [xfO, 0],
+    [xbO, 0],
+    [xbI, rl],
+    [xfI, rl],
   ];
 
   // across = Z, up = Y, run = X → toPt maps back as [run, up, across].
   const trim = leanToTrim(
     outerZoh, lhOh + roofLiftY, innerZ, connH + roofLiftY,
     outerZ, lh, connH, x0, x1, xf, xb,
-    walls, (a, u, r) => [r, u, a], false, lt.storage,
+    walls, (a, u, r) => [r, u, a], false, lt.storage, wF, wB,
   );
 
   return {

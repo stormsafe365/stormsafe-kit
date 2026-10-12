@@ -86,7 +86,9 @@ code += 'for(var _bpi=0;_bpi<10;_bpi++){ PV[26][_bpi]=PV[25][_bpi]; PV[46][_bpi]
 for (const f of ['eBkt', 'ecLookup', 'vertEndUpcharge', 'cciLtSideSecs', 'cciLtSideClosed', 'cciLtShortSideMsg', 'ltPanelsHorizontal', 'nearestStd',
   'cciLtSidePanels', 'cciLtMaxPanels', 'cciLtRunSum', 'cciLtSidePartial', 'cciUnits', 'ltBasePrice', 'getLTWalls', 'ltWallsAs', 'ltStorOn', 'ltStorLenOptions', 'ltUnit',
   '_ltsInterp', 'connFeeFor', 'gConnectionFees', 'ltWrapReq', 'ltWrapSetReq', '_ltWrapRd', '_ltWrapReach', 'ltWraps', 'ltWrapOf', 'ltWrapFeeRows',
-  'ltWrapFeeTotal', '_ltWrapTxt', '_ltWrapTip', 'ltOverall', 'ltWrapPrintIssue']) code += grabFn(f);
+  'ltWrapFeeTotal', '_ltWrapTxt', '_ltWrapTip', 'ltOverall', 'ltWrapPrintIssue', '_ltWrapLostTxt', 'ltWrapTyping', 'ltWrapGuard', 'ltLenGuard', 'ltWrapRemove',
+  'ltWrapClick', 'ltWrapUI']) code += grabFn(f);
+code += grabVar('LT_WRAP_SNAP');
 code += 'var VERT_END=' + vertEnd + ', HU_N=' + huN + ', HU_M=' + huM + ', HU={}, _CC=' + combos + ';\n';
 code += `
 var ACTIVE_MFR='CCI', window={};
@@ -96,11 +98,22 @@ function MFR(){ return {standardCombinations:_CC}; }
 function getTrussOC(){ return 5; }
 var _LTS=[];
 var document={querySelectorAll:function(s){ return s==='.lte'?_LTS:[]; }};
+// Fields are persistent objects (a guard can put a value back); remove() takes the entry off the form.
 function mkEl(o){
   var f={'.lts':o.side,'.ltw':o.w||12,'.ltl2':o.l,'.ltoff':o.off||0,'.lt-type':o.type||'attached','.lth':o.h||10,'.ltp':(o.p||2)+':12',
          '.lt-wm':o.wm||'open','.lt-wall-front':'open','.lt-wall-back':'open','.lt-wall-side':'open','.lt-stor':'none'};
-  return {querySelector:function(s){ return (s in f)?{value:String(f[s])}:null; }, _o:o};
+  var F={}; Object.keys(f).forEach(function(k){ F[k]={value:String(f[k])}; });
+  var el={querySelector:function(s){ return F[s]||null; }, _o:o, _f:F, remove:function(){ _LTS=_LTS.filter(function(x){ return x!==el; }); }};
+  Object.keys(F).forEach(function(k){ F[k].closest=function(){ return el; }; });
+  el.closest=function(){ return el; };
+  return el;
 }
+// UI stubs: rc() ends with ltWrapUI() like the program's; the wrap box elements are plain objects.
+var _toasts=[]; function toast(m){ _toasts.push(m); }
+function rc(){ ltWrapUI(); }
+function ltTypeChange(){} function updateLTNote(){}
+function fC(n){ return '$'+n; }
+['lt-wrap-box','lt-wrap-add','lt-wrap-row','lt-wrap-chips','lt-wrap-note'].forEach(function(id){ _G[id]={style:{},innerHTML:''}; });
 function setup(o){
   _G.bw.value=String(o.mw||24); _G.bl.value=String(o.ml||40); _G.bh.value=String(o.mh||12);
   _G.ws.value=o.vert?'Vertical':'Horizontal'; _G['lt-wraps'].value=o.wraps||'';
@@ -276,5 +289,124 @@ describe('wrap-around lean-tos — spacing page drawings', () => {
     expect(plain).not.toMatch(/wrap length/);
     const vh = (s: string) => Number(/viewBox="0 0 \d+ (\d+)"/.exec(s)![1]);
     expect(vh(svg) - vh(plain)).toBe(26); // one more row under the drawing
+  });
+});
+
+// ── Verify fixes (10/12/26) ──────────────────────────────────────────────
+const ev = (s: string) => JSON.parse(JSON.stringify(vm.runInContext('(function(){ ' + s + ' })()', ctx)) ?? null);
+const elOf = (side: string) => 'var _e=_LTS.filter(function(x){ return x._o.side===' + JSON.stringify(side) + '; })[0];';
+
+describe('wrap-around lean-tos — the undo-on-break ALERT (verify 10/12/26)', () => {
+  it('one change that breaks two corners names the rule once and each lean-to once (E: Front 12 → 10 wide)', () => {
+    const r = ev(`setup({leans:[{side:'Left Eave',l:40},{side:'Front Gable',l:24},{side:'Right Eave',l:40}], wraps:'FL,FR'}); window._ltWrapMsg=''; ltWrapUI();
+      ${elOf('Front Gable')} _e._f['.ltw'].value='10'; var undone=ltWrapGuard(_e._f['.ltw']);
+      return {undone:undone, msg:window._ltWrapMsg, w:_e._f['.ltw'].value, active:ltWraps().active};`);
+    expect(r.undone).toBe(true);
+    expect(r.w).toBe('12');
+    expect(r.active).toEqual(['FL', 'FR']);
+    expect(r.msg).toMatch(/^ALERT — Front Left and Front Right wrap: lean-tos that wrap a corner must be the same width and height \(now /);
+    expect(r.msg.split('must be the same width and height').length - 1).toBe(1);
+    for (const p of ['Left 12′ wide × 10′ low leg', 'Front 10′ wide × 10′ low leg', 'Right 12′ wide × 10′ low leg']) expect(r.msg.split(p).length - 1).toBe(1);
+  });
+
+  it('typed Length (input events, then change): the change that breaks the wrap is undone with the ALERT', () => {
+    const r = ev(`setup({leans:[{side:'Left Eave',l:40},{side:'Front Gable',l:24}], wraps:'FL'}); window._ltWrapMsg=''; ltWrapUI();
+      ${elOf('Left Eave')} var f=_e._f['.ltl2'];
+      f.value='4'; ltWrapTyping(f); rc(); f.value='45'; ltWrapTyping(f); rc();
+      var mid=ltWraps().active.slice(); ltLenGuard(f);
+      return {mid:mid, len:f.value, msg:window._ltWrapMsg, active:ltWraps().active, pre:!!_e._ltWrapPre};`);
+    expect(r.mid).toEqual([]); // while typing, 45' does not wrap (longer than the 40' wall)
+    expect(r.len).toBe('40');
+    expect(r.msg).toMatch(/^ALERT — Front Left wrap: the Left lean-to \(45′\) is longer than the building \(40′ long\)/);
+    expect(r.active).toEqual(['FL']);
+    expect(r.pre).toBe(false);
+  });
+
+  it('typed Starts At: the same', () => {
+    const r = ev(`setup({leans:[{side:'Left Eave',l:30},{side:'Front Gable',l:24}], wraps:'FL'}); window._ltWrapMsg=''; ltWrapUI();
+      ${elOf('Left Eave')} var f=_e._f['.ltoff']; f.value='5'; ltWrapTyping(f); rc(); ltLenGuard(f);
+      return {off:f.value, msg:window._ltWrapMsg, active:ltWraps().active};`);
+    expect(r.off).toBe('0');
+    expect(r.msg).toMatch(/^ALERT — Front Left wrap: the Left lean-to has to run to the front corner/);
+    expect(r.active).toEqual(['FL']);
+  });
+
+  it('a typed change that keeps the wrap is not undone; an unwrapped lean-to is never undone', () => {
+    const keep = ev(`setup({leans:[{side:'Left Eave',l:40},{side:'Front Gable',l:24}], wraps:'FL'}); window._ltWrapMsg=''; ltWrapUI();
+      ${elOf('Front Gable')} var f=_e._f['.ltl2']; f.value='2'; ltWrapTyping(f); rc(); f.value='20'; ltWrapTyping(f); rc(); ltLenGuard(f);
+      return {len:f.value, msg:window._ltWrapMsg, active:ltWraps().active};`);
+    expect(keep).toEqual({ len: '20', msg: '', active: ['FL'] }); // a front gable 20' from the LEFT corner still reaches FL
+    const none = ev(`setup({leans:[{side:'Left Eave',l:40},{side:'Front Gable',l:24}]}); window._ltWrapMsg=''; ltWrapUI();
+      ${elOf('Left Eave')} var f=_e._f['.ltl2']; f.value='45'; ltWrapTyping(f); rc(); ltLenGuard(f); return {len:f.value, msg:window._ltWrapMsg};`);
+    expect(none).toEqual({ len: '45', msg: '' });
+  });
+});
+
+describe('wrap-around lean-tos — no length cap outside the wrap rules (verify 10/12/26)', () => {
+  for (const mfr of ['CCI', 'CA']) {
+    it(`${mfr}: a front lean-to typed longer than the building is wide keeps its length and its price`, () => {
+      const r = ev(`setup({mfr:${JSON.stringify(mfr)}, leans:[{side:'Front Gable',l:30}]}); _toasts.length=0; ltWrapUI();
+        ${elOf('Front Gable')} var f=_e._f['.ltl2']; var before=ltUnit(_e).total; ltLenGuard(f); return {len:f.value, toasts:_toasts.length, same:ltUnit(_e).total===before};`);
+      expect(r).toEqual({ len: '30', toasts: 0, same: true });
+    });
+  }
+});
+
+describe('wrap-around lean-tos — clearing a request (verify 10/12/26)', () => {
+  it('CA (switched from CCI): a requested corner turns OFF from its chip and from Full Building, never ON', () => {
+    const r = ev(`setup({mfr:'CA', leans:[{side:'Left Eave',l:40},{side:'Front Gable',l:24},{side:'Right Eave',l:40}], wraps:'FL,FR'}); _toasts.length=0;
+      ltWrapClick('FL'); var a=ltWrapReq().join(','); ltWrapClick('FL'); var b=ltWrapReq().join(','); var t=_toasts.slice();
+      ltWrapClick('FULL'); var c=ltWrapReq().join(','); return {a:a, b:b, c:c, toasts:t, block:ltWrapPrintIssue()};`);
+    expect(r.a).toBe('FR');
+    expect(r.b).toBe('FR'); // turning ON is refused
+    expect(r.toasts).toEqual(['Wrap-arounds: CCI only until CA confirms pricing.']);
+    expect(r.c).toBe('');
+    expect(r.block).toBe('');
+  });
+
+  it('removing a lean-to drops every requested corner on its side that no lean-to is left to make (CA, a broken CCI wrap)', () => {
+    const ca = ev(`setup({mfr:'CA', leans:[{side:'Left Eave',l:40},{side:'Front Gable',l:24}], wraps:'FL'});
+      ${elOf('Left Eave')} ltWrapRemove({closest:function(){ return _e; }}); var a=ltWrapReq().join(',');
+      var e2=_LTS[0]; ltWrapRemove({closest:function(){ return e2; }}); return {a:a, n:_LTS.length, block:ltWrapPrintIssue()};`);
+    expect(ca).toEqual({ a: '', n: 0, block: '' });
+    const broken = ev(`setup({leans:[{side:'Left Eave',l:40},{side:'Front Gable',l:24,w:10},{side:'Right Eave',l:40}], wraps:'FL'});
+      var b0=ltWrapPrintIssue()!==''; ${elOf('Front Gable')} ltWrapRemove({closest:function(){ return _e; }}); return {b0:b0, req:ltWrapReq().join(','), block:ltWrapPrintIssue()};`);
+    expect(broken).toEqual({ b0: true, req: '', block: '' });
+    const other = ev(`setup({leans:[{side:'Left Eave',l:40},{side:'Front Gable',l:24},{side:'Right Eave',l:40}], wraps:'FL'});
+      ${elOf('Right Eave')} ltWrapRemove({closest:function(){ return _e; }}); return {req:ltWrapReq().join(','), active:ltWraps().active};`);
+    expect(other).toEqual({ req: 'FL', active: ['FL'] }); // an unrelated lean-to: the wrap stays
+  });
+});
+
+describe('wrap-around lean-tos — pinned assumptions and pre-existing differences (not changed; owner / CCI decisions)', () => {
+  it('32′+ wide: the $5.50/ft lean-to certification adder is charged at the WRAPPED length (Sensei unsampled there)', () => {
+    const r = ev(`var o={mw:40, ml:60, mh:14, leans:[{side:'Left Eave',l:60,h:12},{side:'Front Gable',l:40,h:12}], wraps:'FL'};
+      _G.btype.value='widespan'; var lt=function(){ setup(o); return ltUnit(_LTS[0]).bp; };
+      var a=lt(); var keep=CCI_LT_CERT_RATE; CCI_LT_CERT_RATE=0; var b=lt(); CCI_LT_CERT_RATE=keep; _G.btype.value='standard';
+      return {cert:Math.round((a-b)*100)/100, wl:ltWrapOf(_LTS[0]).len};`);
+    expect(r).toEqual({ cert: 5.5 * 72, wl: 72 });
+  });
+
+  it('typed 26′ / 36′ lean-tos keep the July-corrected chart (a step below Sensei); a WRAPPED 36′ prices at 40′ like Sensei', () => {
+    const one = (l: number) => row(run({ leans: [{ side: 'Left Eave', l }] }), 'Left Eave');
+    expect([one(26).bp, one(26).h]).toEqual([1797.5, 197.5]); // Sensei $2,147.50 / $245
+    expect([one(36).bp, one(36).h]).toEqual([2497.5, 295]); // Sensei $2,897.50 / $342.50
+    const d = run({ leans: [LEFT, FRONT], wraps: 'FL' });
+    expect([row(d, 'Front Gable').bp, row(d, 'Front Gable').h]).toEqual([2897.5, 342.5]); // wrapped 24 + 12 = 36 → 40
+  });
+
+  it('connection fees stay on the CCI-corrected chart: eave $300 at 10′–40′, gable $725 (24-wide) / $750 (30-wide)', () => {
+    for (const l of [10, 12, 15, 20, 25, 26, 30, 35, 36, 40]) expect(ev(`setup({leans:[]}); return connFeeFor('Right Eave', ${l});`)).toBe(300);
+    expect(ev(`setup({leans:[]}); return connFeeFor('Front Gable', 24);`)).toBe(725);
+    expect(ev(`setup({mw:30, leans:[]}); return connFeeFor('Front Gable', 30);`)).toBe(750);
+  });
+
+  it('Triple Wide 30x50x14 (F): lean-to lines stay on our half-of-24′ charts; the wrap premium follows from them ($2,742 vs Sensei $3,417.50)', () => {
+    const o = { mw: 30, ml: 50, mh: 14, leans: [{ side: 'Left Eave', l: 50, h: 12 }, { side: 'Front Gable', l: 30, h: 12 }] };
+    const sep = run(o), wr = run({ ...o, wraps: 'FL' });
+    expect([row(sep, 'Left Eave').bp, row(sep, 'Left Eave').h, row(sep, 'Front Gable').bp, row(sep, 'Front Gable').h]).toEqual([3595, 628, 2147.5, 355]);
+    expect([row(wr, 'Left Eave').bp, row(wr, 'Left Eave').h, row(wr, 'Front Gable').bp, row(wr, 'Front Gable').h]).toEqual([4645, 775, 3245, 502.5]);
+    const lines = (r: Res) => r.rows.reduce((s, x) => s + x.bp + x.h, 0) + r.feeTotal;
+    expect(lines(wr) - lines(sep)).toBeCloseTo(2742, 2);
   });
 });

@@ -388,6 +388,8 @@ export function foundationLayout(
     }
   }
   const mainStrips = footers || (concrete && !mainOpen);
+  /** Wrap-around corners: the outer-strip end that reaches each corner post (mitered when both lean-tos have one). */
+  const wrapEnds = new Map<string, Array<{ strip: FootingStrip; end: 0 | 1 }>>();
   for (const lt of s.leanTos) {
     if (!(footers || (concrete && !leanToIsOpen(lt)))) continue;
     const eave = lt.attachedSide === 'Left Eave' || lt.attachedSide === 'Right Eave';
@@ -398,7 +400,21 @@ export function foundationLayout(
     const lo = Math.min(lt.spanStart, lt.spanEnd);
     const hi = Math.max(lt.spanStart, lt.spanEnd);
     const sec = leanToSection;
-    const outerStrip = pushStrip(eave ? 'z' : 'x', c, out, lo - e, hi + e, sec);
+    // WRAP-AROUND (LeanToStructure.wrap, view-only): the open corner square's outer edges carry base
+    // rails out to the corner post (geometry.ts), so the lean-to's outer footing runs on across the
+    // square to the corner post — it used to stop at the lean-to's own end post (verify W4, 10/12/26).
+    const fwdRun = lt.spanStart <= lt.spanEnd;
+    const wStart = lt.wrap?.start;
+    const wEnd = lt.wrap?.end;
+    const loW = fwdRun ? wStart : wEnd; // the wrap at the low-coordinate end
+    const hiW = fwdRun ? wEnd : wStart;
+    const outerStrip = pushStrip(eave ? 'z' : 'x', c, out, lo - e - (loW ? loW.ext : 0), hi + e + (hiW ? hiW.ext : 0), sec);
+    for (const [w, end] of [[loW, 0], [hiW, 1]] as const) {
+      if (!w) continue;
+      const list = wrapEnds.get(w.corner) ?? [];
+      list.push({ strip: outerStrip, end });
+      wrapEnds.set(w.corner, list);
+    }
     // END lines of an enclosed / partially enclosed lean-to: wherever an end
     // wall comes down to the floor ('closed', or the inner 'halfEnd'), the
     // thickened edge runs along that slab edge too — from the main building's
@@ -420,10 +436,21 @@ export function foundationLayout(
       const [r0, r1] = out > 0 ? [from, to] : [to, from];
       if (r1 - r0 < sectionReach(sec) + 0.5) continue; // too short to miter
       const strip = pushStrip(eave ? 'x' : 'z', at, endOut, r0, r1, sec);
+      // A wrapped end: the outer strip runs on past this end line to the corner post, so the end
+      // strip butts into it (a T) instead of turning the slab corner with it.
+      if (end === 'front' ? wStart : wEnd) continue;
       if (out > 0) strip.miter1 = true;
       else strip.miter0 = true;
       if (endOut < 0) outerStrip.miter0 = true;
       else outerStrip.miter1 = true;
+    }
+  }
+  // The two lean-tos' outer strips meet at the corner post: mitered like the main building's corners.
+  for (const ends of wrapEnds.values()) {
+    if (ends.length < 2) continue;
+    for (const { strip, end } of ends) {
+      if (end === 0) strip.miter0 = true;
+      else strip.miter1 = true;
     }
   }
 

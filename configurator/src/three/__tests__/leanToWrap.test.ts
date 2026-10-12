@@ -8,6 +8,7 @@ import type { ShellBatch } from '../enhanced/shellGeometry';
 import { leanToBatches, leanToBatchKey } from '../enhanced/leanToShell';
 import { siteRects } from '../enhanced/look';
 import { eaveSurfaces, gableSurfaces, resolveWalls } from '../LeanToSiding';
+import { FOUNDATION, foundationLayout, railSizeFt } from '../foundationLayout';
 
 // WRAP-AROUND lean-tos (owner 10/12/26) in the 3D: VIEW-ONLY — the program
 // prices the wrap and tags both lean-tos with the corner (LeanTo.wrapCorners).
@@ -162,5 +163,51 @@ describe('wrap-around lean-tos — roofs (enhanced and classic)', () => {
     // one rake fewer (the wrapped front end), one hip cap more → same trim count
     expect(gL.trim.length).toBe(plainL.trim.length);
     expect(gL.trim.some((b) => b.rot && Math.abs(b.rot[1]) > 0.1 && Math.abs(b.rot[2]) > 0.01)).toBe(true); // the hip cap (diagonal)
+  });
+});
+
+// Verify W4 (10/12/26): the corner square's slab had no thickened-edge footing — the lean-tos'
+// outer footings stopped at their own end posts while the corner post stood on a bare slab edge.
+describe('wrap-around lean-tos — foundation (drawing only)', () => {
+  const e = railSizeFt('14-gauge') / 2 + FOUNDATION.edgePastRail;
+  const outerOf = (s: StructureModel, side: string, enc: boolean) => {
+    const f = foundationLayout(s, 'concrete', '14-gauge', 'CCI');
+    const l = s.leanTos.find((x) => x.attachedSide === side)!;
+    const eave = side === 'Left Eave' || side === 'Right Eave';
+    const c = eave ? l.outer.x : l.outer.z;
+    return enc ? f.footings.find((st) => st.run === (eave ? 'z' : 'x') && near(st.c, c)) : undefined;
+  };
+  it('both lean-tos enclosed: each outer footing runs across the corner square to the corner post, mitered there', () => {
+    const { s } = build([{ ...LEFT, enclosure: 'enclosed', wrapCorners: ['FL'] }, { ...FRONT, enclosure: 'enclosed', wrapCorners: ['FL'] }]);
+    const L = outerOf(s, 'Left Eave', true)!;
+    const F = outerOf(s, 'Front Gable', true)!;
+    // Left (run z, x = 24): front end from z = -20 - e out to the corner post's slab edge z = -(32 + e)
+    expect(L.r0).toBeCloseTo(-(20 + 12) - e, 6);
+    expect(L.r1).toBeCloseTo(20 + e, 6);
+    expect(L.miter0).toBe(true);
+    // Front (run x, z = -32): its LEFT end (x = +12) out to x = 24 + e
+    expect(F.r1).toBeCloseTo(12 + 12 + e, 6);
+    expect(F.miter1).toBe(true);
+    // the corner slab edge = the strips' outer faces
+    expect(L.outer).toBeCloseTo(24 + e, 6);
+    expect(F.outer).toBeCloseTo(-(32 + e), 6);
+    // the end walls stay in line with the main building's ends: their footings butt into the continuous outer strip
+    const f = foundationLayout(s, 'concrete', '14-gauge', 'CCI');
+    const lEnd = f.footings.find((st) => st.run === 'x' && near(st.c, -20) && st.r0 > 11.9)!;
+    expect(lEnd).toBeTruthy();
+    expect(lEnd.miter0 || lEnd.miter1).toBe(false);
+  });
+  it('unwrapped: footings exactly as before (stop at the lean-to ends)', () => {
+    const { s } = build([{ ...LEFT, enclosure: 'enclosed' }, { ...FRONT, enclosure: 'enclosed' }]);
+    const L = outerOf(s, 'Left Eave', true)!;
+    expect(L.r0).toBeCloseTo(-20 - e, 6);
+    expect(L.r1).toBeCloseTo(20 + e, 6);
+  });
+  it('only one lean-to enclosed: its footing still reaches the corner post (flat end), the open one has none', () => {
+    const { s } = build([{ ...LEFT, enclosure: 'enclosed', wrapCorners: ['FL'] }, { ...FRONT, wrapCorners: ['FL'] }]);
+    const L = outerOf(s, 'Left Eave', true)!;
+    expect(L.r0).toBeCloseTo(-(20 + 12) - e, 6);
+    expect(L.miter0).toBe(false);
+    expect(foundationLayout(s, 'concrete', '14-gauge', 'CCI').footings.some((st) => st.run === 'x' && near(st.c, -32))).toBe(false);
   });
 });

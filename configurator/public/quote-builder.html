@@ -6843,20 +6843,23 @@ function ltWraps(){
   if(window._ltWrapFrozen) return window._ltWrapFrozen;
   var req=ltWrapReq(), rs=[];
   document.querySelectorAll('.lte').forEach(function(el){ var r=_ltWrapRd(el); if(r) rs.push(r); });
-  var out={req:req, active:[], pair:{}, why:{}};
+  // rule / parts: the same reason split into the rule sentence and the lean-tos it names (the
+  // ALERT names each rule once and each lean-to once when one change breaks two corners).
+  var out={req:req, active:[], pair:{}, why:{}, rule:{}, parts:{}};
   LT_WRAP_KEYS.forEach(function(k){
     var sE=LT_WRAP_SIDES[k][0], sG=LT_WRAP_SIDES[k][1], nE=LT_SIDE_SHORT[sE], nG=LT_SIDE_SHORT[sG];
     var es=rs.filter(function(r){ return r.side===sE; }), gs=rs.filter(function(r){ return r.side===sG; });
     var e=es.filter(function(r){ return _ltWrapReach(r,k); })[0], g=gs.filter(function(r){ return _ltWrapReach(r,k); })[0];
-    var why='', end=(k.charAt(0)==='F'?'front':'back'), lr=((k==='FL'||k==='BL')?'left':'right');
+    var why='', rule='', parts=[], end=(k.charAt(0)==='F'?'front':'back'), lr=((k==='FL'||k==='BL')?'left':'right');
     var long=function(r,n){ return 'the '+n+' lean-to ('+r.ll+'′) is longer than the building'+(r.eave?' ('+r.host+'′ long)':' is wide ('+r.host+'′)'); };
     if(ACTIVE_MFR!=='CCI') why='Wrap-arounds: CCI only until CA confirms pricing';
     else if(!es.length||!gs.length) why='it needs a '+nE+' lean-to and a '+nG+' lean-to';
     else if(!e) why=(es[0].ll>es[0].host)?long(es[0],nE):('the '+nE+' lean-to has to run to the '+end+' corner (check its Starts At and length)');
     else if(!g) why=(gs[0].ll>gs[0].host)?long(gs[0],nG):('the '+nG+' lean-to has to run to the '+lr+' corner (check its Starts At and length)');
-    else if(e.w!==g.w||e.h!==g.h) why='lean-tos that wrap a corner must be the same width and height (now '+nE+' '+e.w+'′ wide × '+e.h+'′ low leg, '+nG+' '+g.w+'′ wide × '+g.h+'′ low leg)';
-    else if(e.p!==g.p) why='lean-tos that wrap a corner must have the same roof pitch (now '+nE+' '+e.p+':12, '+nG+' '+g.p+':12)';
-    if(why) out.why[k]=why;
+    else if(e.w!==g.w||e.h!==g.h){ rule='lean-tos that wrap a corner must be the same width and height'; parts=[nE+' '+e.w+'′ wide × '+e.h+'′ low leg', nG+' '+g.w+'′ wide × '+g.h+'′ low leg']; }
+    else if(e.p!==g.p){ rule='lean-tos that wrap a corner must have the same roof pitch'; parts=[nE+' '+e.p+':12', nG+' '+g.p+':12']; }
+    if(rule) why=rule+' (now '+parts.join(', ')+')';
+    if(why){ out.why[k]=why; out.rule[k]=rule||why; out.parts[k]=parts; }
     else { out.pair[k]={e:e,g:g}; if(req.indexOf(k)>=0) out.active.push(k); }
   });
   return out;
@@ -6904,8 +6907,15 @@ function ltWrapPrintIssue(){
 // ── Wrap UI (Section 9 / Section 5 "Doors, Windows & Add-ons") ──
 function ltWrapOpen(){ window._ltWrapShow=true; ltWrapUI(); }
 function ltWrapClick(k){
-  if(ACTIVE_MFR!=='CCI'){ toast('Wrap-arounds: CCI only until CA confirms pricing.','err'); return; } // the note says so too
-  var req=ltWrapReq(); window._ltWrapMsg='';
+  var req=ltWrapReq();
+  if(ACTIVE_MFR!=='CCI'){
+    // CA / Input: a wrap can't be turned ON (the note says why), but one still requested from a CCI
+    // quote can always be turned OFF — otherwise its print block could never be cleared (verify 10/12/26).
+    if(k==='FULL'&&req.length){ window._ltWrapMsg=''; ltWrapSetReq([]); rc(); return; }
+    if(k!=='FULL'&&req.indexOf(k)>=0){ window._ltWrapMsg=''; ltWrapSetReq(req.filter(function(c){ return c!==k; })); rc(); return; }
+    toast('Wrap-arounds: CCI only until CA confirms pricing.','err'); return;
+  }
+  window._ltWrapMsg='';
   if(k==='FULL'){
     if(LT_WRAP_KEYS.every(function(c){ return req.indexOf(c)>=0; })){ ltWrapSetReq([]); rc(); return; }
     ltWrapAddMissing();
@@ -6941,39 +6951,63 @@ function ltWrapAddMissing(){
 }
 // Sensei's alert: a change that breaks a wrapped corner is undone. Snapshot =
 // the entry's fields at the last pricing pass while it was in an ACTIVE wrap.
+// Typed fields (Length, Starts At) price on every keystroke (oninput rc()), so
+// the wrap can stop holding before their change event: the first keystroke of
+// an edit keeps the snapshot it started from (_ltWrapPre, ltWrapTyping) and the
+// change event checks against THAT (verify 10/12/26: typing 45 into a wrapped
+// 40′ Left used to drop the wrap from the price with no alert).
 var LT_WRAP_SNAP=['.lts','.lt-type','.ltw','.ltl2','.ltoff','.lth','.ltp'];
+function ltWrapTyping(ctl){
+  var el=ctl&&ctl.closest?ctl.closest('.lte'):null;
+  if(el&&!el._ltWrapPre&&el._ltWrapSnap) el._ltWrapPre={snap:el._ltWrapSnap, ks:el._ltWrapKs||[]};
+}
+// The ALERT's reason: each rule once, each lean-to it names once (two corners broken by one change).
+function _ltWrapLostTxt(wr, lost){
+  var rules=[], parts={};
+  lost.forEach(function(k){
+    var r=(wr.rule&&wr.rule[k])||wr.why[k]||''; if(!parts[r]){ parts[r]=[]; rules.push(r); }
+    ((wr.parts&&wr.parts[k])||[]).forEach(function(p){ if(parts[r].indexOf(p)<0) parts[r].push(p); });
+  });
+  return rules.map(function(r){ return r+(parts[r].length?' (now '+parts[r].join(', ')+')':''); }).join('; ');
+}
 function ltWrapGuard(ctl){
-  var el=ctl&&ctl.closest?ctl.closest('.lte'):null; if(!el||!el._ltWrapSnap) return false;
-  var wr=ltWraps(), lost=(el._ltWrapKs||[]).filter(function(k){ return wr.req.indexOf(k)>=0&&wr.active.indexOf(k)<0; });
+  var el=ctl&&ctl.closest?ctl.closest('.lte'):null; if(!el) return false;
+  var pre=el._ltWrapPre; delete el._ltWrapPre;
+  var snap=pre?pre.snap:el._ltWrapSnap, ks=pre?pre.ks:(el._ltWrapKs||[]);
+  if(!snap) return false;
+  var wr=ltWraps(), lost=ks.filter(function(k){ return wr.req.indexOf(k)>=0&&wr.active.indexOf(k)<0; });
   if(!lost.length) return false;
-  var snap=el._ltWrapSnap;
   LT_WRAP_SNAP.forEach(function(c){ var f=el.querySelector(c); if(f&&snap[c]!=null) f.value=snap[c]; });
   ltTypeChange(el); updateLTNote(el);
   var h=el.querySelector('.lth'); if(h&&snap['.lth']!=null) h.value=snap['.lth'];
-  window._ltWrapMsg='ALERT — '+lost.map(function(k){ return LT_WRAP_NAME[k]; }).join(' and ')+' wrap: '+lost.map(function(k){ return wr.why[k]; }).filter(function(v,i,a){ return a.indexOf(v)===i; }).join('; ')+
+  window._ltWrapMsg='ALERT — '+lost.map(function(k){ return LT_WRAP_NAME[k]; }).join(' and ')+' wrap: '+_ltWrapLostTxt(wr, lost)+
     '. The change was undone — lean-tos must be attached to the corners of the adjoining walls, same width and height. Remove the wrap first to change it.';
   toast(window._ltWrapMsg,'err');
   rc();
   return true;
 }
-// Length / Starts At typed (change): a front / back lean-to is never longer
-// than the building is wide (Sensei) — the wrap is what goes round the corner.
+// Length / Starts At / Attached Side changed: undo it when it breaks an active
+// wrap (Sensei's alert), else price. Nothing is clamped: a front / back lean-to
+// typed longer than the building is wide prices and saves exactly as before the
+// wrap work (on every quote, CCI and CA — verify 10/12/26); such a lean-to just
+// can't wrap a corner (the wrap rules say why).
 function ltLenGuard(ctl){
-  var el=ctl&&ctl.closest?ctl.closest('.lte'):null; if(!el) return;
-  var side=(el.querySelector('.lts')||{}).value||'', free=((el.querySelector('.lt-type')||{}).value==='freestanding');
-  var W=parseInt((G('bw')||{}).value)||0, lf=el.querySelector('.ltl2'), ll=parseInt((lf||{}).value)||0;
-  if(!free&&(side==='Front Gable'||side==='Back Gable')&&W>0&&ll>W){
-    lf.value=String(W);
-    toast('A front / back lean-to can’t be longer than the building is wide ('+W+'′) — set to '+W+'′. Use + Add Wrap to go around a corner.','err');
-  }
   if(!ltWrapGuard(ctl)) rc();
 }
-// Remove a lean-to: its wrapped corners go with it (named on the form).
+// Remove a lean-to: the wrapped corners it was part of go with it (named on the
+// form), and so does every REQUESTED corner on its side that no lean-to is left
+// to make — a requested-but-broken corner (a CA quote, a typed change) would
+// otherwise block the documents with nothing left to fix (verify 10/12/26).
 function ltWrapRemove(btn){
   var el=btn.closest('.lte'); if(!el) return;
-  var wr=ltWraps(), ks=wr.active.filter(function(k){ var p=wr.pair[k]; return p.e.el===el||p.g.el===el; });
+  var wr=ltWraps(), req=wr.req, side=(((el.querySelector('.lt-type')||{}).value||'attached')==='attached')?((el.querySelector('.lts')||{}).value||''):'';
   el.remove();
-  if(ks.length){ ltWrapSetReq(ltWrapReq().filter(function(k){ return ks.indexOf(k)<0; })); window._ltWrapMsg='Removed the '+ks.map(function(k){ return LT_WRAP_NAME[k]; }).join(' and ')+' wrap with that lean-to.'; toast(window._ltWrapMsg,'ok'); }
+  var left={}; document.querySelectorAll('.lte').forEach(function(x){ var r=_ltWrapRd(x); if(r) left[r.side]=1; });
+  var ks=req.filter(function(k){
+    var p=wr.pair[k]; if(wr.active.indexOf(k)>=0&&p&&(p.e.el===el||p.g.el===el)) return true;
+    var sd=LT_WRAP_SIDES[k]; return !!side&&sd.indexOf(side)>=0&&!(left[sd[0]]&&left[sd[1]]);
+  });
+  if(ks.length){ ltWrapSetReq(req.filter(function(k){ return ks.indexOf(k)<0; })); window._ltWrapMsg='Removed the '+ks.map(function(k){ return LT_WRAP_NAME[k]; }).join(' and ')+' wrap with that lean-to.'; toast(window._ltWrapMsg,'ok'); }
   rc();
 }
 // Paint the wrap row, the chips, the rep notes and each lean-to's "Wrapped length" badge (end of every rc()).
@@ -6982,10 +7016,13 @@ function ltWrapUI(){
   var wr=ltWraps(), anyLT=false, cci=(ACTIVE_MFR==='CCI');
   document.querySelectorAll('.lte').forEach(function(el){
     if(_ltWrapRd(el)) anyLT=true;
-    var w=ltWrapOf(el, wr), b=el.querySelector('.lt-wrap-badge');
+    // The badge has its OWN row under the plain "Lean-To" title (that title stays exactly "Lean-To", so the
+    // Section-5 cards hide it as before and the badge shows in both layouts — verify 10/12/26).
+    var w=ltWrapOf(el, wr), b=el.querySelector('.lt-wrap-badge'), br=el.querySelector('.lt-wrap-badge-row');
+    if(br) br.style.display=w.len?'':'none';
     if(b){
-      if(w.len){ b.style.display='inline-block'; b.textContent='Wrapped length '+w.len+'′ ⓘ'; b.title=_ltWrapTip(el,w); }
-      else { b.style.display='none'; b.textContent=''; b.title=''; }
+      if(w.len){ b.textContent='Wrapped length '+w.len+'′ ⓘ'; b.title=_ltWrapTip(el,w); }
+      else { b.textContent=''; b.title=''; }
     }
     // Snapshot for ltWrapGuard (only while this entry is in an ACTIVE wrap).
     if(w.len){ var s={}; LT_WRAP_SNAP.forEach(function(c){ var f=el.querySelector(c); if(f) s[c]=f.value; }); el._ltWrapSnap=s; el._ltWrapKs=w.meets.map(function(m){ return m.k; }); }
@@ -6998,23 +7035,25 @@ function ltWrapUI(){
   var chips=G('lt-wrap-chips');
   if(chips){
     var allOn=LT_WRAP_KEYS.every(function(k){ return wr.active.indexOf(k)>=0; });
-    var chip=function(k,label,on,bad){
+    // usable = this click does something: any chip on CCI; on CA / Input only turning a requested corner OFF
+    var chip=function(k,label,on,bad,usable){
       var st=on?'background:var(--t);color:var(--d);border:1px solid var(--t)':(bad?'background:transparent;color:#fca5a5;border:1px solid #dc2626':'background:var(--d4);color:var(--sb);border:1px solid var(--bv)');
-      return '<span class="lt-wrap-chip" data-k="'+k+'" role="checkbox" aria-checked="'+(on?'true':'false')+'" tabindex="0" onclick="ltWrapClick(\''+k+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();ltWrapClick(\''+k+'\');}" style="cursor:'+(cci?'pointer':'not-allowed')+';opacity:'+(cci?'1':'.5')+';padding:5px 10px;border-radius:5px;font-size:11.5px;font-weight:700;'+st+'">'+(bad?'⚠ ':(on?'✓ ':''))+label+'</span>';
+      return '<span class="lt-wrap-chip" data-k="'+k+'" role="checkbox" aria-checked="'+(on?'true':'false')+'" tabindex="0"'+((!cci&&usable)?' title="Click to remove this wrap"':'')+' onclick="ltWrapClick(\''+k+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();ltWrapClick(\''+k+'\');}" style="cursor:'+(usable?'pointer':'not-allowed')+';opacity:'+(usable?'1':'.5')+';padding:5px 10px;border-radius:5px;font-size:11.5px;font-weight:700;'+st+'">'+(bad?'⚠ ':(on?'✓ ':''))+label+'</span>';
     };
-    chips.innerHTML=LT_WRAP_KEYS.map(function(k){ return chip(k,LT_WRAP_NAME[k],wr.active.indexOf(k)>=0,wr.req.indexOf(k)>=0&&wr.active.indexOf(k)<0); }).join('')+chip('FULL','Full Building',allOn,false);
+    chips.innerHTML=LT_WRAP_KEYS.map(function(k){ var rq=wr.req.indexOf(k)>=0; return chip(k,LT_WRAP_NAME[k],wr.active.indexOf(k)>=0,rq&&wr.active.indexOf(k)<0,cci||rq); }).join('')+chip('FULL','Full Building',allOn,false,cci||wr.req.length>0);
   }
   var note=G('lt-wrap-note');
   if(note){
     var lines=[];
-    if(!cci) lines.push('<b>Wrap-arounds: CCI only until CA confirms pricing.</b>');
+    if(!cci) lines.push('<b>Wrap-arounds: CCI only until CA confirms pricing.</b>'+(wr.req.length?' Click a ⚠ corner (or Full Building) to remove the wrap.':''));
     var bad=wr.req.filter(function(k){ return wr.active.indexOf(k)<0; });
     if(bad.length) lines.push('<b style="color:#fca5a5">⚠ Not wrapped — '+bad.map(function(k){ return LT_WRAP_NAME[k]+': '+wr.why[k]; }).join('; ')+'.</b> The quote, contract and text quote are blocked until this is fixed or the wrap is removed.');
     if(window._ltWrapMsg) lines.push(/^(ALERT|Can’t|Full Building)/.test(window._ltWrapMsg)?('<b style="color:#fca5a5">'+window._ltWrapMsg+'</b>'):window._ltWrapMsg);
     if(cci&&wr.active.length){
       var ov=ltOverall();
       lines.push(wr.active.map(function(k){ return LT_WRAP_NAME[k]; }).join(' · ')+' wrapped: + '+fC(LT_WRAP_FEE)+' connection fee per corner · overall footprint '+ov.w+'′ W × '+ov.l+'′ L (main building '+ov.W+'′ × '+ov.L+'′).');
-      lines.push('⚠ Wrap pricing follows Sensei (10/12/26): each wrapped lean-to at its wrapped length (size, height, side wall) + $300 per corner. No CCI document covers wraps — verify with CCI before the contract. (Rep note — not printed.)');
+      var _wsN=((parseInt((G('bw')||{}).value)||0)>=32||((G('btype')||{}).value==='widespan'));
+      lines.push('⚠ Wrap pricing follows Sensei (10/12/26): each wrapped lean-to at its wrapped length (size, height, side wall'+(_wsN?', and on this 32′+ wide building the $5.50/ft lean-to certification adder':'')+') + $300 per corner. No CCI document covers wraps'+(_wsN?' and Sensei was only sampled on 24′ and 30′ wide buildings':'')+' — verify with CCI before the contract. (Rep note — not printed.)');
     } else if(cci) lines.push('Pick a corner: the two lean-tos meeting there must run to that corner and be the same width and height. Full Building adds any missing lean-to.');
     note.innerHTML=lines.join('<br>');
     note.style.display=lines.length?'block':'none';
@@ -8355,7 +8394,8 @@ function aLT(){
   var d=document.createElement('div');
   d.className='lte entry';
   d.innerHTML=
-    '<div style="font-size:11px;font-weight:700;color:#1C3557;margin-bottom:6px">Lean-To <span class="lt-wrap-badge" style="display:none;margin-left:6px;padding:1px 8px;border-radius:9px;background:rgba(31,206,196,.14);color:var(--t);font-size:10.5px;font-weight:700;cursor:help"></span></div>'+
+    '<div style="font-size:11px;font-weight:700;color:#1C3557;margin-bottom:6px">Lean-To</div>'+
+    '<div class="lt-wrap-badge-row" style="display:none;margin:-2px 0 7px"><span class="lt-wrap-badge" style="display:inline-block;padding:1px 8px;border-radius:9px;background:rgba(31,206,196,.14);color:var(--t);font-size:10.5px;font-weight:700;cursor:help"></span></div>'+
     '<div class="row"><label>Type</label>'+
     '<select class="lt-type" onchange="if(ltWrapGuard(this))return;ltTypeChange(this.closest(\'.lte\'));rc()">'+
     '<option value="attached">Attached (to main building)</option>'+
@@ -8375,9 +8415,9 @@ function aLT(){
     '<option value="16">16\'</option><option value="20">20\'</option>'+
     '</select></div>'+
     '<div class="row"><label>Length (ft)</label>'+
-    '<input type="number" class="ltl2" placeholder="e.g. 30" min="10" max="300" oninput="rc()" onchange="ltLenGuard(this)" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
+    '<input type="number" class="ltl2" placeholder="e.g. 30" min="10" max="300" oninput="ltWrapTyping(this);rc()" onchange="ltLenGuard(this)" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
     '<div class="row lt-off-row" title="Only matters when the lean-to is shorter than the wall it sits on. Eave lean-to: feet from the front corner. Gable lean-to: feet from the corner on your left as you stand outside facing that gable (front gable: the left eave corner; back gable: the right eave corner)."><label>Starts At (ft from front / your-left corner)</label>'+
-    '<input type="number" class="ltoff" placeholder="0 = at the corner" min="0" step="1" oninput="rc()" onchange="ltLenGuard(this)" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
+    '<input type="number" class="ltoff" placeholder="0 = at the corner" min="0" step="1" oninput="ltWrapTyping(this);rc()" onchange="ltLenGuard(this)" style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;font-size:12px;color:#1C3557;font-weight:600;background:#fff;width:100%"></div>'+
     '<div class="row lt-lowleg-row"><label>Low Leg Height (ft)</label>'+
     '<select class="lth" onchange="if(ltWrapGuard(this))return;updateLTNote(this.closest(\'.lte\'));refreshLTAccSizes(this.closest(\'.lte\'));rc()">'+
     '<option value="6">6\'</option><option value="7">7\'</option><option value="8">8\'</option>'+
@@ -9103,7 +9143,7 @@ function cpWallChanged(wallId, spId){
 function rc(){
   window._qTotals=null; // republished below (or by rcManual) once this pass has priced the build
   if(typeof updateGchEncWarn==='function') updateGchEncWarn();
-  if(INPUT_MODE) return rcManual();
+  if(INPUT_MODE){ var _rcm=rcManual(); if(typeof ltWrapUI==='function') ltWrapUI(); return _rcm; } // the wrap chips / badges follow Input mode too (verify 10/12/26)
   // Lean-to storage length dropdowns follow the lean length + frame spacing
   // BEFORE anything is priced (a spacing change snaps them with a rep note).
   document.querySelectorAll('.lte').forEach(function(el){ if(ltStorOn(el)) populateLTStorLen(el); });
@@ -14687,6 +14727,10 @@ async function printContract(){
       else if(lt.side==='Back Gable') _ltExt.top=Math.max(_ltExt.top,e);
       else if(lt.side==='Front Gable') _ltExt.bottom=Math.max(_ltExt.bottom,e);
     });
+    // Wrap-around: the "OVERALL WITH LEAN-TOS" footer gets its own row above the legend, and the plan keeps clear of it
+    // (the FRONT label used to sit on it when the wrap was only at the back; on a narrow plan it ran into the legend).
+    var _fpWrapOn = ltWraps().active.length > 0;
+    if(_fpWrapOn) MB = Math.max(MB, 96 + _ltExt.bottom + 44);
     var SW = Math.round(bw + ML + MR);
     var SH = Math.round(bl + MT + MB);
     var bx = ML, by = MT;
@@ -14979,7 +15023,11 @@ async function printContract(){
 
     // Legend hint
     s += '<text x="'+(SW-12)+'" y="'+(SH-8)+'" text-anchor="end" font-family="Arial" font-size="7.5" fill="#94a3b8">Solid = enclosed wall &nbsp; Dashed = open wall</text>';
-    if(ltWraps().active.length){ var _ovF=ltOverall(); s += '<text x="12" y="'+(SH-8)+'" font-family="Arial" font-size="9" font-weight="800" fill="#111827" letter-spacing=".5">OVERALL WITH LEAN-TOS '+_ovF.w+'′ × '+_ovF.l+'′ &nbsp;·&nbsp; MAIN BUILDING '+W+'′ × '+L+'′</text>'; }
+    if(_fpWrapOn){
+      var _ovF=ltOverall(), _ovT='OVERALL WITH LEAN-TOS '+_ovF.w+'′ × '+_ovF.l+'′ &nbsp;·&nbsp; MAIN BUILDING '+W+'′ × '+L+'′';
+      var _ovW=58*5.9, _ovFit=(_ovW>SW-24)?' textLength="'+(SW-24)+'" lengthAdjust="spacingAndGlyphs"':''; // ~58 chars of 9px bold: squeeze only when the plan is narrower
+      s += '<text x="12" y="'+(SH-24)+'" font-family="Arial" font-size="9" font-weight="800" fill="#111827" letter-spacing=".5"'+_ovFit+'>'+_ovT+'</text>';
+    }
 
     s += '</svg>';
     return s;
@@ -18625,7 +18673,11 @@ try { if(typeof rebuildColorDropdowns==='function') rebuildColorDropdowns(); } c
     var p=curP();
     // 1) The saved price
     var S=null, pr=data.priced;
-    if(pr && pr.v===1 && isFinite(+pr.sub) && pr.money){
+    // v2 = a quote with wrap-around lean-tos (10/12/26): same shape as v1. Programs older than wraps read only v1, so
+    // they reprice such a quote visibly ("No saved price on record") instead of silently holding the wrap premium on an
+    // unwrapped build. A newer version than this program knows is named as an issue (reopen it in the updated app).
+    if(pr && pr.v>2) st.issues.push('This quote was saved by a newer version of the quote program (price snapshot v'+pr.v+'). Open it in the updated app before changing or printing it.');
+    if(pr && (pr.v===1||pr.v===2) && isFinite(+pr.sub) && pr.money){
       S={ sub:+pr.sub, src:'snapshot', depPct:pr.depPct||17, parts:pr.holdParts||[], freeThresh:pr.freeThresh,
           totals:{ total:+pr.money.adjTot, deposit:+pr.money.dep, balance:+pr.money.bal } };
       st.pricedAt=pr.pricedAt||null;
@@ -18939,7 +18991,8 @@ try { if(typeof rebuildColorDropdowns==='function') rebuildColorDropdowns(); } c
     if(!$('bw') || !$('bw').value || !$('bl') || !$('bl').value) return null;
     var r=pass(); if(!r) return null;
     var st=PL.st;
-    return { v:1, pricedAt:new Date().toISOString(), engineRev:PL.ENGINE_REV, inputMode:!!root.INPUT_MODE,
+    var _snapV=(typeof root.ltWrapReq==='function' && root.ltWrapReq().length)?2:1; // v2 = wrap-around lean-tos (see the restore)
+    return { v:_snapV, pricedAt:new Date().toISOString(), engineRev:PL.ENGINE_REV, inputMode:!!root.INPUT_MODE,
       source:PL.on?'held':'engine', sub:r.sub, hold:r2(r.holdP||0), holdParts:PL.on?holdParts():[], depPct:r.depPct, freeThresh:(root._freeThresh||10000),
       // free 26GA / free fasteners as priced (the $10k thresholds on the saved price)
       free:{ sheet:!!r.sheetFree, fastener:!!r.fastenerFree }, thrPre:r2(r.thrPre!=null?r.thrPre:r.preSheetSub),

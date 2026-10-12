@@ -3,6 +3,7 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useEditorStore, type RenderStyle } from '@/store/useEditorStore';
 import { captureBoxOf } from './captureBox';
+import { applyCaptureTheme, type CaptureOptions, type CaptureTheme } from './captureTheme';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -24,6 +25,8 @@ const isCaptureIgnored = (ob: THREE.Object3D) => {
  * Restores the ISO view afterward — or, when the capture started inside the
  * walk-in Interior view, puts you back inside where you stood (after all the
  * images are taken). Returns { iso, front, back, left, right }.
+ * __ssCapture3D({ theme: 'light' }) takes the same pictures on a light
+ * background (applyCaptureTheme) for the White quote style.
  *
  * For the duration of the capture it DROPS the fog, pushes the far plane out,
  * and lifts the orbit distance clamp — otherwise a long building's elevation
@@ -45,11 +48,11 @@ export function CaptureHook() {
 
   useEffect(() => {
     const w = window as unknown as {
-      __ssCapture3D?: () => Promise<Record<string, string>>;
+      __ssCapture3D?: (opts?: CaptureOptions) => Promise<Record<string, string>>;
       __ssSetViewInstant?: (p: string) => void;
       __ssLastCapture?: { renderStyle: RenderStyle; at: string };
     };
-    const captureViews = async () => {
+    const captureViews = async (theme?: CaptureTheme) => {
       const setView = w.__ssSetViewInstant;
       const goToView = useEditorStore.getState().goToView;
       const views = ['iso', 'front', 'back', 'left', 'right'] as const;
@@ -91,6 +94,8 @@ export function CaptureHook() {
       const CAP_W = 1600; // 16:10 landscape, ×2 pixel ratio = 3200×2000 buffer
       const CAP_H = 1000;
       const CAPTURE_PR = 2;
+      // White quote style: light background, dark ground scenery hidden (restored below).
+      const restoreTheme = applyCaptureTheme(scene, theme);
 
       try {
         gl.setPixelRatio(CAPTURE_PR);
@@ -208,6 +213,7 @@ export function CaptureHook() {
         gl.setPixelRatio(savedPR);
         gl.setSize(cssW, cssH, false);
         scene.fog = savedFog;
+        restoreTheme();
         camera.far = savedFar;
         camera.aspect = savedAspect;
         camera.updateProjectionMatrix();
@@ -221,7 +227,7 @@ export function CaptureHook() {
       }
       return out;
     };
-    w.__ssCapture3D = async () => {
+    w.__ssCapture3D = async (opts?: CaptureOptions) => {
       const ed = useEditorStore.getState();
       // Look in effect for this capture (view-only flag; read once, never written).
       const renderStyle = ed.renderStyle;
@@ -229,7 +235,7 @@ export function CaptureHook() {
       // It only flags state; capture timing and output are unchanged.
       ed.setCaptureMode(true);
       try {
-        return await captureViews();
+        return await captureViews(opts?.theme);
       } finally {
         useEditorStore.getState().setCaptureMode(false);
         w.__ssLastCapture = { renderStyle, at: new Date().toISOString() };

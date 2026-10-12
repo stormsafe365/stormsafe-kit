@@ -60,6 +60,9 @@ function ClassicSceneRig() {
  * footprint, and the infinite grid's huge plane z-fights up through it from
  * eye height, so the grid is HIDDEN (kept mounted, uniforms still updated)
  * while Interior is on. Outside Interior it is exactly as before.
+ *
+ * The grid is tagged `lightCaptureHide`: a White-quote (light) PDF capture
+ * hides it for the pictures (CaptureHook applyCaptureTheme), then shows it again.
  */
 function ClassicGround({ active }: { active: boolean }) {
   const interior = useEditorStore((s) => s.interiorView);
@@ -85,6 +88,7 @@ function ClassicGround({ active }: { active: boolean }) {
           sectionColor="#2a3d55"
           fadeDistance={140}
           infiniteGrid
+          userData={{ lightCaptureHide: true }}
         />
       )}
     </>

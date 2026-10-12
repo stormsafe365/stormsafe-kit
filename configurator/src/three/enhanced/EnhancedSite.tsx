@@ -183,12 +183,14 @@ export function EnhancedSite({ structure, layout }: { structure: StructureModel;
 
   return (
     <group userData={{ captureIgnore: true, enhancedSite: true }}>
+      {/* the dark ground disc; a White-quote (light) PDF capture hides it (CaptureHook applyCaptureTheme) */}
       <mesh
         geometry={statics.groundGeo}
         material={statics.groundMat}
         rotation-x={-Math.PI / 2}
         position={[0, layout.gradeY, 0]}
         renderOrder={-3}
+        userData={{ lightCaptureHide: true }}
       />
       <mesh
         geometry={site.groundShadeGeo}

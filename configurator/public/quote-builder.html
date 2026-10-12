@@ -85,6 +85,16 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
 #override-row,#base-override-row,.override-row{display:none!important}
 .rbtn{width:100%;background:transparent;color:var(--mt);border:1px solid var(--bv);border-radius:7px;padding:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:2px}
 .rbtn:hover{border-color:var(--t);color:var(--t)}
+/* Quote style for SAVE / PRINT PDF: Dark (on-screen) / White (print-friendly) — owner 10/12/26 */
+.qstyle{display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:var(--sb)}
+.qstyle-l{font-weight:600;white-space:nowrap}
+.qstyle-o{display:flex;gap:4px;flex:1 1 290px;min-width:0}
+.qstyle-b{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:var(--d4);color:var(--sb);border:1px solid var(--bv);border-radius:5px;padding:6px 6px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit}
+.qstyle-b:hover{border-color:var(--t);color:var(--tx)}
+.qstyle-b:focus-visible{outline:2px solid var(--t);outline-offset:1px}
+.qstyle-b[aria-checked="true"]{background:var(--tbg);color:var(--t);border-color:var(--t)}
+.qstyle-sw{width:10px;height:10px;border-radius:2px;border:1px solid var(--bv);flex-shrink:0}
+@media(max-width:768px){.mobile-action-bar{flex-wrap:wrap}.mobile-action-bar .qstyle{flex:0 0 100%;margin:0}.qstyle-b{padding:7px 6px}.left{padding-bottom:118px}}
 .toast{position:fixed;bottom:20px;right:20px;background:#065f46;color:#fff;padding:11px 17px;border-radius:8px;font-size:15px;font-weight:700;display:none;z-index:9999}
 .toast.show{display:block}.toast.err{background:#7f1d1d}
 .summary-toggle{display:none;width:100%;background:#00d9d9;color:#080f14;border:none;padding:13px;font-size:14px;font-weight:700;cursor:pointer;border-radius:0;letter-spacing:.3px;position:sticky;top:0;z-index:100;align-items:center;justify-content:space-between}
@@ -958,6 +968,13 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
     <input type="checkbox" id="pdf-dims" style="width:auto;margin:0;cursor:pointer">
     <label for="pdf-dims" style="font-weight:600;cursor:pointer">Add dimensioned spacing page (exact placement &amp; distances)</label>
   </div>
+  <div class="qstyle" role="radiogroup" aria-label="Quote style for SAVE / PRINT PDF">
+    <span class="qstyle-l">Quote style:</span>
+    <span class="qstyle-o">
+      <button type="button" class="qstyle-b" data-qstyle="dark" role="radio" aria-checked="true" onclick="setQuoteStyle('dark')" title="Dark pages, as the quote looks on screen"><span class="qstyle-sw" style="background:#080f14"></span>Dark (on-screen)</button>
+      <button type="button" class="qstyle-b" data-qstyle="white" role="radio" aria-checked="false" onclick="setQuoteStyle('white')" title="White pages with dark text — uses far less ink when printed"><span class="qstyle-sw" style="background:#ffffff"></span>White (print-friendly)</button>
+    </span>
+  </div>
   <div style="margin-top:10px" class="desktop-btns">
     <button class="sbtn" type="button" onclick="printQuote()" style="background:#9fc839;color:#080f14">SAVE / PRINT PDF</button>
     <button class="sbtn" type="button" onclick="printContract()" style="background:#00d9d9;color:#080f14">GENERATE CONTRACT</button>
@@ -973,6 +990,13 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
 
 <!-- Mobile sticky action bar -->
 <div class="mobile-action-bar">
+  <div class="qstyle" role="radiogroup" aria-label="Quote style for SAVE / PRINT PDF">
+    <span class="qstyle-l">Quote style:</span>
+    <span class="qstyle-o">
+      <button type="button" class="qstyle-b" data-qstyle="dark" role="radio" aria-checked="true" onclick="setQuoteStyle('dark')" title="Dark pages, as the quote looks on screen"><span class="qstyle-sw" style="background:#080f14"></span>Dark (on-screen)</button>
+      <button type="button" class="qstyle-b" data-qstyle="white" role="radio" aria-checked="false" onclick="setQuoteStyle('white')" title="White pages with dark text — uses far less ink when printed"><span class="qstyle-sw" style="background:#ffffff"></span>White (print-friendly)</button>
+    </span>
+  </div>
   <button class="sbtn" type="button" onclick="printQuote()" style="background:#9fc839;color:#080f14">SAVE / PRINT PDF</button>
   <button class="rbtn" type="button" onclick="resetAll()">RESET</button>
 </div>
@@ -12091,6 +12115,107 @@ function _restoreQuoteDataImpl(data, opts){
 function _rvNum(t){ var n=parseFloat(String(t||'').replace(/[^0-9.-]/g,'')); return isNaN(n)?0:n; }
 
 
+// ══════════════════════════════════════════════════════════════════════════
+// QUOTE STYLE — Dark (on-screen) / White (print-friendly)   (owner 10/12/26)
+// "make the background white if someone wants ... they need to print the
+// quote but its background is too dark & taking up too much ink".
+// The rep's last choice is kept in localStorage (per tool), default Dark.
+// White is the SAME document printQuote builds for Dark, recoloured: same
+// content, same prices, same page order. Each colour is swapped by the job it
+// does where it is used:
+//   text      (CSS color, SVG <text> fill)            -> QW_TEXT
+//   surfaces  (backgrounds, SVG shape fills)           -> QW_FILL
+//   lines     (borders, box-shadows, SVG strokes)      -> QW_LINE
+// so a dark panel turns light and the text on it turns dark. A colour that is
+// in none of the tables (paint swatches, the drawn building, the brand teal
+// rules) is left exactly as it is. The 3D pages are re-captured on a light
+// background (__ssCapture3D({theme:'light'})). Dark output is untouched.
+// ══════════════════════════════════════════════════════════════════════════
+var QSTYLE_KEY='ss_quote_style';
+function quoteStyle(){
+  var v=null; try{ v=localStorage.getItem(QSTYLE_KEY); }catch(e){}
+  if(v!=='white'&&v!=='dark') v=window._qStyle;
+  return v==='white'?'white':'dark';
+}
+function setQuoteStyle(v){
+  v=(v==='white')?'white':'dark'; window._qStyle=v;
+  try{ localStorage.setItem(QSTYLE_KEY,v); }catch(e){}
+  paintQuoteStyle();
+}
+function paintQuoteStyle(){
+  var cur=quoteStyle();
+  document.querySelectorAll('.qstyle-b').forEach(function(b){ b.setAttribute('aria-checked', b.getAttribute('data-qstyle')===cur?'true':'false'); });
+}
+paintQuoteStyle();
+// another window of this tool (the CRM's bar, a second tab) changed it
+window.addEventListener('storage',function(e){ if(!e.key||e.key===QSTYLE_KEY) paintQuoteStyle(); });
+
+// Keys are written exactly as the dark document spells them (a copy of this
+// program that re-themes its colours re-themes these keys with them); lookups
+// ignore case. Keep every new dark colour of the quote pages in these tables —
+// quoteStyle.test.ts fails on a dark fill left in the White pages.
+var QW_FILL=_qwKeys({
+  '#1C2E3F':'#e3ebf0','#080f14':'#ffffff','#06101a':'#ffffff','#0d1117':'#ffffff','#111d28':'#ffffff',
+  '#08121d':'#f3f6f8','#0d1820':'#f5f7f9','#182535':'#eef3f6',
+  '#162840':'#d8e3ec','#151009':'#fff3e9','#1a1e0a':'#fff3e9'
+});
+var QW_TEXT=_qwKeys({
+  '#fff':'#0f1b2d','#ffffff':'#0f1b2d','#dde7ef':'#1b2a3a','#dfe6ee':'#1b2a3a',
+  '#8aa3b5':'#4d6072','#8a97a5':'#536273','#6f879a':'#566a7d','#4e6070':'#627386','#c2c0b6':'#5a6370',
+  '#1fcec4':'#0b8a82','#22d3c8':'#0b8a82','#38a5a0':'#0b7e77','#4ade80':'#15803d',
+  '#f59e0b':'#c2560f','#e8b45a':'#c2560f','#f0883e':'#c2560f','#ffa088':'#c2560f',
+  '#b8a6fb':'#6b4fd8','#a78bfa':'#6b4fd8','#7fa6f0':'#3a62c2','#e58bb0':'#b4407a'
+});
+var QW_LINE=_qwKeys({
+  '#080f14':'#ffffff','#243c50':'#d2dbe3','#1b2e3e':'#e2e8ee','#2a4258':'#c5d0da','#4a6480':'#8796a7',
+  '#1a3050':'#c9d6e2','#1c3650':'#e1e9f0','#1c3858':'#9db1c4','#1e3a55':'#9db1c4','#253a5a':'#b4c4d3',
+  '#8ab8d0':'#2f6a93','#9bc8e0':'#2f6a93','#b7c2cd':'#4a5866','#c4c0b8':'#77736a','#f59e0b':'#f0883e'
+});
+function _qwKeys(m){ var o={}; for(var k in m) o[_qwHex(k)]=m[k]; return o; }
+function _qwHex(c){ c=c.toLowerCase(); return c.length===4?'#'+c.charAt(1)+c.charAt(1)+c.charAt(2)+c.charAt(2)+c.charAt(3)+c.charAt(3):c; }
+function _qwMap(map,c){ return map[_qwHex(c)]||c; }
+// White-on-dark translucency -> the same translucency in dark ink on white.
+function _qwInk(c,line){
+  var m=/^rgba\(\s*255\s*,\s*255\s*,\s*255\s*,\s*([\d.]+)\s*\)$/.exec(c);
+  if(!m) return c;
+  var a=parseFloat(m[1]); if(line) a=Math.min(0.55,a*1.6+0.04);
+  return 'rgba(15,27,45,'+(Math.round(a*1000)/1000)+')';
+}
+// role 'text' | 'fill' | 'line'. CSS backgrounds keep their white/black sheens
+// (the ribbed paint swatches); a white SVG label sits on the drawing, not the page.
+function _qwValue(v,role,css){
+  var map=role==='text'?QW_TEXT:role==='line'?QW_LINE:QW_FILL;
+  return v.replace(/#[0-9a-fA-F]{3,8}\b|rgba\([^)]*\)/g,function(c){
+    if(c.charAt(0)==='#') return _qwMap(map,c);
+    if(role==='line'||(role==='text'&&css)||(role==='fill'&&!css)) return _qwInk(c,role==='line');
+    return c;
+  });
+}
+function _qwRole(prop,tag){
+  prop=prop.toLowerCase();
+  if(prop==='color') return 'text';
+  if(prop==='fill') return /^(text|tspan)$/i.test(tag||'')?'text':'fill';
+  if(prop==='background'||prop==='background-color'||prop==='background-image'||prop==='stop-color') return 'fill';
+  if(prop==='stroke'||prop==='box-shadow'||prop==='outline'||prop==='outline-color'||prop==='column-rule'||/^border(-(top|right|bottom|left))?(-color)?$/.test(prop)) return 'line';
+  return null;
+}
+function _qwDecls(css,tag){
+  return css.replace(/(^|[{;\s])([a-zA-Z-]+)(\s*:\s*)([^;{}"']*)/g,function(m,pre,prop,sep,val){
+    var r=_qwRole(prop,tag); return r?pre+prop+sep+_qwValue(val,r,true):m;
+  });
+}
+function quoteWhiteDoc(doc){
+  doc=doc.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi,function(m,a,css,b){ return a+_qwDecls(css,null)+b; });
+  return doc.replace(/<([a-zA-Z][a-zA-Z0-9:-]*)((?:\s+[^\s=>\/]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?)*)(\s*\/?>)/g,function(m,tag,attrs,end){
+    if(!attrs) return m;
+    return '<'+tag+attrs.replace(/(\s)(style|fill|stroke|stop-color)(\s*=\s*)(?:"([^"]*)"|'([^']*)')/gi,function(mm,sp,an,eq,v1,v2){
+      var q=v1!=null?'"':"'", v=v1!=null?v1:v2, lan=an.toLowerCase(), r=_qwRole(lan,tag);
+      var nv=lan==='style'?_qwDecls(v,tag):r==='text'?v.replace(/#[0-9a-fA-F]{3,8}\b/g,function(c){ return _qwMap(QW_TEXT,c); }):_qwValue(v,r,false);
+      return sp+an+eq+q+nv+q;
+    })+end;
+  });
+}
+
 async function printQuote(){
   if(!G('bw').value||!G('bl').value){ toast('Please select building dimensions first','err'); return; }
   if(ltStoragePrintBlock()) return;
@@ -12101,14 +12226,15 @@ async function printQuote(){
   // window NOW (synchronous, inside the click gesture) so the popup isn't
   // blocked, then do the async capture before writing the document.
   var pdfMode = (G('pdf-render') && G('pdf-render').value === '3d') ? '3d' : '2d';
+  var qWhite = (quoteStyle() === 'white'); // Quote style: White = this same document, recoloured (quoteWhiteDoc)
   var pwin = window.open('', '_blank');
   if(!pwin){ toast('Popup blocked — please allow popups for this page, then try again', 'err'); return; }
-  try { pwin.document.write('<!doctype html><html><body style="margin:0;background:#080f14;color:#8aa3b5;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;font-size:15px">Generating quote…</body></html>'); } catch(e){}
+  try { pwin.document.write('<!doctype html><html><body style="margin:0;background:'+(qWhite?'#ffffff':'#080f14')+';color:#8aa3b5;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;font-size:15px">Generating quote…</body></html>'); } catch(e){}
   var imgs3D = null;
   if(pdfMode === '3d'){
     try {
       var cap = (window.parent && window.parent.__ssCapture3D) || window.__ssCapture3D;
-      if(typeof cap === 'function'){ imgs3D = await cap(); }
+      if(typeof cap === 'function'){ imgs3D = await (qWhite ? cap({theme:'light'}) : cap()); } // White: re-captured on a light background
     } catch(e){ console.warn('3D capture failed, falling back to 2D elevations', e); }
   }
 
@@ -12787,6 +12913,8 @@ async function printQuote(){
     '.print-only{display:none}'+
     '@media print{@page{margin:0;size:letter portrait}body{background:#080f14;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}.print-only{display:block}.qpg{display:block!important;background:#080f14!important}.qbody{display:flex!important;align-items:stretch!important}.qsidebar{align-self:stretch!important}.qmain{display:flex!important;flex-direction:column!important;align-self:stretch!important;background:#111d28!important}.qfooter{margin-top:12px!important;position:static!important}.qsec{margin-bottom:8px!important;padding-bottom:6px!important}.qfield{margin-bottom:4px!important}.qsec-title{margin-bottom:5px!important;font-size:6pt!important}.qfield .fl{font-size:5.5pt!important}.qfield .fv{font-size:8pt!important}.qspec-box{padding:4px 5px!important}.qspec-box .fl{font-size:5pt!important}.qspec-box .fv{font-size:8pt!important}.qcolor-row{padding:2px 0!important}}'+
     '</style></head><body>'+html.split("\'+LOGO+\'").join(LOGO)+'<div class="print-only">'+((imgs3D && imgs3D.iso) ? threeDPageHTML(imgs3D) : buildingPageHTML())+((G('pdf-dims')&&G('pdf-dims').checked) ? dimSpacingPageHTML('dark') : '')+zoningChecklistHTML()+colorChartPageHTML(_printTiles)+'</div>'+'</body></html>';
+
+  if(qWhite) fullDoc = quoteWhiteDoc(fullDoc); // White (print-friendly): the same pages, light colours
 
   // Desktop app → real PDF + Save dialog + preview; browser → popup + print.
   if(!_ssSavePdfViaElectron(fullDoc, _ssPdfName('Quote'), pwin)){

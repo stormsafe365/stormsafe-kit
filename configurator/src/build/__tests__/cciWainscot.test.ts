@@ -88,7 +88,7 @@ for (const f of ['eBkt', 'ecLookup', 'vertEndUpcharge', 'cciLtSideSecs', 'cciLtS
   'cciLtSidePanels', 'cciLtMaxPanels', 'cciLtRunSum', 'cciLtSidePartial', 'cciUnits', 'cciUnitSum',
   'getLTWalls', 'ltWallsAs', 'ltStorOn', 'ltStorLenOptions', 'getTrussOC', 'ltStorage', 'ltUnit',
   'lrStorageLookup', 'aewUnset', 'aewSpec', 'gAddEndWall',
-  'wainscotPrintOpt', 'cciWainscotPre', 'cciWainEnd', 'cciWainSide', 'cciWainLeanEnd', 'cciWainscot', 'gWainscot']) code += grabFn(f);
+  'eaveVal', 'wainscotPrintOpt', 'cciWainscotPre', 'cciWainEnd', 'cciWainSide', 'cciWainLeanEnd', 'cciWainscot', 'gWainscot']) code += grabFn(f);
 code += 'var VERT_END=' + vertEnd + ';\nvar _CCI_COMBOS=' + cciCombos + ';\n';
 code += 'var MANUFACTURERS={CA:{wainscotBuckets:' + grabMethod('CA', 'wainscotBuckets') + '},CCI:{wainscotBuckets:' + grabMethod('CCI', 'wainscotBuckets') + ',standardCombinations:_CCI_COMBOS}};\n';
 code += `

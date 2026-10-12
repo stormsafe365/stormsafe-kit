@@ -189,7 +189,7 @@ describe('price lock (quote-builder.html)', () => {
     expect(mk({ ACTIVE_MFR: 'CA', cciWainscotPre: () => 500 })._wainDrift({ fields: {} }, { wainP: 1300 }, 'legacy')).toBeNull();
     // wired into the drift detectors, and the snapshot path hands them the snapshot
     expect(src.includes('var wd=wainDrift(data, rcl, src); if(wd) out.push(wd);')).toBe(true);
-    expect(src.includes('source:data.source, priced:pr}:data, rcl, S.src);')).toBe(true);
+    expect(src.includes('source:data.source, priced:pr, overrides:data.overrides}:data, rcl, S.src);')).toBe(true);
     // the old rule the replay uses is the program's own, kept verbatim (8/31 chart 17'+, buckets under 17')
     expect(html.includes('function cciWainscotPre(){')).toBe(true);
     expect(html.includes('var _wb=MANUFACTURERS.CCI.wainscotBuckets(w), _wc=0;')).toBe(true);

@@ -39,12 +39,12 @@ const SIDE_OPTS = ['open', '1panel', '1_5panel', '2panel', '2_5panel', '3panel',
 const ctx: Record<string, unknown> = { ACTIVE_MFR: 'CCI', __f: {}, __el: {}, SIDE_OPTS };
 vm.createContext(ctx);
 vm.runInContext(
-  ['gSidePanels', 'sidePanelLength', 'sideClosurePrice', 'cciUnits', 'cciPanelTiers', 'eaveVal', 'cpEaveRows', 'cpAdoptSavedEaves', 'cpWallChanged', 'gWalls']
+  ['gSidePanels', 'sidePanelLength', 'sideClosurePrice', 'cciUnits', 'cciPanelTiers', 'cciColUp', 'cpJTrim', 'eaveVal', 'cpEaveRows', 'cpAdoptSavedEaves', 'cpWallChanged', 'gWalls']
     .map(grabFn).join('') +
     // a DOM-ish G(): __f holds the field values; sp-left / sp-right carry their option lists; rows / notes carry a style
     'function G(id){ if(!(id in __f) && !/-row$|-note$/.test(id)) return null;\n' +
     '  if(!__el[id]) __el[id] = { id:id, style:{ display:"" }, options:(/^sp-/.test(id)?SIDE_OPTS.map(function(v){ return { value:v }; }):[]),\n' +
-    '    get value(){ return __f[id]; }, set value(v){ __f[id]=v; } };\n' +
+    '    get value(){ return __f[id]; }, set value(v){ __f[id]=v; }, get checked(){ return __f[id]===true; } };\n' +
     '  return __el[id]; }\n' +
     // a closed side = the both-sides chart halved (16 tall, 40 long: 2,365 / 2); the pair = PB p2 2,365; panels = PB p2 "Panels 3'"
     'function scLookup(h, l, w){ return 1183; }\nfunction scPairLookup(h, l, w){ return 2365; }\n' +
@@ -103,6 +103,19 @@ describe('a closed carport side is charged once, and set in ONE place (4B — Si
     expect(run('cpAdoptSavedEaves(__f); __f["sp-left"]', carport('2panel', 'open', 'Closed'))).toBe('2panel');
     // a row panel value maps 1:1
     expect(run('cpAdoptSavedEaves(__f); __f["sp-right"]', { ...carport('open', 'open', 'Open'), wre: '3_5panel' })).toBe('3_5panel');
+  });
+  it('J-trim (Price Book 2 p2 $60/$70/$85/$95/$110 by 20/25/30/35/40 long): per side with panels, per connected unit', () => {
+    const jt = (l: string, r: string, len: string, on = true, mfr = 'CCI') =>
+      run('cpJTrim()', { ...carport(l, r), bl: len, 'sp-jtrim': on as unknown as string }, mfr);
+    expect(jt('3panel', '3panel', '100')).toBe(2 * (95 + 95 + 85)); // Sensei config 13: $550
+    expect(jt('1panel', '1panel', '60')).toBe(2 * (85 + 85)); // Sensei config 14: $340
+    expect(jt('closed', '2panel', '40')).toBe(110); // a closed side has no J-trim
+    expect(jt('closed', 'closed', '40')).toBe(0);
+    expect(jt('q2', 'open', '24')).toBe(70); // 24' rounds UP to the 25' column
+    expect(jt('3panel', '3panel', '100', false)).toBe(0); // unticked
+    expect(jt('3panel', '3panel', '100', true, 'CA')).toBe(0); // CCI only
+    // and it is in the side-panel price: 3 panels a side on 100' = (175+175+155) x 2 + 550
+    expect(run('gSidePanels()', { ...carport('3panel', '3panel'), bl: '100', 'sp-jtrim': true as unknown as string })).toBe(2 * (175 + 175 + 155) * 3 + 550);
   });
   it('a save by this program carries the marker the price lock uses (cpOnce)', () => {
     expect(html).toContain('pbRule:1, cpOnce:1,');

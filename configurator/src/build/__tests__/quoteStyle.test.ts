@@ -16,14 +16,18 @@ import { describe, expect, it } from 'vitest';
  * BEFORE this change (3D Builder a145984 = 10-9b, frozen date, images cut
  * to "AA"): a CCI carport like Robert Frick's (3D pages + spacing page), a
  * garage with doors and two lean-tos (2D elevations + spacing page) and a
- * CA delivered-only quote with an additional discount (2D elevations). A
- * headless run of the new program reproduces each of them byte for byte in
- * Dark; here the White pass over them is checked.
+ * CA delivered-only quote with an additional discount (2D elevations). The
+ * wrap-around lean-tos add a fourth: the same garage with its two lean-tos
+ * WRAPPED at the Front Left corner (wrapped lengths, the corner fee row, the
+ * corner square on the spacing page), captured from the wrap program before
+ * the White style (leanto-wrap 2ce0207). A headless run of the new program
+ * reproduces each of them byte for byte in Dark; here the White pass over
+ * them is checked.
  */
 
 const html = readFileSync(fileURLToPath(new URL('../../../public/quote-builder.html', import.meta.url)), 'utf8');
 const fixture = (n: string) => gunzipSync(readFileSync(fileURLToPath(new URL(`./fixtures/quote-dark-${n}.html.gz`, import.meta.url)))).toString('utf8');
-const FIXTURES = ['carport-frick', 'garage-leanto', 'ca-delivered'];
+const FIXTURES = ['carport-frick', 'garage-leanto', 'garage-wrap', 'ca-delivered'];
 
 // The program's own QUOTE STYLE block, run in a vm with a stand-in localStorage / document.
 const a = html.indexOf("var QSTYLE_KEY='ss_quote_style';");
@@ -218,6 +222,17 @@ describe('White pages: the Dark document, light (fixtures from the program befor
     expect(white).toMatch(/Equipment Required/);
     expect(white).toMatch(/qwarr-head" style="border-color:#f0883e;background:#fff3e9;color:#c2560f"/);
   });
+  it('a wrapped quote: the wrapped lengths, the corner fee row, the footprint and the corner square print the same in White', () => {
+    const dark = fixture('garage-wrap');
+    const white = P.quoteWhiteDoc(dark);
+    for (const s of ["wrapped length 52'", "wrapped length 36'", 'Left Front Connection Fee (wrap-around corner)', "36' × 52' (main building + wrap-around lean-tos)"]) {
+      expect(dark, s).toContain(s);
+      expect(white, s).toContain(s);
+    }
+    // the spacing page's overall dimensions (footprint with the corner square) survive with dark ink
+    expect((white.match(/>52' overall</g) || []).length).toBe((dark.match(/>52' overall</g) || []).length);
+    expect(scan(white).darkSvg).toEqual([]);
+  });
   it('only colour declarations change: text, data and other attributes keep their characters', () => {
     const plain = '<div class="x" data-v="#080f14" title="color:#fff">#080f14 text; background:#111d28</div>';
     expect(P.quoteWhiteDoc(plain)).toBe(plain);
@@ -258,7 +273,7 @@ describe('White: one colour for a band and a panel (a re-themed copy — NEWTOOL
 describe('White: the spacing page outlines print as clear lines (also printed in black and white)', () => {
   const { P } = program(new Map());
   const BRIGHT = /^(#22d3c8|#a78bfa|#b8a6fb|#7fa6f0|#e58bb0|rgba\(167,\s*139,\s*250,)/i;
-  for (const n of ['carport-frick', 'garage-leanto']) {
+  for (const n of ['carport-frick', 'garage-leanto', 'garage-wrap']) {
     it(`${n}: every stroke of the drawings reads >= 2:1 on white; door / window / opening / lean-to outlines >= 3.5:1`, () => {
       const white = P.quoteWhiteDoc(fixture(n));
       const a = white.indexOf('data-dim-page="1"');

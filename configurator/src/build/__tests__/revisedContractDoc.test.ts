@@ -199,6 +199,22 @@ describe('payment summary + itemized rows', () => {
     P.rvTagRow(s, { dataset: { rvOrig: '1' } }, done); // a signed lean-to whose storage changed
     expect(s.tag).toBe('CHANGED');
   });
+  it('CHANGED tag + row in the brand orange #f0883e, never amber or yellow (owner 10/12/26: no-yellow rule)', () => {
+    const tag = P.rvRowTag({ hl: true, tag: 'CHANGED' });
+    expect(tag).toContain('background:#f0883e;color:#431407;');
+    expect(text(tag)).toBe('CHANGED');
+    expect(P.rvRowAttr({ hl: true, tag: 'CHANGED' })).toBe(' style="background:#fff7ed"');
+    expect(P.rvRowTag({ hl: true, tag: 'NEW' })).toContain('background:#f0883e;color:#431407;');
+    for (const t of ['ADDED', 'CHANGED', 'NEW', 'REMOVED']) {
+      expect(P.rvRowTag({ hl: true, tag: t }) + P.rvRowAttr({ hl: true, tag: t })).not.toMatch(/#f59e0b|#fff4dc|#fbbf24|#fcd34d|#fef3c7|#e8b45a/i);
+    }
+    // the tag text stays readable on the orange pill (WCAG AA for the small 6pt tag)
+    const lum = (h: string) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+    expect((lum('#f0883e') + 0.05) / (lum('#431407') + 0.05)).toBeGreaterThan(4.5);
+    // ADDED keeps its green, REMOVED its red
+    expect(P.rvRowTag({ hl: true, tag: 'ADDED' })).toContain('background:#bbf7d0;color:#14532d;');
+    expect(P.rvRowTag({ hl: true, tag: 'REMOVED' })).toContain('background:#fecaca;color:#7f1d1d;');
+  });
   it('REMOVED rows: kept, struck through, credit negative', () => {
     const r = P.rvRemovedRowsHTML(DOC);
     expect(r).toContain('background:#fef2f2');

@@ -14048,7 +14048,7 @@ function rvPayRowsHTML(o){
 }
 // Itemized pricing: the row style / tag for an added or changed item, the struck
 // previous amount, and the removed items (kept, struck through, credit negative).
-var RV_TAGS={ ADDED:['#ecfdf5','#bbf7d0','#14532d'], CHANGED:['#fff4dc','#f59e0b','#7c2d12'], NEW:['#fff4dc','#f59e0b','#7c2d12'], REMOVED:['#fef2f2','#fecaca','#7f1d1d'] };
+var RV_TAGS={ ADDED:['#ecfdf5','#bbf7d0','#14532d'], CHANGED:['#fff7ed','#f0883e','#431407'], NEW:['#fff7ed','#f0883e','#431407'], REMOVED:['#fef2f2','#fecaca','#7f1d1d'] }; // CHANGED / NEW = the brand orange, never amber or yellow (owner 10/12/26)
 function rvRowAttr(it){ if(!it||!it.hl) return ''; var c=RV_TAGS[it.tag||'ADDED']||RV_TAGS.ADDED; return ' style="background:'+c[0]+'"'; }
 function rvRowTag(it){ if(!it||!it.hl) return ''; var t=it.tag||'ADDED', c=RV_TAGS[t]||RV_TAGS.ADDED; return '<span style="display:inline-block;background:'+c[1]+';color:'+c[2]+';font-size:6pt;font-weight:900;letter-spacing:.5px;border-radius:3px;padding:1px 5px;margin-right:6px">'+t+'</span>'; }
 function rvOldAmt(it, fmt){ return (it&&it.old!=null)?'<s style="color:#94a3b8;font-weight:600">'+fmt(it.old)+'</s> → ':''; }

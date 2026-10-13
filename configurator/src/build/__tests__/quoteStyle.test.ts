@@ -34,20 +34,36 @@ const btn = (style: string): Btn => {
   const attrs: Record<string, string> = { 'data-qstyle': style, 'aria-checked': 'false' };
   return { attrs, getAttribute: (k) => attrs[k] ?? null, setAttribute: (k, v) => { attrs[k] = v; } };
 };
-function program(store: Map<string, string> | null) {
+// The mobile action bar stand-in (what _mabRoom measures): shown + fixed, or hidden.
+type Bar = { cs: { display: string; position: string }; getBoundingClientRect: () => { height: number } };
+const bar = (height: number, shown = true): Bar => ({ cs: { display: shown ? 'flex' : 'none', position: 'fixed' }, getBoundingClientRect: () => ({ height }) });
+type Program = {
+  quoteStyle: () => string; setQuoteStyle: (v: string) => void; quoteWhiteDoc: (d: string) => string;
+  QW_FILL: Record<string, object>; QW_TEXT: Record<string, object>; QW_LINE: Record<string, object>; QW_STROKE: Record<string, object>;
+  _qwKeys: (l: string[][]) => Record<string, object>; _qwMap: (m: Record<string, object>, c: string, band?: boolean) => string;
+  _qwTrimInk: (hex: string) => string; _qwDrawing: <T>(on: boolean, fn: () => T) => T; _qwDraw: boolean;
+  QW_FO: { box: string; size: string; sub: string }; _mabRoom: () => void;
+};
+function program(store: Map<string, string> | null, mab: Bar | null = null, block = BLOCK) {
   const buttons = [btn('dark'), btn('white'), btn('dark'), btn('white')];
   const listeners: Record<string, (e: { key: string | null }) => void> = {};
+  const cssProps: Record<string, string> = {};
   const ctx: Record<string, unknown> = {
     localStorage: store
       ? { getItem: (k: string) => (store.has(k) ? store.get(k) : null), setItem: (k: string, v: string) => { store.set(k, String(v)); } }
       : { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } },
-    document: { querySelectorAll: (sel: string) => (sel === '.qstyle-b' ? buttons : []) },
+    document: {
+      querySelectorAll: (sel: string) => (sel === '.qstyle-b' ? buttons : []),
+      querySelector: (sel: string) => (sel === '.mobile-action-bar' ? mab : null),
+      documentElement: { style: { setProperty: (k: string, v: string) => { cssProps[k] = v; } } },
+    },
+    getComputedStyle: (el: Bar) => el.cs,
   };
   ctx.window = ctx;
   ctx.addEventListener = (t: string, f: (e: { key: string | null }) => void) => { listeners[t] = f; };
   vm.createContext(ctx);
-  vm.runInContext(BLOCK, ctx);
-  return { P: ctx as unknown as { quoteStyle: () => string; setQuoteStyle: (v: string) => void; quoteWhiteDoc: (d: string) => string; QW_FILL: Record<string, string>; QW_TEXT: Record<string, string>; QW_LINE: Record<string, string> }, buttons, listeners, store };
+  vm.runInContext(block, ctx);
+  return { P: ctx as unknown as Program, buttons, listeners, store, cssProps };
 }
 const checked = (b: Btn[]) => b.map((x) => x.attrs['data-qstyle'] + ':' + x.attrs['aria-checked']).join(',');
 
@@ -208,5 +224,119 @@ describe('White pages: the Dark document, light (fixtures from the program befor
     expect(P.quoteWhiteDoc('<div style="background:#111d28;color:#fff">x</div>')).toBe('<div style="background:#ffffff;color:#0f1b2d">x</div>');
     // white labels drawn ON the building (an opening) stay white; page text turns dark
     expect(P.quoteWhiteDoc('<text fill="rgba(255,255,255,0.95)">17x14</text><text fill="#c2c0b6">24\'</text>')).toBe('<text fill="rgba(255,255,255,0.95)">17x14</text><text fill="#5a6370">24\'</text>');
+  });
+});
+
+// ── Fixes from the 10/12 verification of the White style ──
+const contrastOnWhite = (c: string) => 1.05 / (lum(onWhite(rgba(c))) + 0.05);
+const contrast = (fg: number[], bg: number[]) => { const a = lum(fg), b = lum(bg); return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); };
+const pq = html.slice(z, html.indexOf('\nfunction threeDPageHTML(', z));
+
+describe('White: one colour for a band and a panel (a re-themed copy — NEWTOOL)', () => {
+  const { P } = program(new Map());
+  // NEWTOOL's copy re-themes #1C2E3F (header bands, badges) and #111d28 (panels) into ONE colour, #34363A.
+  const retheme = (t: string) => t.replace(/#1C2E3F|#111d28/gi, '#34363A');
+  const N = program(new Map(), null, retheme(BLOCK)).P;
+  it('keeps both entries: bold rules (bands, badges) get the band, every other rule the panel', () => {
+    const m = P._qwKeys([['#34363A', '#e3ebf0', 'band'], ['#34363A', '#ffffff']]);
+    expect([P._qwMap(m, '#34363a', true), P._qwMap(m, '#34363A', false)]).toEqual(['#e3ebf0', '#ffffff']);
+    expect(N.quoteWhiteDoc('<div style="background:#34363A;color:#fff;font-weight:800">FRONT</div><div style="background:#34363A">x</div>'))
+      .toBe('<div style="background:#e3ebf0;color:#0f1b2d;font-weight:800">FRONT</div><div style="background:#ffffff">x</div>');
+    // the program's own colours: one entry each, any rule
+    expect(P.quoteWhiteDoc('<div style="background:#1C2E3F">a</div><div style="background:#111d28;font-weight:700">b</div>'))
+      .toBe('<div style="background:#e3ebf0">a</div><div style="background:#ffffff;font-weight:700">b</div>');
+  });
+  for (const n of FIXTURES) {
+    it(`${n}: the re-themed copy's White pages are exactly the program's White pages`, () => {
+      const dark = fixture(n);
+      expect(retheme(dark)).not.toBe(dark);
+      expect(N.quoteWhiteDoc(retheme(dark))).toBe(P.quoteWhiteDoc(dark));
+    });
+  }
+});
+
+describe('White: the spacing page outlines print as clear lines (also printed in black and white)', () => {
+  const { P } = program(new Map());
+  const BRIGHT = /^(#22d3c8|#a78bfa|#b8a6fb|#7fa6f0|#e58bb0|rgba\(167,\s*139,\s*250,)/i;
+  for (const n of ['carport-frick', 'garage-wrap']) {
+    it(`${n}: every stroke of the drawings reads >= 2:1 on white; door / window / opening / lean-to outlines >= 3.5:1`, () => {
+      const white = P.quoteWhiteDoc(fixture(n));
+      const a = white.indexOf('data-dim-page="1"');
+      expect(a).toBeGreaterThan(0);
+      const dims = white.slice(a, white.indexOf('page-break-before:always', a + 40));
+      const strokes = [...dims.matchAll(/\sstroke="([^"]+)"/g)].map((m) => m[1]).filter((c) => c !== 'none' && !PAINT.has(hex(c)));
+      expect(strokes.length).toBeGreaterThan(50);
+      expect(strokes.filter((c) => contrastOnWhite(c) < 2)).toEqual([]);
+      expect(strokes.filter((c) => BRIGHT.test(c))).toEqual([]);
+      for (const c of ['#0b8a82', '#6b4fd8', '#3a62c2', '#b4407a', 'rgba(107,79,216,0.913)']) expect(contrastOnWhite(c), c).toBeGreaterThan(3.5);
+      // the Dark spacing page is untouched (its accents are the on-screen brights)
+      expect(fixture(n)).toMatch(/stroke="#a78bfa"|stroke="#22d3c8"|stroke="#e58bb0"/);
+    });
+  }
+  it('a page rule (CSS border) keeps its light weight; only the drawings get the stronger ink', () => {
+    expect(P.quoteWhiteDoc('<div style="border-right:1px solid rgba(255,255,255,.08)"></div>')).toBe('<div style="border-right:1px solid rgba(15,27,45,0.168)"></div>');
+    expect(P.quoteWhiteDoc('<line stroke="rgba(255,255,255,.16)"/><rect stroke="rgba(167,139,250,.75)"/><rect stroke="#22d3c8"/>'))
+      .toBe('<line stroke="rgba(15,27,45,0.412)"/><rect stroke="rgba(107,79,216,0.913)"/><rect stroke="#0b8a82"/>');
+  });
+});
+
+describe('White: 2D elevations drawn for a white page', () => {
+  const { P } = program(new Map());
+  it('open posts / roof lines: the real trim colour (Dark draws a dark trim #CCCCCC); a very light trim mid grey', () => {
+    expect(P._qwTrimInk('#1D1E20')).toBe('#1D1E20'); // Black trim: shows on white
+    expect(P._qwTrimInk('#8A8A88')).toBe('#8A8A88');
+    expect(P._qwTrimInk('#F2F1EA')).toBe('#8a939c'); // White trim would vanish on the white page
+    expect(contrastOnWhite(P._qwTrimInk('#FFFFFF'))).toBeGreaterThan(3);
+  });
+  it('framed openings: a light box with dark labels (no big dark block to print)', () => {
+    const box = onWhite(rgba(P.QW_FO.box));
+    expect(lum(box)).toBeGreaterThan(L_LIMIT);
+    expect(contrast(onWhite(rgba(P.QW_FO.size)), box)).toBeGreaterThan(7);
+    expect(contrast(onWhite(rgba(P.QW_FO.sub)), box)).toBeGreaterThan(4.5);
+    // the White pass leaves them as they are (not white-ink colours it re-inks)
+    const svg = `<rect fill="${P.QW_FO.box}"/><text fill="${P.QW_FO.size}">17'x14'</text>`;
+    expect(P.quoteWhiteDoc(svg)).toBe(svg);
+  });
+  it('the flag is on only inside _qwDrawing, and comes back off after a throw', () => {
+    expect(P._qwDraw).toBe(false);
+    expect(P._qwDrawing(true, () => P._qwDraw)).toBe(true);
+    expect(P._qwDrawing(false, () => P._qwDraw)).toBe(false);
+    expect(() => P._qwDrawing(true, () => { throw new Error('boom'); })).toThrow('boom');
+    expect(P._qwDraw).toBe(false);
+  });
+  it('drawElev reads it (Dark exactly as before); only printQuote sets it, only for the White 2D building page', () => {
+    const e0 = html.indexOf('function drawElev(');
+    const elev = html.slice(e0, html.indexOf('\nfunction collectLTsForViews(', e0));
+    expect(elev).toMatch(/var visTC=function\(hex\)\{if\(_qwDraw\)return _qwTrimInk\(hex\);var r=[^\n]*\)<60\?'#CCCCCC':hex;\};/);
+    expect(elev).toContain(`fill="'+(_qwDraw?QW_FO.box:'rgba(10,20,35,0.55)')+'"/>`);
+    expect(elev.match(/\(_qwDraw\?QW_FO\.(size|sub):'rgba\(255,255,255,0\.\d+\)'\)/g)).toHaveLength(4);
+    expect(elev).not.toMatch(/fill="rgba\(10,20,35|fill="rgba\(255,255,255,0\.(95|92|75)\)"/);
+    expect(html.match(/_qwDrawing\(/g)).toHaveLength(2); // the definition + the one call
+    expect(pq).toMatch(/\(imgs3D && imgs3D\.iso\) \? threeDPageHTML\(imgs3D\) : _qwDrawing\(qWhite, buildingPageHTML\)\)/);
+    expect(html.match(/_qwDraw\s*=/g)).toHaveLength(3); // var _qwDraw=false + the two in _qwDrawing
+  });
+});
+
+describe('White: a 3D view that cannot take light pictures', () => {
+  it('falls back to the 2D drawings instead of printing dark pictures in light boxes', () => {
+    expect(pq).toMatch(/imgs3D = await \(qWhite \? cap\(\{theme:'light'\}\) : cap\(\)\);[^\n]*\n[^\n]*catch\(e\)\{[^\n]*\n[^\n]*\n[^\n]*\n\s*if\(qWhite && imgs3D && imgs3D\.theme !== 'light'\)\{[^\n]*imgs3D = null; \}/);
+    // Dark ignores the flag: same capture, same pages as before
+    expect(pq.match(/imgs3D\.theme/g)).toHaveLength(1);
+  });
+});
+
+describe('mobile action bar (the panes in the 3D Builder / CRM / NEWTOOL): the form stays clear of it', () => {
+  it('the room rule wins over the older `.left{padding:14px 14px 80px}` (higher specificity)', () => {
+    const css = html.slice(0, html.indexOf('</style>'));
+    expect(css).toContain('.mobile-action-bar .qstyle{flex:0 0 100%;margin:0}.qstyle-b{padding:7px 6px}.main>.left{padding-bottom:var(--mab-room,118px)}');
+    expect(css).not.toMatch(/[}\s]\.left\{padding-bottom/);
+    expect(html).toMatch(/<div class="main">\r?\n<div class="left">/);
+  });
+  it('measures the bar: room = its height + 18px, kept up to date on resize', () => {
+    const a = program(new Map(), bar(137.4));
+    expect(a.cssProps['--mab-room']).toBe('156px');
+    expect(typeof a.listeners.resize).toBe('function');
+    expect(program(new Map(), bar(100, false)).cssProps['--mab-room']).toBeUndefined(); // desktop: the bar is hidden
+    expect(program(new Map(), null).cssProps['--mab-room']).toBeUndefined();
   });
 });

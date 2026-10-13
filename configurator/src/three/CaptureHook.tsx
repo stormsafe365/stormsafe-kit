@@ -3,7 +3,7 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useEditorStore, type RenderStyle } from '@/store/useEditorStore';
 import { captureBoxOf } from './captureBox';
-import { applyCaptureTheme, type CaptureOptions, type CaptureTheme } from './captureTheme';
+import { applyCaptureTheme, composeLightCapture, type CaptureOptions, type CaptureTheme } from './captureTheme';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -26,7 +26,9 @@ const isCaptureIgnored = (ob: THREE.Object3D) => {
  * walk-in Interior view, puts you back inside where you stood (after all the
  * images are taken). Returns { iso, front, back, left, right }.
  * __ssCapture3D({ theme: 'light' }) takes the same pictures on a light
- * background (applyCaptureTheme) for the White quote style.
+ * background with a thin silhouette outline (applyCaptureTheme +
+ * composeLightCapture) for the White quote style, and adds theme: 'light' to
+ * the record so the program can tell them from an older bundle's dark ones.
  *
  * For the duration of the capture it DROPS the fog, pushes the far plane out,
  * and lifts the orbit distance clamp — otherwise a long building's elevation
@@ -94,8 +96,6 @@ export function CaptureHook() {
       const CAP_W = 1600; // 16:10 landscape, ×2 pixel ratio = 3200×2000 buffer
       const CAP_H = 1000;
       const CAPTURE_PR = 2;
-      // White quote style: light background, dark ground scenery hidden (restored below).
-      const restoreTheme = applyCaptureTheme(scene, theme);
 
       try {
         gl.setPixelRatio(CAPTURE_PR);
@@ -206,14 +206,24 @@ export function CaptureHook() {
             out[v + 'Ar'] = String(Math.round(ar * 1000) / 1000);
           }
           await sleep(140); // a couple frames for R3F to render the new camera
-          gl.render(scene, camera); // guarantee the freshest frame is in the buffer
-          out[v] = gl.domElement.toDataURL('image/png');
+          // White quote style: transparent background, dark ground scenery hidden — applied
+          // right before THIS picture and put back right after (a view change can re-show
+          // scenery: leaving the walk-in Interior view shows the classic grid again).
+          const undoTheme = applyCaptureTheme(scene, theme, gl);
+          try {
+            gl.render(scene, camera); // guarantee the freshest frame is in the buffer
+            // light: laid on the White page's colour with a thin silhouette outline
+            out[v] = theme === 'light' ? composeLightCapture(gl.domElement) : gl.domElement.toDataURL('image/png');
+          } finally {
+            undoTheme();
+          }
         }
+        // Tells the program the pictures really are light (an older bundle ignores the option).
+        if (theme === 'light') out.theme = 'light';
       } finally {
         gl.setPixelRatio(savedPR);
         gl.setSize(cssW, cssH, false);
         scene.fog = savedFog;
-        restoreTheme();
         camera.far = savedFar;
         camera.aspect = savedAspect;
         camera.updateProjectionMatrix();

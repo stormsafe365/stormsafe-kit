@@ -13,9 +13,9 @@ import { describe, expect, it } from 'vitest';
  * (print-friendly). White is the SAME document printQuote builds for Dark,
  * recoloured by quoteWhiteDoc (plus 3D pictures re-captured on a light
  * background). The fixtures are Dark quote documents captured from the program
- * BEFORE this change (3D Builder leanto-wrap 2ce0207, frozen date, images cut
+ * BEFORE this change (3D Builder a145984 = 10-9b, frozen date, images cut
  * to "AA"): a CCI carport like Robert Frick's (3D pages + spacing page), a
- * garage with doors and a wrapped lean-to (2D elevations + spacing page) and a
+ * garage with doors and two lean-tos (2D elevations + spacing page) and a
  * CA delivered-only quote with an additional discount (2D elevations). A
  * headless run of the new program reproduces each of them byte for byte in
  * Dark; here the White pass over them is checked.
@@ -23,7 +23,7 @@ import { describe, expect, it } from 'vitest';
 
 const html = readFileSync(fileURLToPath(new URL('../../../public/quote-builder.html', import.meta.url)), 'utf8');
 const fixture = (n: string) => gunzipSync(readFileSync(fileURLToPath(new URL(`./fixtures/quote-dark-${n}.html.gz`, import.meta.url)))).toString('utf8');
-const FIXTURES = ['carport-frick', 'garage-wrap', 'ca-delivered'];
+const FIXTURES = ['carport-frick', 'garage-leanto', 'ca-delivered'];
 
 // The program's own QUOTE STYLE block, run in a vm with a stand-in localStorage / document.
 const a = html.indexOf("var QSTYLE_KEY='ss_quote_style';");
@@ -258,7 +258,7 @@ describe('White: one colour for a band and a panel (a re-themed copy — NEWTOOL
 describe('White: the spacing page outlines print as clear lines (also printed in black and white)', () => {
   const { P } = program(new Map());
   const BRIGHT = /^(#22d3c8|#a78bfa|#b8a6fb|#7fa6f0|#e58bb0|rgba\(167,\s*139,\s*250,)/i;
-  for (const n of ['carport-frick', 'garage-wrap']) {
+  for (const n of ['carport-frick', 'garage-leanto']) {
     it(`${n}: every stroke of the drawings reads >= 2:1 on white; door / window / opening / lean-to outlines >= 3.5:1`, () => {
       const white = P.quoteWhiteDoc(fixture(n));
       const a = white.indexOf('data-dim-page="1"');

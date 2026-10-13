@@ -1,0 +1,749 @@
+/* StormSafe customer customizer — hand-written CSS (no framework).
+   Brand: dark azul base, one teal accent, orange for warnings (no yellow), Inter. */
+:root {
+  --bg: #081b24;
+  --surface: #0b222d;
+  --surface-2: #0f2b38;
+  --surface-3: #133442;
+  --hover: #173d4d;
+  --border: #1b3a48;
+  --border-vis: #28505f;
+  --text: #e6eef1;
+  --sub: #a3b8c0;
+  --muted: #7d949d;
+  --teal: #22d3c8;
+  --teal-dim: #1ab5ab;
+  --teal-glow: rgba(34, 211, 200, 0.12);
+  --orange: #f0883e;
+  --orange-bg: rgba(240, 136, 62, 0.12);
+  --radius: 10px;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  overflow: hidden;
+}
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────── */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+}
+.topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+.summary {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 13px;
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+}
+.summary-dims {
+  color: var(--text);
+  font-weight: 600;
+}
+.split {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+}
+.stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  background: #08121d;
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+}
+.panel-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.panel-body {
+  padding: 14px 16px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.panel-foot {
+  padding: 8px 16px 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 899px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(230px, 46%) minmax(0, 1fr);
+  }
+  .panel {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .topbar {
+    padding: 8px 16px;
+  }
+  .title {
+    font-size: 15px;
+  }
+}
+
+/* ── 3D view ────────────────────────────────────────────────────────── */
+.vp {
+  position: absolute;
+  inset: 0;
+}
+.vp-canvas {
+  touch-action: none;
+}
+.viewbar {
+  position: absolute;
+  z-index: 200;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  pointer-events: none;
+}
+.viewbar > * {
+  pointer-events: auto;
+  flex: 0 0 auto;
+}
+@media (max-width: 599px) {
+  /* One compact row that scrolls sideways inside the 3D view (never the page). */
+  .viewbar {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    pointer-events: auto;
+    padding-bottom: 2px;
+  }
+  .viewbar::-webkit-scrollbar {
+    display: none;
+  }
+  .seg-sm > button {
+    min-height: 32px;
+    padding: 4px 8px;
+  }
+  .chip {
+    padding: 5px 9px;
+  }
+}
+.vp-hint {
+  position: absolute;
+  z-index: 200;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 16px);
+  margin: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(8, 27, 36, 0.78);
+  text-align: center;
+  font-size: 12px;
+  color: var(--sub);
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip {
+  border: 1px solid var(--border-vis);
+  background: rgba(11, 34, 45, 0.92);
+  color: var(--sub);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.chip.on {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #062027;
+}
+
+/* ── Controls ───────────────────────────────────────────────────────── */
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.seg > button {
+  flex: 1 1 auto;
+  min-height: 34px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+.seg > button:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--hover);
+}
+.seg > button.on {
+  background: var(--teal);
+  color: #062027;
+}
+.seg > button:disabled {
+  opacity: 0.4;
+}
+.seg-sm {
+  background: rgba(8, 27, 36, 0.92);
+  border-color: var(--border-vis);
+}
+.seg-sm > button {
+  min-height: 30px;
+  font-size: 12px;
+  padding: 4px 9px;
+}
+.cams > button.on {
+  background: transparent;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--teal-dim);
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.field-value {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text);
+  font-weight: 500;
+}
+.field-hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.select,
+.stepper input {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border-vis);
+  background: var(--surface-3);
+  padding: 8px 10px;
+  font-size: 15px;
+}
+.select:hover,
+.stepper input:hover {
+  border-color: var(--teal-dim);
+}
+.select option:disabled {
+  color: var(--muted);
+}
+.stepper {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+.stepper input {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+.stepper input::-webkit-outer-spin-button,
+.stepper input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.stepper button {
+  flex: 0 0 40px;
+  min-height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--border-vis);
+  background: var(--surface-2);
+  font-size: 18px;
+  font-weight: 600;
+}
+.stepper button:hover:not(:disabled) {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+.stepper button:disabled {
+  opacity: 0.35;
+}
+.stepper .unit {
+  align-self: center;
+  font-size: 13px;
+  color: var(--muted);
+  padding: 0 2px;
+}
+.row3 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 10px;
+}
+.row3 .stepper {
+  gap: 3px;
+}
+.row3 .stepper button {
+  flex-basis: 30px;
+}
+.row3 .stepper input {
+  padding: 8px 2px;
+}
+.row3 .stepper .unit {
+  display: none;
+}
+@media (max-width: 420px) {
+  .row3 {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .row3 > :nth-child(2) {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
+.dims-line {
+  margin: -6px 0 0;
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.muted {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.card {
+  text-align: left;
+  border: 1px solid var(--border-vis);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.card:hover {
+  border-color: var(--teal-dim);
+  background: var(--hover);
+}
+.card.on {
+  border-color: var(--teal);
+  background: var(--teal-glow);
+  box-shadow: inset 0 0 0 1px var(--teal);
+}
+.card-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+.card-blurb {
+  font-size: 12px;
+  color: var(--sub);
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
+  gap: 8px;
+}
+.swatch {
+  aspect-ratio: 1;
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.swatch.on {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+.swatch:disabled {
+  opacity: 0.25;
+}
+
+.note {
+  margin: 0;
+  font-size: 13px;
+  border-radius: 8px;
+  padding: 9px 11px;
+  background: var(--teal-glow);
+  border-left: 3px solid var(--teal-dim);
+  color: var(--text);
+}
+.note-warn {
+  background: var(--orange-bg);
+  border-left-color: var(--orange);
+}
+.impact {
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--orange-bg);
+  border: 1px solid rgba(240, 136, 62, 0.55);
+  color: var(--text);
+  font-size: 13px;
+}
+.impact strong {
+  color: var(--orange);
+}
+@media (max-width: 899px) {
+  .impact {
+    margin: 10px 16px 0;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+}
+
+.toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.toggle-box {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--border-vis);
+  background: var(--surface-3);
+  position: relative;
+  margin-top: 1px;
+}
+.toggle input:checked + .toggle-box {
+  background: var(--teal);
+  border-color: var(--teal);
+}
+.toggle input:checked + .toggle-box::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 3px;
+  width: 6px;
+  height: 11px;
+  border: solid #062027;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.toggle input:focus-visible + .toggle-box {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+.toggle.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Tabs ───────────────────────────────────────────────────────────── */
+.tabs {
+  flex: 0 0 auto;
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 6px;
+  margin-top: 6px;
+}
+.tabs > button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 2px;
+  white-space: nowrap;
+}
+.tabs > button:hover {
+  color: var(--text);
+}
+.tabs > button.on {
+  color: var(--teal);
+  border-bottom-color: var(--teal);
+}
+
+/* ── Parts (doors / windows / lean-tos) ─────────────────────────────── */
+.add-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.add-btn {
+  min-height: 40px;
+  border-radius: 8px;
+  border: 1px dashed var(--border-vis);
+  background: var(--surface-2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  padding: 6px 8px;
+}
+.add-btn:hover:not(:disabled) {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+.add-btn:disabled {
+  opacity: 0.4;
+}
+.part,
+.lt-card {
+  border: 1px solid var(--border-vis);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.lt-card .part {
+  background: var(--surface-3);
+}
+.part.is-selected {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 1px var(--teal), 0 0 18px var(--teal-glow);
+}
+.part-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.part-num {
+  flex: 0 0 auto;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--teal-glow);
+  color: var(--teal);
+  font-weight: 700;
+  font-size: 13px;
+  display: grid;
+  place-items: center;
+}
+.part-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  font-size: 14px;
+}
+.icon-btn {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border-vis);
+  background: transparent;
+  color: var(--sub);
+  font-size: 20px;
+  line-height: 1;
+}
+.icon-btn:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+.part-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.sub-head {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sub);
+}
+.add-lt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+.wraps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.wrap-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.btn-primary {
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--teal);
+  color: #062027;
+  font-weight: 700;
+  padding: 8px 14px;
+  white-space: nowrap;
+}
+.btn-primary:hover {
+  background: var(--teal-dim);
+}
+.btn-ghost {
+  min-height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border-vis);
+  background: transparent;
+  color: var(--sub);
+  font-weight: 600;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.btn-ghost:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+.btn-ghost.confirm {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+/* ── Busy overlay (picture capture) ─────────────────────────────────── */
+.busy {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 27, 36, 0.72);
+}
+.busy-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  border: 1px solid var(--border-vis);
+  font-weight: 600;
+}
+.spinner {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid var(--border-vis);
+  border-top-color: var(--teal);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+  * {
+    scroll-behavior: auto !important;
+  }
+}

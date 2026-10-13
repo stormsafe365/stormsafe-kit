@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Customizer Embed Test | StormSafe Steel</title>
+<style>
+  :root { --bg:#081b24; --card:#0f2b38; --line:#28505f; --text:#e6eef1; --sub:#a3b8c0; --teal:#22d3c8; --orange:#f0883e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 Inter, system-ui, sans-serif; }
+  header { padding:12px 16px; border-bottom:1px solid var(--line); }
+  h1 { margin:0; font-size:17px; }
+  header p { margin:4px 0 0; color:var(--sub); font-size:13px; }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:16px; padding:16px; }
+  .frame { min-width:0; }
+  iframe { width:100%; height:78vh; min-height:560px; border:1px solid var(--line); border-radius:10px; background:#08121d; display:block; }
+  aside { display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px; display:flex; flex-direction:column; gap:8px; min-width:0; }
+  .card h2 { margin:0; font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--teal); }
+  label { font-size:13px; color:var(--sub); display:flex; flex-direction:column; gap:4px; }
+  input, select, textarea { font:inherit; color:var(--text); background:#133442; border:1px solid var(--line); border-radius:8px; padding:7px 9px; width:100%; }
+  textarea { font:12px/1.4 ui-monospace, Consolas, monospace; min-height:120px; resize:vertical; }
+  .row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .btns { display:flex; flex-wrap:wrap; gap:8px; }
+  button { font:inherit; font-weight:600; font-size:13px; border-radius:8px; padding:8px 12px; border:1px solid var(--line); background:transparent; color:var(--text); cursor:pointer; }
+  button.primary { background:var(--teal); border-color:var(--teal); color:#062027; }
+  pre { margin:0; white-space:pre-wrap; word-break:break-word; font:12px/1.45 ui-monospace, Consolas, monospace; color:var(--text); max-height:260px; overflow:auto; }
+  img { max-width:100%; border-radius:8px; border:1px solid var(--line); background:#f3f6f8; }
+  #log { color:var(--sub); max-height:160px; }
+  .warn { color:var(--orange); }
+  @media (max-width: 899px) { main { grid-template-columns:minmax(0,1fr); } iframe { height:85vh; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Customizer embed test</h1>
+  <p>Iframes <code>dist/index.html</code> and drives it with <code>ss-request-design</code> / <code>ss-load-design</code>. Serve this folder over http (module scripts do not run from file://).</p>
+</header>
+<main>
+  <div class="frame">
+    <iframe id="cz" title="Design your building" src="dist/index.html?zip=33401&county=Palm%20Beach&impact=1" allow="fullscreen"></iframe>
+  </div>
+  <aside>
+    <section class="card">
+      <h2>URL parameters</h2>
+      <div class="row">
+        <label>ZIP <input id="zip" value="33401" inputmode="numeric"></label>
+        <label>County <input id="county" value="Palm Beach"></label>
+        <label>Impact
+          <select id="impact"><option value="1" selected>1 (impact)</option><option value="0">0 (not)</option><option value="">(not set)</option></select>
+        </label>
+      </div>
+      <div class="btns"><button id="reload">Reload customizer</button></div>
+    </section>
+    <section class="card">
+      <h2>Request / load</h2>
+      <div class="btns">
+        <button class="primary" id="req">Request design</button>
+        <button id="reqAll">Request (all views)</button>
+        <button id="load">Load state below</button>
+        <button id="sample">Load sample</button>
+        <button id="bad">Send a bad state</button>
+      </div>
+      <label>State (JSON)<textarea id="state" spellcheck="false" placeholder="Request a design to fill this in."></textarea></label>
+    </section>
+    <section class="card">
+      <h2>Picture</h2>
+      <img id="img" alt="Picture of the requested design" hidden>
+      <p id="imgInfo" class="sub"></p>
+    </section>
+    <section class="card">
+      <h2>Spec</h2>
+      <pre id="spec">—</pre>
+    </section>
+    <section class="card">
+      <h2>Messages</h2>
+      <pre id="log"></pre>
+    </section>
+  </aside>
+</main>
+<script>
+(function () {
+  var cz = document.getElementById('cz');
+  var $ = function (id) { return document.getElementById(id); };
+  var seq = 0;
+  var T = window.__embedTest = { ready: false, last: null, loaded: null, messages: [] };
+  function log(s, warn) {
+    var line = new Date().toLocaleTimeString() + '  ' + s;
+    T.messages.push(line);
+    var el = $('log');
+    el.innerHTML = '<span' + (warn ? ' class="warn"' : '') + '>' + line.replace(/</g, '&lt;') + '</span>\n' + el.innerHTML;
+  }
+  // The customizer's origin: same server here. In production, use your customizer's origin.
+  var CZ_ORIGIN = new URL(cz.src, location.href).origin;
+  function send(msg) { cz.contentWindow.postMessage(msg, CZ_ORIGIN); log('→ ' + msg.type + (msg.id ? ' #' + msg.id : '')); }
+
+  window.addEventListener('message', function (e) {
+    if (e.source !== cz.contentWindow || e.origin !== CZ_ORIGIN) return; // only our iframe
+    var m = e.data || {};
+    if (m.type === 'ss-ready') { T.ready = true; log('← ss-ready'); return; }
+    if (m.type === 'ss-design') {
+      T.last = m;
+      log('← ss-design #' + m.id + ' (' + (m.image ? Math.round(m.image.length / 1024) + ' KB image, ' + m.imageSource : 'no image: ' + m.error) + ')', !m.image);
+      $('spec').textContent = m.spec;
+      $('state').value = JSON.stringify(m.state, null, 2);
+      if (m.image) { $('img').src = m.image; $('img').hidden = false; }
+      $('imgInfo').textContent = m.images ? 'Views: ' + Object.keys(m.images).join(', ') : '';
+      return;
+    }
+    if (m.type === 'ss-design-loaded') { T.loaded = m; log('← ss-design-loaded #' + m.id + ' ok=' + m.ok + (m.error ? ' (' + m.error + ')' : ''), !m.ok); }
+  });
+
+  $('req').onclick = function () { send({ type: 'ss-request-design', id: 'r' + (++seq) }); };
+  $('reqAll').onclick = function () { send({ type: 'ss-request-design', id: 'r' + (++seq), allViews: true }); };
+  $('load').onclick = function () {
+    var state;
+    try { state = JSON.parse($('state').value); } catch (err) { return log('state box is not valid JSON', true); }
+    send({ type: 'ss-load-design', id: 'l' + (++seq), state: state });
+  };
+  $('bad').onclick = function () { send({ type: 'ss-load-design', id: 'l' + (++seq), state: { schema: 'nope', v: 9 } }); };
+  T.sample = {
+    schema: 'ss-web-design', v: 1,
+    design: {
+      type: 'garage', width: 30, length: 40, height: 12, enclosedLength: 20,
+      roofStyle: 'Vertical', pitch: 'standard', panels: 'Vertical',
+      walls: { front: 'closed', back: 'closed', left: 'closed', right: 'closed' },
+      colors: { roof: 'black', walls: 'white', trim: 'black', wainscot: 'print-richwood' },
+      wainscot: true,
+      openings: [
+        { id: 'o1', kind: 'rollup', wall: 'front', w: 10, h: 10, sill: 0, pos: 3, color: 'black' },
+        { id: 'o2', kind: 'rollup', wall: 'front', w: 10, h: 10, sill: 0, pos: 17, color: 'black' },
+        { id: 'o3', kind: 'walk', wall: 'right', w: 3, h: 6.6667, sill: 0, pos: 6, style: '9lite' },
+        { id: 'o4', kind: 'window', wall: 'right', w: 2.5, h: 3, sill: 4.1667, pos: 14, style: 'w3036' },
+        { id: 'o5', kind: 'frame', wall: 'back', w: 6, h: 7, sill: 0, pos: 12, frame: 'door' }
+      ],
+      leanTos: [
+        { id: 'lt1', side: 'Left Eave', width: 12, length: 40, start: 0, lowLeg: 9, pitch: '2:12', enclosure: 'enclosed',
+          walls: { front: 'open', back: 'open', side: 'open' },
+          openings: [ { id: 'lo1', kind: 'rollup', wall: 'outer', w: 8, h: 7, sill: 0, pos: 20, color: 'white' } ] },
+        { id: 'lt2', side: 'Front Gable', width: 12, length: 30, start: 0, lowLeg: 9, pitch: '2:12', enclosure: 'open',
+          walls: { front: 'open', back: 'open', side: 'open' }, openings: [] }
+      ],
+      wraps: ['FL']
+    }
+  };
+  $('sample').onclick = function () { $('state').value = JSON.stringify(T.sample, null, 2); send({ type: 'ss-load-design', id: 'l' + (++seq), state: T.sample }); };
+  T.send = send;
+
+  function src() {
+    var q = new URLSearchParams();
+    if ($('zip').value) q.set('zip', $('zip').value);
+    if ($('county').value) q.set('county', $('county').value);
+    if ($('impact').value) q.set('impact', $('impact').value);
+    return 'dist/index.html?' + q.toString();
+  }
+  $('reload').onclick = function () { T.ready = false; cz.src = src(); log('reload ' + src()); };
+  T.reload = function (params) {
+    if (params) { $('zip').value = params.zip || ''; $('county').value = params.county || ''; $('impact').value = params.impact == null ? '' : String(params.impact); }
+    $('reload').onclick();
+  };
+})();
+</script>
+</body>
+</html>

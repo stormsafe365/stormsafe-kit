@@ -18,6 +18,26 @@ const isCaptureIgnored = (ob: THREE.Object3D) => {
 };
 
 /**
+ * The building's box in a captured picture: every framing point projected with the capture camera, as fractions of
+ * the picture "x0,y0,x1,y1" (x from the left, y from the TOP), clamped to 0..1, 4 decimals. Points behind the camera
+ * are skipped (they never happen after the fit, which starts from outside the content).
+ */
+export function captureBoxFractions(pts: THREE.Vector3[], camera: THREE.Camera): string {
+  camera.updateMatrixWorld();
+  let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
+  const inv = camera.matrixWorldInverse;
+  for (const p of pts) {
+    if (p.clone().applyMatrix4(inv).z > 0) continue;
+    const q = p.clone().project(camera);
+    mnx = Math.min(mnx, q.x); mxx = Math.max(mxx, q.x);
+    mny = Math.min(mny, q.y); mxy = Math.max(mxy, q.y);
+  }
+  if (!isFinite(mnx)) return '0,0,1,1';
+  const f = (n: number) => String(Math.round(Math.min(1, Math.max(0, n)) * 10000) / 10000);
+  return [f((mnx + 1) / 2), f((1 - mxy) / 2), f((mxx + 1) / 2), f((1 - mny) / 2)].join(',');
+}
+
+/**
  * Exposes window.__ssCapture3D() — used by the pricing program's PDF export to
  * embed the live 3D modeler. Cycles the camera through ISO + the four
  * elevations, lets each framing settle, and snapshots the canvas as a PNG data
@@ -204,6 +224,11 @@ export function CaptureHook() {
             camera.updateProjectionMatrix();
             fitExact();
             out[v + 'Ar'] = String(Math.round(ar * 1000) / 1000);
+            // Where the building sits in THIS picture: the same geometry points, projected with the final camera, as
+            // fractions of the picture "x0,y0,x1,y1" (y from the top). The quote's 3D / Elevation pages crop to it, so
+            // the building fills its box whatever margin the fit left (gable views of long buildings with lean-tos
+            // came out at ~73% width and off-centre). Report only - the picture itself is not changed.
+            out[v + 'Box'] = captureBoxFractions(pts, camera);
           }
           await sleep(140); // a couple frames for R3F to render the new camera
           // White quote style: transparent background, dark ground scenery hidden — applied

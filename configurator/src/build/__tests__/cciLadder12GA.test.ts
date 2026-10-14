@@ -114,5 +114,18 @@ describe('program wiring', () => {
     const lbl = "(window._cb12x4?\"12-Gauge Framing w/ 4' Centers (up to 170 MPH)\":(T.ladder12?'12-Gauge Framing (commercial ladder legs)':'12-Gauge Framing Upgrade'))";
     expect(html.split(lbl).length - 1).toBe(2); // the quote PDF and the contract
   });
+  it('the on-screen breakdown row (read by NEWTOOL\'s Sales Quote) follows: engine pass by the flag, Input mode keeps the old name', () => {
+    expect(html.includes("  _pfrLabel(!!(window._qTotals||{}).ladder12);")).toBe(true);
+    expect(html.includes("setT('pfr',framing); setT('ppch',pitch); _pfrLabel(false);")).toBe(true);
+    const k = { textContent: '12GA Framing Upgrade' };
+    const c: Record<string, unknown> = { G: () => ({ parentNode: { querySelector: () => k } }) };
+    vm.createContext(c);
+    vm.runInContext(grabFn('_pfrLabel'), c);
+    vm.runInContext('_pfrLabel(true)', c);
+    expect(k.textContent).toBe('12-Gauge Framing (commercial ladder legs)');
+    vm.runInContext('_pfrLabel(false)', c);
+    expect(k.textContent).toBe('12GA Framing Upgrade');
+    expect(html.includes('<td class="pk">12GA Framing Upgrade</td><td class="pv" id="pfr">')).toBe(true); // the page's own name
+  });
 });
 

@@ -5670,6 +5670,9 @@ function cci12GA(l){
 function cciLadder12(w, h, bt){ return ACTIVE_MFR==='CCI' && w>24 && w<=30 && h>=17 && bt!=='widespan' && bt!=='fslean'; }
 // CCI 25'-30' wide (not wide span / free-standing lean-to) 12-gauge line: commercial row on ladder legs, else cci12GA.
 function cciTripleWide12GA(w, h, l, bt){ return cciLadder12(w, h, bt) ? cciCom12GA(l) : cci12GA(l); }
+// The breakdown row's name follows the documents: "12-Gauge Framing (commercial ladder legs)" when the commercial row priced
+// the line (_qTotals.ladder12), else "12GA Framing Upgrade" as before. NEWTOOL's Quote tab / Sales Quote prints this name.
+function _pfrLabel(lad){ var e=G('pfr'), k=e&&e.parentNode&&e.parentNode.querySelector('.pk'); if(!k) return; var t=lad?'12-Gauge Framing (commercial ladder legs)':'12GA Framing Upgrade'; if(k.textContent!==t) k.textContent=t; }
 function winRowLabel(v){
   var arr=(MFR().winTypes||[]);
   for(var i=0;i<arr.length;i++){ if(arr[i].v===v) return arr[i].label+' Window'; }
@@ -8893,7 +8896,7 @@ function rcManual(){
   var adjP=gAdj();
   sub+=adjP;
   function setT(id,v){ var e=G(id); if(e) e.textContent = v ? fC(v) : '\u2014'; }
-  setT('pb',base); setT('plg',leg); setT('pfr',framing); setT('ppch',pitch);
+  setT('pb',base); setT('plg',leg); setT('pfr',framing); setT('ppch',pitch); _pfrLabel(false);
   setT('pwl',walls); setT('prd',rud); setT('pwd',wtd); setT('pwn',win);
   setT('psp',sp); setT('plt',lt); setT('pac',addl);
   var _pltK=G('plt-k'); if(_pltK) _pltK.textContent='Lean-Tos';
@@ -9542,6 +9545,7 @@ function rc(){
   G('plg').textContent=leg?fC(leg):'—';
   // Framing upgrade display
   var pfrEl=G('pfr'); if(pfrEl) pfrEl.textContent=framingUpgrade?fC(framingUpgrade):'—';
+  _pfrLabel(!!(window._qTotals||{}).ladder12);
   var framingNoteEl=G('framing-note'); if(framingNoteEl) framingNoteEl.classList.toggle('hidden',!framingUpgrade);
   // 4' OC (main + attached leans) and ground anchors get their own rows, so the
   // breakdown adds up to the Building Price like the quote PDF / contract rows.

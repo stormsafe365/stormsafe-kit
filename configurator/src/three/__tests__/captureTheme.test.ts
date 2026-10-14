@@ -23,7 +23,8 @@ import {
  * W1). Everything is put back after each picture. A plain __ssCapture3D()
  * (Dark quote, contract, approval sheet) changes nothing.
  */
-const src = (p: string) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'utf8');
+// Line-ending agnostic: a Windows checkout (core.autocrlf) gives CRLF; the regexes below are written for LF.
+const src = (p: string) => readFileSync(fileURLToPath(new URL(p, import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
 
 function scene() {
   const s = new THREE.Scene();

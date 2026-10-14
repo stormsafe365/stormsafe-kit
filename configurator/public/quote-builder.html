@@ -15938,7 +15938,9 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
   var isHalfClosed=origIsHalfClosed;
   // Auto-close: if doors/windows are placed on an "Open" or "Gable Only" face, render the WALL as Closed
   // (doors need a wall to mount in) — but the GABLE still respects user setting via origIsOpen/origIsGableOnly
-  if((isOpen||isGableOnly||isHalfClosed) && items && items.length>0){
+  // A FRAMED OPENING is framing, not a door: on its own it does not close the face (owner 10/14/26) — it is
+  // drawn as steel jambs + header on the open wall (_foSteelSVG), like the 3D.
+  if((isOpen||isGableOnly||isHalfClosed) && items && items.some(function(it){ return it.type!=='fo'; })){
     isOpen=false;
     isGableOnly=false;
     isHalfClosed=false;
@@ -15946,6 +15948,49 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
   // ── GCH FRONT SETBACK ────────────────────────────────────────────────────
   // For GCH front view, inset the wall horizontally to show it's set BACK behind the open carport extension
   var isGCHFrontInset=(gchFrontInfo && !isSide && !gchSplit);
+  // ── OPEN-WALL FRAMED OPENINGS (owner 10/14/26, display only) ─────────────────
+  // Where this face is DRAWN open (posts only, maybe a sheeted band hung from the
+  // eave), a framed opening is steel like the 3D: doubled jambs + a header, the legs
+  // in it cut away below the header, no trim except around a notch it cuts in the
+  // band. _foBandFt = that band's bottom (ft off the ground; the wall height when
+  // there is no band); null = the face is drawn sheeted (the trimmed box, as before).
+  var _foBandFt=(function(){
+    if(gchSplit||isGCHFrontInset) return null;
+    if(isHalfClosed) return wallH_ft-Math.min(6,wallH_ft*0.9);
+    if(isOpen||isGableOnly){
+      if(isSide&&sidePanelCfg&&sidePanelCfg.full) return null;
+      if(isSide&&sidePanelCfg&&sidePanelCfg.hasPanels) return wallH_ft-Math.min(sidePanelCfg.ft||0,wallH_ft*0.85);
+      return wallH_ft;
+    }
+    return null;
+  })();
+  var _foOpen=function(it){ return it.type==='fo'&&_foBandFt!=null; };
+  // Side-view leg at pp ft along the face: the top (ft) of an open floor-level framed opening it stands in, else null.
+  var _foCutTop=function(pp){ var t=null; (items||[]).forEach(function(it){ if(_foOpen(it)&&!((it.yo||0)>0.1)&&pp>=it.x-0.05&&pp<=it.x+it.w+0.05) t=Math.max(t||0,(it.yo||0)+it.h); }); return t; };
+  var _foSteelSVG=function(it,ix,foy2,fow,foh){
+    var o='', pw=Math.max(3,sc*0.28), yo=it.yo||0, topFt=yo+it.h, bandY=oy-_foBandFt*sc;
+    var notch=topFt>_foBandFt+0.01; // the opening reaches up into the sheeted band: the band is notched + trimmed there
+    if(notch){
+      var nh=bandY-foy2;
+      o+='<rect x="'+ix+'" y="'+foy2+'" width="'+fow+'" height="'+nh+'" fill="#0d1117"/>';
+      o+='<rect x="'+ix+'" y="'+foy2+'" width="'+fow+'" height="'+nh+'" fill="rgba(50,70,90,0.15)"/>';
+      o+='<path d="M'+ix+' '+bandY+'V'+foy2+'H'+(ix+fow)+'V'+bandY+'" fill="none" stroke="'+tC+'" stroke-width="2"/>';
+    }
+    // Doubled jambs each side, base rail up to the band (they run on behind it) or, in a notch, to the header.
+    var jTop=notch?(foy2-pw):bandY, xl=ix-2*pw-2, xr=ix+fow+2*pw+2;
+    [ix-pw-1, ix-2*pw-2, ix+fow+1, ix+fow+pw+2].forEach(function(jx){
+      if(oy-jTop>0.5) o+='<rect x="'+jx+'" y="'+jTop+'" width="'+pw+'" height="'+(oy-jTop)+'" fill="'+vtC+'"/>';
+    });
+    // Header across the opening top, tied into the nearest legs on a side view (5' OC posts as drawn).
+    var h0=xl, h1=xr;
+    if(isSide&&!notch){
+      var lp=Math.max(0,Math.floor((it.x-(2*pw+2)/sc)/5)*5), rp=Math.min(faceW,Math.ceil((it.x+it.w+(2*pw+2)/sc)/5)*5);
+      h0=Math.min(h0,ox+lp*sc); h1=Math.max(h1,ox+rp*sc+pw);
+    }
+    if(foy2-pw>oy-wallH+0.5) o+='<rect x="'+h0+'" y="'+(foy2-pw)+'" width="'+(h1-h0)+'" height="'+pw+'" fill="'+vtC+'"/>';
+    if(yo>0.1) o+='<rect x="'+xl+'" y="'+(oy-yo*sc)+'" width="'+(xr-xl)+'" height="'+pw+'" fill="'+vtC+'"/>'; // sill tube
+    return o;
+  };
   var wallOX=ox, wallSC=sc, wallW_px=faceW*sc;
   if(isGCHFrontInset){
     var insetRatio=0.85;
@@ -16265,6 +16310,9 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
       if(postPxH>0){
         var ocFt=5;
         for(var pp=0;pp<=w_ft+0.1;pp+=ocFt){
+          // A leg in an open framed opening is cut away below its header (the stub above it stays).
+          var _cut=_foCutTop(pp);
+          if(_cut!=null){ var _stubH=(oy-_cut*sc-postW)-postTopY; if(_stubH>0.5) s+='<rect x="'+(x+pp*sc)+'" y="'+postTopY+'" width="'+postW+'" height="'+_stubH+'" fill="'+vtC+'"/>'; continue; }
           s+='<rect x="'+(x+pp*sc)+'" y="'+postTopY+'" width="'+postW+'" height="'+postPxH+'" fill="'+vtC+'"/>';
         }
       }
@@ -16581,10 +16629,15 @@ function drawElev(containerId, faceW, wallH_ft, pitch, roofHex, wallHex, trimHex
     if(it.type==='fo'){
       var foh=it.h*sc,foy2=(it.yo!==undefined?oy-it.yo*sc-foh:oy-foh),fow=it.w*wallSC;
       var twf=Math.max(2,Math.min(5,Math.round(fow*0.055)));
+      if(_foOpen(it)){
+        // On an open face: steel jambs + header (no box, no trim casing) — owner 10/14/26.
+        s+=_foSteelSVG(it,ix,foy2,fow,foh);
+      } else {
       // Background fill (dark translucent so the opening reads as a recessed cutout)
       s+='<rect x="'+ix+'" y="'+foy2+'" width="'+fow+'" height="'+foh+'" fill="'+(_qwDraw?QW_FO.box:'rgba(10,20,35,0.55)')+'"/>';
       // Trim casing around the opening
       s+='<rect x="'+(ix-twf)+'" y="'+(foy2-twf)+'" width="'+(fow+twf*2)+'" height="'+(foh+twf*2)+'" fill="none" stroke="'+tC+'" stroke-width="'+twf+'"/>';
+      }
       // Size label (e.g., "16'×12'") + "FRAMED OPENING" subtitle — reflects the
       // actual dimensions entered in the Custom Opening Size box.
       // Three tiers based on opening size:

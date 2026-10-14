@@ -33,6 +33,13 @@ interface FrameProps {
    * (no handlers on it). Absent = one plain group, exactly as before.
    */
   captureMembers?: Member[];
+  /**
+   * StructureModel.frameOutMembers: an open-wall frame-out's doubled jambs,
+   * header and sill tube (drawing only, owner 10/14/26) — the leg tube and
+   * frame material, tagged `captureIgnore` so the PDF / CRM capture framing
+   * stays exactly as before. Absent = nothing extra is mounted.
+   */
+  frameOutMembers?: Member[];
 }
 
 // Every framing member is bare galvalume steel — columns, rafters, ridge, base
@@ -52,7 +59,7 @@ const NO_TAG = {};
  * members (purlins, girts, hat channels) use fixed thinner profiles. All
  * members are galvalume — the framing is bare galvanized steel.
  */
-export function Frame({ members, framingGauge, emphasize = false, look = 'classic', captureMembers }: FrameProps) {
+export function Frame({ members, framingGauge, emphasize = false, look = 'classic', captureMembers, frameOutMembers }: FrameProps) {
   const frameSize = FRAME_PROFILES[framingGauge].visualSizeFt;
   const color = emphasize ? GALVALUME_EMPHASIZED : GALVALUME;
   // Enhanced: one cached material for every member (retained while mounted,
@@ -112,6 +119,8 @@ export function Frame({ members, framingGauge, emphasize = false, look = 'classi
     <>
       <group userData={captureMembers ? CAPTURE_IGNORE : NO_TAG}>{members.map(renderMember)}</group>
       {captureMembers && <group visible={false}>{captureMembers.map(renderMember)}</group>}
+      {/* Open-wall frame-outs: jambs + header in the leg tube (default size = full gauge). */}
+      {frameOutMembers && <group userData={CAPTURE_IGNORE}>{frameOutMembers.map(renderMember)}</group>}
     </>
   );
 }

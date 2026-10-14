@@ -6,6 +6,7 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures';
 import { swingAngle, walkDoorHingeX, walkDoorKnobX } from './openingAnim';
 import { useOpenAmount } from './useOpenAmount';
+import { frameOutTrimBars, type FrameOutTrim } from '@/engine/frameOutFraming';
 
 /**
  * The visual fixture for an opening (door / window / roll-up / framed opening):
@@ -81,6 +82,37 @@ export function TrimBar({ pos, size, color }: { pos: [number, number, number]; s
   );
 }
 
+/**
+ * Classic trim for a frame-out on an OPEN wall (frameOutFraming.frameOutTrim):
+ * the full trim's bars, only along the edges where the hole cuts sheeting.
+ * Used by the main building (Openings.tsx) and the classic lean-to fixture.
+ */
+export function OpenFrameOutTrim({
+  trim,
+  w,
+  h,
+  sill,
+  t,
+  depth,
+  color,
+}: {
+  trim: FrameOutTrim;
+  w: number;
+  h: number;
+  sill: number;
+  t: number;
+  depth: number;
+  color: string;
+}) {
+  return (
+    <>
+      {frameOutTrimBars(trim, w, h, sill, t).map((b, i) => (
+        <TrimBar key={`fot${i}`} pos={[b.x, b.y, 0]} size={[b.w, b.h, depth]} color={color} />
+      ))}
+    </>
+  );
+}
+
 export function OpeningFixture({
   pos,
   rotY,
@@ -93,6 +125,7 @@ export function OpeningFixture({
   doorStyle,
   impact,
   openId,
+  openTrim,
   onPanelPointerDown,
 }: {
   pos: [number, number, number];
@@ -110,6 +143,8 @@ export function OpeningFixture({
   impact?: boolean;
   /** Editor-store openIds key: enables click-to-open (view-only). */
   openId?: string;
+  /** A frame-out on an OPEN wall (frameOutFraming): trim only where the hole cuts sheeting. null / unset = the full trim. */
+  openTrim?: FrameOutTrim | null;
   onPanelPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
 }) {
   const isGlass = type === 'window';
@@ -203,11 +238,18 @@ export function OpeningFixture({
 
   return (
     <group position={pos} rotation={[0, rotY, 0]}>
-      {/* Proud jamb / header / sill trim — floor-mounted doors omit the sill. */}
-      <TrimBar pos={[0, h / 2 + t / 2, 0]} size={[w + 2 * t, t, trimDepth]} color={tc} />
-      <TrimBar pos={[-w / 2 - t / 2, onFloor ? t / 2 : 0, 0]} size={[t, onFloor ? h + t : h + 2 * t, trimDepth]} color={tc} />
-      <TrimBar pos={[w / 2 + t / 2, onFloor ? t / 2 : 0, 0]} size={[t, onFloor ? h + t : h + 2 * t, trimDepth]} color={tc} />
-      {!onFloor && <TrimBar pos={[0, -h / 2 - t / 2, 0]} size={[w + 2 * t, t, trimDepth]} color={tc} />}
+      {/* Proud jamb / header / sill trim — floor-mounted doors omit the sill.
+          A frame-out on an OPEN wall: only where its hole cuts sheeting. */}
+      {isFrameOut && openTrim ? (
+        <OpenFrameOutTrim trim={openTrim} w={w} h={h} sill={sillHeight} t={t} depth={trimDepth} color={tc} />
+      ) : (
+        <>
+          <TrimBar pos={[0, h / 2 + t / 2, 0]} size={[w + 2 * t, t, trimDepth]} color={tc} />
+          <TrimBar pos={[-w / 2 - t / 2, onFloor ? t / 2 : 0, 0]} size={[t, onFloor ? h + t : h + 2 * t, trimDepth]} color={tc} />
+          <TrimBar pos={[w / 2 + t / 2, onFloor ? t / 2 : 0, 0]} size={[t, onFloor ? h + t : h + 2 * t, trimDepth]} color={tc} />
+          {!onFloor && <TrimBar pos={[0, -h / 2 - t / 2, 0]} size={[w + 2 * t, t, trimDepth]} color={tc} />}
+        </>
+      )}
 
       {/* Panel. A framed opening on a LEAN-TO is a true see-through cut: what's
           behind it is the lean-to interior (the main building's wall, posts,

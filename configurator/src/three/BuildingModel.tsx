@@ -173,6 +173,7 @@ export function BuildingModel() {
       <Frame
         members={structure.members}
         captureMembers={structure.captureMembers}
+        frameOutMembers={structure.frameOutMembers}
         framingGauge={config.framingGauge}
         emphasize={showFrameProminent}
         look={renderStyle}

@@ -1,6 +1,7 @@
 import type { BuildingType, EndSheeting, LeanToOpening, LeanToWrapCorner, OpenEnd, Opening, StorageMode, WallOverrides, WallSide } from '@/types/building';
 import type { ResolvedBuilding } from './ruleEngine';
 import { leanToWallSettings, rendersLeanToFixture, type LeanToStorageSpan } from './leanToFixtures';
+import { frameOutMembers, leanToFrameOutTrim, mainFrameOutOpen, type MainWallCtx } from './frameOutFraming';
 
 /**
  * LAYER 2 (cont.) — Structural geometry derivation.
@@ -19,8 +20,10 @@ export type Vec3 = [number, number, number];
  * "Trusses and Bows" charts (trussStyleFor): a chord is a bottom chord, raised
  * tie or second (lower / sister) chord; a web is a king post, vertical,
  * diagonal, strut or spacer. DRAWING ONLY — the BOM / quote never counts them.
+ * 'jamb' / 'header' are an open-wall frame-out's steel (frameOutFraming.ts) —
+ * only ever in StructureModel.frameOutMembers, never in `members`: DRAWING ONLY.
  */
-export type MemberKind = 'leg' | 'rafter' | 'baseRail' | 'ridge' | 'purlin' | 'hatChannel' | 'girt' | 'brace' | 'chord' | 'web';
+export type MemberKind = 'leg' | 'rafter' | 'baseRail' | 'ridge' | 'purlin' | 'hatChannel' | 'girt' | 'brace' | 'chord' | 'web' | 'jamb' | 'header';
 
 /**
  * Assembly layering (ft, measured out from the structural centerline):
@@ -190,6 +193,15 @@ export interface StructureModel {
    * visible drawing is `members`; the BOM never reads this.
    */
   captureMembers?: Member[];
+  /**
+   * Framed openings standing on an OPEN (unsheeted) wall — DRAWING ONLY
+   * (owner 10/14/26, frameOutFraming.ts): their doubled jambs, header and
+   * sill tube in the leg tube (kinds 'jamb' / 'header'). Frame draws them
+   * capture-ignored (the PDF framing stays as it was); the BOM, foundation and
+   * quote never read them. Absent when there are none (every other build
+   * derives exactly as before).
+   */
+  frameOutMembers?: Member[];
   enclosure: Enclosure;
   /** z-range of the OPEN (carport) eave portion — null when fully enclosed. */
   openBayZ: { start: number; end: number } | null;
@@ -714,7 +726,7 @@ function clipTrussAtEndOpenings(members: Member[], holes: EndHole[]): Member[] {
  */
 const END_BRACE_CLEAR = 0.25;
 function clipFrameAtLeanToOpenings(members: Member[], leanTos: LeanToStructure[]): Member[] {
-  type Band = { eave: boolean; plane: number; inb: number; depth: number; lo: number; hi: number; ylo: number; yhi: number };
+  type Band = { eave: boolean; plane: number; inb: number; depth: number; lo: number; hi: number; ylo: number; yhi: number; keepRail: boolean };
   /** An opening on a lean-to END wall, in that end bent's plane (run = const). */
   type EndBand = { eave: boolean; run: number; inner: number; sOut: number; width: number; lo: number; hi: number; ylo: number; yhi: number };
   const bands: Band[] = [];
@@ -765,6 +777,9 @@ function clipFrameAtLeanToOpenings(members: Member[], leanTos: LeanToStructure[]
         hi: c + op.widthFt / 2,
         ylo: sill,
         yhi: sill + op.heightFt,
+        // A frame-out on an OPEN stretch of the outer wall keeps the base rail
+        // (owner 10/14/26, frameOutFraming.ts); its posts are still cut.
+        keepRail: !!leanToFrameOutTrim(lt, op, walls),
       });
     }
   }
@@ -825,7 +840,7 @@ function clipFrameAtLeanToOpenings(members: Member[], leanTos: LeanToStructure[]
       let railSegs: Array<[Vec3, Vec3]> = [[m.start, m.end]];
       let railCut = false;
       for (const b of bands) {
-        if (b.ylo > 0.1) continue; // opening doesn't reach the slab
+        if (b.ylo > 0.1 || b.keepRail) continue; // opening doesn't reach the slab / an open-wall frame-out keeps the rail
         const runAxis = b.eave ? 2 : 0;
         const planeAxis = b.eave ? 0 : 2;
         const onPlane =
@@ -1096,6 +1111,24 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       });
   const leftHoles = holesForWall('left');
   const rightHoles = holesForWall('right');
+  // A framed opening on an OPEN stretch of an eave wall (no sheeting where it
+  // stands: open carport / GCH side, open garage side) keeps the base rail
+  // across it (owner 10/14/26 — its jambs stand on the rail). Every other
+  // opening cuts the rail at the floor exactly as before.
+  const mainCtx: MainWallCtx = {
+    width: W,
+    length: L,
+    legHeight: H,
+    peakHeight,
+    monoDropFt: mono ? monoDropFt : 0,
+    enclosure,
+    openBayZ,
+    eavePanelFt,
+  };
+  const railHoles = (side: 'left' | 'right'): WallHole[] =>
+    holesForWall(side).filter((_, i) => !mainFrameOutOpen(mainCtx, (config.openings ?? []).filter((o) => o.side === side)[i]));
+  const leftRailHoles = railHoles('left');
+  const rightRailHoles = railHoles('right');
   const frontHoles = holesForWall('front');
   const backHoles = holesForWall('back');
 
@@ -1223,9 +1256,9 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   // the doubled column lands on it ("Ladder Legs Baserail").
   const railInsets = ladderLeg ? [0, LADDER_D] : doublePost ? [0, DOUBLE_D] : [0];
   for (const inset of railInsets) {
-    for (const [s, e] of subtractSpans(-halfL, halfL, gapsAtHeight(leftHoles, 0)))
+    for (const [s, e] of subtractSpans(-halfL, halfL, gapsAtHeight(leftRailHoles, 0)))
       members.push(member('baseRail', [-halfW + inset, 0, s], [-halfW + inset, 0, e]));
-    for (const [s, e] of subtractSpans(-halfL, halfL, gapsAtHeight(rightHoles, 0)))
+    for (const [s, e] of subtractSpans(-halfL, halfL, gapsAtHeight(rightRailHoles, 0)))
       members.push(member('baseRail', [halfW - inset, 0, s], [halfW - inset, 0, e]));
     // A gable-end base rail only exists when that end is CLOSED. An open or
     // gable-only end is a drive-through — no rail across the ground there.
@@ -1686,6 +1719,10 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     leanToWraps.push({ corner: k, sx, zs, widthFt: w, lowLegHeightFt: lh, connH: cH, eaveId: e.d.id, gableId: g.d.id });
   }
 
+  // Framed openings standing on an OPEN wall: their jambs / header / sill tube
+  // (drawing only — StructureModel.frameOutMembers; absent when there are none).
+  const openFrameOuts = frameOutMembers({ main: mainCtx, openings: config.openings ?? [], bentZs, leanTos: derivedLeanTos });
+
   return {
     width: W,
     length: L,
@@ -1725,6 +1762,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
           ),
         }
       : {}),
+    ...(openFrameOuts.length ? { frameOutMembers: openFrameOuts } : {}),
     enclosure,
     openBayZ,
     eavePanelFt: { left: eavePanelFt.left, right: eavePanelFt.right },

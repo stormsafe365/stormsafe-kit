@@ -14,12 +14,13 @@ import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures
 import { CLICK_DRAG_THRESHOLD_PX, swingAngle, walkDoorHingeX, walkDoorKnobX } from './openingAnim';
 import { ftIn, inchLabel, roofLengthLabel } from './dimLabels';
 import { useOpenAmount } from './useOpenAmount';
-import { OpeningHitPlane } from './OpeningFixture';
+import { OpenFrameOutTrim, OpeningHitPlane } from './OpeningFixture';
 import { partitionSpacingVisible } from './spacingVisibility';
 import { interiorRoom, openingSpan, partTakesPress } from './interiorView';
 import { chamferFillGeometry, chamferFrameGeometry, chamferPanelGeometry, cut45Leg } from './cut45Geometry';
 import { EnhancedFixture } from './enhanced/fixtures';
 import { fixtureFaceZ, mainOpeningsSheeted } from './enhanced/fixtureLayout';
+import { mainFrameOutTrim } from '@/engine/frameOutFraming';
 
 // Re-exported: LeanToSiding and others import ftIn from here.
 export { ftIn };
@@ -157,6 +158,18 @@ function DraggableOpening({
 
   const wall = structure.walls[opening.side];
 
+  // A frame-out on an OPEN wall (no sheeting where it stands — owner 10/14/26):
+  // its steel jambs + header are frame members (StructureModel.frameOutMembers);
+  // the fixture draws trim only where the hole cuts sheeting, and no pane.
+  // null = in sheeting all round: drawn exactly as before.
+  const openTrim = useMemo(
+    () => mainFrameOutTrim(structure, opening),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the opening's box + type cover it
+    [structure, opening.type, opening.side, opening.offset, opening.width, opening.height, opening.sillHeight],
+  );
+
+  const openWall = !!openTrim;
+
   // World-space plane of this opening's wall — drags raycast against it.
   const wallPlane = useMemo(() => plyForWall(opening.side, structure), [opening.side, structure]);
 
@@ -210,6 +223,13 @@ function DraggableOpening({
       m.userData.keepTransparent = true;
       return m;
     }
+    if (isFrameOut && openWall) {
+      // Open-wall frame-out: nothing in the hole at all — an invisible plane
+      // kept only as the click / drag target (same size + spot as the pane).
+      const m = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide });
+      m.userData.keepTransparent = true;
+      return m;
+    }
     if (isFrameOut) {
       // A framed opening is an OPEN cut: just framing, you see right through it.
       // The wall sheeting is actually cut around it, so this pane only needs to
@@ -232,7 +252,7 @@ function DraggableOpening({
       metalness: 0.3,
       roughness: 0.6,
     });
-  }, [enhanced, isWalk, isSlat, isGlass, isFrameOut, opening.type, h, opening.color, opening.doorStyle, doorDark]);
+  }, [enhanced, isWalk, isSlat, isGlass, isFrameOut, opening.type, h, opening.color, opening.doorStyle, doorDark, openWall]);
 
   // Door panel with both top corners cut at 45° (extruded chamfered rectangle).
   const t = 0.17; // jamb/header face ~2" (spec 2–3") — folded flashing
@@ -356,6 +376,7 @@ function DraggableOpening({
             cut45={cut45}
             sheeted={sheeted}
             frameOutPane
+            openTrim={openTrim}
             isOpen={isOpen}
             onPointerDown={onDown}
           />
@@ -378,7 +399,10 @@ function DraggableOpening({
             A 45° angle-cut roll-up shortens the jambs to the cut, runs a flat
             top trim only across the un-cut middle, and adds a diagonal trim bar
             down each chamfer. */}
-        {cut45 ? (
+        {isFrameOut && openTrim ? (
+          // Open-wall frame-out: trim only where the hole cuts sheeting (often none).
+          <OpenFrameOutTrim trim={openTrim} w={w} h={h} sill={opening.sillHeight} t={t} depth={trimDepth} color={tc} />
+        ) : cut45 ? (
           <>
             {/* One continuous folded U-frame (jambs + header + corner clips) —
                 uniform width, cleanly mitered corners, open at the floor. */}
@@ -401,7 +425,7 @@ function DraggableOpening({
             <TrimBar pos={[w / 2 + t / 2, onFloor ? t / 2 : 0, 0]} size={[t, onFloor ? h + t : h + 2 * t, trimDepth]} color={tc} />
           </>
         )}
-        {!onFloor && <TrimBar pos={[0, -h / 2 - t / 2, 0]} size={[w + 2 * t, t, trimDepth]} color={tc} />}
+        {!onFloor && !(isFrameOut && openTrim) && <TrimBar pos={[0, -h / 2 - t / 2, 0]} size={[w + 2 * t, t, trimDepth]} color={tc} />}
 
         {/* Panel — flush slab (door) or recessed glazing (window) — grab + drag.
             45° cut roll-up uses the chamfered extrusion instead of a box. */}

@@ -16,6 +16,7 @@ import { useOpenAmount } from '../useOpenAmount';
 import { chamferFillGeometry, chamferFrameGeometry, chamferPanelGeometry, cut45Leg } from '../cut45Geometry';
 import { useEnhancedMaterials } from './ShellMeshes';
 import { FIXTURE, panelCenterZ, rollUpClipY, trimCenterZ, walkDoorPivotZ } from './fixtureLayout';
+import { frameOutTrimBars, type FrameOutTrim } from '@/engine/frameOutFraming';
 
 /**
  * ENHANCED look — the ONE fixture look module for doors, windows, roll-ups and
@@ -45,7 +46,9 @@ import { FIXTURE, panelCenterZ, rollUpClipY, trimCenterZ, walkDoorPivotZ } from 
  *    sill below. Glass = the P4 glass material (keepTransparent).
  *  - frame-out: a see-through hole with the trim U (+ a bottom bar when it
  *    sits up the wall). Main building: the classic faint 8% pane (no shadow,
- *    keepTransparent); lean-to: an invisible click plane only.
+ *    keepTransparent); lean-to: an invisible click plane only. On an OPEN
+ *    wall (openTrim, owner 10/14/26): trim only where the hole cuts sheeting
+ *    and no pane — its steel jambs / header are frame members.
  *
  * Open / close is view-only (useOpenAmount): never saved or priced, snapped
  * shut during a PDF capture, snapped under prefers-reduced-motion.
@@ -75,6 +78,13 @@ export interface EnhancedFixtureProps {
   sheeted: boolean;
   /** Frame-out: draw the faint see-through pane (main building) instead of nothing (lean-to). */
   frameOutPane: boolean;
+  /**
+   * A frame-out standing on an OPEN wall (engine/frameOutFraming, owner
+   * 10/14/26): its steel jambs + header are frame members, so the fixture
+   * draws trim ONLY where the hole cuts sheeting and nothing in the hole (an
+   * invisible click plane). null / unset = the full trim, exactly as before.
+   */
+  openTrim?: FrameOutTrim | null;
   /** The editor store says this part is clicked open. */
   isOpen: boolean;
   onPointerDown?: (e: ThreeEvent<PointerEvent>) => void;
@@ -178,7 +188,14 @@ export function EnhancedFixture(p: EnhancedFixtureProps) {
   // ── trim: header + jambs (+ bottom bar up the wall; a window gets a sill instead) ──
   const jh = onFloor ? h + tw : h + 2 * tw;
   const jy = onFloor ? tw / 2 : 0;
-  const trimEls = cut45 ? (
+  const openFO = isFrameOut && !!p.openTrim;
+  const trimEls = openFO ? (
+    <>
+      {frameOutTrimBars(p.openTrim!, w, h, sillHeight, tw).map((b, i) => (
+        <Box key={`fot${i}`} size={[b.w, b.h, tp]} pos={[b.x, b.y, tz]} material={trim} />
+      ))}
+    </>
+  ) : cut45 ? (
     <>
       <mesh geometry={cutGeo!.frame} material={trim} position={[0, 0, tz]} />
       <mesh geometry={cutGeo!.fill} material={mat({ surface: 'reveal', color: p.wallColor })} />
@@ -293,9 +310,9 @@ export function EnhancedFixture(p: EnhancedFixtureProps) {
       </>
     );
   } else if (isFrameOut) {
-    // A see-through hole: nothing in it but (main building) the classic faint pane.
+    // A see-through hole: nothing in it but (main building, in sheeting) the classic faint pane.
     unit = (
-      <mesh position={[0, 0, faceZ]} material={p.frameOutPane ? frameOutPaneMaterial() : hitMaterial()} onPointerDown={p.onPointerDown} userData={{ captureIgnore: !p.frameOutPane }}>
+      <mesh position={[0, 0, faceZ]} material={p.frameOutPane && !openFO ? frameOutPaneMaterial() : hitMaterial()} onPointerDown={p.onPointerDown} userData={{ captureIgnore: !p.frameOutPane }}>
         <planeGeometry args={[w, h]} />
       </mesh>
     );

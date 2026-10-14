@@ -3,6 +3,7 @@ import { useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SHEET_OUTSET, COMPONENT_OUTSET, type LeanToStructure, type StructureModel, type Vec3 } from '@/engine/geometry';
 import { leanToWallSettings, rendersLeanToFixture, type LeanToStorageSpan } from '@/engine/leanToFixtures';
+import { leanToFrameOutTrim } from '@/engine/frameOutFraming';
 import { clampPartitionCenter, partitionGeom } from '@/engine/partitionFit';
 import { OPENING_ID_KEY, clampWallCenter, openingIdsUnder, pressBelongsToSmaller } from '@/engine/wallFit';
 import type { BuildingColors, LeanToOpening, OpeningType, PanelOrientation, Wainscot } from '@/types/building';
@@ -1063,6 +1064,14 @@ export function DraggableLeanToOpening({
   const dragRef = useRef(false);
 
   const info = useMemo(() => dragInfo(geo, opening), [geo, opening.wall, opening.widthFt]);
+  // A frame-out on an OPEN stretch of its wall (owner 10/14/26): steel jambs +
+  // header are frame members; trim only where the hole cuts sheeting. null =
+  // in sheeting all round, drawn exactly as before.
+  const openTrim = useMemo(
+    () => leanToFrameOutTrim(lt, opening),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the opening's box + the lean-to's walls cover it
+    [lt, opening.type, opening.wall, opening.offsetFt, opening.widthFt, opening.heightFt, opening.sillFt],
+  );
   const { pos, rotY } = openingPlacement(geo, opening);
 
   const onDown = (e: ThreeEvent<PointerEvent>) => {
@@ -1173,6 +1182,7 @@ export function DraggableLeanToOpening({
             impact={opening.impact}
             sheeted={sheeted}
             frameOutPane={false}
+            openTrim={openTrim}
             isOpen={isOpen}
             onPointerDown={onDown}
           />
@@ -1190,6 +1200,7 @@ export function DraggableLeanToOpening({
           doorStyle={opening.doorStyle}
           impact={opening.impact}
           openId={opening.id}
+          openTrim={openTrim}
           onPanelPointerDown={onDown}
         />
       )}

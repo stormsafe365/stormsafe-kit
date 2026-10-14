@@ -4,16 +4,17 @@ import { deriveStructure } from '../geometry';
 import { DEFAULT_CONFIG } from '@/config/constants';
 
 describe('frame braces', () => {
-  it('adds 3 braces per bent: 2 knee (both eaves) + 1 peak collar tie', () => {
-    // 24×36×10 → single truss, so brace count is clean (frameCount × 3).
+  it('adds a peak collar tie per bent + 2 knee braces per bent — none on a SHEETED end frame (owner 10/14/26)', () => {
+    // 24×36×10 garage, both ends closed → the two end frames carry no knee brace
+    // (CCI handbook p.30: no corner braces on an enclosed end; CA-2: exclude end-walls).
     const s = deriveStructure(resolveBuilding(DEFAULT_CONFIG));
     const braces = s.members.filter((m) => m.kind === 'brace');
-    expect(braces.length).toBe(s.frameCount * 3);
+    expect(braces.length).toBe(s.frameCount + (s.frameCount - 2) * 2);
 
     const H = DEFAULT_CONFIG.legHeight;
     const knee = braces.filter((b) => b.start[1] !== b.end[1]); // diagonal
     const peak = braces.filter((b) => b.start[1] === b.end[1]); // horizontal collar tie
-    expect(knee.length).toBe(s.frameCount * 2);
+    expect(knee.length).toBe((s.frameCount - 2) * 2);
     expect(peak.length).toBe(s.frameCount);
 
     for (const b of knee) {
@@ -26,11 +27,12 @@ describe('frame braces', () => {
     }
   });
 
-  it('braces appear on carport and GCH builds too', () => {
-    for (const t of ['carport', 'utility'] as const) {
-      const s = deriveStructure(resolveBuilding({ ...DEFAULT_CONFIG, buildingType: t }));
-      expect(s.members.filter((m) => m.kind === 'brace').length).toBe(s.frameCount * 3);
-    }
+  it('braces appear on carport and GCH builds too (open ends keep their end-frame knee braces)', () => {
+    const carport = deriveStructure(resolveBuilding({ ...DEFAULT_CONFIG, buildingType: 'carport' }));
+    expect(carport.members.filter((m) => m.kind === 'brace').length).toBe(carport.frameCount * 3);
+    // GCH: open carport end at the front keeps its braces, the closed back end has none.
+    const gch = deriveStructure(resolveBuilding({ ...DEFAULT_CONFIG, buildingType: 'utility', openEnd: 'front' }));
+    expect(gch.members.filter((m) => m.kind === 'brace').length).toBe(gch.frameCount * 3 - 2);
   });
 });
 

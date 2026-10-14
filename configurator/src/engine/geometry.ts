@@ -2,6 +2,7 @@ import type { BuildingType, EndSheeting, LeanToOpening, LeanToWrapCorner, OpenEn
 import type { ResolvedBuilding } from './ruleEngine';
 import { leanToWallSettings, rendersLeanToFixture, type LeanToStorageSpan } from './leanToFixtures';
 import { frameOutMembers, leanToFrameOutTrim, mainFrameOutOpen, type MainWallCtx } from './frameOutFraming';
+import { kneeBrace45, kneeBraceFt, type KneeBraceGeom } from './kneeBrace';
 
 /**
  * LAYER 2 (cont.) — Structural geometry derivation.
@@ -202,6 +203,12 @@ export interface StructureModel {
    * derives exactly as before).
    */
   frameOutMembers?: Member[];
+  /**
+   * The main bents' knee brace as drawn (kneeBrace.ts — manufacturer length at
+   * 45°), per eave side: the Spacing overlay dimensions it on the end views.
+   * Absent on ladder-leg widths (no knee brace there).
+   */
+  kneeBrace?: { left: KneeBraceGeom; right: KneeBraceGeom };
   enclosure: Enclosure;
   /** z-range of the OPEN (carport) eave portion — null when fully enclosed. */
   openBayZ: { start: number; end: number } | null;
@@ -1157,8 +1164,27 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   const ladderLeg = mainLegStyle === 'ladder';
   const LADDER_D = ladderDepth(H); // ladder column depth (inboard, X)
 
+  // The knee brace as drawn before 10/14/26 — kept ONLY for the capture-framing
+  // proxy (preTruss), so the PDF framing of truss widths stays exactly as it was.
   const braceLen = Math.min(3, H * 0.45);
   const tBrace = rafterLength > 0 ? Math.min(0.5, braceLen / rafterLength) : 0;
+  // KNEE BRACES by manufacturer (kneeBrace.ts, owner 10/14/26 — drawing only):
+  // CCI handbook p.30 / CA sheet CA-2 length, the member drawn at 45° from the
+  // leg up to the rafter, sized on each post's own height; NONE on an end frame
+  // whose end is sheeted (CCI: "gable end or an end enclosed"; CA: "exclude
+  // end-walls"). A truss chord in the way still stops the brace on it.
+  const kneeRuleFt = (postH: number) => kneeBraceFt(config.manufacturer, W, postH);
+  const endFrameSheeted = (z: number) =>
+    (Math.abs(z + halfL) < 1e-6 && enclosure.front !== 'open') || (Math.abs(z - halfL) < 1e-6 && enclosure.back !== 'open');
+  const kneeBraceAt = (sx: number): { foot: [number, number]; tip: [number, number] } => {
+    const { foot, tip } = kneeBrace45(kneeRuleFt(roofYAt(sx)), sx, sx < 0 ? 1 : -1, roofYAt);
+    let tHit = 1;
+    for (const c of mono ? [] : trussChords) {
+      const t = segCross2(foot, tip, c.a, c.b);
+      if (t !== null && t < tHit) tHit = t;
+    }
+    return { foot, tip: tHit < 1 ? [foot[0] + (tip[0] - foot[0]) * tHit, foot[1] + (tip[1] - foot[1]) * tHit] : tip };
+  };
   const pbx = Math.min(3, halfW * 0.5); // peak collar tie half-span from the ridge
   const pby = H + rise * (1 - pbx / halfW);
 
@@ -1210,18 +1236,22 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     if (mono) {
       // Single-slope bent: one rafter across, tall (−X) eave → low (+X) eave.
       members.push(member('rafter', [-halfW, tallH, z], [halfW, H, z]));
-      if (!ladderLeg) {
+      if (!ladderLeg && !endFrameSheeted(z)) {
         for (const sx of [-halfW, halfW]) {
-          const dir = sx < 0 ? 1 : -1; // brace tip runs inboard along the rafter
-          const tipX = sx + dir * Math.min(braceLen, halfW);
-          members.push(member('brace', [sx, roofYAt(sx) - braceLen, z], [tipX, roofYAt(tipX), z]));
+          const { foot, tip } = kneeBraceAt(sx); // tip inboard on the sloped rafter
+          members.push(member('brace', [foot[0], foot[1], z], [tip[0], tip[1], z]));
         }
       }
       return; // no peak collar tie on a mono-slope bent
     }
     members.push(member('rafter', [-halfW, H, z], [0, peakHeight, z]));
     members.push(member('rafter', [halfW, H, z], [0, peakHeight, z]));
-    if (!ladderLeg) {
+    if (!ladderLeg && !preTruss && !endFrameSheeted(z)) {
+      for (const sx of [-halfW, halfW]) {
+        const { foot, tip } = kneeBraceAt(sx);
+        members.push(member('brace', [foot[0], foot[1], z], [tip[0], tip[1], z]));
+      }
+    } else if (!ladderLeg && preTruss) {
       for (const sx of [-halfW, halfW]) {
         const foot: [number, number] = [sx, H - braceLen];
         let tip: [number, number] = [sx * (1 - tBrace), H + rise * tBrace];
@@ -1719,6 +1749,19 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
     leanToWraps.push({ corner: k, sx, zs, widthFt: w, lowLegHeightFt: lh, connH: cH, eaveId: e.d.id, gableId: g.d.id });
   }
 
+  // The knee brace as drawn, per eave side (for the Spacing overlay's dimension).
+  const kneeGeom = (sx: number): KneeBraceGeom => {
+    const { foot, tip } = kneeBraceAt(sx);
+    return {
+      lengthFt: Math.hypot(tip[0] - foot[0], tip[1] - foot[1]),
+      ruleFt: kneeRuleFt(roofYAt(sx)),
+      reachFt: Math.abs(tip[0] - foot[0]),
+      footY: foot[1],
+      tipY: tip[1],
+      dropFt: roofYAt(sx) - foot[1],
+    };
+  };
+
   // Framed openings standing on an OPEN wall: their jambs / header / sill tube
   // (drawing only — StructureModel.frameOutMembers; absent when there are none).
   const openFrameOuts = frameOutMembers({ main: mainCtx, openings: config.openings ?? [], bentZs, leanTos: derivedLeanTos });
@@ -1763,6 +1806,7 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         }
       : {}),
     ...(openFrameOuts.length ? { frameOutMembers: openFrameOuts } : {}),
+    ...(ladderLeg ? {} : { kneeBrace: { left: kneeGeom(-halfW), right: kneeGeom(halfW) } }),
     enclosure,
     openBayZ,
     eavePanelFt: { left: eavePanelFt.left, right: eavePanelFt.right },

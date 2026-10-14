@@ -12,7 +12,7 @@ import { useBuildingStore } from '@/store/useBuildingStore';
 import { useEditorStore } from '@/store/useEditorStore';
 import { createSlatTexture, createDoorTexture, type DoorStyle } from './textures';
 import { CLICK_DRAG_THRESHOLD_PX, swingAngle, walkDoorHingeX, walkDoorKnobX } from './openingAnim';
-import { ftIn, inchLabel, roofLengthLabel } from './dimLabels';
+import { ftIn, inchLabel, kneeBraceDetail, kneeBraceTitle, roofLengthLabel } from './dimLabels';
 import { useOpenAmount } from './useOpenAmount';
 import { OpenFrameOutTrim, OpeningHitPlane } from './OpeningFixture';
 import { partitionSpacingVisible } from './spacingVisibility';
@@ -21,6 +21,7 @@ import { chamferFillGeometry, chamferFrameGeometry, chamferPanelGeometry, cut45L
 import { EnhancedFixture } from './enhanced/fixtures';
 import { fixtureFaceZ, mainOpeningsSheeted } from './enhanced/fixtureLayout';
 import { mainFrameOutTrim } from '@/engine/frameOutFraming';
+import type { KneeBraceGeom } from '@/engine/kneeBrace';
 
 // Re-exported: LeanToSiding and others import ftIn from here.
 export { ftIn };
@@ -840,6 +841,10 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
     if (b - a > 1 / 192 && !isOpening(a, b)) gaps.push([a, b]); // every gap down to 1/8", so the chain adds up
   }
   const gapY = Math.min(1.3, eave * 0.25);
+  // Knee brace (owner 10/14/26) on the END views: the main bents' brace as drawn
+  // (structure.kneeBrace — manufacturer length at 45°), at the far end of the wall
+  // from the "H" label. Along = span is world +X on the front wall, −X on the back.
+  const kb = side === 'front' ? structure.kneeBrace?.right : side === 'back' ? structure.kneeBrace?.left : undefined;
   const allY = 0.3;
   const oh = structure.roofOverhangFt ?? 0;
 
@@ -890,6 +895,34 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
           vertical
         />
       )}
+      {kb && <KneeBraceDims kb={kb} span={span} gapY={gapY} pt={pt} />}
+    </group>
+  );
+}
+
+/**
+ * Knee-brace dimension on an end view: the brace itself in red, the clear
+ * height at the wall under it (a ticked line up the leg) and ONE two-line chip —
+ * "Knee brace 4' @ 45°" / "2'1½" down · 2'10" in · 9'10½" clear at wall" — set
+ * low in the corner bay, clear of the gap chain, the H label and the peak /
+ * center-clearance labels in the middle.
+ */
+function KneeBraceDims({ kb, span, gapY, pt }: { kb: KneeBraceGeom; span: number; gapY: number; pt: (along: number, y: number) => Vec3 }) {
+  const legA = span - 0.15;
+  const tick = 0.22;
+  const chipY = Math.max(kb.footY * 0.55, gapY + 1.6);
+  const chipA = span - Math.max(2.2, kb.reachFt + 0.6);
+  return (
+    <group>
+      <GuideLine a={pt(span, kb.footY)} b={pt(span - kb.reachFt, kb.tipY)} color={RED} thick={0.08} />
+      <GuideLine a={pt(legA, 0)} b={pt(legA, kb.footY)} color={RED} />
+      <GuideLine a={pt(legA - tick, kb.footY)} b={pt(legA + tick, kb.footY)} color={RED} />
+      <Html position={pt(chipA, chipY)} center zIndexRange={[100, 0]} style={{ pointerEvents: 'none' }}>
+        <div style={{ background: '#1d4ed8', border: '1px solid #93c5fd', color: '#ffffff', font: '700 13px ui-monospace, monospace', padding: '3px 8px', borderRadius: 5, whiteSpace: 'nowrap', boxShadow: '0 2px 6px rgba(0,0,0,.55)', textAlign: 'center', lineHeight: 1.35 }}>
+          <div>{kneeBraceTitle(kb)}</div>
+          <div>{kneeBraceDetail(kb)}</div>
+        </div>
+      </Html>
     </group>
   );
 }

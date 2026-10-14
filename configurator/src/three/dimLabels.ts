@@ -56,3 +56,13 @@ export function roofLengthFt(spanFt: number, overhangFt: number): number {
 export function roofLengthLabel(spanFt: number, overhangFt: number): string {
   return `${ftIn(roofLengthFt(spanFt, overhangFt))} roof`;
 }
+
+/** Knee-brace chip, line 1: "Knee brace 4' @ 45°" (the member as drawn). */
+export function kneeBraceTitle(kb: { lengthFt: number }): string {
+  return `Knee brace ${ftIn(kb.lengthFt)} @ 45°`;
+}
+
+/** Knee-brace chip, line 2: drop down the leg · reach in from the wall · clear height at the wall under it. */
+export function kneeBraceDetail(kb: { dropFt: number; reachFt: number; footY: number }): string {
+  return `${ftIn(kb.dropFt)} down · ${ftIn(kb.reachFt)} in · ${ftIn(kb.footY)} clear at wall`;
+}

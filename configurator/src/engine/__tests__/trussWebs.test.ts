@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { resolveBuilding } from '../ruleEngine';
-import { deriveStructure, trussStyleFor, type Member } from '../geometry';
+import { deriveStructure, legStyleFor, trussStyleFor, type Member } from '../geometry';
 import { generateBOM } from '../bom';
 import { DEFAULT_CONFIG } from '@/config/constants';
 import type { LeanTo, Opening } from '@/types/building';
@@ -106,7 +106,8 @@ describe('web pattern per class (every bent, end frames included)', () => {
       const s = bld(24, mfr);
       expect(truss(s).length).toBe(0);
       const braces = s.members.filter((m) => m.kind === 'brace');
-      expect(braces.length).toBe(s.frameCount * 3); // 2 knee + collar tie
+      // 2 knee + collar tie per bent; no knee brace on the two closed END frames (owner 10/14/26, kneeBrace.ts)
+      expect(braces.length).toBe(s.frameCount + (s.frameCount - 2) * 2);
       expect(braces.filter(isLevel).length).toBe(s.frameCount);
     }
   });
@@ -132,7 +133,7 @@ describe('web pattern per class (every bent, end frames included)', () => {
         expect(hi[1]).toBeCloseTo(roofY(s, hi[0]), 5);
         expect(Math.abs(hi[0])).toBeGreaterThan(Math.abs(lo[0]));
       }
-      expect(s.members.filter((m) => m.kind === 'brace').length).toBe(s.frameCount * 2); // knees only
+      expect(s.members.filter((m) => m.kind === 'brace').length).toBe((s.frameCount - 2) * 2); // knees only (none on the closed end frames)
     }
   });
 
@@ -152,7 +153,7 @@ describe('web pattern per class (every bent, end frames included)', () => {
           expect(gap).toBeLessThan(0.55);
         }
       }
-      expect(s.members.filter((m) => m.kind === 'brace').length).toBe(s.frameCount * 2);
+      expect(s.members.filter((m) => m.kind === 'brace').length).toBe((s.frameCount - 2) * 2); // none on the closed end frames
     }
   });
 
@@ -272,7 +273,7 @@ describe('knee braces vs the new chords', () => {
 
   it('CA box-eave (double post): the knee brace now ENDS on the lower chord; bows keep the old brace', () => {
     const s = bld(40, 'CA');
-    const z0 = s.framePositionsZ[0];
+    const z0 = s.framePositionsZ[1]; // an interior bent: the closed end frames carry no knee brace (owner 10/14/26)
     const knees = s.members.filter((m) => m.kind === 'brace' && inBent(m, z0) && !isLevel(m));
     expect(knees.length).toBe(2);
     const lower = chords(s, z0).filter((m) => !isLevel(m));
@@ -287,7 +288,7 @@ describe('knee braces vs the new chords', () => {
     }
     // a bow's knee brace still lands on the rafter
     const b = bld(24, 'CA');
-    for (const k of b.members.filter((m) => m.kind === 'brace' && inBent(m, b.framePositionsZ[0]) && !isLevel(m))) {
+    for (const k of b.members.filter((m) => m.kind === 'brace' && inBent(m, b.framePositionsZ[1]) && !isLevel(m))) {
       const tip = k.start[1] > k.end[1] ? k.start : k.end;
       expect(tip[1]).toBeCloseTo(roofY(b, tip[0]), 6);
     }
@@ -474,7 +475,8 @@ describe('PDF capture framing proxy (captureMembers)', () => {
               expect(collar.length).toBe(1);
               expect(collar[0].start[1]).toBeCloseTo(roofY(s, pbx), 9);
               const knees = braces.filter((m) => !isLevel(m));
-              if (!openings.length && !leanTos.length) expect(knees.length).toBe(s.members.filter((m) => m.kind === 'brace' && inBent(m, z) && !isLevel(m)).length);
+              // The proxy keeps the brace as drawn before 10/14/26 in EVERY bent (end frames too), so the PDF framing is unchanged.
+              if (!openings.length && !leanTos.length) expect(knees.length).toBe(legStyleFor(w, legHeight, mfr) === 'ladder' ? 0 : 2);
               for (const k of knees) {
                 const tip = k.start[1] > k.end[1] ? k.start : k.end;
                 expect(tip[1]).toBeCloseTo(roofY(s, tip[0]), 9); // on the rafter, as before the trusses

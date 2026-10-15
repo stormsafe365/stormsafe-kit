@@ -84,11 +84,11 @@ const combos = /standardCombinations:\s*(\{[\s\S]*?\})/.exec(cciBlock)![1];
 
 let code = '';
 for (const v of ['WIDTHS', 'LENGTHS', 'PV', 'PR', 'PB', 'SC', 'EC', 'VERT_SIDE', 'LT_END_P', 'LT_SIDE_P', 'STD_TIERS', 'CCI_LT_CERT_RATE', 'CCI_LT_SIDE_SHORT',
-  'CCI_LT_PANEL', 'CCI_LT_SIDE_FRAC', 'LTS_CONN', 'LT_WRAP_KEYS', 'LT_WRAP_NAME', 'LT_WRAP_FEE_LBL', 'LT_WRAP_FEE', 'LT_WRAP_SIDES', 'LT_SIDE_SHORT']) code += grabVar(v);
+  'CCI_LT_PANEL', 'CCI_LT_SIDE_FRAC', 'LTS_CONN', 'CCI_COM_CONN', 'LT_WRAP_KEYS', 'LT_WRAP_NAME', 'LT_WRAP_FEE_LBL', 'LT_WRAP_FEE', 'LT_WRAP_SIDES', 'LT_SIDE_SHORT']) code += grabVar(v);
 code += 'for(var _bpi=0;_bpi<10;_bpi++){ PV[26][_bpi]=PV[25][_bpi]; PV[46][_bpi]=PV[45][_bpi]; }\n'; // the program's 26'/46' row patch
 for (const f of ['eBkt', 'ecLookup', 'vertEndUpcharge', 'cciLtSideSecs', 'cciLtSideClosed', 'cciLtShortSideMsg', 'ltPanelsHorizontal', 'nearestStd',
   'cciLtSidePanels', 'cciLtMaxPanels', 'cciLtRunSum', 'cciLtSidePartial', 'cciUnits', 'ltBasePrice', 'getLTWalls', 'ltWallsAs', 'ltStorOn', 'ltStorLenOptions', 'ltUnit',
-  '_ltsInterp', 'connFeeFor', 'gConnectionFees', 'ltWrapReq', 'ltWrapSetReq', '_ltWrapRd', '_ltWrapReach', 'ltWraps', 'ltWrapOf', 'ltWrapFeeRows',
+  '_ltsInterp', 'cciWideUnits', 'cciWideUnitSum', 'connFeeFor', 'gConnectionFees', 'ltWrapReq', 'ltWrapSetReq', '_ltWrapRd', '_ltWrapReach', 'ltWraps', 'ltWrapOf', 'ltWrapFeeRows',
   'ltWrapFeeTotal', '_ltWrapTxt', '_ltWrapTip', 'ltOverall', 'ltWrapPrintIssue', '_ltWrapLostTxt', 'ltWrapTyping', 'ltWrapGuard', 'ltLenGuard', 'ltWrapRemove',
   'ltWrapClick', 'ltWrapUI']) code += grabFn(f);
 code += grabVar('LT_WRAP_SNAP');
@@ -405,7 +405,7 @@ describe('wrap-around lean-tos — pinned assumptions and pre-existing differenc
     expect([row(d, 'Front Gable').bp, row(d, 'Front Gable').h]).toEqual([2897.5, 342.5]); // wrapped 24 + 12 = 36 → 40
   });
 
-  it('connection fees (10-14d): 12′–30′ mains eave = book ($100 at 21′ + $25 / 5′, Price Book 2 p2/p4); gable = the pre-10-14 rule $700 + $25 / 5′ (10-14 "A2" reverted, owner 10/14/26); 32′+ keep the $300 floor', () => {
+  it('connection fees (10-14d): 12′–30′ mains eave = book ($100 at 21′ + $25 / 5′, Price Book 2 p2/p4); gable = the pre-10-14 rule $700 + $25 / 5′ (10-14 "A2" reverted, owner 10/14/26); 32′–60′ mains = Price Book 2 p6 per lean-to, per connected unit past 52′ (owner 10/15/26); 62′–100′ keep the $300 floor', () => {
     const exp: Record<number, number> = { 10: 100, 12: 100, 15: 100, 20: 100, 21: 100, 25: 125, 26: 125, 30: 150, 35: 175, 36: 175, 40: 200, 50: 250, 60: 300 };
     for (const l of Object.keys(exp).map(Number)) expect(ev(`setup({leans:[]}); return connFeeFor('Right Eave', ${l});`)).toBe(exp[l]);
     for (const l of Object.keys(exp).map(Number)) expect(ev(`setup({mw:30, leans:[]}); return connFeeFor('Right Eave', ${l});`)).toBe(exp[l]); // no Triple Wide + $200
@@ -413,7 +413,12 @@ describe('wrap-around lean-tos — pinned assumptions and pre-existing differenc
     expect(ev(`setup({leans:[]}); return connFeeFor('Front Gable', 12);`)).toBe(700);
     expect(ev(`setup({mw:30, leans:[]}); return connFeeFor('Front Gable', 30);`)).toBe(750);
     expect(ev(`setup({mw:30, ml:50, leans:[]}); return connFeeFor('Left Eave', 50);`)).toBe(250);
-    expect(ev(`setup({mw:40, leans:[]}); return connFeeFor('Left Eave', 40);`)).toBe(300);
+    // Price Book 2 p6 "Connection Fee Per Lean-To" (20' $300 ... 52' $500); past 52' per connected unit: 60' = 28'+32', 100' = 48'+52' = $975 (CCI 7/24 correction)
+    const p6: Record<number, number> = { 12: 300, 20: 300, 24: 325, 30: 375, 40: 425, 44: 450, 52: 500, 56: 700, 60: 725, 80: 850, 100: 975 };
+    for (const l of Object.keys(p6).map(Number)) expect(ev(`setup({mw:40, leans:[]}); return connFeeFor('Left Eave', ${l});`)).toBe(p6[l]);
+    expect(ev(`setup({mw:60, leans:[]}); return connFeeFor('Right Eave', 52);`)).toBe(500);
+    expect(ev(`setup({mw:40, leans:[]}); return connFeeFor('Front Gable', 40);`)).toBe(800); // gable lean-to: unchanged rule
+    expect(ev(`setup({mw:70, leans:[]}); return connFeeFor('Left Eave', 40);`)).toBe(300); // 62'-100': unchanged
     expect(ev(`setup({mfr:'CA', leans:[]}); return connFeeFor('Left Eave', 40);`)).toBe(200);
     expect(ev(`setup({mfr:'CA', leans:[]}); return connFeeFor('Front Gable', 24);`)).toBe(725);
   });

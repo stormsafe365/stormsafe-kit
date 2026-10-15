@@ -100,10 +100,15 @@ describe('gable-only ends: $225 (12-24) / $300 (26-30) + vertical gable add $50 
     expect(run('gableOnlyCost()', b('30', 'Vertical'))).toBe(385);
     expect(run('gableOnlyCost()', b('24', 'Vertical', '18'))).toBe(225); // 17'+ priced orientation-blind
   });
-  it('CA and CCI 32-60 unchanged', () => {
+  it('CA unchanged; CCI 32-60 = Price Book 2 p6 "Gable End" $600 / $750 / $900 per end (10-14d, audit F16; was $300)', () => {
     expect(run('gableOnlyCost()', b('24', 'Vertical'), 'CA')).toBe(225);
     expect(run('gableOnlyCost()', b('26', 'Horizontal'), 'CA')).toBe(300);
-    expect(run('gableOnlyCost()', { ...b('40', 'Vertical'), btype: 'widespan' })).toBe(300);
+    expect(run('gableOnlyCost()', { ...b('40', 'Vertical'), btype: 'widespan' })).toBe(600);
+    expect(run('gableOnlyCost()', { ...b('32', 'Vertical'), btype: 'widespan' })).toBe(600);
+    expect(run('gableOnlyCost()', { ...b('42', 'Vertical'), btype: 'widespan' })).toBe(750);
+    expect(run('gableOnlyCost()', { ...b('49', 'Vertical'), btype: 'widespan' })).toBe(750); // 49 builds as 50
+    expect(run('gableOnlyCost()', { ...b('51', 'Vertical'), btype: 'widespan' })).toBe(900); // 51 builds as 52
+    expect(run('gableOnlyCost()', { ...b('60', 'Vertical'), btype: 'widespan' })).toBe(900);
   });
   it('a CCI gable-only end no longer takes the whole vertical END upcharge', () => {
     expect(html).toContain("if(fgv==='Closed'||(fgv==='Gable Only'&&_gvC)) t+=vertEndUpcharge(w);");

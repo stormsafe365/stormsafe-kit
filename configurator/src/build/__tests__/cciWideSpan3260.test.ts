@@ -70,7 +70,7 @@ vm.runInContext(
   ['EXT_SH', 'CCI_WIDE_SC', 'CCI_WIDE_EC', 'CCI_WIDE_H'].map(grabVar).join('') +
     grabArr('EXT_L') +
     grabArr('CCI_COM_12GA') +
-    ['cciWideOn', 'cciWideUnits', 'cciWideUnitSum', 'cciWideHeight', 'cciWideSCBothSides', 'cciWideEC', 'gLeg', 'scLookup', 'scPairLookup', 'cciCom12GA']
+    ['cciWideOn', 'cciWideUnits', 'cciWideUnitSum', 'cciWideHeight', 'cciWideSCBothSides', 'cciWideEC', 'gLeg', 'scLookup', 'scPairLookup', 'cciCom12GA', 'cciUnits']
       .map(grabFn)
       .join('') +
     'function G(id){ return (id in __f) ? { value: __f[id] } : null; }\n' +
@@ -260,9 +260,12 @@ describe('10-9b audit helpers in the program', () => {
     expect(r('cci12x4Row(45)')).toBe(360 + 480); // 46 roof = 21 + 26
     expect(r('cci12x4Row(90)')).toBe(600 * 3); // 91 roof = 31 + 31 + 31
   });
-  it('side panels one per unit; a unit under 20 = the 21 panel, a 41 roof unit keeps the 36 price', () => {
+  it('side panels per unit; a unit under 20 = the 21 panel; a 41 roof unit = two 21 panels (10-14d, audit F33: Dealer Handbook p21 lengths 21-36 only)', () => {
     expect(Array.from(r('cciPanelTiers(100)') as number[])).toEqual([36, 36, 31]);
     expect(Array.from(r('cciPanelTiers(15)') as number[])).toEqual([21]);
-    expect(Array.from(r('cciPanelTiers(80)') as number[])).toEqual([36, 36]);
+    expect(Array.from(r('cciPanelTiers(80)') as number[])).toEqual([21, 21, 21, 21]);
+    expect(Array.from(r('cciPanelTiers(40)') as number[])).toEqual([21, 21]);
+    expect(Array.from(r('cciPanelTiers(36)') as number[])).toEqual([21, 21]); // 36 frame rounds up to the 40 unit
+    expect(Array.from(r('cciPanelTiers(35)') as number[])).toEqual([36]);
   });
 });

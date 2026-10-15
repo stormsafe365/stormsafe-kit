@@ -412,9 +412,9 @@ describe('round 3 · Job 4 (Triple Wide 26 main, 12x40x10 lean): side parts exac
 });
 
 describe('round 3 · Job 1: mobile home anchors (Sensei "Mobile Home Anchor 30\\"" $70, one per leg)', () => {
-  it('32 legs (16 frames) on ground = 32 × $70 = $2,240; concrete = $0', () => {
+  it('CCI 10-14d (audit F09): 32 legs (16 frames) on ground are INCLUDED with the certified structure = $0 (Dealer Handbook p8, Price Book 2 p1/p3/p5); concrete = $0', () => {
     const g = ctx.anchors('ground', 16);
-    eq(g.unit, 70); eq(g.legs, 32); eq(g.total, 2240);
+    eq(g.unit, 70); eq(g.legs, 32); eq(g.total, 0); // was 32 x $70 = $2,240; the count stays for the documents' "included" line
     expect(ctx.anchors('concrete', 16).total).toBe(0);
   });
 });

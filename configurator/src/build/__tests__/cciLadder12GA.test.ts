@@ -54,7 +54,7 @@ function grabArr(name: string): string {
 const ctx: Record<string, unknown> = { ACTIVE_MFR: 'CCI', __f: {} };
 vm.createContext(ctx);
 vm.runInContext(
-  ['cciLadder12', 'cciTripleWide12GA', 'cciCom12GA', 'cci12GA', 'cciWideOn', 'cciWideUnits', 'cciWideUnitSum', 'cciUnits', 'gLeg']
+  ['cciLadder12', 'cciTripleWide12GA', 'cciCom12GA', 'cci12GA', 'cciWideOn', 'cciWideUnits', 'cciWideUnitSum', 'cciUnits', 'cciUnitSum', 'gLeg']
     .map(grabFn)
     .join('') +
     grabArr('CCI_COM_12GA') + grabArr('CCI_GA12_L') + grabArr('CCI_GA12_V') + grabArr('EXT_L') + grabArr('LENGTHS') +

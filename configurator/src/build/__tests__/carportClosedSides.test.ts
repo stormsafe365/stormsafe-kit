@@ -67,10 +67,12 @@ describe('a closed carport side is charged once, and set in ONE place (4B — Si
   it('CA carport, both sides closed -> no side-panel charge either (same code path)', () => {
     expect(run('gSidePanels()', carport('closed', 'closed'), 'CA')).toBe(0);
   });
-  it('one closed side = one side price; partial panels still price per panel (40 long = one 36 panel row)', () => {
+  it('one closed side = one side price; partial panels still price per panel (40 long = a 41\' roof = two 21\' panels per row, 10-14d)', () => {
+    // Dealer Handbook p21: panels 21' / 26' / 31' / 36' only -> a 41' roof takes two 21' panels ($110 each, Price Book 2 p2;
+    // Sensei 24x40 "2 Panel" $440). It was one 36' panel ($175) per row.
     expect(run('gWalls()', carport('closed', 'open'))).toBe(1183);
-    expect(run('gSidePanels()', carport('closed', '2panel'))).toBe(2 * 175);
-    expect(run('gSidePanels()', carport('1panel', 'open'))).toBe(175);
+    expect(run('gSidePanels()', carport('closed', '2panel'))).toBe(2 * 220);
+    expect(run('gSidePanels()', carport('1panel', 'open'))).toBe(220);
   });
   it('the hidden Section-4 rows are never read on a carport (a stale "Closed" row prices nothing)', () => {
     expect(run('gWalls()', carport('open', 'open', 'Closed'))).toBe(0);

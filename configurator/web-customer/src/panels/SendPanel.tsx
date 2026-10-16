@@ -20,6 +20,30 @@ const SEND_IMAGE_W = 1200;
 const SEND_IMAGE_MAX_CHARS = 850_000; // the database takes up to 900,000 characters
 
 /**
+ * Wait until the 3D view has stopped changing size (same size 3 frames running), at most 600 ms. A
+ * phone keyboard closing as "Send" is tapped resizes the page for a moment; the picture is taken
+ * after that (the page then holds its size until the picture is done - App.tsx useFollowVisibleArea).
+ */
+export function stageSettled(maxMs = 600): Promise<void> {
+  return new Promise((resolve) => {
+    const el = document.querySelector('.stage');
+    if (!el || typeof requestAnimationFrame !== 'function') return resolve();
+    const t0 = Date.now();
+    let last = '';
+    let same = 0;
+    const tick = () => {
+      const r = el.getBoundingClientRect();
+      const k = `${Math.round(r.width)}x${Math.round(r.height)}`;
+      same = k === last ? same + 1 : 0;
+      last = k;
+      if (same >= 3 || Date.now() - t0 > maxMs) resolve();
+      else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
+
+/**
  * The ISO picture as a JPEG data URL the server accepts, or null if none could
  * be made. A blank picture (the 3D did not draw) is tried once more, then left
  * out: the design and its spec still go, without a picture.
@@ -156,6 +180,8 @@ export function SendPanel() {
       const { design, ctx, impact } = useWebStore.getState();
       const state = currentState();
       const spec = buildSpec(design, { zip: ctx.zip, county: ctx.county, impact });
+      // a phone keyboard closing as Send is tapped can still be resizing the 3D view: let it settle
+      await stageSettled();
       const image = await sendPicture();
       const contact = useWebStore.getState().contact;
       let res = await submitDesign({ token, contact, state, spec, image });

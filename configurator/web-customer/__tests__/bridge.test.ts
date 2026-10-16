@@ -2,11 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { checkState, parseMessage, MAX_STATE_CHARS } from '../src/model/validate';
 import { DEFAULT_ALLOWED_ORIGINS, originAllowed, parseAllowList, replyTarget } from '../src/model/origins';
 import { handleMessage, referrerOrigin, type BridgeDeps } from '../src/bridge';
-import { cloneDesign, DEFAULT_DESIGN, STATE_SCHEMA, type WebDesign } from '../src/model/design';
+import { SAMPLE_DESIGN } from './sample';
+import { cloneDesign, STATE_SCHEMA, type WebDesign } from '../src/model/design';
 import { normalizeDesign } from '../src/model/normalize';
 import { parseCounty, parseImpact, parseParams, parseZip } from '../src/model/params';
 
-const goodState = () => ({ schema: STATE_SCHEMA, v: 1, design: cloneDesign(DEFAULT_DESIGN) });
+const goodState = () => ({ schema: STATE_SCHEMA, v: 1, design: cloneDesign(SAMPLE_DESIGN) });
 
 describe('parseMessage', () => {
   it('ignores anything that is not a customizer message', () => {
@@ -76,10 +77,10 @@ describe('checkState — a saved design before it is reopened', () => {
     expect(n.openings[0]).toMatchObject({ id: 'x', kind: 'rollup', w: 10, h: 10, color: 'white' }); // nearest size that fits a 10' gable
   });
   it('swaps walk doors and windows to impact-rated ones in an impact area', () => {
-    const n = normalizeDesign(DEFAULT_DESIGN, true);
+    const n = normalizeDesign(SAMPLE_DESIGN, true);
     expect(n.openings.find((o) => o.kind === 'walk')?.style).toBe('hiwind');
     expect(n.openings.find((o) => o.kind === 'window')?.style).toBe('hi');
-    const d = cloneDesign(DEFAULT_DESIGN);
+    const d = cloneDesign(SAMPLE_DESIGN);
     d.openings[2].style = 'b3036';
     expect(normalizeDesign(d, true).openings[2]).toMatchObject({ style: 'hi3036', w: 2.5, h: 3 });
   });
@@ -131,7 +132,7 @@ describe('handleMessage — the postMessage bridge', () => {
     const d: BridgeDeps = {
       allow: DEFAULT_ALLOWED_ORIGINS,
       parent,
-      getState: () => ({ schema: STATE_SCHEMA, v: 1, design: cloneDesign(DEFAULT_DESIGN), ctx: { zip: null, county: null, impact: false } }),
+      getState: () => ({ schema: STATE_SCHEMA, v: 1, design: cloneDesign(SAMPLE_DESIGN), ctx: { zip: null, county: null, impact: false } }),
       getSpec: () => 'SPEC',
       capture: vi.fn(async () => ({ image: 'data:image/jpeg;base64,AAA', source: 'capture' as const })),
       load: vi.fn(),

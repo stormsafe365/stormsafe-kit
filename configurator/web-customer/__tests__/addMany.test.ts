@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { cloneDesign, DEFAULT_DESIGN, type WebDesign, type WebOpening } from '../src/model/design';
 import { maxQty, spreadPositions, whyNoMore } from '../src/model/addMany';
 import { mainSpotOk } from '../src/model/positions';
+import { SAMPLE_DESIGN } from './sample';
 
 const bare = (o: Partial<WebDesign> = {}): WebDesign => ({ ...cloneDesign(DEFAULT_DESIGN), openings: [], ...o });
 const door = (id: string, wall: WebOpening['wall'], pos: number, w = 10, h = 10): WebOpening => ({ id, kind: 'rollup', wall, w, h, sill: 0, pos, color: 'white' });
@@ -34,7 +35,7 @@ describe('add several at once', () => {
     expect(maxQty(d, 'front', 'rollup', 8, 8)).toBe(2);
   });
   it('a door already in the middle leaves no room for another 10′ door', () => {
-    const d = cloneDesign(DEFAULT_DESIGN); // the starting design has a 10×8 roll-up on the front end
+    const d = cloneDesign(SAMPLE_DESIGN); // the sample has a 10×8 roll-up in the middle of the front end
     d.height = 11;
     expect(maxQty(d, 'front', 'rollup', 10, 8)).toBe(0);
     // no room anyway: the height rule is not blamed (a lower door would not help)

@@ -58,13 +58,26 @@ button:disabled {
 }
 
 /* ── Layout ─────────────────────────────────────────────────────────── */
+/* Pinned to the screen (owner 10/16/26: on a phone the page slid up after the keyboard and stayed
+   cut off). A fixed box fills what is visible, whatever the browser does with the page scroll or
+   100dvh while a keyboard opens / closes; --vv-top / --vv-h (App.tsx useFollowVisibleArea) make it
+   follow the visible area exactly on phones. Notch / home-bar insets are kept clear. */
 .app {
+  position: fixed;
+  top: var(--vv-top, 0px);
+  right: 0;
+  left: 0;
+  height: var(--vv-h, 100%);
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
-  width: 100%;
   overflow: hidden;
+  overflow: clip; /* not even code can scroll the page box (a focused hidden box once did: see .toggle) */
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) 0 env(safe-area-inset-left, 0px);
+}
+/* only on its own page (inside the website's frame a swipe must still reach the website) */
+html.top-level,
+html.top-level body {
+  overscroll-behavior: none;
 }
 .topbar {
   flex: 0 0 auto;
@@ -117,12 +130,14 @@ button:disabled {
   border-left: 1px solid var(--border);
 }
 .panel-scroll {
+  position: relative; /* hidden boxes inside (switches, the form's trap field) stay inside the panel */
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 .panel-body {
   padding: 14px 16px 4px;
@@ -139,7 +154,8 @@ button:disabled {
 @media (max-width: 899px) {
   .split {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(230px, 46%) minmax(0, 1fr);
+    /* the model gets the bigger half (owner 10/16/26: hard to see the building on a phone) */
+    grid-template-rows: minmax(160px, 52%) minmax(0, 1fr);
   }
   .panel {
     border-left: 0;
@@ -150,6 +166,57 @@ button:disabled {
   }
   .title {
     font-size: 15px;
+  }
+}
+/* "Bigger view" (phones, upright): the model takes most of the screen, the options keep the steps + a strip */
+@media (max-width: 899px) and (orientation: portrait) {
+  .app.big-view .split {
+    grid-template-rows: minmax(0, 1fr) minmax(0, 32%);
+  }
+}
+/* A short upright screen (a keyboard that shrinks the page): the form gets the room while typing */
+@media (max-width: 899px) and (max-height: 520px) and (orientation: portrait) {
+  .split,
+  .app.big-view .split {
+    grid-template-rows: minmax(110px, 36%) minmax(0, 1fr);
+  }
+}
+/* A keyboard over the page (it covers the bottom instead of shrinking the page): same idea */
+@media (max-width: 899px) and (orientation: portrait) {
+  html.vv-kb .split,
+  html.vv-kb .app.big-view .split {
+    grid-template-rows: minmax(90px, 30%) minmax(0, 1fr);
+  }
+  /* while typing the model is a small strip: just the building, no buttons over it */
+  html.vv-kb .viewbar,
+  html.vv-kb .stage-foot,
+  html.vv-kb .vp-hint,
+  html.vv-kb .cams-menu {
+    display: none;
+  }
+}
+@media (max-width: 899px) and (max-height: 520px) and (orientation: portrait) {
+  /* .app prefix: wins over the phone rules further down that show these */
+  .app .viewbar,
+  .app .stage-foot,
+  .app .vp-hint,
+  .app .cams-menu {
+    display: none;
+  }
+}
+/* A phone on its side: model and options side by side (stacked, the model would be a thin strip) */
+@media (max-width: 899px) and (max-height: 520px) and (orientation: landscape) {
+  .split,
+  .app.big-view .split {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 46%);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .panel {
+    border-top: 0;
+    border-left: 1px solid var(--border);
+  }
+  .topbar {
+    padding: 4px 12px;
   }
 }
 
@@ -176,7 +243,7 @@ button:disabled {
   pointer-events: auto;
   flex: 0 0 auto;
 }
-@media (max-width: 599px) {
+@media (max-width: 599px), (max-width: 899px) and (max-height: 520px) and (orientation: landscape) {
   /* One compact row that scrolls sideways inside the 3D view (never the page). */
   .viewbar {
     top: 8px;
@@ -276,6 +343,68 @@ button:disabled {
 }
 .cams > button.on {
   background: transparent;
+}
+/* phones: one "View" button + a short list instead of six camera buttons (10/16/26) */
+.cams-menu-btn,
+.cams-menu {
+  display: none;
+}
+@media (max-width: 599px), (max-width: 899px) and (max-height: 520px) and (orientation: landscape) {
+  .viewbar .cams {
+    display: none;
+  }
+  .cams-menu-btn {
+    display: block;
+    min-height: 32px;
+    border: 1px solid var(--border-vis);
+    border-radius: 9px;
+    background: rgba(8, 27, 36, 0.92)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2394a3b8' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+      no-repeat right 10px center;
+    color: var(--sub);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 28px 4px 12px;
+  }
+  .cams-menu-btn[aria-expanded='true'] {
+    border-color: var(--teal);
+    color: var(--teal);
+  }
+  .cams-menu {
+    position: absolute;
+    z-index: 260;
+    display: flex;
+    flex-direction: column;
+    min-width: 150px;
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--border-vis);
+    background: rgba(8, 27, 36, 0.97);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  }
+  .cams-menu > button {
+    min-height: 40px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    padding: 8px 12px;
+  }
+  .cams-menu > button:hover,
+  .cams-menu > button:focus-visible {
+    background: var(--hover);
+  }
+}
+/* phones: 16px text in boxes and pickers, or iPhones zoom the page into them (and it stays zoomed).
+   .app prefix: wins over the 15px base rule further down. */
+@media (max-width: 899px), (hover: none) and (pointer: coarse) {
+  .app .select,
+  .app .stepper input {
+    font-size: 16px;
+  }
 }
 
 .field {
@@ -486,6 +615,9 @@ button:disabled {
 }
 
 .toggle {
+  /* the hidden checkbox inside sits on its switch: tapping a switch made the browser scroll the whole
+     page down to where that box had landed (owner 10/16/26: the page slid up ~240px and stayed) */
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -783,11 +915,168 @@ button:disabled {
   text-decoration: underline;
 }
 @media (max-width: 599px) {
+  /* all 7 steps fit across a phone (no step cut off at the edge) */
+  .tabs {
+    padding: 0 4px;
+  }
   .tabs > button {
-    padding: 8px 9px;
+    padding: 8px 6px;
   }
   .wordmark {
     font-size: 12px;
+  }
+  /* one slim top row: the name and the phone number; the title and the size line move off the bar
+     (the size line shows on the model instead; both stay for screen readers) */
+  .topbar {
+    flex-wrap: nowrap;
+    padding: 4px 12px;
+    min-height: 44px;
+  }
+  .brand {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+  .title,
+  .topbar .summary {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+  .topphone {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    font-size: 15px;
+  }
+}
+@media (max-width: 380px) {
+  .tabs > button {
+    padding: 8px 4px;
+    font-size: 12.5px;
+  }
+}
+/* the smallest phones (320px): the 3D view's top row still fits across */
+@media (max-width: 340px) {
+  .viewbar .seg-sm > button {
+    padding: 4px 6px;
+  }
+  .viewbar .chip {
+    padding: 5px 6px;
+  }
+  .cams-menu-btn {
+    padding-left: 10px;
+  }
+}
+/* very narrow screens: a fade at the edge says the step bar scrolls */
+.tabs.more-right {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+.tabs.more-left {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - 28px), transparent);
+}
+.tabs.more-left.more-right {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+}
+
+/* ── On the model (phones): the size line + "Bigger view" (10/16/26) ── */
+.stage-foot,
+.vp-hint .hint-short {
+  display: none;
+}
+@media (max-width: 599px), (max-width: 899px) and (max-height: 520px) and (orientation: landscape) {
+  .stage-foot {
+    position: absolute;
+    z-index: 200;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    pointer-events: none; /* drags on the model pass through; only the button takes taps */
+  }
+  .vp-summary {
+    min-width: 0;
+    margin: 0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(8, 27, 36, 0.82);
+    font-size: 12px;
+    color: var(--sub);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+  }
+  .vp-summary b {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .vp-size {
+    flex: none;
+    pointer-events: auto;
+    min-height: 36px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-vis);
+    background: rgba(11, 34, 45, 0.92);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .vp-size[aria-pressed='true'] {
+    border-color: var(--teal);
+    color: var(--teal);
+  }
+  /* the how-to line: short, above the size line, gone after the first touch on the model */
+  .vp-hint {
+    bottom: 52px;
+  }
+  .vp-hint .hint-long {
+    display: none;
+  }
+  .vp-hint .hint-short {
+    display: inline;
+  }
+  .app.touched .vp-hint {
+    display: none;
+  }
+}
+/* side-on phones have the room in the top bar for the size line; the button only matters upright.
+   The page title moves off the bar (kept for screen readers) so the bar stays one row. */
+@media (max-width: 899px) and (max-height: 520px) and (orientation: landscape) {
+  .stage-foot {
+    display: none;
+  }
+  .vp-hint {
+    bottom: 8px;
+  }
+  .topbar {
+    flex-wrap: nowrap;
+  }
+  .title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
   }
 }
 .stepnav {

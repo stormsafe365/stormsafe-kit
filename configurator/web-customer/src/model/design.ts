@@ -163,15 +163,51 @@ export const DEFAULT_DESIGN: WebDesign = {
   walls: { front: 'closed', back: 'closed', left: 'closed', right: 'closed' },
   colors: { roof: 'galvalume', walls: 'pewter-gray', trim: 'black', wainscot: 'quaker-gray' },
   wainscot: false,
-  openings: [
-    { id: 'o1', kind: 'rollup', wall: 'front', w: 10, h: 8, sill: 0, pos: 7, color: 'white' },
-    { id: 'o2', kind: 'walk', wall: 'left', w: 3, h: 80 / 12, sill: 0, pos: 6, style: 'std' },
-    { id: 'o3', kind: 'window', wall: 'left', w: 2.5, h: 2.5, sill: 50 / 12, pos: 14, style: 'std' },
-  ],
+  // A plain building: the customer adds every door and window (owner 10/16/26: "it shouldnt have
+  // any doors windows nothing on it yet").
+  openings: [],
   leanTos: [],
   wraps: [],
   upgrades: { insulation: 'none', frame12: false, oc4: false, panels26: false, colorScrews: false, openers: false },
 };
+
+/** The three parts every design started with before 10/16/26 (a 10×8 roll-up, a walk door, a window). */
+export const OLD_STARTER_OPENINGS: readonly WebOpening[] = [
+  { id: 'o1', kind: 'rollup', wall: 'front', w: 10, h: 8, sill: 0, pos: 7, color: 'white' },
+  { id: 'o2', kind: 'walk', wall: 'left', w: 3, h: 80 / 12, sill: 0, pos: 6, style: 'std' },
+  { id: 'o3', kind: 'window', wall: 'left', w: 2.5, h: 2.5, sill: 50 / 12, pos: 14, style: 'std' },
+];
+
+/**
+ * `o` is that starter part, untouched: same part, wall, place and the customer's same pick. In an
+ * impact county the page shows the rated walk door / window instead (style = the rated one, chosen =
+ * the customer's pick, the rated window's own size), so for those the pick is compared, not the shown
+ * style or window size.
+ */
+const isUntouchedStarter = (o: WebOpening, s: WebOpening) => {
+  const near = (x: number, y: number) => Math.abs(x - y) < 1e-6;
+  if (o.id !== s.id || o.kind !== s.kind || o.wall !== s.wall || !near(o.pos, s.pos) || !near(o.sill, s.sill)) return false;
+  if (s.kind === 'rollup') return near(o.w, s.w) && near(o.h, s.h) && o.color === s.color;
+  return (o.chosen ?? o.style) === s.style;
+};
+
+/**
+ * A saved draft from before 10/16/26 that still has ONLY the old starter parts, exactly as they came
+ * (none moved, resized or changed, nothing added - no other door, window or lean-to door, no roll-up
+ * openers asked for): take those three off, so a returning customer also starts with a plain
+ * building. Any sign the customer worked on the doors and windows keeps them all as they are.
+ */
+export function withoutOldStarterParts(d: WebDesign): WebDesign {
+  if (d.openings.length !== OLD_STARTER_OPENINGS.length) return d;
+  if (d.leanTos.some((l) => l.openings.length > 0) || d.upgrades?.openers) return d;
+  if (!d.openings.every((o) => OLD_STARTER_OPENINGS.some((s) => isUntouchedStarter(o, s)))) return d;
+  return { ...d, openings: [] };
+}
+
+/** The design has a walk-in door or a window (main building or a lean-to) - the parts an impact county rates. */
+export const hasWalkDoorOrWindow = (d: Pick<WebDesign, 'openings' | 'leanTos'>): boolean =>
+  d.openings.some((o) => o.kind === 'walk' || o.kind === 'window') ||
+  d.leanTos.some((l) => l.openings.some((o) => o.kind === 'walk' || o.kind === 'window'));
 
 export const cloneDesign = (d: WebDesign): WebDesign => JSON.parse(JSON.stringify(d)) as WebDesign;
 

@@ -158,10 +158,34 @@ export function CameraFit() {
     [],
   );
 
-  // A resized view (phone rotation, panel change) refits in place.
+  // A resized view (phone rotation, Bigger view) refits in place. A phone keyboard opening or closing
+  // (html.vv-kb, App.tsx) does not: the camera stays while typing and is put back exactly as it was
+  // after (a customer zoomed in on a door keeps that view), with no refit while the keyboard slides.
+  const kbSaved = useRef<{ pos: THREE.Vector3; target: THREE.Vector3 } | null>(null);
+  const lastKb = useRef(false);
+  const quietUntil = useRef(0);
   useEffect(() => {
-    if (!first.current) cameraApi.fit('keep', false);
-  }, [size.width, size.height]);
+    if (first.current) return;
+    const kb = typeof document !== 'undefined' && document.documentElement.classList.contains('vv-kb');
+    if (kb !== lastKb.current) {
+      lastKb.current = kb;
+      quietUntil.current = Date.now() + 700;
+      if (kb) {
+        kbSaved.current = controls ? { pos: camera.position.clone(), target: controls.target.clone() } : null;
+      } else {
+        const s = kbSaved.current;
+        kbSaved.current = null;
+        if (s && controls) {
+          camera.position.copy(s.pos);
+          controls.target.copy(s.target);
+          controls.update();
+        }
+      }
+      return;
+    }
+    if (kb || Date.now() < quietUntil.current) return;
+    cameraApi.fit('keep', false);
+  }, [size.width, size.height]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return null;
 }

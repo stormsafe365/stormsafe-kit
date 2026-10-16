@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { designToConfig, closureFeet } from '../src/model/toConfig';
-import { cloneDesign, DEFAULT_DESIGN, type WebDesign, type WebWall } from '../src/model/design';
+import { SAMPLE_DESIGN } from './sample';
+import { cloneDesign, type WebDesign, type WebWall } from '../src/model/design';
 import { normalizeDesign } from '../src/model/normalize';
 import { fitMainPos, freeMainPos, offset3DToPos, posToOffset3D } from '../src/model/positions';
 import { activeWraps, framingGauge, impactRequired, trussSpacingFt, wrapStatus } from '../src/model/rules';
@@ -8,7 +9,7 @@ import { PRICING } from '@/config/pricing';
 import * as stub from '../stubs/pricing';
 
 const ctx = { county: null };
-const base = () => normalizeDesign(DEFAULT_DESIGN, false);
+const base = () => normalizeDesign(SAMPLE_DESIGN, false);
 
 describe('designToConfig — customer design → the shared 3D config', () => {
   it('names left / right from the front: the customer left side is the 3D +X ("right") wall', () => {
@@ -24,7 +25,7 @@ describe('designToConfig — customer design → the shared 3D config', () => {
   });
 
   it('carport side panels hang from the eave on the swapped sides', () => {
-    const d = cloneDesign(DEFAULT_DESIGN);
+    const d = cloneDesign(SAMPLE_DESIGN);
     d.type = 'carport';
     d.walls = { front: 'gableOnly', back: 'open', left: 'q2', right: '1panel' };
     d.openings = [];
@@ -35,7 +36,7 @@ describe('designToConfig — customer design → the shared 3D config', () => {
   });
 
   it('garage + carport is the 3D utility build with the carport in front', () => {
-    const d = cloneDesign(DEFAULT_DESIGN);
+    const d = cloneDesign(SAMPLE_DESIGN);
     d.type = 'combo';
     d.enclosedLength = 18;
     d.walls = { front: 'gableOnly', back: 'closed', left: 'open', right: 'open' };
@@ -74,7 +75,7 @@ describe('designToConfig — customer design → the shared 3D config', () => {
   });
 
   it('a garage + carport side door stays on the garage part', () => {
-    const d = cloneDesign(DEFAULT_DESIGN);
+    const d = cloneDesign(SAMPLE_DESIGN);
     d.type = 'combo';
     d.length = 30;
     d.enclosedLength = 20;
@@ -84,7 +85,7 @@ describe('designToConfig — customer design → the shared 3D config', () => {
   });
 
   it('lean-tos: gable Starts At, wrap corners, openings centered from the left end', () => {
-    const d = cloneDesign(DEFAULT_DESIGN);
+    const d = cloneDesign(SAMPLE_DESIGN);
     d.width = 30;
     d.length = 40;
     d.height = 12;
@@ -132,9 +133,9 @@ describe('designToConfig — customer design → the shared 3D config', () => {
   });
 
   it('impact walk doors swing out in the 3D; black parts carry the black hex', () => {
-    const c = designToConfig(normalizeDesign(DEFAULT_DESIGN, true), ctx);
+    const c = designToConfig(normalizeDesign(SAMPLE_DESIGN, true), ctx);
     expect(c.openings.find((o) => o.type === 'walkDoor')).toMatchObject({ impact: true, doorStyle: 'std' });
-    const d = cloneDesign(DEFAULT_DESIGN);
+    const d = cloneDesign(SAMPLE_DESIGN);
     d.openings[1].style = '6panel_blk';
     d.openings[2].style = 'b3030';
     const c2 = designToConfig(normalizeDesign(d, false), ctx);

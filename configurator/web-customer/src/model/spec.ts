@@ -10,6 +10,7 @@ import { ftIn, inchLabel } from '@/three/dimLabels';
 import { colorByKey, rollupColor, walkDoorType, windowType } from './catalog';
 import {
   END_WALL_LABEL,
+  hasWalkDoorOrWindow,
   LEANTO_END_LABEL,
   LEANTO_SIDE_LABEL,
   LEANTO_SIDE_WALL_LABEL,
@@ -152,6 +153,6 @@ export function buildSpec(d: WebDesign, ctx: SpecContext): string {
   if (ctx.zip) loc.push(`ZIP ${ctx.zip}`);
   if (ctx.county) loc.push(`${ctx.county} County, FL`);
   L.push(`Location: ${loc.length ? loc.join(', ') : 'Not given'}`);
-  if (ctx.impact) L.push('Impact area: impact-rated windows and walk-in doors (shown in this design)');
+  if (ctx.impact) L.push(`Impact area: impact-rated windows and walk-in doors (${hasWalkDoorOrWindow(d) ? 'shown in this design' : 'none in this design yet'})`);
   return L.join('\n');
 }

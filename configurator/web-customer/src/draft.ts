@@ -6,6 +6,7 @@
  */
 import { currentState, useWebStore, type TabKey } from './store';
 import { checkState } from './model/validate';
+import { withoutOldStarterParts } from './model/design';
 
 const KEY = (token: string | null) => `ss-design-draft:${token || 'no-link'}`;
 const MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
@@ -26,7 +27,9 @@ export function restoreDraft(token: string | null, now = Date.now()): boolean {
     st.setContact({ name: str(c.name, 120), phone: str(c.phone, 40), email: str(c.email, 160), notes: str(c.notes, 2000) });
     const zip = str(c.zip, 10);
     if (zip) st.setZip(zip); // the county + impact rule come back with it
-    st.replace(chk.design);
+    // a draft saved before the plain-building start (10/16/26) loses the old starter parts if untouched -
+    // never one already sent (the rep has that design; the page must keep showing what was sent)
+    st.replace(j.blankStart === 1 || typeof j.sentAt === 'number' ? chk.design : withoutOldStarterParts(chk.design));
     if (typeof j.sentAt === 'number') st.setSent(j.sentAt);
     if (typeof j.tab === 'string' && (TABS as string[]).includes(j.tab)) st.setTab(j.tab as TabKey);
     return true;
@@ -46,7 +49,8 @@ export function keepDraft(token: string | null): () => void {
         const { contact, sentAt, tab } = useWebStore.getState();
         // once the design is sent, the contact details are not kept on the device (only the ZIP for the county)
         const keep = sentAt ? { zip: contact.zip } : { name: contact.name, phone: contact.phone, email: contact.email, zip: contact.zip, notes: contact.notes };
-        window.localStorage.setItem(KEY(token), JSON.stringify({ t: Date.now(), state: currentState(), contact: keep, sentAt, tab }));
+        // blankStart: saved by a page that starts with a plain building (no old starter parts to take off)
+        window.localStorage.setItem(KEY(token), JSON.stringify({ t: Date.now(), blankStart: 1, state: currentState(), contact: keep, sentAt, tab }));
       } catch {
         /* storage blocked or full: no draft */
       }

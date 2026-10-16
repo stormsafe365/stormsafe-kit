@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { buildSpec, overallFootprint } from '../src/model/spec';
-import { cloneDesign, DEFAULT_DESIGN, type WebDesign } from '../src/model/design';
+import { SAMPLE_DESIGN } from './sample';
+import { cloneDesign, type WebDesign } from '../src/model/design';
 import { normalizeDesign } from '../src/model/normalize';
 
 const ctx = { zip: '33401', county: 'Palm Beach', impact: false };
 
 function sample(): WebDesign {
-  const d = cloneDesign(DEFAULT_DESIGN);
+  const d = cloneDesign(SAMPLE_DESIGN);
   d.width = 30;
   d.length = 40;
   d.height = 12;
@@ -42,20 +43,20 @@ function sample(): WebDesign {
 
 describe('buildSpec — the plain-text design spec', () => {
   it('writes the size W × L × H and the building type', () => {
-    const s = buildSpec(normalizeDesign(DEFAULT_DESIGN, false), ctx);
+    const s = buildSpec(normalizeDesign(SAMPLE_DESIGN, false), ctx);
     expect(s).toContain("Building: Garage — 24' W × 30' L × 10' H");
     expect(s).toContain('Roof: Vertical roof, 3:12 pitch (standard)');
   });
 
   it('gives every door / window its wall, size and position in the program’s words', () => {
-    const s = buildSpec(normalizeDesign(DEFAULT_DESIGN, false), ctx);
+    const s = buildSpec(normalizeDesign(SAMPLE_DESIGN, false), ctx);
     expect(s).toContain("1. Roll-up door 10' W × 8' H, White — Front end, 7' from the left eave corner to its near edge");
     expect(s).toContain('2. Walk-in door 36" × 80", Standard, white — Left side, 6\' from the front gable to its near edge');
     expect(s).toContain("3. Window 30\" × 30\", White — Left side, 14' from the front gable to its near edge, sill 4'2\"");
   });
 
   it('describes the back end and right side from their own program references', () => {
-    const d = cloneDesign(DEFAULT_DESIGN);
+    const d = cloneDesign(SAMPLE_DESIGN);
     d.openings = [
       { id: 'a', kind: 'rollup', wall: 'back', w: 8, h: 8, sill: 0, pos: 4, color: 'white' },
       { id: 'b', kind: 'frame', wall: 'right', w: 4, h: 7, sill: 0, pos: 10, frame: 'door' },
@@ -76,7 +77,7 @@ describe('buildSpec — the plain-text design spec', () => {
   });
 
   it('describes a garage + carport split', () => {
-    const d = cloneDesign(DEFAULT_DESIGN);
+    const d = cloneDesign(SAMPLE_DESIGN);
     d.type = 'combo';
     d.enclosedLength = 20;
     d.walls = { front: 'gableOnly', back: 'closed', left: '2panel', right: 'open' };
@@ -89,22 +90,22 @@ describe('buildSpec — the plain-text design spec', () => {
   });
 
   it('notes the location and the impact rule; impact designs list the rated parts', () => {
-    const s = buildSpec(normalizeDesign(DEFAULT_DESIGN, true), { ...ctx, impact: true });
+    const s = buildSpec(normalizeDesign(SAMPLE_DESIGN, true), { ...ctx, impact: true });
     expect(s).toContain('Location: ZIP 33401, Palm Beach County, FL');
     expect(s).toContain('Impact area: impact-rated windows and walk-in doors');
     expect(s).toContain('Walk-in door 36" × 80", Impact-rated (hi-wind), white');
     expect(s).toContain('Window 30" × 30", Impact-rated');
-    expect(buildSpec(normalizeDesign(DEFAULT_DESIGN, false), { zip: null, county: null, impact: false })).toContain('Location: Not given');
+    expect(buildSpec(normalizeDesign(SAMPLE_DESIGN, false), { zip: null, county: null, impact: false })).toContain('Location: Not given');
   });
 
   it('flags a part on a wall that is not closed', () => {
-    const d = normalizeDesign(DEFAULT_DESIGN, false);
+    const d = normalizeDesign(SAMPLE_DESIGN, false);
     d.walls.left = 'open';
     expect(buildSpec(d, ctx)).toContain('(this wall is not closed: not shown on the model)');
   });
 
   it('never shows prices, manufacturers or wind numbers', () => {
-    for (const s of [buildSpec(sample(), ctx), buildSpec(normalizeDesign(DEFAULT_DESIGN, true), { ...ctx, impact: true })]) {
+    for (const s of [buildSpec(sample(), ctx), buildSpec(normalizeDesign(SAMPLE_DESIGN, true), { ...ctx, impact: true })]) {
       expect(s).not.toMatch(/\$|price|cost|CCI|Carolina|Coast to Coast|\bCA\b|mph|gauge|\bOC\b|certif/i);
     }
   });

@@ -5,11 +5,14 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseToken, checkContact, sendErrorText, EMPTY_CONTACT } from '../src/model/link';
+import { parseToken, checkContact, sendErrorText, EMPTY_CONTACT, FIELD_ERRORS } from '../src/model/link';
 import { countyForZip, FL_ZIP_COUNT } from '../src/model/flZips';
 import { readProgramZips } from '../tools/gen-fl-zips.mjs';
 import { submitBody, submitDesign, checkLink } from '../src/send';
-import { handleLink, handleSubmit, MAX_BODY } from '../server/core.js';
+import { handleLink, handleSubmit, MAX_BODY, readLimited } from '../server/core.js';
+import { restoreDraft, keepDraft } from '../src/draft';
+import { useWebStore } from '../src/store';
+import { cloneDesign, DEFAULT_DESIGN } from '../src/model/design';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const TOK = 'Ab3_-xYz0123456789ABCD';
@@ -39,6 +42,11 @@ describe('contact checks', () => {
     expect(checkContact(c({ name: 'Jane', phone: '5615550100', zip: '3340' })).zip).toBeTruthy();
     expect(checkContact(c({ name: 'x'.repeat(121), phone: '5615550100' })).name).toBeTruthy();
     expect(checkContact(c({ name: 'Jane', phone: '5615550100', notes: 'x'.repeat(2001) })).notes).toBeTruthy();
+    // markup in a name, odd email shapes (the database refuses them too)
+    expect(checkContact(c({ name: '<img src=x>', phone: '5615550100' })).name).toBeTruthy();
+    expect(checkContact(c({ name: 'Bob "Q" Smith', phone: '5615550100' })).name).toBeTruthy();
+    expect(checkContact(c({ name: 'Bob', email: 'a@b.co?cc=x%40evil.tld' })).email).toBeTruthy();
+    expect(checkContact(c({ name: "Mary O'Brien & Tom", email: 'Mary.OBrien+steel@Sub.Example.co' }))).toEqual({});
   });
   it('error texts never mention the CRM and always give the phone number', () => {
     for (const code of ['link_expired', 'link_invalid', 'too_many', 'server', 'offline', 'bad_name']) {
@@ -85,6 +93,20 @@ describe('send body', () => {
     expect(await checkLink(TOK, async () => new Response('x', { status: 502 }))).toBe('offline');
     expect(await checkLink(TOK, down)).toBe('offline');
   });
+  it('a stalled send gives up (weak signal) instead of hanging', async () => {
+    const stall = (_u, init) => new Promise((_res, rej) => init.signal.addEventListener('abort', () => rej(new Error('aborted'))));
+    const p = { token: TOK, contact: { ...EMPTY_CONTACT, name: 'J', phone: '5615550100' }, state: {}, spec: '', image: null };
+    expect(await submitDesign(p, stall, 30)).toEqual({ ok: false, error: 'offline' });
+  });
+  it('database refusals: field ones mark a box; the limits each have their own words', () => {
+    expect(FIELD_ERRORS.bad_name.field).toBe('name');
+    expect(FIELD_ERRORS.bad_email.field).toBe('email');
+    expect(FIELD_ERRORS.bad_phone.field).toBe('phone');
+    expect(FIELD_ERRORS.need_contact.field).toBe('phone');
+    expect(sendErrorText('link_full')).toMatch(/new one/);
+    expect(sendErrorText('busy')).toMatch(/later today/);
+    for (const c of ['link_full', 'busy']) expect(sendErrorText(c)).not.toMatch(/crm/i);
+  });
 });
 
 // ── server/core.js against a fake PostgREST ──────────────────────────────
@@ -117,7 +139,7 @@ describe('server: /api/submit', () => {
     expect(r.headers.get('Cache-Control')).toBe('no-store');
   });
   it('passes the database refusals through as codes', async () => {
-    for (const [m, status] of [['link_expired', 403], ['link_invalid', 403], ['too_many', 429], ['bad_phone', 400], ['bad_image', 400]]) {
+    for (const [m, status] of [['link_expired', 403], ['link_invalid', 403], ['too_many', 429], ['link_full', 403], ['busy', 429], ['bad_phone', 400], ['bad_image', 400]]) {
       const r = await handleSubmit(post(goodBody()), CFG, fakeDb(() => rpcErr(m)).f);
       expect(r.status).toBe(status);
       expect(await r.json()).toEqual({ ok: false, error: m });
@@ -136,6 +158,8 @@ describe('server: /api/submit', () => {
       [post(goodBody(), { Origin: 'https://evil.example' }), 403],
       [new Request(`${SITE}/api/submit`, { method: 'GET' }), 405],
       [post('x'.repeat(MAX_BODY + 1)), 413],
+      // no Content-Length (a streamed body): still stopped at the limit
+      [new Request(`${SITE}/api/submit`, { method: 'POST', headers: { Origin: SITE }, duplex: 'half', body: new ReadableStream({ start(ctl) { for (let i = 0; i < 4; i++) ctl.enqueue(new Uint8Array(500_000)); ctl.close(); } }) }), 413],
     ];
     for (const [req, status] of cases) expect((await handleSubmit(req, CFG, db.f)).status).toBe(status);
     expect(db.calls).toHaveLength(0);
@@ -173,5 +197,54 @@ describe('server: /api/link', () => {
   });
   it('database trouble -> 502', async () => {
     expect((await handleLink(get(`?t=${TOK}`), CFG, fakeDb(() => new Response('x', { status: 500 })).f)).status).toBe(502);
+  });
+});
+
+describe('server: readLimited', () => {
+  it('reads a small body, stops a big one', async () => {
+    expect(await readLimited(new Request('https://x/', { method: 'POST', body: 'hello' }), 10)).toBe('hello');
+    expect(await readLimited(new Request('https://x/', { method: 'POST', body: 'x'.repeat(11) }), 10)).toBe(null);
+    expect(await readLimited(new Request('https://x/'), 10)).toBe('');
+  });
+});
+
+describe('draft (this browser only)', () => {
+  it('saves the design + contact per link and puts them back', async () => {
+    const mem = new Map();
+    globalThis.window = { localStorage: { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) } };
+    try {
+      const stop = keepDraft(TOK);
+      const st = useWebStore.getState();
+      st.setContact({ name: 'Jane', phone: '5615550100', website: 'bot' });
+      st.update((d) => { d.width = 30; d.upgrades.colorScrews = true; });
+      st.setZip('33401');
+      await new Promise((r) => setTimeout(r, 500));
+      stop();
+      const saved = JSON.parse(mem.get('ss-design-draft:' + TOK));
+      expect(saved.contact).toEqual({ name: 'Jane', phone: '5615550100', email: '', zip: '33401', notes: '' }); // no honeypot
+      // a fresh page: reset, then restore
+      useWebStore.setState({ contact: { name: '', phone: '', email: '', zip: '', notes: '', website: '' } });
+      st.replace(cloneDesign(DEFAULT_DESIGN));
+      expect(restoreDraft(TOK)).toBe(true);
+      const now = useWebStore.getState();
+      expect(now.design.width).toBe(30);
+      expect(now.design.upgrades.colorScrews).toBe(true);
+      expect(now.contact.name).toBe('Jane');
+      expect(now.ctx.county).toBe('Palm Beach');
+      expect(restoreDraft('Other_link_0123456789')).toBe(false);
+      expect(restoreDraft(TOK, Date.now() + 1000 * 60 * 60 * 24 * 61)).toBe(false); // too old
+      mem.set('ss-design-draft:' + TOK, '{not json');
+      expect(restoreDraft(TOK)).toBe(false);
+    } finally {
+      delete globalThis.window;
+    }
+  });
+  it('blocked storage: nothing breaks', () => {
+    globalThis.window = { get localStorage() { throw new Error('blocked'); } };
+    try {
+      expect(restoreDraft(TOK)).toBe(false);
+    } finally {
+      delete globalThis.window;
+    }
   });
 });

@@ -174,6 +174,18 @@ export function normalizeDesign(input: WebDesign, impact: boolean): WebDesign {
   };
   out.wainscot = d.wainscot === true;
 
+  // Upgrades (a wish list; missing in older saved states = none). Insulation goes
+  // on a vertical roof only (the program's rule); openers need a roll-up door.
+  const u = (d.upgrades ?? {}) as Partial<WebDesign['upgrades']>;
+  out.upgrades = {
+    insulation: out.roofStyle === 'Vertical' ? oneOf(u.insulation, ['none', 'roof', 'roofWalls'] as const, 'none') : 'none',
+    frame12: u.frame12 === true,
+    oc4: u.oc4 === true,
+    panels26: u.panels26 === true,
+    colorScrews: u.colorScrews === true,
+    openers: u.openers === true,
+  };
+
   // ── Main openings ──
   const seen = new Set<string>();
   const mains: WebOpening[] = [];
@@ -258,8 +270,14 @@ export function normalizeDesign(input: WebDesign, impact: boolean): WebDesign {
   out.leanTos = lts;
   // A wrap request lives only while both of its lean-tos exist (re-adding one never revives an old request).
   out.wraps = WRAP_KEYS.filter((k) => Array.isArray(d.wraps) && d.wraps.includes(k) && WRAP_SIDES[k].every((s) => sides.has(s)));
+  // Roll-up openers need a roll-up door to go on.
+  if (out.upgrades.openers && !hasRollupDoor(out)) out.upgrades.openers = false;
   return out;
 }
+
+/** Any roll-up door on the building or a lean-to. */
+export const hasRollupDoor = (d: Pick<WebDesign, 'openings' | 'leanTos'>) =>
+  d.openings.some((o) => o.kind === 'rollup') || d.leanTos.some((lt) => lt.openings.some((o) => o.kind === 'rollup'));
 
 export function nextFreeId(prefix: string, used: Set<string>): string {
   for (let i = 1; ; i++) {

@@ -84,10 +84,22 @@ const NEVER = [
   ['Carolina Carports', 'a manufacturer name'],
   ['Sensei', 'a dealer tool name'],
 ];
+// whole words / phrases (a bare "CRM" anywhere, wind numbers, dealer words)
+const NEVER_RX = [
+  [/\bCRM\b/, 'CRM wording'],
+  [/\bmph\b/i, 'a wind number'],
+  [/\b170\s*(\+|mph)|\bover\s+170\b/i, 'a wind number'],
+  [/\bdealer\b/i, 'dealer wording'],
+  [/\bmarkup\b/i, 'pricing wording'],
+];
 for (const f of files) {
   if (!/\.(html|js|css|txt|json|_headers)$/.test(f) && !f.endsWith('_headers')) continue;
   const s = readFileSync(f, 'utf8');
   for (const [needle, what] of NEVER) if (needle && s.includes(needle)) bad.push(`${path.relative(out, f)}: ${what} ("${needle.slice(0, 20)}")`);
+  for (const [rx, what] of NEVER_RX) {
+    const m = rx.exec(s);
+    if (m) bad.push(`${path.relative(out, f)}: ${what} ("${m[0]}")`);
+  }
   // the shared estimator is aliased to a zeroed stub in the web build: its constants must all be 0
   const m = /marginMultiplier:([0-9.]+)/.exec(s);
   if (m && Number(m[1]) !== 0) bad.push(`${path.relative(out, f)}: estimator constants are not zeroed`);

@@ -6,8 +6,8 @@
 // Plain JS (no build step), pure functions so the tests can run them in Node.
 
 export const TOKEN_RE = /^[A-Za-z0-9_-]{20,64}$/;
-export const MAX_BODY = 2_000_000; // picture (<= 1.4 MB) + design (<= 256 KB) + spec
-const KNOWN = new Set(['link_invalid', 'link_expired', 'too_many', 'bad_name', 'need_contact', 'bad_phone', 'bad_email', 'too_long', 'bad_design', 'bad_image']);
+export const MAX_BODY = 1_500_000; // bytes: picture (<= 900 KB) + design (<= 256 KB) + spec (<= 12 KB) + contact
+const KNOWN = new Set(['link_invalid', 'link_expired', 'too_many', 'link_full', 'busy', 'bad_name', 'need_contact', 'bad_phone', 'bad_email', 'too_long', 'bad_design', 'bad_image']);
 
 const HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
@@ -39,7 +39,37 @@ export async function rpcError(res) {
   }
 }
 
-const statusFor = (code) => (code === 'too_many' ? 429 : code === 'link_invalid' || code === 'link_expired' ? 403 : code === 'server' ? 502 : 400);
+/** The request body as text, or null once it passes `max` bytes (stops reading there — no Content-Length needed). */
+export async function readLimited(request, max) {
+  if (!request.body) return '';
+  const reader = request.body.getReader();
+  const chunks = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.byteLength;
+    if (n > max) {
+      try {
+        await reader.cancel();
+      } catch {
+        /* already closed */
+      }
+      return null;
+    }
+    chunks.push(value);
+  }
+  const all = new Uint8Array(n);
+  let o = 0;
+  for (const c of chunks) {
+    all.set(c, o);
+    o += c.byteLength;
+  }
+  return new TextDecoder().decode(all);
+}
+
+const statusFor = (code) =>
+  code === 'too_many' || code === 'busy' ? 429 : code === 'link_invalid' || code === 'link_expired' || code === 'link_full' ? 403 : code === 'server' ? 502 : 400;
 const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
 
 export async function handleLink(request, cfg, f = fetch) {
@@ -62,8 +92,8 @@ export async function handleSubmit(request, cfg, f = fetch) {
   const origin = request.headers.get('Origin');
   if (origin && origin !== new URL(request.url).origin) return json({ ok: false, error: 'origin' }, 403);
   if (Number(request.headers.get('Content-Length') || 0) > MAX_BODY) return json({ ok: false, error: 'too_long' }, 413);
-  const text = await request.text();
-  if (text.length > MAX_BODY) return json({ ok: false, error: 'too_long' }, 413);
+  const text = await readLimited(request, MAX_BODY);
+  if (text === null) return json({ ok: false, error: 'too_long' }, 413);
   let b;
   try {
     b = JSON.parse(text);

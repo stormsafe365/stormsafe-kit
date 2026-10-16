@@ -127,8 +127,9 @@ export function designToConfig(d: WebDesign, ctx: Pick<WebContext, 'county'>): B
     openEndGableSheeting: d.type === 'combo' && d.walls.front === 'gableOnly',
     wallOverrides,
     eavePanelFt,
-    framingGauge: framingGauge(d, ctx.county),
-    sheetingGauge: '29-gauge',
+    // a 12-gauge frame / 26-gauge wall panels the customer asked for (Upgrades) show in the drawing too
+    framingGauge: d.upgrades?.frame12 ? '12-gauge' : framingGauge(d, ctx.county),
+    sheetingGauge: d.upgrades?.panels26 ? '26-gauge' : '29-gauge',
     panelOrientation: wide ? 'Vertical' : d.panels,
     roofOrientation: d.roofStyle === 'Vertical' ? 'Vertical' : 'Horizontal',
     roofStyle: d.roofStyle,
@@ -152,7 +153,7 @@ export function designToConfig(d: WebDesign, ctx: Pick<WebContext, 'county'>): B
       right: 'closed',
       storage: { mode: 'none', lengthFt: 0 },
     },
-    trussSpacingFt: trussSpacingFt(d, ctx.county),
+    trussSpacingFt: d.upgrades?.oc4 ? 4 : trussSpacingFt(d, ctx.county),
     leanTos,
     openings,
   };

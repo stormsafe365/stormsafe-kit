@@ -71,9 +71,38 @@ async function liveFallback(): Promise<DesignPictures> {
   if (setView) setView('iso');
   else useEditorStore.getState().goToView('iso');
   await sleep(250);
-  const canvas = document.querySelector('canvas');
+  const canvas = document.querySelector<HTMLCanvasElement>('.vp canvas') ?? document.querySelector('canvas');
   if (!canvas) throw new Error('3D view not ready');
   return { image: await toJpeg(canvas.toDataURL('image/png'), IMAGE_MAX_W), source: 'live' };
+}
+
+/**
+ * A picture with nothing in it (one flat color, or a tiny default-size canvas):
+ * the 3D did not draw (a page in the background, a lost graphics context).
+ */
+export async function isBlankImage(src: string): Promise<boolean> {
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error('image decode failed'));
+    img.src = src;
+  });
+  if (img.naturalWidth < 400 || img.naturalHeight < 200) return true;
+  const c = document.createElement('canvas');
+  c.width = 24;
+  c.height = 24;
+  const ctx = c.getContext('2d');
+  if (!ctx) return false;
+  ctx.drawImage(img, 0, 0, 24, 24);
+  const d = ctx.getImageData(0, 0, 24, 24).data;
+  let lo = 255;
+  let hi = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = (d[i] + d[i + 1] + d[i + 2]) / 3;
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+  }
+  return hi - lo < 8;
 }
 
 let inFlight: Promise<DesignPictures> | null = null;

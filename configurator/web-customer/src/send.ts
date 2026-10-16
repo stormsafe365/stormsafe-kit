@@ -46,13 +46,19 @@ export function submitBody(p: SubmitPayload) {
   };
 }
 
+/** A send that has not finished after this long is given up (weak phone signal): the design stays on the page. */
+export const SEND_TIMEOUT_MS = 45_000;
+
 /** Resolves { ok: true } or { ok: false, error } (an error code — link.ts sendErrorText). */
-export async function submitDesign(p: SubmitPayload, f: typeof fetch = fetch): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function submitDesign(p: SubmitPayload, f: typeof fetch = fetch, timeoutMs = SEND_TIMEOUT_MS): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), timeoutMs) : null;
   try {
     const r = await f(`${API}/api/submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(submitBody(p)),
+      signal: ctl?.signal,
     });
     let j: { ok?: boolean; error?: string } = {};
     try {
@@ -64,5 +70,7 @@ export async function submitDesign(p: SubmitPayload, f: typeof fetch = fetch): P
     return { ok: false, error: j.error || `http_${r.status}` };
   } catch {
     return { ok: false, error: 'offline' };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }

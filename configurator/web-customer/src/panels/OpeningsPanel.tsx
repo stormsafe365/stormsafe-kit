@@ -116,7 +116,7 @@ export function OpeningsPanel() {
           </button>
         ))}
       </div>
-      {impact && <Note tone="warn">Impact-rated walk-in doors and windows only, as your area requires. Roll-up doors are certified as they are.</Note>}
+      {impact && <Note tone="warn">Your area uses impact-rated walk-in doors and windows, so those are the ones offered here. Roll-up doors stay as they are.</Note>}
       {addMsg && <Note tone="warn">{addMsg}</Note>}
       {!walls.length && <Note>Doors and windows go on closed walls — this building has none yet.</Note>}
       {d.openings.length === 0 && walls.length > 0 && <p className="empty">No doors or windows yet. Add one above, then drag it on the model or type its position.</p>}

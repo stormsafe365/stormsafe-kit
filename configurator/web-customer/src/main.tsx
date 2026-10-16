@@ -14,18 +14,24 @@ import { buildSpec } from './model/spec';
 import { currentState, useWebStore } from './store';
 import { parseToken } from './model/link';
 import { checkLink } from './send';
+import { keepDraft, restoreDraft } from './draft';
 import './styles.css';
 
 // Where the visitor is: ?zip=…&county=…&impact=1
 useWebStore.getState().setCtx(parseParams(window.location.search));
 {
-  const z = useWebStore.getState().ctx.zip;
-  if (z) useWebStore.getState().setContact({ zip: z }); // the ZIP box shows the website's ZIP
+  const { zip, county } = useWebStore.getState().ctx;
+  // The ZIP box shows the website's ZIP; a ZIP without a county finds its county (and impact rule).
+  if (zip && !county) useWebStore.getState().setZip(zip);
+  else if (zip) useWebStore.getState().setContact({ zip });
 }
 
 // The rep's personal design link (?t=…): check it now, so an expired link is
 // said up front, not after the customer has designed the whole building.
 const token = parseToken(window.location.search);
+// Work in progress survives a reload / closed tab (this browser only).
+restoreDraft(token);
+keepDraft(token);
 if (token) {
   useWebStore.getState().setLink(token, 'checking');
   void checkLink(token).then((status) => useWebStore.getState().setLink(token, status));

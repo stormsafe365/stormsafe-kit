@@ -87,6 +87,24 @@ export interface WebLeanTo {
   openings: WebLeanToOpening[];
 }
 
+/**
+ * Upgrades the customer would like (owner 10/16/26: "add-ons/upgrades"). A wish
+ * list the rep confirms in the quote: the page shows no prices. Options are the
+ * quote program's own: insulation (vertical roof only), 12-gauge framing, 4' on
+ * center, full 26-gauge wall panels, color-match fasteners, roll-up openers.
+ * A frame gauge / spacing the area or width already needs is applied by the
+ * rules (rules.ts) whether or not it is asked for here.
+ */
+export type Insulation = 'none' | 'roof' | 'roofWalls';
+export interface WebUpgrades {
+  insulation: Insulation;
+  frame12: boolean;
+  oc4: boolean;
+  panels26: boolean;
+  colorScrews: boolean;
+  openers: boolean;
+}
+
 export interface WebDesign {
   type: WebBuildingType;
   width: number;
@@ -104,6 +122,8 @@ export interface WebDesign {
   leanTos: WebLeanTo[];
   /** Requested wrap-around corners (drawn only while both lean-tos qualify — rules.ts). */
   wraps: LeanToWrapCorner[];
+  /** Upgrades the customer would like (optional in saved states: missing = none). */
+  upgrades: WebUpgrades;
 }
 
 /** Where the visitor is (URL params) — never part of the building. */
@@ -143,6 +163,7 @@ export const DEFAULT_DESIGN: WebDesign = {
   ],
   leanTos: [],
   wraps: [],
+  upgrades: { insulation: 'none', frame12: false, oc4: false, panels26: false, colorScrews: false, openers: false },
 };
 
 export const cloneDesign = (d: WebDesign): WebDesign => JSON.parse(JSON.stringify(d)) as WebDesign;

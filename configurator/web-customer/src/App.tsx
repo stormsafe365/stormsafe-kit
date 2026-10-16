@@ -9,26 +9,36 @@ import { OpeningsPanel } from './panels/OpeningsPanel';
 import { LeanTosPanel } from './panels/LeanTosPanel';
 import { ColorsPanel } from './panels/ColorsPanel';
 import { SendPanel } from './panels/SendPanel';
+import { UpgradesPanel } from './panels/UpgradesPanel';
 import { ft } from './panels/ui';
 
-// The steps, in order (owner 10/16/26: type + size, walls, doors / windows,
-// lean-tos, colors, then the customer's contact + "Send to my steel building rep").
+// The steps, in order (owner 10/16/26: building type + size, components, add-ons /
+// upgrades, colors, then the customer's contact + "Send to my steel building rep").
 const TABS: Array<{ key: TabKey; label: string; title: string }> = [
   { key: 'size', label: 'Size', title: 'Building type, size & roof' },
   { key: 'walls', label: 'Walls', title: 'Walls' },
   { key: 'doors', label: 'Doors', title: 'Doors & windows' },
   { key: 'leantos', label: 'Lean-tos', title: 'Lean-tos' },
+  { key: 'upgrades', label: 'Upgrades', title: 'Upgrades' },
   { key: 'colors', label: 'Colors', title: 'Colors' },
   { key: 'send', label: 'Send', title: 'Send to your rep' },
 ];
+
+/** Inside a website frame without a rep's link the website sends the design itself: no Send step there. */
+const FRAMED = typeof window !== 'undefined' && window.parent !== window;
+function useSteps() {
+  const token = useWebStore((s) => s.token);
+  return token || !FRAMED ? TABS : TABS.filter((t) => t.key !== 'send');
+}
 
 /** Back / Next under each step ("Next: Walls"). */
 function StepNav() {
   const tab = useWebStore((s) => s.tab);
   const setTab = useWebStore((s) => s.setTab);
-  const i = TABS.findIndex((t) => t.key === tab);
-  const prev = i > 0 ? TABS[i - 1] : null;
-  const next = i >= 0 && i < TABS.length - 1 ? TABS[i + 1] : null;
+  const steps = useSteps();
+  const i = steps.findIndex((t) => t.key === tab);
+  const prev = i > 0 ? steps[i - 1] : null;
+  const next = i >= 0 && i < steps.length - 1 ? steps[i + 1] : null;
   return (
     <div className="stepnav">
       {prev ? (
@@ -65,8 +75,8 @@ function ImpactBanner() {
   if (!impact) return null;
   return (
     <div className="impact" role="status">
-      <strong>Hi-Impact area.</strong> {county ? `${county} County` : 'Your area'} requires impact-rated windows and walk-in doors; this design
-      uses them.
+      <strong>Hi-Impact area.</strong> {county ? `In ${county} County, your building` : 'In your area, your building'} uses impact-rated windows
+      and walk-in doors; this design shows them.
     </div>
   );
 }
@@ -115,6 +125,11 @@ export function App() {
   const selMain = useEditorStore((s) => s.selectedOpeningId);
   const selLean = useEditorStore((s) => s.selectedLeanToOpeningId);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const steps = useSteps();
+  // a step that is not offered here (e.g. a saved draft on the Send step) falls back to the first
+  useEffect(() => {
+    if (!steps.some((t) => t.key === tab)) setTab('size');
+  }, [steps, tab, setTab]);
 
   // Clicking a door on the model opens its card (desktop: the panel is beside the model).
   useEffect(() => {
@@ -124,6 +139,8 @@ export function App() {
   // A new step starts at its top.
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = 0;
+    // phones: the step bar scrolls sideways; keep the current step in view
+    document.getElementById(`tab-${tab}`)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   }, [tab]);
   useEffect(() => {
     bodyRef.current?.querySelector('.is-selected')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -132,8 +149,14 @@ export function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <h1 className="title">Design your building</h1>
+        <div className="brand">
+          <span className="wordmark" aria-label="StormSafe Steel">
+            Storm<span className="wm-teal">Safe</span> Steel
+          </span>
+          <h1 className="title">Design your building</h1>
+        </div>
         <Summary />
+        <a className="topphone" href="tel:+15617715555">561-771-5555</a>
       </header>
       <div className="split">
         <section className="stage" aria-label="3D model">
@@ -143,7 +166,7 @@ export function App() {
           <LinkBanner />
           <ImpactBanner />
           <nav className="tabs" role="tablist" aria-label="Options">
-            {TABS.map((t, i) => (
+            {steps.map((t) => (
               <button
                 key={t.key}
                 type="button"
@@ -155,9 +178,6 @@ export function App() {
                 title={t.title}
                 onClick={() => setTab(t.key)}
               >
-                <span className="tab-n" aria-hidden="true">
-                  {i + 1}
-                </span>
                 {t.label}
               </button>
             ))}
@@ -167,6 +187,7 @@ export function App() {
             {tab === 'walls' && <WallsPanel />}
             {tab === 'doors' && <OpeningsPanel />}
             {tab === 'leantos' && <LeanTosPanel />}
+            {tab === 'upgrades' && <UpgradesPanel />}
             {tab === 'colors' && <ColorsPanel />}
             {tab === 'send' && <SendPanel />}
             <StepNav />

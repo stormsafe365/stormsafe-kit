@@ -7,8 +7,8 @@
 import { useId, useState } from 'react';
 import { useWebStore, currentState } from '../store';
 import { buildSpec } from '../model/spec';
-import { checkContact, sendErrorText, LIMITS, type Contact } from '../model/link';
-import { captureDesign, toJpeg } from '../capture';
+import { checkContact, sendErrorText, FIELD_ERRORS, LIMITS, type Contact } from '../model/link';
+import { captureDesign, isBlankImage, toJpeg } from '../capture';
 import { submitDesign } from '../send';
 import { LocationField } from './LocationField';
 import { Field, Note } from './ui';
@@ -17,18 +17,27 @@ const PHONE = '561-771-5555';
 const PHONE_HREF = 'tel:+15617715555';
 /** Stored picture: small enough for the lead's card, sharp enough to read. */
 const SEND_IMAGE_W = 1200;
-const SEND_IMAGE_MAX_CHARS = 1_400_000;
+const SEND_IMAGE_MAX_CHARS = 850_000; // the database takes up to 900,000 characters
 
-/** The ISO picture as a JPEG data URL the server accepts, or null if none could be made. */
+/**
+ * The ISO picture as a JPEG data URL the server accepts, or null if none could
+ * be made. A blank picture (the 3D did not draw) is tried once more, then left
+ * out: the design and its spec still go, without a picture.
+ */
 export async function sendPicture(): Promise<string | null> {
-  try {
-    const pics = await captureDesign(false);
-    let img = await toJpeg(pics.image, SEND_IMAGE_W, 0.82);
-    if (img.length > SEND_IMAGE_MAX_CHARS) img = await toJpeg(pics.image, 900, 0.72);
-    return img.length <= SEND_IMAGE_MAX_CHARS && img.startsWith('data:image/jpeg;base64,') ? img : null;
-  } catch {
-    return null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      if (attempt) await new Promise((r) => setTimeout(r, 700));
+      const pics = await captureDesign(false);
+      if (await isBlankImage(pics.image)) continue;
+      let img = await toJpeg(pics.image, SEND_IMAGE_W, 0.82);
+      if (img.length > SEND_IMAGE_MAX_CHARS) img = await toJpeg(pics.image, 900, 0.72);
+      return img.length <= SEND_IMAGE_MAX_CHARS && img.startsWith('data:image/jpeg;base64,') ? img : null;
+    } catch {
+      /* try once more, then send without a picture */
+    }
   }
+  return null;
 }
 
 function TextInput({
@@ -148,8 +157,12 @@ export function SendPanel() {
       const state = currentState();
       const spec = buildSpec(design, { zip: ctx.zip, county: ctx.county, impact });
       const image = await sendPicture();
-      const res = await submitDesign({ token, contact: useWebStore.getState().contact, state, spec, image });
+      const contact = useWebStore.getState().contact;
+      let res = await submitDesign({ token, contact, state, spec, image });
+      // A picture the server will not take must not block the design: send it without one.
+      if (!res.ok && res.error === 'bad_image' && image) res = await submitDesign({ token, contact, state, spec, image: null });
       if (res.ok) setSent(Date.now());
+      else if (FIELD_ERRORS[res.error]) setErrors({ [FIELD_ERRORS[res.error].field]: FIELD_ERRORS[res.error].text });
       else setFailure(sendErrorText(res.error));
     } finally {
       setBusy(null);

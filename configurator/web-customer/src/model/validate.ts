@@ -85,6 +85,7 @@ export function checkState(state: unknown): StateCheck {
       }
     }
   }
+  if (d.upgrades !== undefined && !isObj(d.upgrades)) return { ok: false, error: 'design.upgrades must be an object' };
   if (d.wraps !== undefined && (!Array.isArray(d.wraps) || d.wraps.length > 4 || d.wraps.some((k) => typeof k !== 'string'))) {
     return { ok: false, error: 'design.wraps must be a list of corners' };
   }

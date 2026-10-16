@@ -10,7 +10,7 @@ import { impactRequired } from './model/rules';
 import { countyForZip } from './model/flZips';
 import { EMPTY_CONTACT, type Contact, type LinkStatus } from './model/link';
 
-export type TabKey = 'size' | 'walls' | 'doors' | 'leantos' | 'colors' | 'send';
+export type TabKey = 'size' | 'walls' | 'doors' | 'leantos' | 'upgrades' | 'colors' | 'send';
 
 interface WebStore {
   design: WebDesign;

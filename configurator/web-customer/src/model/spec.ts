@@ -74,6 +74,21 @@ export function overallFootprint(d: WebDesign): { w: number; l: number } {
   return { w: d.width + ext['Left Eave'] + ext['Right Eave'], l: d.length + ext['Front Gable'] + ext['Back Gable'] };
 }
 
+/** The upgrades the customer asked for, in plain words (spec.ts / the Upgrades step). */
+export function upgradeLines(d: WebDesign): string[] {
+  const u = d.upgrades;
+  if (!u) return [];
+  const out: string[] = [];
+  if (u.insulation === 'roof') out.push('Insulation: roof');
+  if (u.insulation === 'roofWalls') out.push('Insulation: roof and walls');
+  if (u.frame12) out.push('12-gauge frame');
+  if (u.oc4) out.push("Legs and roof trusses every 4' (4' on center)");
+  if (u.panels26) out.push('26-gauge wall panels');
+  if (u.colorScrews) out.push('Color-matched screws');
+  if (u.openers) out.push('Electric openers on the roll-up doors');
+  return out;
+}
+
 export function buildSpec(d: WebDesign, ctx: SpecContext): string {
   const L: string[] = [];
   L.push('StormSafe Steel — building design request (not a quote)');
@@ -107,6 +122,9 @@ export function buildSpec(d: WebDesign, ctx: SpecContext): string {
   L.push('');
   L.push(`Colors: Roof ${colorName(d.colors.roof)}, Walls ${colorName(d.colors.walls)}, Trim ${colorName(d.colors.trim)}`);
   L.push(`Wainscot: ${d.wainscot ? `${colorName(d.colors.wainscot)}, 3' band along the bottom of the walls` : 'None'}`);
+  const up = upgradeLines(d);
+  L.push(`Upgrades requested: ${up.length ? '' : 'None'}`.trimEnd());
+  up.forEach((x) => L.push(`- ${x}`));
   L.push('');
   if (d.openings.length) {
     L.push('Doors, windows and framed openings (position = distance from the named end or corner to the near edge):');

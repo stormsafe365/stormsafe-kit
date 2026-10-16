@@ -1,0 +1,2 @@
+# The database address + public key, written at staging time from CRM/.env.local.
+config.js

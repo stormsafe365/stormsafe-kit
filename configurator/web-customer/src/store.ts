@@ -7,8 +7,10 @@ import { create } from 'zustand';
 import { cloneDesign, DEFAULT_DESIGN, STATE_SCHEMA, STATE_VERSION, type WebContext, type WebDesign, type WebState } from './model/design';
 import { normalizeDesign } from './model/normalize';
 import { impactRequired } from './model/rules';
+import { countyForZip } from './model/flZips';
+import { EMPTY_CONTACT, type Contact, type LinkStatus } from './model/link';
 
-export type TabKey = 'size' | 'walls' | 'doors' | 'leantos' | 'colors';
+export type TabKey = 'size' | 'walls' | 'doors' | 'leantos' | 'colors' | 'send';
 
 interface WebStore {
   design: WebDesign;
@@ -25,6 +27,18 @@ interface WebStore {
   setCtx: (ctx: WebContext) => void;
   setTab: (t: TabKey) => void;
   setBusy: (m: string | null) => void;
+  /** The rep's design-link token (?t=) and what the server said about it. */
+  token: string | null;
+  link: LinkStatus;
+  setLink: (token: string | null, link: LinkStatus) => void;
+  /** The send form (kept while the customer moves between steps). */
+  contact: Contact;
+  setContact: (patch: Partial<Contact>) => void;
+  /** Where the building goes: a 5-digit Florida ZIP sets the county (and the impact rule), as the quote does. */
+  setZip: (zip: string) => void;
+  /** When the design was last sent (ms since epoch); null = not sent yet. */
+  sentAt: number | null;
+  setSent: (t: number | null) => void;
 }
 
 /** Normalize with the impact rule of the design's own size (Okaloosa / Okeechobee depend on it). */
@@ -50,6 +64,19 @@ export const useWebStore = create<WebStore>((set, get) => ({
   setCtx: (ctx) => set({ ctx, ...settle(get().design, ctx) }),
   setTab: (tab) => set({ tab }),
   setBusy: (busy) => set({ busy }),
+  token: null,
+  link: 'none',
+  setLink: (token, link) => set({ token, link }),
+  contact: { ...EMPTY_CONTACT },
+  setContact: (patch) => set({ contact: { ...get().contact, ...patch } }),
+  setZip: (raw) => {
+    const zip = String(raw).replace(/\D/g, '').slice(0, 5);
+    const full = zip.length === 5;
+    const ctx: WebContext = { ...get().ctx, zip: full ? zip : null, county: full ? countyForZip(zip) : null };
+    set({ ctx, contact: { ...get().contact, zip }, ...settle(get().design, ctx) });
+  },
+  sentAt: null,
+  setSent: (sentAt) => set({ sentAt }),
 }));
 
 /** The saved state sent to the website (ss-design `state`). */

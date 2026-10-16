@@ -541,7 +541,7 @@ button:disabled {
   margin-top: 6px;
 }
 .tabs > button {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 44px;
   border: 0;
@@ -746,4 +746,117 @@ button:disabled {
   * {
     scroll-behavior: auto !important;
   }
+}
+
+/* ── Steps + send (design link, 10/16/26) ───────────────────────────── */
+.tab-n {
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  margin-right: 3px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 9.5px;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+@media (max-width: 599px) {
+  .tab-n {
+    display: none;
+  }
+}
+.stepnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px 4px;
+}
+.input {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 8px;
+  border: 1px solid var(--border-vis);
+  background: var(--surface-3);
+  padding: 9px 11px;
+  font-size: 16px; /* 16px: phones do not zoom into the box */
+  font-family: inherit;
+  color: var(--text);
+}
+.input:hover {
+  border-color: var(--teal-dim);
+}
+.input.has-error {
+  border-color: var(--orange);
+}
+.input-zip {
+  max-width: 180px;
+  letter-spacing: 0.04em;
+}
+.textarea {
+  min-height: 84px;
+  resize: vertical;
+  line-height: 1.45;
+}
+.field-error {
+  margin: 0;
+  color: var(--orange);
+  font-size: 13px;
+}
+.send-lede {
+  margin: 0;
+  color: var(--sub);
+  font-size: 14px;
+}
+.btn-send {
+  min-height: 48px;
+  font-size: 16px;
+  width: 100%;
+}
+.btn-send:disabled {
+  opacity: 0.6;
+}
+.hp {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.sent {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: var(--radius);
+  background: var(--teal-glow);
+  border: 1px solid var(--teal-dim);
+}
+.sent strong {
+  display: block;
+  color: var(--teal);
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+.sent p {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+}
+.sent-check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--teal);
+  color: #062027;
+  font-weight: 800;
+}
+.panel a,
+.impact a {
+  color: var(--teal);
 }

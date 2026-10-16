@@ -12,10 +12,24 @@ import { parseParams } from './model/params';
 import { parseAllowList } from './model/origins';
 import { buildSpec } from './model/spec';
 import { currentState, useWebStore } from './store';
+import { parseToken } from './model/link';
+import { checkLink } from './send';
 import './styles.css';
 
 // Where the visitor is: ?zip=…&county=…&impact=1
 useWebStore.getState().setCtx(parseParams(window.location.search));
+{
+  const z = useWebStore.getState().ctx.zip;
+  if (z) useWebStore.getState().setContact({ zip: z }); // the ZIP box shows the website's ZIP
+}
+
+// The rep's personal design link (?t=…): check it now, so an expired link is
+// said up front, not after the customer has designed the whole building.
+const token = parseToken(window.location.search);
+if (token) {
+  useWebStore.getState().setLink(token, 'checking');
+  void checkLink(token).then((status) => useWebStore.getState().setLink(token, status));
+}
 
 // Design → 3D (and 3D drags → design).
 installSync();

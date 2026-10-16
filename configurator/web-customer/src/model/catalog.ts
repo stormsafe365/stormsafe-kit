@@ -118,8 +118,9 @@ export const windowType = (key: string | undefined) => WINDOWS.find((t) => t.key
 /** Impact areas: the only walk door / windows allowed (roll-up doors are already certified). */
 export const IMPACT_WALK_DOOR = 'hiwind';
 export const IMPACT_WINDOW_FOR = (key: string | undefined): string => (/3036$/.test(key ?? '') ? 'hi3036' : 'hi');
-/** The plain window of the same size (when an impact area no longer applies). */
-export const STANDARD_WINDOW_FOR = (key: string | undefined): string => (/3036$/.test(key ?? '') ? 'w3036' : 'std');
+/** The plain window of the same size (when an impact area no longer applies), in the frame color the customer had. */
+export const STANDARD_WINDOW_FOR = (key: string | undefined, black = false): string =>
+  /3036$/.test(key ?? '') ? (black ? 'b3036' : 'w3036') : black ? 'b3030' : 'std';
 
 /** Standard window sill: 4′2″ (50″). */
 export const WINDOW_SILL_FT = 50 / 12;

@@ -42,9 +42,7 @@ import {
 } from './design';
 import {
   COMBO_MIN_PART,
-  heightOptions,
-  isWideSpan,
-  LENGTH_MAX,
+  heightOptions,  LENGTH_MAX,
   LENGTH_MIN,
   leanToConnH,
   leanToHost,
@@ -120,7 +118,7 @@ function normalizeParts<T extends WebOpening | WebLeanToOpening>(o: T, impact: b
     const shown = valid(o.style) ? o.style : null;
     let pick = valid(o.chosen) ? o.chosen : (shown ?? 'std');
     // changed while the impact window was showing (e.g. a size): that change is the new pick
-    if (o.chosen && shown && shown !== pick && shown !== IMPACT_WINDOW_FOR(pick)) pick = windowType(shown)?.impact ? STANDARD_WINDOW_FOR(shown) : shown;
+    if (o.chosen && shown && shown !== pick && shown !== IMPACT_WINDOW_FOR(pick)) pick = windowType(shown)?.impact ? STANDARD_WINDOW_FOR(shown, !!windowType(pick)?.black) : shown;
     let style = pick;
     if (impact && !windowType(style)?.impact) style = IMPACT_WINDOW_FOR(style);
     if (impact) out.chosen = pick;
@@ -196,7 +194,7 @@ export function normalizeDesign(input: WebDesign, impact: boolean): WebDesign {
     insulation: out.roofStyle === 'Vertical' ? oneOf(u.insulation, ['none', 'roof', 'roofWalls'] as const, 'none') : 'none',
     frame12: u.frame12 === true,
     oc4: u.oc4 === true,
-    panels26: u.panels26 === true && !isWideSpan(out.width), // wide span already has them
+    panels26: u.panels26 === true, // kept through a wide-span width (included there; spec.ts does not list it)
     colorScrews: u.colorScrews === true,
     openers: u.openers === true,
   };

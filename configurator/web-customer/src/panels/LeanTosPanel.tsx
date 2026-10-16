@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore } from '../store';
-import { IMPACT_WALK_DOOR, LEANTO_WIDTHS, WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
+import { LEANTO_WIDTHS, WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
 import {
   LEANTO_END_LABEL,
   LEANTO_SIDE_LABEL,
@@ -51,7 +51,7 @@ export function newLeanTo(d: WebDesign, side: LeanToSide): WebLeanTo {
   };
 }
 
-function newLeanToOpening(d: WebDesign, lt: WebLeanTo, kind: OpeningKind, impact: boolean): WebLeanToOpening | null {
+function newLeanToOpening(d: WebDesign, lt: WebLeanTo, kind: OpeningKind): WebLeanToOpening | null {
   const used = new Set([...d.openings.map((o) => o.id), ...d.leanTos.flatMap((l) => l.openings.map((o) => o.id))]);
   const walls = leanToOpeningWalls(lt);
   for (const wall of walls) {
@@ -70,13 +70,13 @@ function newLeanToOpening(d: WebDesign, lt: WebLeanTo, kind: OpeningKind, impact
       if (lt.lowLeg < 7) continue;
       w = WALK_DOOR_W_FT;
       h = WALK_DOOR_H_FT;
-      extra.style = impact ? IMPACT_WALK_DOOR : 'std';
+      extra.style = 'std'; // an impact area shows the rated door (normalize) and gives this back after
     } else if (kind === 'window') {
       if (lt.lowLeg < 7) continue;
       w = 2.5;
       h = 2.5;
       sill = WINDOW_SILL_FT;
-      extra.style = impact ? 'hi' : 'std';
+      extra.style = 'std';
     } else {
       w = Math.min(4, run - 2);
       h = Math.max(1, Math.min(6, lt.lowLeg - 1));
@@ -129,7 +129,7 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
 
   const addPart = (kind: OpeningKind) => {
     if (lt.openings.length >= MAX_LEANTO_OPENINGS) return setAddMsg(`A lean-to holds up to ${MAX_LEANTO_OPENINGS} doors and windows here.`);
-    const o = newLeanToOpening(d, lt, kind, impact);
+    const o = newLeanToOpening(d, lt, kind);
     if (!o) return setAddMsg(`No room for a ${KIND_LABEL[kind].toLowerCase()} on this lean-to’s closed walls${kind === 'walk' || kind === 'window' ? ' (needs a 7′ or taller low leg)' : ''}.`);
     setAddMsg(null);
     edit((l) => void l.openings.push(o));

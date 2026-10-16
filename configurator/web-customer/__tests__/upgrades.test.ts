@@ -99,14 +99,28 @@ describe('impact area: the customer keeps their own door / window pick', () => {
     a.openings[0].style = 'hi3036'; // the customer picks the taller impact window
     const b = settle(a, ctxPB).design;
     expect(b.openings[0].style).toBe('hi3036');
-    expect(settle(b, ctxNone).design.openings[0].style).toBe('w3036');
+    expect(settle(b, ctxNone).design.openings[0].style).toBe('b3036'); // the black frame is kept
+  });
+  it('a door / window added inside an impact area goes back to the plain one after', async () => {
+    const { settle } = await import('../src/store');
+    const d = cloneDesign(DEFAULT_DESIGN);
+    // the panels add new parts as 'std'; the impact area shows the rated ones
+    d.openings = [
+      { id: 'o1', kind: 'walk', wall: 'left', w: 3, h: 80 / 12, sill: 0, pos: 6, style: 'std' },
+      { id: 'o2', kind: 'window', wall: 'left', w: 2.5, h: 2.5, sill: 50 / 12, pos: 14, style: 'std' },
+    ];
+    const a = settle(d, ctxPB).design;
+    expect(a.openings.map((o) => o.style)).toEqual(['hiwind', 'hi']);
+    expect(settle(a, ctxNone).design.openings.map((o) => o.style)).toEqual(['std', 'std']);
   });
   it('wide span: 26-gauge panels are standard, not an upgrade', () => {
     const d = all();
     d.width = 40;
     const n = normalizeDesign(d, false);
-    expect(n.upgrades.panels26).toBe(false);
+    expect(n.upgrades.panels26).toBe(true); // kept, in case the width goes back below wide span
     expect(upgradeLines(n)).not.toContain('26-gauge wall panels');
+    d.width = 24;
+    expect(upgradeLines(normalizeDesign(d, false))).toContain('26-gauge wall panels');
     expect(designToConfig(n, ctx).sheetingGauge).toBe('26-gauge');
   });
 });

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore } from '../store';
-import { IMPACT_WALK_DOOR, WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
+import { WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
 import { WALL_LABEL, type OpeningKind, type WebDesign, type WebOpening, type WebWall } from '../model/design';
 import { nextFreeId } from '../model/normalize';
 import { CUSTOMER_REF, fitMainPos, freeMainPos, mainSpotOk } from '../model/positions';
@@ -45,12 +45,12 @@ export function newOpening(d: WebDesign, kind: OpeningKind, impact: boolean): We
     } else if (kind === 'walk') {
       w = WALK_DOOR_W_FT;
       h = WALK_DOOR_H_FT;
-      extra.style = impact ? IMPACT_WALK_DOOR : 'std';
+      extra.style = 'std'; // an impact area shows the rated door (normalize) and gives this back after
     } else if (kind === 'window') {
       w = 2.5;
       h = 2.5;
       sill = WINDOW_SILL_FT;
-      extra.style = impact ? 'hi' : 'std';
+      extra.style = 'std';
     } else {
       w = 4;
       h = Math.min(7, d.height - 1);

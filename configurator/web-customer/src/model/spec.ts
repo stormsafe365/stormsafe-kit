@@ -24,7 +24,7 @@ import {
   type WebOpening,
 } from './design';
 import { PROGRAM_REF } from './positions';
-import { activeWraps, leanToIsEave, leanToOpeningWalls, pitchRise, wallTakesOpenings, WRAP_SIDES } from './rules';
+import { activeWraps, isWideSpan, leanToIsEave, leanToOpeningWalls, pitchRise, wallTakesOpenings, WRAP_SIDES } from './rules';
 
 export interface SpecContext {
   zip: string | null;
@@ -83,7 +83,7 @@ export function upgradeLines(d: WebDesign): string[] {
   if (u.insulation === 'roofWalls') out.push('Insulation: roof and walls');
   if (u.frame12) out.push('12-gauge frame');
   if (u.oc4) out.push("Legs and roof trusses every 4' (4' on center)");
-  if (u.panels26) out.push('26-gauge wall panels');
+  if (u.panels26 && !isWideSpan(d.width)) out.push('26-gauge wall panels'); // wide span: standard
   if (u.colorScrews) out.push('Color-matched screws');
   if (u.openers) out.push('Electric openers on the roll-up doors');
   return out;

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore } from '../store';
 import { WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
@@ -6,9 +5,9 @@ import { WALL_LABEL, type OpeningKind, type WebDesign, type WebOpening, type Web
 import { nextFreeId } from '../model/normalize';
 import { CUSTOMER_REF, fitMainPos, freeMainPos, mainSpotOk } from '../model/positions';
 import { isEave, openingWalls, rollupFits, rollupSizes, wallLength, walkDoorFitsHeight, windowFitsHeight } from '../model/rules';
-import { KIND_LABEL, PartEditor } from './PartEditor';
-import { cameraApi } from '../cameraFit';
+import { PartEditor } from './PartEditor';
 import { Note } from './ui';
+import { AddParts } from './AddParts';
 
 const PREFER: Record<OpeningKind, WebWall[]> = {
   rollup: ['front', 'partition', 'back', 'left', 'right'],
@@ -68,20 +67,7 @@ export function OpeningsPanel() {
   const impact = useWebStore((s) => s.impact);
   const update = useWebStore((s) => s.update);
   const selectedId = useEditorStore((s) => s.selectedOpeningId);
-  const [addMsg, setAddMsg] = useState<string | null>(null);
   const walls = openingWalls(d);
-
-  const add = (kind: OpeningKind) => {
-    const o = newOpening(d, kind, impact);
-    if (!o) {
-      setAddMsg(walls.length ? `No room for another ${KIND_LABEL[kind].toLowerCase()} on the closed walls.` : 'Close a wall first (Walls tab).');
-      return;
-    }
-    setAddMsg(null);
-    update((x) => void x.openings.push(o));
-    // Turn the model to the wall it went on (the divider wall is seen through the open carport end).
-    setTimeout(() => cameraApi.fit(o.wall === 'partition' ? 'front' : o.wall), 60);
-  };
 
   /** Apply a change to one opening if it still fits; returns a message when it doesn't. */
   const change = (id: string, edit: (o: WebOpening, d: WebDesign) => void): string | null => {
@@ -109,16 +95,8 @@ export function OpeningsPanel() {
 
   return (
     <div className="panel-body">
-      <div className="add-row" role="group" aria-label="Add a door or window">
-        {(['rollup', 'walk', 'window', 'frame'] as const).map((k) => (
-          <button key={k} type="button" className="add-btn" onClick={() => add(k)} disabled={!walls.length}>
-            + {KIND_LABEL[k]}
-          </button>
-        ))}
-      </div>
+      <AddParts />
       {impact && <Note tone="warn">Your area uses impact-rated walk-in doors and windows, so those are the ones offered here. Roll-up doors stay as they are.</Note>}
-      {addMsg && <Note tone="warn">{addMsg}</Note>}
-      {!walls.length && <Note>Doors and windows go on closed walls — this building has none yet.</Note>}
       {d.openings.length === 0 && walls.length > 0 && <p className="empty">No doors or windows yet. Add one above, then drag it on the model or type its position.</p>}
       {d.openings.map((o, i) => {
         const face = wallLength(d, o.wall);

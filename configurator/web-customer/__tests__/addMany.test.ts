@@ -29,7 +29,7 @@ describe('add several at once', () => {
   it('a door already there is never shrunk by adding another: that count is not offered, and the reason is given', () => {
     const d = bare({ width: 30, height: 10, openings: [door('o1', 'front', 1, 10, 10)] });
     expect(maxQty(d, 'front', 'rollup', 8, 8)).toBe(0); // the 10′ tall door would have to become 9′
-    expect(whyNoMore(d, 'front', 'rollup', 8, 8, 1)).toMatch(/already on this wall/);
+    expect(whyNoMore(d, 'front', 'rollup', 8, 8, 1, 'front end')).toMatch(/already on the front end/);
     d.openings[0].h = 9;
     expect(maxQty(d, 'front', 'rollup', 8, 8)).toBe(2);
   });
@@ -37,6 +37,13 @@ describe('add several at once', () => {
     const d = cloneDesign(DEFAULT_DESIGN); // the starting design has a 10×8 roll-up on the front end
     d.height = 11;
     expect(maxQty(d, 'front', 'rollup', 10, 8)).toBe(0);
+    // no room anyway: the height rule is not blamed (a lower door would not help)
+    expect(whyNoMore(d, 'front', 'rollup', 10, 8, 1)).toBe(null);
+  });
+  it('6′ walls: never "pick 5′"; says how tall the walls must be', () => {
+    const d = bare({ width: 24, height: 6 });
+    expect(whyNoMore(d, 'front', 'rollup', 8, 6, 2, 'front end')).toMatch(/at least 7′ tall/);
+    expect(whyNoMore(d, 'front', 'rollup', 8, 6, 2, 'front end')).not.toMatch(/5′/);
   });
   it('windows along a 30′ side: as many as keep 1′ apart', () => {
     const d = bare({ length: 30 });

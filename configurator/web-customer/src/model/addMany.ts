@@ -71,16 +71,30 @@ export function maxQty(d: D, wall: WebWall, kind: WebOpening['kind'], w: number,
   return best;
 }
 
-/** Why more doors of this size cannot go on the wall, in the customer's words (null = it is just space). */
-export function whyNoMore(d: D, wall: WebWall, kind: WebOpening['kind'], w: number, h: number, wantQty: number): string | null {
+/**
+ * Why more doors of this size cannot go on the wall, in the customer's words.
+ * null = it is just space (the plain "no room" message). A height reason is only
+ * given when the doors would otherwise fit - so its advice actually helps.
+ */
+export function whyNoMore(d: D, wall: WebWall, kind: WebOpening['kind'], w: number, h: number, wantQty: number, wallLabel = 'wall'): string | null {
   if (MAX_OPENINGS - d.openings.length < wantQty) return `A design can hold up to ${MAX_OPENINGS} doors and windows.`;
   if (kind !== 'rollup') return null;
+  if (!spreadPositions(d, wall, w, wantQty)) return null; // no room anyway: a lower door would not help
   const there = d.openings.filter((o) => o.wall === wall && o.kind === 'rollup');
   const n = there.length + wantQty;
+  const maxH = d.height - 1; // the program's rule for 2+ roll-ups on an end / divider wall
+  const lowest = 6; // the smallest roll-up height (catalog)
+  const taller = maxH < lowest ? `make the walls at least ${lowest + 1}′ tall (Size step)` : 'make the walls taller (Size step)';
   if (n > 1 && !rollupFits(d, wall, w, h, n)) {
-    return `With 2 or more roll-up doors on an end wall, each can be up to ${d.height - 1}′ tall on this building. Pick ${d.height - 1}′ or less, or make the walls taller (Size step).`;
+    return maxH < lowest
+      ? `Two or more roll-up doors on the ${wallLabel} need walls at least ${lowest + 1}′ tall: ${taller}.`
+      : `With 2 or more roll-up doors on the ${wallLabel}, each can be up to ${maxH}′ tall on this building. Pick ${maxH}′ or less, or ${taller}.`;
   }
   const tall = there.find((o) => !rollupFits(d, wall, o.w, o.h, n));
-  if (tall) return `The ${tall.h}′ tall roll-up door already on this wall would have to be ${d.height - 1}′ or less with another door here. Lower it first (below), or make the walls taller (Size step).`;
+  if (tall) {
+    return maxH < lowest
+      ? `Another roll-up door on the ${wallLabel} needs walls at least ${lowest + 1}′ tall: ${taller}.`
+      : `The ${tall.h}′ tall roll-up door already on the ${wallLabel} would have to be ${maxH}′ or less with another door there. Lower it first (below), or ${taller}.`;
+  }
   return null;
 }

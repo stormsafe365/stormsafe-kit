@@ -35,7 +35,12 @@ function partSize(d: WebDesign, kind: OpeningKind, wall: WebWall, count: number,
   if (kind === 'window') return { w: 2.5, h: 2.5 };
   if (kind === 'frame') return { w: 4, h: Math.min(7, d.height - 1) };
   const s = rollupSizes(d, wall, count);
-  return { w: pick(s.widths, rw), h: pick(s.heights, rh) };
+  return { w: pick(fitWidths(d, wall, s.widths), rw), h: pick(s.heights, rh) };
+}
+
+/** Roll-up widths that physically fit on the wall now (e.g. a Garage + Carport side's garage part). */
+function fitWidths<T extends number>(d: WebDesign, wall: WebWall, widths: readonly T[]): T[] {
+  return widths.filter((x) => spreadPositions(d, wall, x, 1) !== null);
 }
 
 export function AddParts() {
@@ -71,17 +76,23 @@ export function AddParts() {
   const most = curWall && first.w && first.h && kindOk(kind) ? maxQty(d, curWall, kind, first.w, first.h) : 0;
   const q = Math.min(qty, Math.max(1, most));
   // sizes for the count that will really be added (2+ on an end wall: 1′ shorter than the walls)
-  const sizes = useMemo(() => (curWall ? rollupSizes(d, curWall, rollupsThere + q) : { widths: [], heights: [] }), [d, curWall, rollupsThere, q]);
+  const sizes = useMemo(() => {
+    if (!curWall) return { widths: [] as number[], heights: [] as number[] };
+    const s = rollupSizes(d, curWall, rollupsThere + q);
+    return { widths: fitWidths(d, curWall, s.widths) as number[], heights: s.heights as number[] };
+  }, [d, curWall, rollupsThere, q]);
   const { w, h } = curWall ? partSize(d, kind, curWall, rollupsThere + q, rw, rh) : first;
   const qtyOptions = Array.from({ length: Math.max(1, most) }, (_, i) => ({ value: i + 1, label: String(i + 1) }));
   // why the count stops where it does (height rule / a tall door already there / the 40 limit)
-  const why = curWall && kindOk(kind) ? whyNoMore(d, curWall, kind, w, h, Math.max(most, 1) + (most ? 1 : 0)) : null;
+  const wallName = curWall ? WALL_LABEL[curWall].toLowerCase() : 'wall';
+  const why = curWall && kindOk(kind) && w && h ? whyNoMore(d, curWall, kind, w, h, Math.max(most, 1) + (most ? 1 : 0), wallName) : null;
   const endWall = kind === 'rollup' && curWall && !isEave(curWall);
 
   const add = () => {
     if (!curWall || !most) return;
     const spots = spreadPositions(d, curWall, w, q);
     if (!spots) return;
+    setWall(curWall); // keep this wall picked (it may be full now; the form does not jump to another)
     update((x) => {
       const used = new Set([...x.openings.map((o) => o.id), ...x.leanTos.flatMap((lt) => lt.openings.map((o) => o.id))]);
       for (const pos of spots) {
@@ -106,7 +117,8 @@ export function AddParts() {
   let blocked: string | null = null;
   if (!kindOk(kind)) blocked = kind === 'walk' ? 'Walk-in doors need walls at least 7′ tall (Size step).' : 'Windows need walls at least 7′ tall (Size step).';
   else if (!wallChoices.length) blocked = kind === 'rollup' ? 'Roll-up doors need taller walls: at least 8′ on the sides, 6′ on the ends (Size step).' : 'No wall can take this one.';
-  else if (!most) blocked = why ?? `No room for another ${kind === 'rollup' ? `${ft(w)} wide door` : KIND_LABEL[kind].toLowerCase()} on the ${WALL_LABEL[curWall!].toLowerCase()}. Remove or move one there, or pick another wall.`;
+  else if (kind === 'rollup' && !w) blocked = `No roll-up door fits on the ${wallName} right now. Pick another wall, or remove or move a door there.`;
+  else if (!most) blocked = why ?? `No room for another ${kind === 'rollup' ? `${ft(w)} wide door` : KIND_LABEL[kind].toLowerCase()} on the ${wallName}. Remove or move one there, or pick another wall.`;
 
   return (
     <div className="addparts" role="group" aria-label="Add doors and windows">
@@ -135,24 +147,24 @@ export function AddParts() {
           />
           {kind === 'rollup' ? (
             <>
-              <Select<number> label="Width" value={w} options={sizes.widths.map((x) => ({ value: x, label: ft(x) }))} onChange={(x) => setRw(x)} />
-              <Select<number> label="Height" value={h} options={sizes.heights.map((x) => ({ value: x, label: ft(x) }))} onChange={(x) => setRh(x)} />
+              <Select<number> label="Width" value={w} options={sizes.widths.map((x) => ({ value: x, label: ft(x) }))} onChange={(x) => { setRw(x); setWall(curWall); }} />
+              <Select<number> label="Height" value={h} options={sizes.heights.map((x) => ({ value: x, label: ft(x) }))} onChange={(x) => { setRh(x); setWall(curWall); }} />
             </>
           ) : null}
-          <Select<number> label="How many" value={q} options={qtyOptions} onChange={(x) => setQty(x)} />
+          <Select<number> label="How many" value={q} options={qtyOptions} onChange={(x) => { setQty(x); setWall(curWall); }} />
         </div>
       ) : null}
       {blocked ? (
         addedNote ? null : <Note tone="warn">{blocked}</Note>
       ) : (
         <>
-          {why ? <p className="field-hint">{why}</p> : endWall && rollupsThere + q > 1 ? <p className="field-hint">With 2 or more roll-up doors on an end wall, each can be up to {ft(d.height - 1)} tall on this building.</p> : null}
+          {why ? <p className="field-hint">{why}</p> : endWall && rollupsThere + q > 1 ? <p className="field-hint">With 2 or more roll-up doors on the {wallName}, each can be up to {ft(d.height - 1)} tall on this building.</p> : null}
           <button type="button" className="btn-primary btn-add" onClick={add}>
             Add {q} {plural(kind, q)}
           </button>
         </>
       )}
-      {addedNote ? <p className="field-hint" role="status">{addedNote}{blocked ? ' That wall is full now; pick another wall to add more.' : ''}</p> : null}
+      {addedNote ? <p className="field-hint" role="status">{addedNote}{blocked ? (why ? ` ${why}` : ' No room for more there; pick another wall to add more.') : ''}</p> : null}
     </div>
   );
 }

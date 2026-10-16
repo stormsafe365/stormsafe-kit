@@ -47,6 +47,8 @@ describe('contact checks', () => {
     expect(checkContact(c({ name: 'Bob "Q" Smith', phone: '5615550100' })).name).toBeTruthy();
     expect(checkContact(c({ name: 'Bob', email: 'a@b.co?cc=x%40evil.tld' })).email).toBeTruthy();
     expect(checkContact(c({ name: "Mary O'Brien & Tom", email: 'Mary.OBrien+steel@Sub.Example.co' }))).toEqual({});
+    expect(checkContact(c({ name: 'Bob', phone: '5615550100', notes: 'gate code <1234>' })).notes).toBeTruthy();
+    expect(FIELD_ERRORS.bad_notes.field).toBe('notes');
   });
   it('error texts never mention the CRM and always give the phone number', () => {
     for (const code of ['link_expired', 'link_invalid', 'too_many', 'server', 'offline', 'bad_name']) {
@@ -132,19 +134,22 @@ describe('server: /api/submit', () => {
     const r = await handleSubmit(post(goodBody()), CFG, db.f);
     expect(r.status).toBe(200);
     expect(await r.json()).toEqual({ ok: true });
-    expect(db.calls).toHaveLength(1);
-    expect(db.calls[0].url).toBe('https://db.example.supabase.co/rest/v1/rpc/submit_design');
-    expect(db.calls[0].init.headers.apikey).toBe(CFG.key);
-    expect(db.calls[0].body).toMatchObject({ p_token: TOK, p_name: 'Jane', p_phone: '5615550100', p_zip: '33401', p_spec: 'spec', p_image: 'data:image/jpeg;base64,QUJD' });
+    // first the link check (small), then the design
+    expect(db.calls).toHaveLength(2);
+    expect(db.calls[0].url).toBe('https://db.example.supabase.co/rest/v1/rpc/design_link_status');
+    expect(db.calls[0].body).toEqual({ p_token: TOK });
+    expect(db.calls[1].url).toBe('https://db.example.supabase.co/rest/v1/rpc/submit_design');
+    expect(db.calls[1].init.headers.apikey).toBe(CFG.key);
+    expect(db.calls[1].body).toMatchObject({ p_token: TOK, p_name: 'Jane', p_phone: '5615550100', p_zip: '33401', p_spec: 'spec', p_image: 'data:image/jpeg;base64,QUJD' });
     expect(r.headers.get('Cache-Control')).toBe('no-store');
   });
   it('passes the database refusals through as codes', async () => {
     for (const [m, status] of [['link_expired', 403], ['link_invalid', 403], ['too_many', 429], ['link_full', 403], ['busy', 429], ['bad_phone', 400], ['bad_image', 400]]) {
-      const r = await handleSubmit(post(goodBody()), CFG, fakeDb(() => rpcErr(m)).f);
+      const r = await handleSubmit(post(goodBody()), CFG, fakeDb((u) => (u.endsWith('design_link_status') ? rpcOk('ok') : rpcErr(m))).f);
       expect(r.status).toBe(status);
       expect(await r.json()).toEqual({ ok: false, error: m });
     }
-    const r = await handleSubmit(post(goodBody()), CFG, fakeDb(() => rpcErr('relation "x" does not exist')).f);
+    const r = await handleSubmit(post(goodBody()), CFG, fakeDb((u) => (u.endsWith('design_link_status') ? rpcOk('ok') : rpcErr('relation "x" does not exist'))).f);
     expect(await r.json()).toEqual({ ok: false, error: 'server' }); // database internals never reach the page
   });
   it('never calls the database for junk', async () => {
@@ -162,6 +167,23 @@ describe('server: /api/submit', () => {
       [new Request(`${SITE}/api/submit`, { method: 'POST', headers: { Origin: SITE }, duplex: 'half', body: new ReadableStream({ start(ctl) { for (let i = 0; i < 4; i++) ctl.enqueue(new Uint8Array(500_000)); ctl.close(); } }) }), 413],
     ];
     for (const [req, status] of cases) expect((await handleSubmit(req, CFG, db.f)).status).toBe(status);
+    expect(db.calls).toHaveLength(0);
+  });
+  it('an unknown / expired link never gets the design sent to the database', async () => {
+    for (const [st, code] of [['invalid', 'link_invalid'], ['expired', 'link_expired']]) {
+      const db = fakeDb(() => rpcOk(st));
+      const r = await handleSubmit(post(goodBody()), CFG, db.f);
+      expect(r.status).toBe(403);
+      expect(await r.json()).toEqual({ ok: false, error: code });
+      expect(db.calls.map((c) => c.url.split('/').pop())).toEqual(['design_link_status']);
+    }
+  });
+  it('oversized design / odd picture stopped before the database', async () => {
+    const db = fakeDb(() => rpcOk('ok'));
+    const big = { ...goodBody(), design: { schema: 'ss-web-design', pad: 'x'.repeat(262200) } };
+    expect((await handleSubmit(post(big), CFG, db.f)).status).toBe(400);
+    expect((await handleSubmit(post({ ...goodBody(), image: 'data:text/html;base64,PGI+' }), CFG, db.f)).status).toBe(400);
+    expect((await handleSubmit(post({ ...goodBody(), image: 'data:image/jpeg;base64,' + 'A'.repeat(900001) }), CFG, db.f)).status).toBe(400);
     expect(db.calls).toHaveLength(0);
   });
   it('honeypot: pretends to work, stores nothing', async () => {

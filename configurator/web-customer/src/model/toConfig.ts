@@ -13,7 +13,7 @@ import { dimQ } from '@/three/dimLabels';
 import { colorByKey, FIXTURE_BLACK, rollupColor, walkDoorType, windowType } from './catalog';
 import type { SideWall, WebContext, WebDesign, WebLeanToOpening, WebOpening } from './design';
 import { posToOffset3D, SIDE_3D } from './positions';
-import { activeWraps, framingGauge, leanToConnH, leanToIsEave, leanToOpeningWalls, pitchRise, trussSpacingFt, wallTakesOpenings, WRAP_SIDES } from './rules';
+import { activeWraps, framingGauge, isWideSpan, leanToConnH, leanToIsEave, leanToOpeningWalls, pitchRise, trussSpacingFt, wallTakesOpenings, WRAP_SIDES } from './rules';
 
 const KIND_3D: Record<WebOpening['kind'], Exclude<OpeningType, 'garageDoor'>> = { rollup: 'rollUpDoor', walk: 'walkDoor', window: 'window', frame: 'frameOut' };
 
@@ -129,7 +129,7 @@ export function designToConfig(d: WebDesign, ctx: Pick<WebContext, 'county'>): B
     eavePanelFt,
     // a 12-gauge frame / 26-gauge wall panels the customer asked for (Upgrades) show in the drawing too
     framingGauge: d.upgrades?.frame12 ? '12-gauge' : framingGauge(d, ctx.county),
-    sheetingGauge: d.upgrades?.panels26 ? '26-gauge' : '29-gauge',
+    sheetingGauge: d.upgrades?.panels26 || isWideSpan(d.width) ? '26-gauge' : '29-gauge',
     panelOrientation: wide ? 'Vertical' : d.panels,
     roofOrientation: d.roofStyle === 'Vertical' ? 'Vertical' : 'Horizontal',
     roofStyle: d.roofStyle,

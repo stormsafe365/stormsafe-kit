@@ -53,6 +53,18 @@ const PATCHES: Array<{ file: string; find: string; replace: string }> = [
     find: 'const hit = trusses.some((p) => p >= L - clear && p <= R + clear);',
     replace: 'const hit = false && trusses.some((p) => p >= L - clear && p <= R + clear);',
   },
+  // Customer page = the brand's dark AZUL (#081b24), not the builder's navy (owner's brand rule; the
+  // CRM / desktop builder keeps its own look). Background + fog, and a ground a touch lighter.
+  {
+    file: 'src/three/enhanced/look.ts',
+    find: "  background: '#08121d',",
+    replace: "  background: '#081b24',",
+  },
+  {
+    file: 'src/three/enhanced/look.ts',
+    find: "  ground: '#101c2a',",
+    replace: "  ground: '#0c2430',",
+  },
 ];
 
 function customerPatches(): Plugin {

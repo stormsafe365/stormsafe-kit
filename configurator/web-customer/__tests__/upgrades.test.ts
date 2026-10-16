@@ -71,3 +71,42 @@ describe('upgrades: drawing + spec', () => {
     expect(s).not.toMatch(/\$|price|cost|mph|CCI|Carolina|CRM/i);
   });
 });
+
+describe('impact area: the customer keeps their own door / window pick', () => {
+  const ctxPB = { zip: '33401', county: 'Palm Beach', impactParam: null };
+  const ctxNone = { zip: null, county: null, impactParam: null };
+  it('impact shows the rated ones; leaving the impact area puts the picks back', async () => {
+    const { settle } = await import('../src/store');
+    const d = cloneDesign(DEFAULT_DESIGN);
+    d.openings = [
+      { id: 'o1', kind: 'walk', wall: 'left', w: 3, h: 80 / 12, sill: 0, pos: 6, style: '6panel_blk' },
+      { id: 'o2', kind: 'window', wall: 'left', w: 2.5, h: 3, sill: 50 / 12, pos: 14, style: 'b3036' },
+    ];
+    const inImpact = settle(d, ctxPB);
+    expect(inImpact.impact).toBe(true);
+    expect(inImpact.design.openings.map((o) => o.style)).toEqual(['hiwind', 'hi3036']);
+    const back = settle(inImpact.design, ctxNone);
+    expect(back.impact).toBe(false);
+    expect(back.design.openings.map((o) => o.style)).toEqual(['6panel_blk', 'b3036']);
+    expect(back.design.openings.every((o) => o.chosen === undefined)).toBe(true);
+  });
+  it('a size changed while impact was showing sticks', async () => {
+    const { settle } = await import('../src/store');
+    const d = cloneDesign(DEFAULT_DESIGN);
+    d.openings = [{ id: 'o2', kind: 'window', wall: 'left', w: 2.5, h: 2.5, sill: 50 / 12, pos: 14, style: 'b3030' }];
+    const a = settle(d, ctxPB).design;
+    expect(a.openings[0].style).toBe('hi');
+    a.openings[0].style = 'hi3036'; // the customer picks the taller impact window
+    const b = settle(a, ctxPB).design;
+    expect(b.openings[0].style).toBe('hi3036');
+    expect(settle(b, ctxNone).design.openings[0].style).toBe('w3036');
+  });
+  it('wide span: 26-gauge panels are standard, not an upgrade', () => {
+    const d = all();
+    d.width = 40;
+    const n = normalizeDesign(d, false);
+    expect(n.upgrades.panels26).toBe(false);
+    expect(upgradeLines(n)).not.toContain('26-gauge wall panels');
+    expect(designToConfig(n, ctx).sheetingGauge).toBe('26-gauge');
+  });
+});

@@ -8,7 +8,7 @@ import { currentState, useWebStore, type TabKey } from './store';
 import { checkState } from './model/validate';
 
 const KEY = (token: string | null) => `ss-design-draft:${token || 'no-link'}`;
-const MAX_AGE_MS = 1000 * 60 * 60 * 24 * 60; // 60 days
+const MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 const TABS: TabKey[] = ['size', 'walls', 'doors', 'leantos', 'upgrades', 'colors', 'send'];
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.slice(0, max) : '');
 
@@ -44,7 +44,8 @@ export function keepDraft(token: string | null): () => void {
     timer = setTimeout(() => {
       try {
         const { contact, sentAt, tab } = useWebStore.getState();
-        const keep = { name: contact.name, phone: contact.phone, email: contact.email, zip: contact.zip, notes: contact.notes };
+        // once the design is sent, the contact details are not kept on the device (only the ZIP for the county)
+        const keep = sentAt ? { zip: contact.zip } : { name: contact.name, phone: contact.phone, email: contact.email, zip: contact.zip, notes: contact.notes };
         window.localStorage.setItem(KEY(token), JSON.stringify({ t: Date.now(), state: currentState(), contact: keep, sentAt, tab }));
       } catch {
         /* storage blocked or full: no draft */

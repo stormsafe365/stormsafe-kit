@@ -9,6 +9,7 @@ import {
   COLORS,
   IMPACT_WALK_DOOR,
   IMPACT_WINDOW_FOR,
+  STANDARD_WINDOW_FOR,
   isPrintKey,
   colorByKey,
   LEANTO_LOW_LEGS,
@@ -42,6 +43,7 @@ import {
 import {
   COMBO_MIN_PART,
   heightOptions,
+  isWideSpan,
   LENGTH_MAX,
   LENGTH_MIN,
   leanToConnH,
@@ -92,6 +94,7 @@ function fitRollup(w: number, h: number, fits: (w: number, h: number) => boolean
 function normalizeParts<T extends WebOpening | WebLeanToOpening>(o: T, impact: boolean, maxW: number, maxH: number, rollFits: (w: number, h: number) => boolean): T {
   const out = { ...o };
   delete out.style;
+  delete out.chosen;
   delete out.color;
   delete out.frame;
   if (o.kind === 'rollup') {
@@ -104,11 +107,23 @@ function normalizeParts<T extends WebOpening | WebLeanToOpening>(o: T, impact: b
     out.w = WALK_DOOR_W_FT;
     out.h = WALK_DOOR_H_FT;
     out.sill = 0;
-    const style = WALK_DOORS.some((t) => t.key === o.style) ? (o.style as string) : 'std';
-    out.style = impact ? IMPACT_WALK_DOOR : style;
+    const valid = (k: unknown): k is string => typeof k === 'string' && WALK_DOORS.some((t) => t.key === k);
+    // the customer's own pick: remembered while an impact area shows the rated door, restored after
+    const shown = valid(o.style) ? o.style : null;
+    let pick = valid(o.chosen) ? o.chosen : (shown ?? 'std');
+    // changed while the impact door was showing: that change is the new pick
+    if (o.chosen && shown && shown !== IMPACT_WALK_DOOR && shown !== pick) pick = shown;
+    out.style = impact ? IMPACT_WALK_DOOR : pick;
+    if (impact) out.chosen = pick;
   } else if (o.kind === 'window') {
-    let style = WINDOWS.some((t) => t.key === o.style) ? (o.style as string) : 'std';
+    const valid = (k: unknown): k is string => typeof k === 'string' && WINDOWS.some((t) => t.key === k);
+    const shown = valid(o.style) ? o.style : null;
+    let pick = valid(o.chosen) ? o.chosen : (shown ?? 'std');
+    // changed while the impact window was showing (e.g. a size): that change is the new pick
+    if (o.chosen && shown && shown !== pick && shown !== IMPACT_WINDOW_FOR(pick)) pick = windowType(shown)?.impact ? STANDARD_WINDOW_FOR(shown) : shown;
+    let style = pick;
     if (impact && !windowType(style)?.impact) style = IMPACT_WINDOW_FOR(style);
+    if (impact) out.chosen = pick;
     const t = windowType(style)!;
     out.style = style;
     out.w = t.wIn / 12;
@@ -181,7 +196,7 @@ export function normalizeDesign(input: WebDesign, impact: boolean): WebDesign {
     insulation: out.roofStyle === 'Vertical' ? oneOf(u.insulation, ['none', 'roof', 'roofWalls'] as const, 'none') : 'none',
     frame12: u.frame12 === true,
     oc4: u.oc4 === true,
-    panels26: u.panels26 === true,
+    panels26: u.panels26 === true && !isWideSpan(out.width), // wide span already has them
     colorScrews: u.colorScrews === true,
     openers: u.openers === true,
   };

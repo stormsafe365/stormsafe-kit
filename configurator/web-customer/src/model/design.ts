@@ -45,6 +45,11 @@ export interface WebOpening {
   pos: number;
   /** Walk-door type key or window type key (catalog). */
   style?: string;
+  /**
+   * The customer's own walk-door / window pick while an impact area shows the
+   * impact-rated one instead (normalize.ts). Leaving the impact area puts it back.
+   */
+  chosen?: string;
   /** Roll-up door color key. */
   color?: string;
   /** Framed opening: a door-type (floor) or window-type (raised) opening. */
@@ -69,6 +74,8 @@ export interface WebLeanToOpening {
   sill: number;
   pos: number;
   style?: string;
+  /** See WebOpening.chosen. */
+  chosen?: string;
   color?: string;
   frame?: 'door' | 'window';
 }

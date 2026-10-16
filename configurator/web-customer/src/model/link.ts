@@ -49,6 +49,7 @@ export function checkContact(c: Contact): Partial<Record<keyof Contact, string>>
   if (email && (email.length > LIMITS.email || !EMAIL_RE.test(email.toLowerCase()))) e.email = 'Please check your email address.';
   if (zip && !/^\d{5}$/.test(zip)) e.zip = 'Please enter a 5-digit ZIP code.';
   if (c.notes.length > LIMITS.notes) e.notes = `Please keep notes under ${LIMITS.notes} characters.`;
+  else if (/[<>]/.test(c.notes)) e.notes = 'Please leave out the < and > characters in your notes.';
   return e;
 }
 
@@ -58,6 +59,7 @@ export const FIELD_ERRORS: Record<string, { field: keyof Contact; text: string }
   need_contact: { field: 'phone', text: 'Please enter a phone number or an email so your rep can reach you.' },
   bad_phone: { field: 'phone', text: 'Please enter a 10-digit phone number.' },
   bad_email: { field: 'email', text: 'Please check your email address.' },
+  bad_notes: { field: 'notes', text: 'Please leave out the < and > characters in your notes.' },
 };
 
 /** Server error codes (020_design_links.sql) → what the customer reads. */

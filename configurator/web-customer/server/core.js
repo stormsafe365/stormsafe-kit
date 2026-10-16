@@ -7,7 +7,10 @@
 
 export const TOKEN_RE = /^[A-Za-z0-9_-]{20,64}$/;
 export const MAX_BODY = 1_500_000; // bytes: picture (<= 900 KB) + design (<= 256 KB) + spec (<= 12 KB) + contact
-const KNOWN = new Set(['link_invalid', 'link_expired', 'too_many', 'link_full', 'busy', 'bad_name', 'need_contact', 'bad_phone', 'bad_email', 'too_long', 'bad_design', 'bad_image']);
+const KNOWN = new Set(['link_invalid', 'link_expired', 'too_many', 'link_full', 'busy', 'bad_name', 'need_contact', 'bad_phone', 'bad_email', 'bad_notes', 'too_long', 'bad_design', 'bad_image']);
+const IMAGE_RE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
+const MAX_DESIGN_CHARS = 262144;
+const MAX_IMAGE_CHARS = 900000;
 
 const HEADERS = {
   'Content-Type': 'application/json; charset=utf-8',
@@ -107,7 +110,18 @@ export async function handleSubmit(request, cfg, f = fetch) {
   const d = b.design;
   if (!d || typeof d !== 'object' || Array.isArray(d) || d.schema !== 'ss-web-design') return json({ ok: false, error: 'bad_design' }, 400);
   const image = typeof b.image === 'string' && b.image ? b.image : null;
+  // The database checks these too; checking here keeps big junk away from it.
+  if (JSON.stringify(d).length > MAX_DESIGN_CHARS) return json({ ok: false, error: 'bad_design' }, 400);
+  if (image && (image.length > MAX_IMAGE_CHARS || !IMAGE_RE.test(image))) return json({ ok: false, error: 'bad_image' }, 400);
   try {
+    // A link that does not exist / has expired never gets the design sent to the database.
+    const st = await rpc(cfg, 'design_link_status', { p_token: b.t }, f);
+    if (!st.ok) return json({ ok: false, error: 'server' }, 502);
+    const status = await st.json();
+    if (status !== 'ok') {
+      const code = status === 'expired' ? 'link_expired' : 'link_invalid';
+      return json({ ok: false, error: code }, 403);
+    }
     const res = await rpc(
       cfg,
       'submit_design',

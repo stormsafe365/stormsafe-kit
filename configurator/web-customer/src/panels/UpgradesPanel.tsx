@@ -6,7 +6,7 @@
  * already needs shows as already in the design (rules.ts), not as a choice.
  */
 import { useWebStore } from '../store';
-import { framingGauge, trussSpacingFt } from '../model/rules';
+import { framingGauge, isWideSpan, trussSpacingFt } from '../model/rules';
 import { hasRollupDoor } from '../model/normalize';
 import type { Insulation } from '../model/design';
 import { Note, Segmented, Toggle } from './ui';
@@ -18,6 +18,8 @@ export function UpgradesPanel() {
   const u = d.upgrades;
   const frameNeeded = framingGauge(d, county) === '12-gauge';
   const ocNeeded = trussSpacingFt(d, county) === 4;
+  const ocByWidth = d.width > 24;
+  const wide = isWideSpan(d.width); // wide span comes with 26-gauge wall panels (the program's rule)
   const vertical = d.roofStyle === 'Vertical';
   const rollups = hasRollupDoor(d);
   const set = (k: 'frame12' | 'oc4' | 'panels26' | 'colorScrews' | 'openers') => (on: boolean) => update((x) => void (x.upgrades[k] = on));
@@ -45,16 +47,23 @@ export function UpgradesPanel() {
           disabled={frameNeeded}
           onChange={set('frame12')}
         />
-        {frameNeeded ? <p className="field-hint">Your area needs a 12-gauge frame for this building, so it is already in your design.</p> : null}
+        {frameNeeded ? <p className="field-hint">In your area, buildings this size usually get a 12-gauge frame, so it is already in your design. Your rep confirms it.</p> : null}
       </div>
 
       <div className="field">
         <Toggle label="Legs and roof trusses every 4′ (instead of every 5′)" checked={u.oc4 || ocNeeded} disabled={ocNeeded} onChange={set('oc4')} />
-        {ocNeeded ? <p className="field-hint">Your building’s width or your area needs them every 4′, so it is already in your design.</p> : null}
+        {ocNeeded ? (
+          <p className="field-hint">
+            {ocByWidth
+              ? 'Buildings this wide have legs and trusses every 4′, so it is already in your design.'
+              : 'In your area, buildings usually have legs and trusses every 4′, so it is already in your design. Your rep confirms it.'}
+          </p>
+        ) : null}
       </div>
 
       <div className="field">
-        <Toggle label="Thicker 26-gauge wall panels" checked={u.panels26} onChange={set('panels26')} />
+        <Toggle label="Thicker 26-gauge wall panels" checked={u.panels26 || wide} disabled={wide} onChange={set('panels26')} />
+        {wide ? <p className="field-hint">Wide-span buildings come with 26-gauge wall panels.</p> : null}
       </div>
 
       <div className="field">

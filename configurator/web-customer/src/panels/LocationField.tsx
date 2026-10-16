@@ -17,7 +17,7 @@ export function LocationField({ label = 'Where will your building go? (ZIP code)
     ? county
       ? `${county} County, FL`
       : 'We could not find that ZIP code in Florida. Your rep will check your area.'
-    : 'Your ZIP code shows the doors and windows your county requires.';
+    : 'Your ZIP code shows the doors and windows used in your county.';
   return (
     <Field label={label} hint={hint} htmlFor={id}>
       <input

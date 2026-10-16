@@ -9,17 +9,18 @@ import type { OpeningKind, WebLeanToOpening, WebOpening } from '../model/design'
 import { Note, Select, Stepper, Segmented, ft, inch } from './ui';
 
 export const KIND_LABEL: Record<OpeningKind, string> = {
-  rollup: 'Roll-up door',
+  // customer words (walkthroughs 10/16/26: "Roll-up" / "Framed" meant nothing to a first-time buyer)
+  rollup: 'Garage door (roll-up)',
   walk: 'Walk-in door',
   window: 'Window',
-  frame: 'Framed opening',
+  frame: 'Opening (no door)',
 };
 
 export function partTitle(o: WebOpening | WebLeanToOpening): string {
-  if (o.kind === 'rollup') return `Roll-up door ${ft(o.w)} × ${ft(o.h)}`;
+  if (o.kind === 'rollup') return `Garage door ${ft(o.w)} × ${ft(o.h)}`;
   if (o.kind === 'walk') return `Walk-in door ${inch(o.w)} × ${inch(o.h)}`;
   if (o.kind === 'window') return `Window ${inch(o.w)} × ${inch(o.h)}`;
-  return `Framed opening ${ft(o.w)} × ${ft(o.h)}`;
+  return `Opening (no door) ${ft(o.w)} × ${ft(o.h)}`;
 }
 
 export interface PartEditorProps {

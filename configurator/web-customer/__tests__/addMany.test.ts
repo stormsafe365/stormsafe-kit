@@ -1,7 +1,7 @@
 // Quantity when adding doors / windows (owner 10/16/26: Josh tried two 10×10s on the front end).
 import { describe, expect, it } from 'vitest';
 import { cloneDesign, DEFAULT_DESIGN, type WebDesign, type WebOpening } from '../src/model/design';
-import { maxQty, spreadPositions, whyNoMore } from '../src/model/addMany';
+import { maxQty, respaceWithSame, spreadPositions, whyNoMore } from '../src/model/addMany';
 import { mainSpotOk } from '../src/model/positions';
 import { SAMPLE_DESIGN } from './sample';
 
@@ -34,12 +34,25 @@ describe('add several at once', () => {
     d.openings[0].h = 9;
     expect(maxQty(d, 'front', 'rollup', 8, 8)).toBe(2);
   });
-  it('a door already in the middle leaves no room for another 10′ door', () => {
+  it('a door already in the middle: "add another" spreads both out evenly (no dead end)', () => {
     const d = cloneDesign(SAMPLE_DESIGN); // the sample has a 10×8 roll-up in the middle of the front end
     d.height = 11;
+    expect(spreadPositions(d, 'front', 10, 1)).toBe(null); // no free room beside it...
+    expect(maxQty(d, 'front', 'rollup', 10, 8)).toBe(1); // ...but one more fits when both are spread out
+    const r = respaceWithSame(d, 'front', 'rollup', 10, 1)!;
+    expect(r.existing).toEqual(['o1']);
+    expect(r.spots).toHaveLength(2);
+    const after = { ...d, openings: [...d.openings.map((o) => (o.id === 'o1' ? { ...o, pos: r.spots[0] } : o)), door('n1', 'front', r.spots[1], 10, 8)] };
+    for (const o of after.openings.filter((x) => x.wall === 'front')) expect(mainSpotOk(after, o)).toBe(true);
+    expect(maxQty(after, 'front', 'rollup', 10, 8)).toBe(0); // three do not fit on 24′
+  });
+  it('something else on that wall: nothing there is moved by an add', () => {
+    const d = cloneDesign(SAMPLE_DESIGN);
+    d.height = 11;
+    d.openings.push({ id: 'w9', kind: 'walk', wall: 'front', w: 3, h: 80 / 12, sill: 0, pos: 1, style: 'std' });
+    expect(respaceWithSame(d, 'front', 'rollup', 10, 1)).toBe(null);
     expect(maxQty(d, 'front', 'rollup', 10, 8)).toBe(0);
-    // no room anyway: the height rule is not blamed (a lower door would not help)
-    expect(whyNoMore(d, 'front', 'rollup', 10, 8, 1)).toBe(null);
+    expect(whyNoMore(d, 'front', 'rollup', 10, 8, 1)).toBe(null); // just space: the height rule is not blamed
   });
   it('6′ walls: never "pick 5′"; says how tall the walls must be', () => {
     const d = bare({ width: 24, height: 6 });

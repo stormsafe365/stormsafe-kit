@@ -11,6 +11,7 @@ import { ColorsPanel } from './panels/ColorsPanel';
 import { SendPanel } from './panels/SendPanel';
 import { UpgradesPanel } from './panels/UpgradesPanel';
 import { ft } from './panels/ui';
+import { cameraApi } from './cameraFit';
 
 // The steps, in order (owner 10/16/26: building type + size, components, add-ons /
 // upgrades, colors, then the customer's contact + "Send to my steel building rep").
@@ -31,7 +32,39 @@ function useSteps() {
   return token || !FRAMED ? TABS : TABS.filter((t) => t.key !== 'send');
 }
 
-/** Back / Next under each step ("Next: Walls"). */
+/**
+ * What each step is for, in plain words, shown at the top of the step (walkthroughs 10/16/26: "nothing
+ * tells me what to do or how many steps there are"; Lean-tos and Upgrades are optional).
+ */
+const STEP_HELP: Record<TabKey, { text: string; optional?: boolean }> = {
+  size: { text: 'Pick the kind of building and its size. You can change anything later.' },
+  walls: { text: 'Choose which sides are closed in. A garage usually keeps all four closed, so you can just tap Next.' },
+  doors: { text: 'Add garage doors, walk-in doors and windows: pick what, pick the wall, then tap Add.' },
+  leantos: { text: 'A lean-to is an extra covered area on one side - a carport, porch or storage room. Skip it if you do not need one.', optional: true },
+  upgrades: { text: 'Leave these off if you are not sure; your rep will go over them with you.', optional: true },
+  colors: { text: 'Pick colors for the roof, the walls and the trim (the edges and corners).' },
+  send: { text: 'Add your name and a phone number or email, then send your design to your rep. It is free.' },
+};
+
+function StepHead() {
+  const tab = useWebStore((s) => s.tab);
+  const steps = useSteps();
+  const i = steps.findIndex((t) => t.key === tab);
+  if (i < 0) return null;
+  const help = STEP_HELP[tab];
+  return (
+    <div className="stephead">
+      <div className="stephead-count">
+        Step {i + 1} of {steps.length}
+        {help.optional ? <span className="stephead-opt"> · optional</span> : null}
+      </div>
+      <h2 className="stephead-title">{steps[i].title}</h2>
+      <p className="stephead-text">{help.text}</p>
+    </div>
+  );
+}
+
+/** Back / Next, kept at the bottom of the options on every step ("Next: Walls"). */
 function StepNav() {
   const tab = useWebStore((s) => s.tab);
   const setTab = useWebStore((s) => s.setTab);
@@ -39,6 +72,9 @@ function StepNav() {
   const i = steps.findIndex((t) => t.key === tab);
   const prev = i > 0 ? steps[i - 1] : null;
   const next = i >= 0 && i < steps.length - 1 ? steps[i + 1] : null;
+  // an optional step with nothing added says Skip (walkthroughs 10/16/26: 'do I have to fill this in?')
+  const d = useWebStore((s) => s.design);
+  const skipping = (tab === 'leantos' && d.leanTos.length === 0) || (tab === 'upgrades' && !Object.values(d.upgrades || {}).some((v) => v && v !== 'none'));
   return (
     <div className="stepnav">
       {prev ? (
@@ -50,7 +86,7 @@ function StepNav() {
       )}
       {next ? (
         <button type="button" className="btn-primary" onClick={() => setTab(next.key)}>
-          {next.key === 'send' ? 'Next: Send to your rep →' : `Next: ${next.title} →`}
+          {skipping ? `Skip: ${next.title} →` : next.key === 'send' ? 'Next: Send to your rep →' : `Next: ${next.title} →`}
         </button>
       ) : null}
     </div>
@@ -280,25 +316,50 @@ function useBarEdges(bar: RefObject<HTMLElement>, count: number) {
 }
 
 /** Two-step reset (no window.confirm: a sandboxed iframe may block dialogs). */
+/**
+ * "Start over", always in the top bar (owner 10/16/26: "there should be a clear button in case they
+ * want to clear what theyve built and start from scratch"). It asks first, in a small box with two
+ * plain buttons (no window.confirm: a website frame may block dialogs).
+ */
 function StartOver({ onConfirm }: { onConfirm: () => void }) {
-  const [armed, setArmed] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const keepRef = useRef<HTMLButtonElement>(null);
+  const openRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (!armed) return;
-    const t = setTimeout(() => setArmed(false), 4000);
-    return () => clearTimeout(t);
-  }, [armed]);
+    if (!asking) return;
+    keepRef.current?.focus();
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setAsking(false);
+        openRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', esc);
+    return () => document.removeEventListener('keydown', esc);
+  }, [asking]);
   return (
-    <button
-      type="button"
-      className={`btn-ghost ${armed ? 'confirm' : ''}`}
-      onClick={() => {
-        if (!armed) return setArmed(true);
-        setArmed(false);
-        onConfirm();
-      }}
-    >
-      {armed ? 'Tap again to start over' : 'Start over'}
-    </button>
+    <>
+      <button type="button" className="startover" ref={openRef} onClick={() => setAsking(true)}>
+        <span aria-hidden="true">↺</span> <span className="startover-word">Start over</span>
+        <span className="sr-only"> (clear the design)</span>
+      </button>
+      {asking ? (
+        <div className="confirm-back" onClick={() => setAsking(false)}>
+          <div className="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="so-title" aria-describedby="so-text" onClick={(e) => e.stopPropagation()}>
+            <h2 id="so-title">Start over?</h2>
+            <p id="so-text">This clears your building - the size, doors, windows, lean-tos, upgrades and colors - so you can begin again.</p>
+            <div className="confirm-actions">
+              <button type="button" className="btn-ghost" ref={keepRef} onClick={() => { setAsking(false); openRef.current?.focus(); }}>
+                Keep my design
+              </button>
+              <button type="button" className="btn-primary" onClick={() => { setAsking(false); onConfirm(); }}>
+                Yes, start over
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -316,6 +377,32 @@ export function App() {
   // phones: "Bigger view" on the model; the how-to line goes after the first touch on it
   const [bigView, setBigView] = useState(false);
   const [touched, setTouched] = useState(false);
+  // Start over: a plain building, back on step 1, the normal outside view, and a short "done" line
+  const [cleared, setCleared] = useState(false);
+  const undoRef = useRef<{ design: typeof DEFAULT_DESIGN; tab: TabKey } | null>(null);
+  useEffect(() => {
+    if (!cleared) return;
+    const t = setTimeout(() => setCleared(false), 10000);
+    return () => clearTimeout(t);
+  }, [cleared]);
+  const startOver = () => {
+    undoRef.current = { design: useWebStore.getState().design, tab };
+    replace(DEFAULT_DESIGN);
+    const ed = useEditorStore.getState();
+    ed.selectOpening(null);
+    ed.selectLeanToOpening(null);
+    ed.setViewMode('exterior');
+    ed.setShowSpacing(false);
+    setTab('size');
+    setCleared(true);
+    setTimeout(() => cameraApi.fit('iso'), 200);
+  };
+  // the steel-frame view is a look, not a setting: a new step shows the building as it is again
+  useEffect(() => {
+    if (useEditorStore.getState().viewMode !== 'exterior') useEditorStore.getState().setViewMode('exterior');
+    // Doors with nothing added yet: face the front, where most doors go
+    if (tab === 'doors' && useWebStore.getState().design.openings.length === 0) setTimeout(() => cameraApi.fit('front'), 150);
+  }, [tab]);
   usePageStaysPut();
   useFollowVisibleArea(bodyRef);
   // its own page (not inside the website's frame): no pull-to-refresh / bounce on the page itself
@@ -354,8 +441,32 @@ export function App() {
           <h1 className="title">Design your building</h1>
         </div>
         <Summary />
-        <a className="topphone" href="tel:+15617715555">561-771-5555</a>
+        <div className="topright">
+          <StartOver onConfirm={startOver} />
+          <a className="topphone" href="tel:+15617715555">561-771-5555</a>
+        </div>
       </header>
+      {cleared ? (
+        <p className="cleared" role="status">
+          Started over with a plain building.{' '}
+          <button
+            type="button"
+            className="linkish"
+            onClick={() => {
+              const u = undoRef.current;
+              if (u) {
+                replace(u.design);
+                setTab(u.tab);
+                setTimeout(() => cameraApi.fit('iso'), 200);
+              }
+              undoRef.current = null;
+              setCleared(false);
+            }}
+          >
+            Undo
+          </button>
+        </p>
+      ) : null}
       <div className="split">
         <section className="stage" aria-label="3D model" onPointerDown={() => setTouched(true)}>
           <WebViewport />
@@ -368,7 +479,7 @@ export function App() {
         </section>
         <aside className="panel" aria-label="Building options">
           <LinkBanner />
-          <ImpactBanner />
+          {tab === 'size' ? <ImpactBanner /> : null}
           <nav
             className={`tabs${edges.l ? ' more-left' : ''}${edges.r ? ' more-right' : ''}`}
             role="tablist"
@@ -392,6 +503,7 @@ export function App() {
             ))}
           </nav>
           <div className="panel-scroll" id="tabpanel" role="tabpanel" aria-labelledby={`tab-${tab}`} ref={bodyRef}>
+            <StepHead />
             {tab === 'size' && <SizePanel />}
             {tab === 'walls' && <WallsPanel />}
             {tab === 'doors' && <OpeningsPanel />}
@@ -400,11 +512,6 @@ export function App() {
             {tab === 'colors' && <ColorsPanel />}
             {tab === 'send' && <SendPanel />}
             <StepNav />
-            {tab !== 'send' && (
-              <div className="panel-foot">
-                <StartOver onConfirm={() => replace(DEFAULT_DESIGN)} />
-              </div>
-            )}
           </div>
         </aside>
       </div>

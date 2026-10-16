@@ -13,7 +13,7 @@ export function ColorsPanel() {
     <div className="panel-body">
       <Swatches label="Roof" value={d.colors.roof} options={SORTED} onChange={set('roof')} />
       <Swatches label="Walls" value={d.colors.walls} options={SORTED} onChange={set('walls')} />
-      <Swatches label="Trim" value={d.colors.trim} options={SORTED} onChange={set('trim')} />
+      <Swatches label="Trim (corners and edges)" value={d.colors.trim} options={SORTED} onChange={set('trim')} />
       <div className="field">
         <Toggle label="Wainscot: a contrasting band along the bottom of the walls" checked={d.wainscot} onChange={(on) => update((x) => void (x.wainscot = on))} />
       </div>

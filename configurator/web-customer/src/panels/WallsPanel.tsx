@@ -2,6 +2,7 @@ import { useWebStore } from '../store';
 import { END_WALL_LABEL, SIDE_WALL_LABEL, type EndWall, type SideWall } from '../model/design';
 import { END_WALLS, SIDE_WALLS } from '../model/normalize';
 import { Note, Select } from './ui';
+import { cameraApi } from '../cameraFit';
 
 const endOpts = END_WALLS.map((v) => ({ value: v, label: END_WALL_LABEL[v] }));
 const sideOpts = (h: number) =>
@@ -10,8 +11,10 @@ const sideOpts = (h: number) =>
 export function WallsPanel() {
   const d = useWebStore((s) => s.design);
   const update = useWebStore((s) => s.update);
-  const setEnd = (k: 'front' | 'back') => (v: EndWall) => update((x) => void (x.walls[k] = v));
-  const setSide = (k: 'left' | 'right') => (v: SideWall) => update((x) => void (x.walls[k] = v));
+  // a change turns the camera to that wall, so the customer sees what changed (walkthroughs 10/16/26)
+  const look = (k: 'front' | 'back' | 'left' | 'right') => setTimeout(() => cameraApi.fit(k), 80);
+  const setEnd = (k: 'front' | 'back') => (v: EndWall) => { update((x) => void (x.walls[k] = v)); look(k); };
+  const setSide = (k: 'left' | 'right') => (v: SideWall) => { update((x) => void (x.walls[k] = v)); look(k); };
   const hidden = d.openings.filter((o) => {
     if (d.type === 'combo') return false;
     const st = o.wall === 'front' || o.wall === 'back' ? d.walls[o.wall] : o.wall === 'partition' ? 'closed' : d.walls[o.wall];

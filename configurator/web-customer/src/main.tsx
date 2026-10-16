@@ -14,7 +14,8 @@ import { buildSpec } from './model/spec';
 import { currentState, useWebStore } from './store';
 import { parseToken } from './model/link';
 import { checkLink } from './send';
-import { keepDraft, restoreDraft } from './draft';
+import { keepDraft, restoreDraft, saveDraftNow } from './draft';
+import { installFreshness } from './freshness';
 import './styles.css';
 
 // Where the visitor is: ?zip=…&county=…&impact=1
@@ -32,6 +33,13 @@ const token = parseToken(window.location.search);
 // Work in progress survives a reload / closed tab (this browser only).
 restoreDraft(token);
 keepDraft(token);
+// An old tab coming back to the screen picks up a newer version of this page (the draft comes back).
+installFreshness({ busy: () => !!useWebStore.getState().busy, save: () => saveDraftNow(token) });
+// The page going to the background (the phone number tapped, the app switched): save now, not 400 ms later.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveDraftNow(token);
+});
+window.addEventListener('pagehide', () => saveDraftNow(token));
 if (token) {
   useWebStore.getState().setLink(token, 'checking');
   void checkLink(token).then((status) => useWebStore.getState().setLink(token, status));

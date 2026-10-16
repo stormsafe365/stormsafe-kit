@@ -30,6 +30,10 @@ import {
 } from '../model/rules';
 import { KIND_LABEL, PartEditor } from './PartEditor';
 import { Note, Segmented, Select, Stepper, Toggle } from './ui';
+import { cameraApi, type FitView } from '../cameraFit';
+
+/** The camera view that faces a lean-to's side (customer's left = left view). */
+const SIDE_VIEW: Record<string, FitView> = { 'Left Eave': 'left', 'Right Eave': 'right', 'Front Gable': 'front', 'Back Gable': 'back' };
 
 const startFrom = (side: LeanToSide) => (leanToIsEave(side) ? 'the front end' : side === 'Front Gable' ? 'the front-left corner' : 'the back-right corner');
 
@@ -148,7 +152,7 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
         <Select label="Width" value={lt.width} options={LEANTO_WIDTHS.map((w) => ({ value: w, label: `${w}′` }))} onChange={(w) => edit((l) => void (l.width = w))} />
         <Stepper label="Length" value={lt.length} min={Math.min(10, host)} max={host} onChange={(v) => edit((l) => void (l.length = Math.round(v)))} />
         <Select
-          label="Low leg (outer height)"
+          label="Height at the outer edge"
           value={lt.lowLeg}
           options={(legs.length ? legs : [lt.lowLeg]).map((h) => ({ value: h, label: `${h}′` }))}
           onChange={(h) => edit((l) => void (l.lowLeg = h))}
@@ -177,9 +181,9 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
         label="Sides & ends"
         value={lt.enclosure}
         options={[
-          { value: 'open', label: 'Open' },
-          { value: 'enclosed', label: 'Enclosed' },
-          { value: 'custom', label: 'Custom' },
+          { value: 'open', label: 'Open (roof only)' },
+          { value: 'enclosed', label: 'Closed in' },
+          { value: 'custom', label: 'Mix (pick each wall)' },
         ]}
         onChange={(v) => edit((l) => void (l.enclosure = v))}
       />
@@ -257,11 +261,19 @@ export function LeanTosPanel() {
 
   return (
     <div className="panel-body">
-      <p className="field-hint">A lean-to is a single-slope roof attached along one side or end of the building.</p>
+      <p className="field-hint">A lean-to is a lower roof added to one side or end. Leave it open for extra cover (a carport or porch), or close it in to make a storage room.</p>
       {free.length > 0 && (
         <div className="add-lt">
-          <Select label="Add a lean-to on the" value={pick} options={free.map((s) => ({ value: s, label: LEANTO_SIDE_LABEL[s] }))} onChange={setSide} />
-          <button type="button" className="btn-primary" onClick={() => update((x) => void x.leanTos.push(newLeanTo(x, pick)))}>
+          <Select label="Which side?" value={pick} options={free.map((s) => ({ value: s, label: LEANTO_SIDE_LABEL[s] }))} onChange={setSide} />
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => {
+              update((x) => void x.leanTos.push(newLeanTo(x, pick)));
+              // show it: the camera turns to that side
+              setTimeout(() => cameraApi.fit(SIDE_VIEW[pick]), 250);
+            }}
+          >
             + Add lean-to
           </button>
         </div>

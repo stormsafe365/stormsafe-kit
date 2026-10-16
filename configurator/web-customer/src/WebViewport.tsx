@@ -13,6 +13,7 @@ import { CaptureHook } from '@/three/CaptureHook';
 import { EnhancedSceneRig } from '@/three/enhanced/EnhancedSceneRig';
 import { useEditorStore } from '@/store/useEditorStore';
 import { CameraFit, cameraApi, type FitView } from './cameraFit';
+import { FrontMarker } from './FrontMarker';
 
 const PRESETS: Array<{ value: FitView; label: string }> = [
   { value: 'iso', label: '3D' },
@@ -84,13 +85,13 @@ function ViewBar({ menu }: { menu: ReturnType<typeof useViewMenu> }) {
   const setShowSpacing = useEditorStore((s) => s.setShowSpacing);
   return (
     <div className="viewbar" role="toolbar" aria-label="3D view">
-      <div className="seg seg-sm" role="group" aria-label="View mode">
+      <div className="seg seg-sm modes" role="group" aria-label="View mode">
         {(['exterior', 'structure'] as const).map((m) => (
           <button key={m} type="button" aria-pressed={viewMode === m} className={viewMode === m ? 'on' : ''} onClick={() => {
               setViewMode(m);
               if (m === 'structure') setTimeout(() => cameraApi.fit('structure'), 30);
             }}>
-            {m === 'exterior' ? 'Exterior' : 'Structure'}
+            {m === 'exterior' ? 'Outside' : 'Steel frame'}
           </button>
         ))}
       </div>
@@ -113,7 +114,7 @@ function ViewBar({ menu }: { menu: ReturnType<typeof useViewMenu> }) {
         View
       </button>
       <button type="button" className={`chip ${showSpacing ? 'on' : ''}`} aria-pressed={showSpacing} onClick={() => setShowSpacing(!showSpacing)}>
-        Dimensions
+        Measurements
       </button>
     </div>
   );
@@ -121,6 +122,8 @@ function ViewBar({ menu }: { menu: ReturnType<typeof useViewMenu> }) {
 
 export function WebViewport() {
   const dragging = useEditorStore((s) => s.dragging);
+  const viewMode = useEditorStore((s) => s.viewMode);
+  const setViewMode = useEditorStore((s) => s.setViewMode);
   const menu = useViewMenu();
   return (
     <div className="vp">
@@ -144,6 +147,7 @@ export function WebViewport() {
         <CameraRig />
         <CaptureHook />
         <CameraFit />
+        <FrontMarker />
         <OrbitControls
           makeDefault
           enabled={!dragging}
@@ -171,6 +175,20 @@ export function WebViewport() {
               {p.value === 'iso' ? '3D (corner)' : p.label}
             </button>
           ))}
+          {/* phones: the frame look lives here (the Outside / Steel frame switch is not on the phone bar) */}
+          <span className="cams-menu-sep" aria-hidden="true" />
+          <button
+            type="button"
+            aria-pressed={viewMode === 'structure'}
+            onClick={() => {
+              const next = viewMode === 'structure' ? 'exterior' : 'structure';
+              setViewMode(next);
+              if (next === 'structure') setTimeout(() => cameraApi.fit('structure'), 30);
+              menu.pick();
+            }}
+          >
+            {viewMode === 'structure' ? 'Show the walls again' : 'See the steel frame'}
+          </button>
         </div>
       )}
       <p className="vp-hint" aria-hidden="true">

@@ -5,9 +5,10 @@ import { Note, Segmented, Select, Stepper, ft } from './ui';
 import { LocationField } from './LocationField';
 
 const TYPES: Array<{ value: WebBuildingType; label: string; blurb: string }> = [
-  { value: 'garage', label: 'Garage', blurb: 'Fully enclosed' },
-  { value: 'carport', label: 'Carport', blurb: 'Open sides' },
-  { value: 'combo', label: 'Garage + Carport', blurb: 'Garage in back, carport in front' },
+  { value: 'garage', label: 'Garage', blurb: 'Closed on all sides' },
+  { value: 'carport', label: 'Carport', blurb: 'A roof with open sides' },
+  // a storage room in back is this one (walkthrough 10/16/26: 'carport for my RV with a storage room in back')
+  { value: 'combo', label: 'Garage + Carport', blurb: 'Closed room in back, open carport in front' },
 ];
 
 /** Switching the building type resets the walls the way the quote does. */
@@ -37,7 +38,6 @@ export function SizePanel() {
   const rise = d.width > 31 ? 2 : 3;
   return (
     <div className="panel-body">
-      <LocationField />
       <div className="field">
         <span className="field-label">Building type</span>
         <div className="cards" role="group" aria-label="Building type">
@@ -65,15 +65,18 @@ export function SizePanel() {
         />
         <Stepper label="Length" value={d.length} min={LENGTH_MIN} max={LENGTH_MAX} onChange={(l) => update((x) => void (x.length = Math.round(l)))} />
         <Select
-          label="Height"
+          label="Height (side walls)"
           value={d.height}
           options={heightOptions(d.width).map((h) => ({ value: h, label: `${h}′` }))}
           onChange={(h) => update((x) => void (x.height = h))}
         />
       </div>
       <p className="dims-line">
-        {ft(d.width)} W × {ft(d.length)} L × {ft(d.height)} H <span className="muted">· height is at the eave (side walls)</span>
+        {ft(d.width)} W × {ft(d.length)} L × {ft(d.height)} H <span className="muted">· width × length × side-wall height</span>
       </p>
+
+      {/* after the size (walkthroughs 10/16/26: a ZIP box first read as "must fill this in now") */}
+      <LocationField label="ZIP code where it will go (optional)" />
 
       {d.type === 'combo' && (
         <Stepper
@@ -86,6 +89,10 @@ export function SizePanel() {
         />
       )}
 
+      {/* expert choices, folded away: most people keep them as they are (walkthroughs 10/16/26) */}
+      <details className="more">
+        <summary>More options: roof style, roof pitch, wall panels <span className="muted">(most people keep these)</span></summary>
+        <div className="more-body">
       <Segmented
         label="Roof style"
         value={d.roofStyle}
@@ -126,6 +133,8 @@ export function SizePanel() {
         onChange={(v) => update((x) => void (x.panels = v))}
         hint={panelsLocked(d) ? 'Wide-span buildings use vertical wall panels.' : undefined}
       />
+        </div>
+      </details>
 
       {isWideSpan(d.width) && <Note>Wide span (32′ and wider): vertical roof and vertical wall panels, eave height 8′ to 20′.</Note>}
     </div>

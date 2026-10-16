@@ -154,8 +154,8 @@ html.top-level body {
 @media (max-width: 899px) {
   .split {
     grid-template-columns: minmax(0, 1fr);
-    /* the model gets the bigger half (owner 10/16/26: hard to see the building on a phone) */
-    grid-template-rows: minmax(160px, 52%) minmax(0, 1fr);
+    /* a good look at the building, and room for the options (walkthroughs 10/16/26: options too tight at 52%) */
+    grid-template-rows: minmax(160px, 44%) minmax(0, 1fr);
   }
   .panel {
     border-left: 0;
@@ -504,17 +504,16 @@ html.top-level body {
 .row3 .stepper input {
   padding: 8px 2px;
 }
+/* "ft" stays on the Length box (walkthrough 10/16/26: "30" with no unit) - just tighter in the narrow row */
 .row3 .stepper .unit {
-  display: none;
+  padding: 0 2px;
+  font-size: 12px;
 }
 @media (max-width: 420px) {
   .row3 {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
-  .row3 > :nth-child(2) {
-    grid-column: 1 / -1;
-    order: 3;
-  }
+  /* the boxes stay in reading order: Width, Length, then Height (walkthrough 10/16/26: W H / L read wrong) */
 }
 .dims-line {
   margin: -6px 0 0;
@@ -1200,4 +1199,211 @@ html.top-level body {
     grid-column: auto;
     order: 0;
   }
+}
+
+/* ── Easier to follow (owner 10/16/26: "my mom ... called me very confused") ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+/* Step N of 7 + what to do, at the top of every step */
+.stephead {
+  padding: 14px 16px 0;
+}
+.stephead-count {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--teal);
+}
+.stephead-opt {
+  color: var(--sub);
+  font-weight: 600;
+}
+.stephead-title {
+  margin: 2px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+.stephead-text {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--sub);
+}
+/* Back / Next always at hand: pinned to the bottom of the options */
+.stepnav {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-top: 14px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+.stepnav .btn-primary {
+  min-height: 44px;
+}
+.stepnav .btn-ghost {
+  min-height: 44px;
+}
+.panel-scroll {
+  padding-bottom: 0;
+}
+/* Start over, in the top bar, with its "are you sure" box */
+.topright {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+.startover {
+  min-height: 34px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-vis);
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.startover:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+/* small phones: name, Start over and the phone number still fit on one row (the word stays: an icon alone
+   is not an obvious "clear" button); only the smallest (320px) phones get the icon alone */
+@media (max-width: 380px) {
+  .topbar .wordmark {
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .topphone {
+    font-size: 14px;
+  }
+  .topright {
+    gap: 8px;
+  }
+  .startover {
+    padding: 4px 9px;
+    font-size: 12px;
+  }
+}
+@media (max-width: 340px) {
+  .startover-word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+  }
+  .startover {
+    padding: 4px 10px;
+    font-size: 16px;
+  }
+}
+.confirm-back {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(3, 12, 17, 0.72);
+}
+.confirm-card {
+  width: min(380px, 100%);
+  padding: 18px 18px 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border-vis);
+  background: var(--surface);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+}
+.confirm-card h2 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+.confirm-card p {
+  margin: 0 0 14px;
+  color: var(--sub);
+  font-size: 14px;
+}
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.confirm-actions button {
+  min-height: 44px;
+}
+.cleared {
+  margin: 0;
+  padding: 7px 16px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--teal-glow);
+  border-bottom: 1px solid var(--teal-dim);
+}
+/* the FRONT tag on the ground in front of the building (FrontMarker.tsx) */
+.front-tag {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(8, 27, 36, 0.86);
+  border: 1px solid var(--teal-dim);
+  color: var(--teal);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+  user-select: none;
+}
+.cams-menu-sep {
+  display: block;
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border-vis);
+}
+/* phones: one View button on the model (the frame look is in its list; measurement tags are a desk-size tool) */
+@media (max-width: 599px), (max-width: 899px) and (max-height: 520px) and (orientation: landscape) {
+  .viewbar .modes,
+  .viewbar .chip {
+    display: none;
+  }
+}
+/* "More options" on the Size step (roof style / pitch / wall panels), folded */
+.more {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.more > summary {
+  cursor: pointer;
+  padding: 11px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  list-style: revert;
+}
+.more-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 12px 12px;
+}
+/* keyboard up: the form gets the room (Back / Next come back when the keyboard closes) */
+html.vv-kb .stepnav {
+  display: none;
 }

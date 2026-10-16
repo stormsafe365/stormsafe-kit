@@ -33,7 +33,7 @@ const isIgnored = (ob: THREE.Object3D) => {
 };
 
 /** Corners of every building mesh (skips scenery, ground planes and the drag guides), like the capture fit. */
-function buildingCorners(scene: THREE.Scene): THREE.Vector3[] {
+export function buildingCorners(scene: THREE.Scene): THREE.Vector3[] {
   const pts: THREE.Vector3[] = [];
   const b = new THREE.Box3();
   scene.traverse((ob) => {

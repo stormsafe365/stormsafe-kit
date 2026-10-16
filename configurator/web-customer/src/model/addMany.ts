@@ -50,6 +50,26 @@ export function spreadPositions(d: D, wall: WebWall, w: number, qty: number): nu
 }
 
 /**
+ * Adding more of a part to a wall that has ONLY that same part (same kind, same width) - e.g. one
+ * 10′ door sitting in the middle of the front end, then "Add" again (owner's mom 10/16/26 got "no
+ * room" although two fit): all of them are spread evenly again. The ids already there (left to
+ * right) take the first spots, the new ones the rest. null = they do not all fit, or something else
+ * is on that wall (those are never moved by an add).
+ */
+export function respaceWithSame(d: D, wall: WebWall, kind: WebOpening['kind'], w: number, qty: number): { existing: string[]; spots: number[] } | null {
+  const onWall = d.openings.filter((o) => o.wall === wall);
+  if (!onWall.length || qty < 1) return null;
+  if (!onWall.every((o) => o.kind === kind && Math.abs(o.w - w) < 1e-6)) return null;
+  const spots = spreadPositions({ ...d, openings: d.openings.filter((o) => o.wall !== wall) }, wall, w, onWall.length + qty);
+  if (!spots) return null;
+  return { existing: [...onWall].sort((a, b) => a.pos - b.pos).map((o) => o.id), spots };
+}
+
+/** They fit: in the free room left, or by spreading them out with the same parts already there. */
+const fitsSomehow = (d: D, wall: WebWall, kind: WebOpening['kind'], w: number, q: number) =>
+  spreadPositions(d, wall, w, q) !== null || respaceWithSame(d, wall, kind, w, q) !== null;
+
+/**
  * How many more of this part fit on that wall. Roll-ups also keep the program's
  * height rule (2+ doors on an end wall: at most H − 1) for the NEW doors AND the
  * ones already there - a count that would shrink a door already on the wall is
@@ -65,7 +85,7 @@ export function maxQty(d: D, wall: WebWall, kind: WebOpening['kind'], w: number,
       if (!rollupFits(d, wall, w, h, n)) break;
       if (there.some((o) => !rollupFits(d, wall, o.w, o.h, n))) break;
     }
-    if (!spreadPositions(d, wall, w, q)) break;
+    if (!fitsSomehow(d, wall, kind, w, q)) break;
     best = q;
   }
   return best;
@@ -79,7 +99,7 @@ export function maxQty(d: D, wall: WebWall, kind: WebOpening['kind'], w: number,
 export function whyNoMore(d: D, wall: WebWall, kind: WebOpening['kind'], w: number, h: number, wantQty: number, wallLabel = 'wall'): string | null {
   if (MAX_OPENINGS - d.openings.length < wantQty) return `A design can hold up to ${MAX_OPENINGS} doors and windows.`;
   if (kind !== 'rollup') return null;
-  if (!spreadPositions(d, wall, w, wantQty)) return null; // no room anyway: a lower door would not help
+  if (!fitsSomehow(d, wall, kind, w, wantQty)) return null; // no room anyway: a lower door would not help
   const there = d.openings.filter((o) => o.wall === wall && o.kind === 'rollup');
   const n = there.length + wantQty;
   const maxH = d.height - 1; // the program's rule for 2+ roll-ups on an end / divider wall

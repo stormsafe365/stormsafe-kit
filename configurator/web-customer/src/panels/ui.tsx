@@ -1,5 +1,5 @@
 /** Small form controls shared by the panels (hand-written CSS in styles.css). */
-import { useId, type ReactNode } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import { ftIn, inchLabel } from '@/three/dimLabels';
 
 export function Field({ label, hint, children, htmlFor }: { label: string; hint?: ReactNode; children: ReactNode; htmlFor?: string }) {
@@ -113,6 +113,17 @@ export function Stepper({
   const id = useId();
   const clamp = (v: number) => Math.min(max, Math.max(min, v));
   const shown = Math.round(value * 100) / 100;
+  // What is being typed, kept as typed: clamping every keystroke turned "30" -> erase -> "20" (the
+  // minimum) -> "204" -> "200" (walkthrough 10/16/26: typing 40 gave 200). A number in range is used
+  // at once (the model follows); the box is put in range when the person leaves it or presses Enter.
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = () => {
+    if (draft !== null) {
+      const v = parseFloat(draft);
+      if (Number.isFinite(v)) onChange(clamp(v));
+    }
+    setDraft(null);
+  };
   return (
     <Field label={label} hint={hint} htmlFor={id}>
       <div className="stepper">
@@ -126,10 +137,16 @@ export function Stepper({
           min={min}
           max={max}
           step={step}
-          value={shown}
+          value={draft ?? shown}
           onChange={(e) => {
-            const v = parseFloat(e.target.value);
-            if (Number.isFinite(v)) onChange(clamp(v));
+            const t = e.target.value;
+            setDraft(t);
+            const v = parseFloat(t);
+            if (Number.isFinite(v) && v >= min && v <= max) onChange(v);
+          }}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
           }}
         />
         <span className="unit">{suffix}</span>

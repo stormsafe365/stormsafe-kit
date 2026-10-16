@@ -38,22 +38,25 @@ export function restoreDraft(token: string | null, now = Date.now()): boolean {
   }
 }
 
+/** Save the draft right now (also before the page reloads itself for a newer version - freshness.ts). */
+export function saveDraftNow(token: string | null): void {
+  try {
+    const { contact, sentAt, tab } = useWebStore.getState();
+    // once the design is sent, the contact details are not kept on the device (only the ZIP for the county)
+    const keep = sentAt ? { zip: contact.zip } : { name: contact.name, phone: contact.phone, email: contact.email, zip: contact.zip, notes: contact.notes };
+    // blankStart: saved by a page that starts with a plain building (no old starter parts to take off)
+    window.localStorage.setItem(KEY(token), JSON.stringify({ t: Date.now(), blankStart: 1, state: currentState(), contact: keep, sentAt, tab }));
+  } catch {
+    /* storage blocked or full: no draft */
+  }
+}
+
 /** Save the draft shortly after every change. Returns the unsubscribe. */
 export function keepDraft(token: string | null): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
   return useWebStore.subscribe((s, prev) => {
     if (s.design === prev.design && s.contact === prev.contact && s.sentAt === prev.sentAt && s.tab === prev.tab) return;
     if (timer) clearTimeout(timer);
-    timer = setTimeout(() => {
-      try {
-        const { contact, sentAt, tab } = useWebStore.getState();
-        // once the design is sent, the contact details are not kept on the device (only the ZIP for the county)
-        const keep = sentAt ? { zip: contact.zip } : { name: contact.name, phone: contact.phone, email: contact.email, zip: contact.zip, notes: contact.notes };
-        // blankStart: saved by a page that starts with a plain building (no old starter parts to take off)
-        window.localStorage.setItem(KEY(token), JSON.stringify({ t: Date.now(), blankStart: 1, state: currentState(), contact: keep, sentAt, tab }));
-      } catch {
-        /* storage blocked or full: no draft */
-      }
-    }, 400);
+    timer = setTimeout(() => saveDraftNow(token), 400);
   });
 }

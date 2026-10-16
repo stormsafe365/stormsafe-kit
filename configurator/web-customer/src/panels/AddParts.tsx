@@ -3,15 +3,16 @@
  * on the front end and it was hard - "There is no quantity drop down ... you
  * should add that"). Pick what, which wall, the size (roll-ups) and HOW MANY;
  * they go on that wall spread evenly (model/addMany.ts). Only sizes and counts
- * that fit are offered - including the program's rule that 2+ roll-up doors on
- * an end wall are at most 1′ shorter than the walls.
+ * that fit are offered, and when a count is held back the reason is said - e.g.
+ * the program's rule that 2+ roll-up doors on an end wall are at most 1′
+ * shorter than the walls.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useWebStore } from '../store';
 import { WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
-import { WALL_LABEL, type OpeningKind, type WebOpening, type WebWall } from '../model/design';
+import { WALL_LABEL, type OpeningKind, type WebDesign, type WebOpening, type WebWall } from '../model/design';
 import { nextFreeId } from '../model/normalize';
-import { maxQty, spreadPositions } from '../model/addMany';
+import { maxQty, spreadPositions, whyNoMore } from '../model/addMany';
 import { isEave, openingWalls, rollupSizes, walkDoorFitsHeight, windowFitsHeight } from '../model/rules';
 import { KIND_LABEL } from './PartEditor';
 import { cameraApi } from '../cameraFit';
@@ -26,44 +27,61 @@ const PREFER: Record<OpeningKind, WebWall[]> = {
   frame: ['left', 'right', 'front', 'back', 'partition'],
 };
 const plural = (k: OpeningKind, n: number) => `${KIND_LABEL[k].toLowerCase()}${n === 1 ? '' : 's'}`;
+const pick = <T extends number>(list: readonly T[], want: number): number => (list.includes(want as T) ? want : (list.filter((x) => x <= want).pop() ?? list[0] ?? 0));
+
+/** Width × height a new part of this kind would be on that wall for `count` roll-ups there (0 × 0 = none fits). */
+function partSize(d: WebDesign, kind: OpeningKind, wall: WebWall, count: number, rw: number, rh: number): { w: number; h: number } {
+  if (kind === 'walk') return { w: WALK_DOOR_W_FT, h: WALK_DOOR_H_FT };
+  if (kind === 'window') return { w: 2.5, h: 2.5 };
+  if (kind === 'frame') return { w: 4, h: Math.min(7, d.height - 1) };
+  const s = rollupSizes(d, wall, count);
+  return { w: pick(s.widths, rw), h: pick(s.heights, rh) };
+}
 
 export function AddParts() {
   const d = useWebStore((s) => s.design);
   const update = useWebStore((s) => s.update);
   const walls = openingWalls(d);
   const [kind, setKind] = useState<OpeningKind>('rollup');
-  const kindOk = (k: OpeningKind) => (k === 'walk' ? walkDoorFitsHeight(d.height) : k === 'window' ? windowFitsHeight(d.height, 2.5) : true);
-  const wallChoices = PREFER[kind].filter((w) => walls.includes(w) && (kind !== 'window' || w !== 'partition'));
-  const [wall, setWall] = useState<WebWall | null>(wallChoices[0] ?? null);
+  const [wall, setWall] = useState<WebWall | null>(null); // null = the first wall with room
   const [rw, setRw] = useState(10);
   const [rh, setRh] = useState(8);
   const [qty, setQty] = useState(1);
-  const [msg, setMsg] = useState<string | null>(null);
+  // the "Added …" note, shown while the design still has exactly the doors / windows it had right after the add
+  const [added, setAdded] = useState<{ text: string; count: number } | null>(null);
 
-  // the wall must stay one this kind can go on
-  const curWall = wall && wallChoices.includes(wall) ? wall : (wallChoices[0] ?? null);
-  useEffect(() => {
-    if (curWall !== wall) setWall(curWall);
-  }, [curWall, wall]);
+  const kindOk = (k: OpeningKind) => (k === 'walk' ? walkDoorFitsHeight(d.height) : k === 'window' ? windowFitsHeight(d.height, 2.5) : true);
+  const thereFor = (x: WebWall) => d.openings.filter((o) => o.wall === x && o.kind === 'rollup').length;
+  // walls this kind can go on at all (a roll-up needs a catalog size that fits the wall's height)
+  const wallChoices = PREFER[kind].filter((x) => {
+    if (!walls.includes(x) || (kind === 'window' && x === 'partition')) return false;
+    if (kind !== 'rollup') return true;
+    const s = rollupSizes(d, x, thereFor(x) + 1);
+    return s.widths.length > 0 && s.heights.length > 0;
+  });
+  // the first wall that still has room for one (the starting design's front end already has a door)
+  const roomy = wallChoices.find((x) => {
+    const { w, h } = partSize(d, kind, x, thereFor(x) + 1, rw, rh);
+    return w > 0 && h > 0 && maxQty(d, x, kind, w, h) >= 1;
+  });
+  const curWall = wall && wallChoices.includes(wall) ? wall : (roomy ?? wallChoices[0] ?? null);
 
-  const rollupsThere = curWall ? d.openings.filter((o) => o.wall === curWall && o.kind === 'rollup').length : 0;
-  const sizes = useMemo(() => (curWall ? rollupSizes(d, curWall, rollupsThere + qty) : { widths: [], heights: [] }), [d, curWall, rollupsThere, qty]);
-  // keep the roll-up size inside what fits for this many doors
-  const w = kind === 'rollup' ? (sizes.widths.includes(rw as never) ? rw : (sizes.widths.filter((x) => x <= rw).pop() ?? sizes.widths[0] ?? 0)) : kind === 'walk' ? WALK_DOOR_W_FT : kind === 'window' ? 2.5 : 4;
-  const h = kind === 'rollup' ? (sizes.heights.includes(rh as never) ? rh : (sizes.heights.filter((x) => x <= rh).pop() ?? sizes.heights[0] ?? 0)) : kind === 'walk' ? WALK_DOOR_H_FT : kind === 'window' ? 2.5 : Math.min(7, d.height - 1);
-  const most = curWall && w && h && kindOk(kind) ? maxQty(d, curWall, kind, w, h) : 0;
+  const rollupsThere = curWall ? thereFor(curWall) : 0;
+  const first = curWall ? partSize(d, kind, curWall, rollupsThere + 1, rw, rh) : { w: 0, h: 0 };
+  const most = curWall && first.w && first.h && kindOk(kind) ? maxQty(d, curWall, kind, first.w, first.h) : 0;
   const q = Math.min(qty, Math.max(1, most));
+  // sizes for the count that will really be added (2+ on an end wall: 1′ shorter than the walls)
+  const sizes = useMemo(() => (curWall ? rollupSizes(d, curWall, rollupsThere + q) : { widths: [], heights: [] }), [d, curWall, rollupsThere, q]);
+  const { w, h } = curWall ? partSize(d, kind, curWall, rollupsThere + q, rw, rh) : first;
   const qtyOptions = Array.from({ length: Math.max(1, most) }, (_, i) => ({ value: i + 1, label: String(i + 1) }));
-  // with 2+ roll-ups on an end wall the doors can be 1′ shorter than the walls at most (the program's rule)
-  const endLimit = kind === 'rollup' && curWall && !isEave(curWall) && rollupsThere + qty > 1;
+  // why the count stops where it does (height rule / a tall door already there / the 40 limit)
+  const why = curWall && kindOk(kind) ? whyNoMore(d, curWall, kind, w, h, Math.max(most, 1) + (most ? 1 : 0)) : null;
+  const endWall = kind === 'rollup' && curWall && !isEave(curWall);
 
   const add = () => {
     if (!curWall || !most) return;
     const spots = spreadPositions(d, curWall, w, q);
-    if (!spots) {
-      setMsg(`Only ${most} fit${most === 1 ? 's' : ''} there.`);
-      return;
-    }
+    if (!spots) return;
     update((x) => {
       const used = new Set([...x.openings.map((o) => o.id), ...x.leanTos.flatMap((lt) => lt.openings.map((o) => o.id))]);
       for (const pos of spots) {
@@ -76,12 +94,19 @@ export function AddParts() {
         x.openings.push(o);
       }
     });
-    setMsg(`Added ${q} ${plural(kind, q)} to the ${WALL_LABEL[curWall].toLowerCase()}.`);
     setQty(1);
+    setAdded({ text: `Added ${q} ${plural(kind, q)} to the ${WALL_LABEL[curWall].toLowerCase()}.`, count: d.openings.length + spots.length });
     setTimeout(() => cameraApi.fit(curWall === 'partition' ? 'front' : curWall), 60);
   };
 
+  const addedNote = added && added.count === d.openings.length ? added.text : null;
+
   if (!walls.length) return <Note>Doors and windows go on closed walls — this building has none yet (Walls step).</Note>;
+
+  let blocked: string | null = null;
+  if (!kindOk(kind)) blocked = kind === 'walk' ? 'Walk-in doors need walls at least 7′ tall (Size step).' : 'Windows need walls at least 7′ tall (Size step).';
+  else if (!wallChoices.length) blocked = kind === 'rollup' ? 'Roll-up doors need taller walls: at least 8′ on the sides, 6′ on the ends (Size step).' : 'No wall can take this one.';
+  else if (!most) blocked = why ?? `No room for another ${kind === 'rollup' ? `${ft(w)} wide door` : KIND_LABEL[kind].toLowerCase()} on the ${WALL_LABEL[curWall!].toLowerCase()}. Remove or move one there, or pick another wall.`;
 
   return (
     <div className="addparts" role="group" aria-label="Add doors and windows">
@@ -91,40 +116,43 @@ export function AddParts() {
         options={KINDS.map((k) => ({ value: k, label: SHORT[k], disabled: !kindOk(k) }))}
         onChange={(k) => {
           setKind(k);
+          setWall(null);
           setQty(1);
-          setMsg(null);
+          setAdded(null);
         }}
       />
-      <div className="row3">
-        <Select<WebWall>
-          label="Wall"
-          value={curWall ?? wallChoices[0]}
-          options={wallChoices.map((x) => ({ value: x, label: WALL_LABEL[x] }))}
-          onChange={(x) => {
-            setWall(x);
-            setQty(1);
-            setMsg(null);
-          }}
-        />
-        {kind === 'rollup' ? (
-          <>
-            <Select<number> label="Width" value={w} options={sizes.widths.map((x) => ({ value: x, label: ft(x) }))} onChange={(x) => setRw(x)} />
-            <Select<number> label="Height" value={h} options={sizes.heights.map((x) => ({ value: x, label: ft(x) }))} onChange={(x) => setRh(x)} />
-          </>
-        ) : null}
-        <Select<number> label="How many" value={q} options={qtyOptions} onChange={(x) => setQty(x)} />
-      </div>
-      {endLimit ? <p className="field-hint">With 2 or more roll-up doors on an end wall, each can be up to {ft(d.height - 1)} tall on this building.</p> : null}
-      {!most ? (
-        <Note tone="warn">
-          No room for {kind === 'rollup' ? `a ${ft(w)} wide door` : `another ${KIND_LABEL[kind].toLowerCase()}`} on the {curWall ? WALL_LABEL[curWall].toLowerCase() : 'walls'}. Remove or move a door there, or pick another wall.
-        </Note>
+      {wallChoices.length ? (
+        <div className="row3">
+          <Select<WebWall>
+            label="Wall"
+            value={curWall ?? wallChoices[0]}
+            options={wallChoices.map((x) => ({ value: x, label: WALL_LABEL[x] }))}
+            onChange={(x) => {
+              setWall(x);
+              setQty(1);
+              setAdded(null);
+            }}
+          />
+          {kind === 'rollup' ? (
+            <>
+              <Select<number> label="Width" value={w} options={sizes.widths.map((x) => ({ value: x, label: ft(x) }))} onChange={(x) => setRw(x)} />
+              <Select<number> label="Height" value={h} options={sizes.heights.map((x) => ({ value: x, label: ft(x) }))} onChange={(x) => setRh(x)} />
+            </>
+          ) : null}
+          <Select<number> label="How many" value={q} options={qtyOptions} onChange={(x) => setQty(x)} />
+        </div>
+      ) : null}
+      {blocked ? (
+        addedNote ? null : <Note tone="warn">{blocked}</Note>
       ) : (
-        <button type="button" className="btn-primary btn-add" onClick={add}>
-          Add {q} {plural(kind, q)}
-        </button>
+        <>
+          {why ? <p className="field-hint">{why}</p> : endWall && rollupsThere + q > 1 ? <p className="field-hint">With 2 or more roll-up doors on an end wall, each can be up to {ft(d.height - 1)} tall on this building.</p> : null}
+          <button type="button" className="btn-primary btn-add" onClick={add}>
+            Add {q} {plural(kind, q)}
+          </button>
+        </>
       )}
-      {msg ? <p className="field-hint" role="status">{msg}</p> : null}
+      {addedNote ? <p className="field-hint" role="status">{addedNote}{blocked ? ' That wall is full now; pick another wall to add more.' : ''}</p> : null}
     </div>
   );
 }

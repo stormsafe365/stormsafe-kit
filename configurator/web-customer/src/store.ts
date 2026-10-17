@@ -10,6 +10,9 @@ import { impactRequired } from './model/rules';
 import { countyForZip } from './model/flZips';
 import { EMPTY_CONTACT, type Contact, type LinkStatus } from './model/link';
 
+/** The guided start screens (null = the builder itself). */
+export type GuideStep = 'welcome' | 'purpose' | 'sides' | 'size';
+
 export type TabKey = 'size' | 'walls' | 'doors' | 'leantos' | 'upgrades' | 'colors' | 'send';
 
 interface WebStore {
@@ -18,6 +21,8 @@ interface WebStore {
   /** Impact-rated windows + walk doors required (URL impact=1, or the county rule). */
   impact: boolean;
   tab: TabKey;
+  guide: GuideStep | null;
+  setGuide: (g: GuideStep | null) => void;
   /** Overlay text while a picture is being made (null = none). */
   busy: string | null;
   /** Edit a copy of the design; the result is normalized against the rules. */
@@ -54,6 +59,8 @@ export const useWebStore = create<WebStore>((set, get) => ({
   ...settle(DEFAULT_DESIGN, EMPTY_CTX),
   ctx: EMPTY_CTX,
   tab: 'size',
+  guide: null,
+  setGuide: (guide) => set({ guide }),
   busy: null,
   update: (edit) => {
     const draft = cloneDesign(get().design);

@@ -31,8 +31,10 @@ useWebStore.getState().setCtx(parseParams(window.location.search));
 // said up front, not after the customer has designed the whole building.
 const token = parseToken(window.location.search);
 // Work in progress survives a reload / closed tab (this browser only).
-restoreDraft(token);
+const restored = restoreDraft(token);
 keepDraft(token);
+// A first visit on its own page (not a website frame, nothing saved yet) starts with the guided questions.
+if (!restored && window.parent === window) useWebStore.getState().setGuide('welcome');
 // An old tab coming back to the screen picks up a newer version of this page (the draft comes back).
 installFreshness({ busy: () => !!useWebStore.getState().busy, save: () => saveDraftNow(token) });
 // The page going to the background (the phone number tapped, the app switched): save now, not 400 ms later.

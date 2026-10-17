@@ -1480,3 +1480,140 @@ html.vv-kb .stepnav {
 .quick-row .btn-ghost {
   min-height: 42px;
 }
+
+/* ── Guided start (owner 10/17/26) ───────────────────────────────────── */
+.guide {
+  position: fixed;
+  top: var(--vv-top, 0);
+  left: 0;
+  right: 0;
+  height: var(--vv-h, 100%);
+  z-index: 900;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: radial-gradient(120% 60% at 50% 0, var(--surface-2), var(--bg) 70%);
+  padding: max(20px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+}
+.guide-in {
+  width: min(460px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.guide-mark {
+  align-self: flex-start;
+  font-size: 15px;
+  margin-bottom: 8px;
+}
+.guide-h {
+  margin: 14px 0 0;
+  font-size: 28px;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.guide-h:focus {
+  outline: none;
+}
+.guide-p {
+  margin: 0 0 6px;
+  color: var(--sub);
+  font-size: 16px;
+}
+.guide-small {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.guide-small a {
+  color: var(--teal);
+}
+.guide-btn {
+  width: 100%;
+  min-height: 56px;
+  font-size: 17px;
+  border-radius: 12px;
+}
+.guide-btn-2 {
+  font-size: 16px;
+  color: var(--text);
+}
+.guide-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.guide-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 68px;
+  padding: 12px 14px;
+  text-align: left;
+  border-radius: 12px;
+  border: 1px solid var(--border-vis);
+  background: var(--surface-2);
+}
+.guide-card:hover {
+  border-color: var(--teal-dim);
+  background: var(--surface-3);
+}
+.guide-card:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+.guide-icon {
+  flex: none;
+  color: var(--teal);
+  padding: 6px;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  background: var(--teal-glow);
+}
+.guide-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.guide-card-title {
+  font-weight: 700;
+  font-size: 16px;
+}
+.guide-card-blurb {
+  color: var(--sub);
+  font-size: 14px;
+}
+.guide-card-own {
+  border-style: dashed;
+}
+.guide-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .guide-in {
+    animation: guide-in 0.22s ease-out;
+  }
+  @keyframes guide-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+}
+@media (max-height: 560px) {
+  .guide-h {
+    font-size: 22px;
+    margin-top: 4px;
+  }
+  .guide-card {
+    min-height: 56px;
+  }
+}

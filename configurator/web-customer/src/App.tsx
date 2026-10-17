@@ -13,6 +13,7 @@ import { UpgradesPanel } from './panels/UpgradesPanel';
 import { ft } from './panels/ui';
 import { cameraApi } from './cameraFit';
 import { revealInPanel } from './reveal';
+import { Guide } from './Guide';
 
 // The steps, in order (owner 10/16/26: building type + size, components, add-ons /
 // upgrades, colors, then the customer's contact + "Send to my steel building rep").
@@ -395,6 +396,7 @@ export function App() {
   const tab = useWebStore((s) => s.tab);
   const setTab = useWebStore((s) => s.setTab);
   const busy = useWebStore((s) => s.busy);
+  const guide = useWebStore((s) => s.guide);
   const replace = useWebStore((s) => s.replace);
   const selMain = useEditorStore((s) => s.selectedOpeningId);
   const selLean = useEditorStore((s) => s.selectedLeanToOpeningId);
@@ -563,6 +565,7 @@ export function App() {
           </div>
         </aside>
       </div>
+      {guide ? <Guide banner={<LinkBanner />} /> : null}
       {busy && (
         <div className="busy" role="alert" aria-live="assertive">
           <div className="busy-card">

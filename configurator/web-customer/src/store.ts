@@ -27,6 +27,9 @@ interface WebStore {
   /** The building style picked in the guided questions (so Back from the builder returns to the sizes). */
   guideStyle: GuideStyle | null;
   setGuideStyle: (s: GuideStyle | null) => void;
+  /** 'help' = the full questions (style, then sizes); 'know' = style only, then the builder to type exact sizes. */
+  guideMode: 'help' | 'know';
+  setGuideMode: (m: 'help' | 'know') => void;
   guideBarn: BarnStyle | null;
   setGuideBarn: (b: BarnStyle | null) => void;
   /** Overlay text while a picture is being made (null = none). */
@@ -69,6 +72,8 @@ export const useWebStore = create<WebStore>((set, get) => ({
   setGuide: (guide) => set({ guide }),
   guideStyle: null,
   setGuideStyle: (guideStyle) => set({ guideStyle }),
+  guideMode: 'help',
+  setGuideMode: (guideMode) => set({ guideMode }),
   guideBarn: null,
   setGuideBarn: (guideBarn) => set({ guideBarn }),
   busy: null,

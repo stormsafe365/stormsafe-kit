@@ -1631,3 +1631,101 @@ html.vv-kb .stepnav {
     height: 60px;
   }
 }
+
+/* ── Simpler doors & windows, and "Your design" (owner 10/17/26) ─────── */
+.add-line {
+  display: grid;
+  grid-template-columns: minmax(96px, 120px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+.add-line .btn-add {
+  min-height: 44px;
+}
+.addparts .row3 > :only-child {
+  grid-column: 1 / -1;
+}
+.part-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 2px 0;
+  color: inherit;
+}
+.part-toggle:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.part-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+.part-toggle.open .part-sub {
+  color: var(--teal-dim);
+}
+.review {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border-vis);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.review-h {
+  margin: 0;
+  font-size: 16px;
+}
+.review-list {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.review-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.review-row:first-child {
+  border-top: 0;
+}
+.review-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.review-k {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--teal-dim);
+}
+.review-v {
+  font-size: 14px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.review-change {
+  flex: none;
+  min-height: 40px;
+}
+/* Doors / lean-tos step on a phone: a form to fill and a list to look at need room, so the options get
+   more of the screen (the model stays big enough to see the wall; "Bigger view" still gives it all) */
+@media (max-width: 899px) and (orientation: portrait) and (min-height: 521px) {
+  html:not(.vv-kb) .app.working:not(.big-view) .split {
+    grid-template-rows: minmax(150px, 36%) minmax(0, 1fr);
+  }
+}

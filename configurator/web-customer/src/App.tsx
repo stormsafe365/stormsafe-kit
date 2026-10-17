@@ -20,11 +20,11 @@ import { Guide } from './Guide';
 const TABS: Array<{ key: TabKey; label: string; title: string }> = [
   { key: 'size', label: 'Size', title: 'Building type & size' },
   { key: 'walls', label: 'Walls', title: 'Walls' },
-  { key: 'doors', label: 'Doors', title: 'Doors & windows' },
+  { key: 'doors', label: 'Doors & windows', title: 'Doors & windows' },
   { key: 'leantos', label: 'Lean-tos', title: 'Lean-tos' },
   { key: 'upgrades', label: 'Upgrades', title: 'Upgrades' },
   { key: 'colors', label: 'Colors', title: 'Colors' },
-  { key: 'send', label: 'Send', title: 'Send to your rep' },
+  { key: 'send', label: 'Review & send', title: 'Review & send' },
 ];
 
 /** Inside a website frame without a rep's link the website sends the design itself: no Send step there. */
@@ -48,7 +48,7 @@ const STEP_HELP: Record<TabKey, { text: string | ((s: ReturnType<typeof useWebSt
           ? 'The room in back is closed on all sides; the carport in front stays open. Tap Next unless you want a carport side closed.'
           : 'A garage keeps all four sides closed, so you can just tap Next.',
   },
-  doors: { text: 'Pick what and the wall, then tap Add.' },
+  doors: { text: 'Add garage doors, walk-in doors and windows here. Pick what, which wall, then tap Add.' },
   leantos: { text: 'A lean-to is a lower roof on one side: open for cover, or closed in for storage. Most people skip this.', optional: true },
   upgrades: { text: 'Leave these off if you are not sure; your rep will go over them with you.', optional: true },
   colors: { text: 'Pick colors for the roof, the walls and the trim (the edges and corners).' },
@@ -99,6 +99,7 @@ function StepNav() {
   const quietNext = tab === 'doors' && d.openings.length === 0;
   // Step 1: Back goes to the guided questions (the sizes if they came through them, else the first screen)
   const guideStyle = useWebStore((s) => s.guideStyle);
+  const guideMode = useWebStore((s) => s.guideMode);
   const setGuide = useWebStore((s) => s.setGuide);
   return (
     <div className="stepnav">
@@ -107,7 +108,7 @@ function StepNav() {
           ← Back
         </button>
       ) : !FRAMED ? (
-        <button type="button" className="btn-ghost" onClick={() => setGuide(guideStyle ? 'size' : 'welcome')}>
+        <button type="button" className="btn-ghost" onClick={() => setGuide(guideStyle ? (guideMode === 'know' ? 'style' : 'size') : 'welcome')}>
           ← Back
         </button>
       ) : (
@@ -115,7 +116,7 @@ function StepNav() {
       )}
       {next ? (
         <button type="button" className={quietNext ? 'btn-ghost' : 'btn-primary'} onClick={() => setTab(next.key)}>
-          {quietNext ? 'Skip doors →' : skipping ? `Skip: ${next.title} →` : next.key === 'send' ? 'Next: Send to your rep →' : `Next: ${next.title} →`}
+          {quietNext ? 'Skip doors →' : skipping ? `Skip: ${next.title} →` : next.key === 'send' ? 'Next: Review & send →' : `Next: ${next.title} →`}
         </button>
       ) : null}
     </div>
@@ -508,7 +509,7 @@ export function App() {
   }, [tab, selMain, selLean]);
 
   return (
-    <div className={`app${bigView ? ' big-view' : ''}${touched ? ' touched' : ''}`}>
+    <div className={`app${bigView ? ' big-view' : ''}${touched ? ' touched' : ''}${tab === 'doors' || tab === 'leantos' ? ' working' : ''}`}>
       <header className="topbar">
         <div className="brand">
           <span className="wordmark" aria-label="StormSafe Steel">

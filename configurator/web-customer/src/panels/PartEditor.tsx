@@ -3,7 +3,7 @@
  * size, look and position. The caller does the fitting (no-overlap rule) and
  * the writing; this only shows the choices that fit.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ROLLUP_COLORS, WALK_DOORS, WINDOWS, windowType, walkDoorType } from '../model/catalog';
 import type { OpeningKind, WebLeanToOpening, WebOpening } from '../model/design';
 import { Note, Select, Stepper, Segmented, ft, inch } from './ui';
@@ -46,6 +46,12 @@ export interface PartEditorProps {
 export function PartEditor(p: PartEditorProps) {
   const { o } = p;
   const [msg, setMsg] = useState<string | null>(null);
+  // each added part is one line until the customer taps it (a long list of open forms meant a lot of scrolling)
+  const [open, setOpen] = useState(p.selected);
+  useEffect(() => {
+    if (p.selected) setOpen(true);
+  }, [p.selected]);
+  const wallName = p.wallOptions.find((x) => x.value === o.wall)?.label;
   const run = (r: string | null) => setMsg(r);
   const walkOpts = WALK_DOORS.map((t) => ({ value: t.key, label: t.name, disabled: p.impact && !t.impact }));
   const winOpts = WINDOWS.map((t) => ({ value: t.key, label: `${t.name} ${t.wIn}″ × ${t.hIn}″`, disabled: p.impact && !t.impact }));
@@ -53,11 +59,20 @@ export function PartEditor(p: PartEditorProps) {
     <section className={`part ${p.selected ? 'is-selected' : ''}`} aria-label={`${p.label} ${KIND_LABEL[o.kind]}`}>
       <header className="part-head">
         <span className="part-num">{p.label}</span>
-        <span className="part-title">{partTitle(o)}</span>
+        <button type="button" className={`part-toggle${open ? ' open' : ''}`} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+          <span className="part-title">{partTitle(o)}</span>
+          <span className="part-sub">
+            {wallName ?? ''} · {open ? 'tap to close' : 'tap to change'}
+          </span>
+        </button>
         <button type="button" className="icon-btn" aria-label={`Remove ${KIND_LABEL[o.kind].toLowerCase()} ${p.label}`} onClick={p.onRemove}>
           ×
         </button>
       </header>
+      {p.problem ? <Note tone="warn">{p.problem}</Note> : null}
+      {msg ? <Note tone="warn">{msg}</Note> : null}
+      {open ? (
+        <>
       <div className="part-grid">
         <Select label="Wall" value={o.wall as string} options={p.wallOptions} onChange={(w) => run(p.onWall(w))} />
         {o.kind === 'rollup' && (
@@ -122,8 +137,8 @@ export function PartEditor(p: PartEditorProps) {
       />
       {o.kind === 'frame' && <p className="field-hint">A framed opening is ready for a door or window you supply.</p>}
       {p.impact && (o.kind === 'walk' || o.kind === 'window') && <p className="field-hint">Impact-rated for your area.</p>}
-      {p.problem ? <Note tone="warn">{p.problem}</Note> : null}
-      {msg ? <Note tone="warn">{msg}</Note> : null}
+        </>
+      ) : null}
     </section>
   );
 }

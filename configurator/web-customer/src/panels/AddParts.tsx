@@ -13,7 +13,7 @@ import { WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog
 import { WALL_LABEL, type OpeningKind, type WebDesign, type WebOpening, type WebWall } from '../model/design';
 import { nextFreeId } from '../model/normalize';
 import { maxQty, respaceWithSame, spreadPositions, whyNoMore } from '../model/addMany';
-import { isEave, openingWalls, rollupSizes, walkDoorFitsHeight, windowFitsHeight } from '../model/rules';
+import { isEave, openingWalls, rollupFits, rollupSizes, walkDoorFitsHeight, windowFitsHeight } from '../model/rules';
 import { cameraApi } from '../cameraFit';
 import { revealInPanel } from '../reveal';
 import { Note, Segmented, Select, ft } from './ui';
@@ -91,6 +91,15 @@ export function AddParts() {
     return { widths: fitWidths(d, curWall, s.widths) as number[], heights: s.heights as number[] };
   }, [d, curWall, rollupsThere, q]);
   const { w, h } = curWall ? partSize(d, kind, curWall, rollupsThere + q, rw, rh) : first;
+  // the garage door size as ONE choice ("10′ wide × 8′ tall"), only the pairs that fit this wall
+  const sizeOptions = useMemo(() => {
+    if (!curWall || kind !== 'rollup' || !w || !h) return [] as Array<{ value: string; label: string }>;
+    const n = rollupsThere + q;
+    const out: Array<{ value: string; label: string }> = [];
+    for (const a of sizes.widths) for (const b of sizes.heights) if ((a === w && b === h) || rollupFits(d, curWall, a, b, n)) out.push({ value: `${a}x${b}`, label: `${a}′ wide × ${b}′ tall` });
+    if (!out.some((o) => o.value === `${w}x${h}`)) out.push({ value: `${w}x${h}`, label: `${w}′ wide × ${h}′ tall` });
+    return out;
+  }, [d, curWall, kind, rollupsThere, q, sizes, w, h]);
   const qtyOptions = Array.from({ length: Math.max(1, most) }, (_, i) => ({ value: i + 1, label: String(i + 1) }));
   // why the count stops where it does (height rule / a tall door already there / the 40 limit)
   const wallName = curWall ? WALL_LABEL[curWall].toLowerCase() : 'wall';
@@ -215,7 +224,7 @@ export function AddParts() {
       {wallChoices.length ? (
         <div className="row3">
           <Select<WebWall>
-            label="Wall"
+            label="Which wall"
             value={curWall ?? wallChoices[0]}
             options={wallChoices.map((x) => ({ value: x, label: WALL_LABEL[x] }))}
             onChange={(x) => {
@@ -227,12 +236,21 @@ export function AddParts() {
             }}
           />
           {kind === 'rollup' && !blocked ? (
-            <>
-              <Select<number> label="Width" value={w} options={sizes.widths.map((x) => ({ value: x, label: ft(x) }))} onChange={(x) => { setRw(x); setWall(curWall); }} />
-              <Select<number> label="Height" value={h} options={sizes.heights.map((x) => ({ value: x, label: ft(x) }))} onChange={(x) => { setRh(x); setWall(curWall); }} />
-            </>
+            <Select<string>
+              label="Door size"
+              value={`${w}x${h}`}
+              options={sizeOptions}
+              onChange={(v) => {
+                const [a, b] = v.split('x').map(Number);
+                setRw(a);
+                setRh(b);
+                setWall(curWall);
+              }}
+            />
           ) : null}
-          {!blocked ? <Select<number> label="How many" value={q} options={qtyOptions} onChange={(x) => { setQty(x); setWall(curWall); }} /> : null}
+          {kind !== 'rollup' && !blocked && qtyOptions.length > 1 ? (
+            <Select<number> label="How many" value={q} options={qtyOptions} onChange={(x) => { setQty(x); setWall(curWall); }} />
+          ) : null}
         </div>
       ) : null}
       {blocked ? (
@@ -260,9 +278,18 @@ export function AddParts() {
               A {ft(rw)} wide garage door does not fit on the {wallName} next to what is there; {ft(w)} is the widest. Or pick another wall.
             </p>
           ) : null}
-          <button type="button" className="btn-primary btn-add" onClick={add}>
-            Add {q} {plural(kind, q)} to the {wallName}
-          </button>
+          {kind === 'rollup' && qtyOptions.length > 1 ? (
+            <div className="add-line">
+              <Select<number> label="How many" value={q} options={qtyOptions} onChange={(x) => { setQty(x); setWall(curWall); }} />
+              <button type="button" className="btn-primary btn-add" onClick={add}>
+                Add {q} {plural(kind, q)}
+              </button>
+            </div>
+          ) : (
+            <button type="button" className="btn-primary btn-add" onClick={add}>
+              Add {q} {plural(kind, q)} to the {wallName}
+            </button>
+          )}
         </>
       )}
       {addedNote ? (

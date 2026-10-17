@@ -8,7 +8,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore, type GuideStep } from './store';
-import { applyStyle, BARNS, STYLES, type SizePreset } from './model/guide';
+import { applyStyle, BARNS, STYLES, type BarnStyle, type GuideStyle, type SizePreset } from './model/guide';
 import { cameraApi } from './cameraFit';
 
 // Pictures made from our own 3D model (tools/make-guide-pictures.mjs).
@@ -21,6 +21,8 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
   const setGuide = useWebStore((s) => s.setGuide);
   const style = useWebStore((s) => s.guideStyle);
   const setStyle = useWebStore((s) => s.setGuideStyle);
+  const mode = useWebStore((s) => s.guideMode);
+  const setMode = useWebStore((s) => s.setGuideMode);
   const barn = useWebStore((s) => s.guideBarn);
   const setBarn = useWebStore((s) => s.setGuideBarn);
   const update = useWebStore((s) => s.update);
@@ -65,6 +67,11 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
     update((d) => applyStyle(d, st.key, { label: '', w: d.width, l: d.length, h: d.height }));
     toBuilder();
   };
+  // "I know what I want": the style (and barn style) is picked here, the exact size is typed in the builder
+  const finishKnow = (style: GuideStyle, b: BarnStyle) => {
+    update((d) => applyStyle(d, style, { label: '', w: d.width, l: d.length, h: d.height }, b));
+    toBuilder();
+  };
   const back = () => setGuide(step === 'size' ? (st?.leanTos ? 'barn' : 'style') : step === 'barn' ? 'style' : 'welcome');
 
   return (
@@ -79,10 +86,24 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
           <>
             <h1 className="guide-h" tabIndex={-1} ref={headRef}>Let’s design your building!</h1>
             <p className="guide-p">Not sure what you need? No problem. A few easy questions, and you’ll see your building in 3D.</p>
-            <button type="button" className="btn-primary guide-btn" onClick={() => setGuide('style')}>
+            <button
+              type="button"
+              className="btn-primary guide-btn"
+              onClick={() => {
+                setMode('help');
+                setGuide('style');
+              }}
+            >
               Help me design my building
             </button>
-            <button type="button" className="btn-ghost guide-btn guide-btn-2" onClick={() => toBuilder()}>
+            <button
+              type="button"
+              className="btn-ghost guide-btn guide-btn-2"
+              onClick={() => {
+                setMode('know');
+                setGuide('style');
+              }}
+            >
               I know what I want
             </button>
             {onUndo ? (
@@ -99,8 +120,10 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
 
         {step === 'style' && (
           <>
-            <h1 className="guide-h" tabIndex={-1} ref={headRef}>What do you want to build?</h1>
-            <p className="guide-p">Choose the closest match. You can change everything later.</p>
+            <h1 className="guide-h" tabIndex={-1} ref={headRef}>{mode === 'know' ? 'Choose your building style' : 'What do you want to build?'}</h1>
+            <p className="guide-p">
+              {mode === 'know' ? 'Pick the closest style. You will set the exact size next.' : 'Choose the closest match. You can change everything later.'}
+            </p>
             <div className="guide-list">
               {STYLES.map((x) => (
                 <button
@@ -109,7 +132,9 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
                   className="guide-card"
                   onClick={() => {
                     setStyle(x.key);
-                    setGuide(x.leanTos ? 'barn' : 'size');
+                    if (x.leanTos) setGuide('barn');
+                    else if (mode === 'know') finishKnow(x.key, 'standard');
+                    else setGuide('size');
                   }}
                 >
                   <img className="guide-pic" src={PICTURE(x.key)} alt="" width="120" height="75" loading="lazy" decoding="async" />
@@ -135,7 +160,8 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
                   className="guide-card"
                   onClick={() => {
                     setBarn(x.key);
-                    setGuide('size');
+                    if (mode === 'know' && st) finishKnow(st.key, x.key);
+                    else setGuide('size');
                   }}
                 >
                   <img className="guide-pic" src={PICTURE('barn-' + x.key)} alt="" width="120" height="75" loading="lazy" decoding="async" />

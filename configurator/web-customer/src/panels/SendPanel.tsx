@@ -11,6 +11,7 @@ import { checkContact, sendErrorText, FIELD_ERRORS, LIMITS, type Contact } from 
 import { captureDesign, isBlankImage, toJpeg } from '../capture';
 import { submitDesign } from '../send';
 import { LocationField } from './LocationField';
+import { ReviewList } from './ReviewList';
 import { Field, Note } from './ui';
 
 const PHONE = '561-771-5555';
@@ -129,6 +130,7 @@ export function SendPanel() {
   if (link === 'none' || !token) {
     return (
       <div className="panel-body">
+        <ReviewList />
         <Note>
           To send this design, open the personal link your StormSafe Steel rep texted or emailed you. Or call or text{' '}
           <a href={PHONE_HREF}>{PHONE}</a> and we will design it with you.
@@ -139,6 +141,7 @@ export function SendPanel() {
   if (link === 'expired' || link === 'invalid') {
     return (
       <div className="panel-body">
+        <ReviewList />
         <Note tone="warn">{sendErrorText(link === 'expired' ? 'link_expired' : 'link_invalid')}</Note>
       </div>
     );
@@ -205,6 +208,7 @@ export function SendPanel() {
         void send();
       }}
     >
+      <ReviewList />
       <p className="send-lede">
         Happy with your building? Send it to your rep. They will look it over and get back to you with a quote.
       </p>

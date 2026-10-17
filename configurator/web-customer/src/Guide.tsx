@@ -1,81 +1,30 @@
 /**
- * The guided start (owner 10/17/26, from the usability PDF): a first-time visitor is asked what the
- * building is for and how much room they need, instead of landing on seven tabs. "I know what I want"
- * goes straight to the builder. Everything they pick lands in the same builder, where it can all be
- * changed. Shown only on the design page's own screen (never inside the website's frame).
+ * The guided start (owner 10/17/26, from the usability PDF): a first-time visitor is asked what kind
+ * of building they want (picture cards) and how much room they need, instead of landing on seven tabs.
+ * "I know what I want" goes straight to the builder. Everything they pick lands in the same builder,
+ * where it can all be changed, and Back in the builder returns here. Shown only on the design page's
+ * own screen (never inside the website's frame).
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore, type GuideStep } from './store';
-import { applyPreset, PURPOSES, SIDE_CHOICES, type Purpose, type SizePreset } from './model/guide';
-import type { WebBuildingType } from './model/design';
+import { applyStyle, STYLES, type SizePreset } from './model/guide';
 import { cameraApi } from './cameraFit';
-import { applyType } from './panels/SizePanel';
 
-const ICONS: Record<Purpose, ReactNode> = {
-  garage: (
-    <>
-      <path d="M6 20 24 8l18 12v20H6Z" />
-      <rect x="14" y="24" width="20" height="16" />
-      <path d="M14 29h20M14 34h20" />
-    </>
-  ),
-  parking: (
-    <>
-      <path d="M4 20 24 10l20 10" />
-      <path d="M9 19v21M39 19v21M4 40h40" />
-    </>
-  ),
-  workshop: (
-    <>
-      <path d="M6 40V20L24 9l18 11v20Z" />
-      <rect x="11" y="24" width="8" height="8" />
-      <rect x="29" y="26" width="8" height="14" />
-    </>
-  ),
-  rv: (
-    <>
-      <rect x="4" y="14" width="34" height="20" rx="3" />
-      <rect x="24" y="18" width="10" height="7" />
-      <path d="M38 22h4l2 4v8h-6" />
-      <circle cx="13" cy="36" r="3.5" />
-      <circle cx="31" cy="36" r="3.5" />
-    </>
-  ),
-  farm: (
-    <>
-      <path d="M6 40V22l6-10h24l6 10v18Z" />
-      <rect x="17" y="24" width="14" height="16" />
-      <path d="m17 24 14 16M31 24 17 40" />
-    </>
-  ),
-  other: (
-    <>
-      <circle cx="24" cy="24" r="16" />
-      <path d="M24 15v18M15 24h18" />
-    </>
-  ),
-};
-
-function Icon({ k }: { k: Purpose }) {
-  return (
-    <svg className="guide-icon" viewBox="0 0 48 48" width="44" height="44" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      {ICONS[k]}
-    </svg>
-  );
-}
+// Pictures made from our own 3D model (tools/make-guide-pictures.mjs).
+const PICTURE = (k: string) => new URL(`./assets/guide/${k}.jpg`, import.meta.url).href;
 
 const dims = (p: SizePreset) => `${p.w}′ W × ${p.l}′ L × ${p.h}′ H`;
 
-export function Guide({ banner }: { banner?: ReactNode }) {
+export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => void) | null }) {
   const step = useWebStore((s) => s.guide) as GuideStep;
   const setGuide = useWebStore((s) => s.setGuide);
+  const style = useWebStore((s) => s.guideStyle);
+  const setStyle = useWebStore((s) => s.setGuideStyle);
   const update = useWebStore((s) => s.update);
   const setTab = useWebStore((s) => s.setTab);
-  const [purpose, setPurpose] = useState<Purpose | null>(null);
-  const [sides, setSides] = useState<WebBuildingType | null>(null);
   const headRef = useRef<HTMLHeadingElement>(null);
-  const p = PURPOSES.find((x) => x.key === purpose) ?? null;
+  const st = STYLES.find((x) => x.key === style) ?? null;
 
   // The builder behind is out of reach (keyboard and screen reader) while the questions are up.
   useEffect(() => {
@@ -88,6 +37,10 @@ export function Guide({ banner }: { banner?: ReactNode }) {
     headRef.current?.focus({ preventScroll: true });
     document.querySelector('.guide')?.scrollTo({ top: 0 });
   }, [step]);
+  // A size screen needs a style: a way in without one (should not happen) asks the style first.
+  useEffect(() => {
+    if (step === 'size' && !st) setGuide('style');
+  }, [step, st, setGuide]);
 
   const toBuilder = () => {
     setTab('size');
@@ -98,29 +51,18 @@ export function Guide({ banner }: { banner?: ReactNode }) {
     setTimeout(() => cameraApi.fit('iso'), 250);
     setTimeout(() => document.getElementById('tab-size')?.focus({ preventScroll: true }), 60);
   };
-  const choosePurpose = (k: Purpose) => {
-    setPurpose(k);
-    setSides(null);
-    setGuide(PURPOSES.find((x) => x.key === k)!.type === null ? 'sides' : 'size');
-  };
   const chooseSize = (size: SizePreset) => {
-    if (!p) return;
-    const type = p.type ?? sides ?? 'garage';
-    update((d) => applyPreset(d, type, size));
+    if (!st) return;
+    update((d) => applyStyle(d, st.key, size));
     toBuilder();
   };
-  // own size: the kind of building is kept, the size boxes are theirs
+  // own size: the kind of building is kept (its walls and lean-tos too), the size boxes are theirs
   const chooseOwn = () => {
-    if (!p) return;
-    const type = p.type ?? sides ?? 'garage';
-    update((d) => applyType(d, type));
+    if (!st) return;
+    update((d) => applyStyle(d, st.key, { label: '', w: d.width, l: d.length, h: d.height }));
     toBuilder();
   };
-  const back = () => {
-    if (step === 'size') setGuide(p && p.type === null ? 'sides' : 'purpose');
-    else if (step === 'sides') setGuide('purpose');
-    else setGuide('welcome');
-  };
+  const back = () => setGuide(step === 'size' ? 'style' : 'welcome');
 
   return (
     <section className="guide" aria-label="Guided start">
@@ -134,49 +76,40 @@ export function Guide({ banner }: { banner?: ReactNode }) {
           <>
             <h1 className="guide-h" tabIndex={-1} ref={headRef}>Let’s design your building!</h1>
             <p className="guide-p">Not sure what you need? No problem. A few easy questions, and you’ll see your building in 3D.</p>
-            <button type="button" className="btn-primary guide-btn" onClick={() => setGuide('purpose')}>
+            <button type="button" className="btn-primary guide-btn" onClick={() => setGuide('style')}>
               Help me design my building
             </button>
             <button type="button" className="btn-ghost guide-btn guide-btn-2" onClick={() => toBuilder()}>
               I know what I want
             </button>
+            {onUndo ? (
+              <p className="guide-small">
+                Started over by mistake?{' '}
+                <button type="button" className="linkish" onClick={onUndo}>
+                  Go back to my building
+                </button>
+              </p>
+            ) : null}
             <p className="guide-small">No building knowledge needed. Questions? <a href="tel:+15617715555">561-771-5555</a></p>
           </>
         )}
 
-        {step === 'purpose' && (
+        {step === 'style' && (
           <>
-            <h1 className="guide-h" tabIndex={-1} ref={headRef}>What will you use it for?</h1>
+            <h1 className="guide-h" tabIndex={-1} ref={headRef}>What do you want to build?</h1>
             <p className="guide-p">Choose the closest match. You can change everything later.</p>
             <div className="guide-list">
-              {PURPOSES.map((x) => (
-                <button key={x.key} type="button" className="guide-card" onClick={() => choosePurpose(x.key)}>
-                  <Icon k={x.key} />
-                  <span className="guide-card-text">
-                    <span className="guide-card-title">{x.title}</span>
-                    <span className="guide-card-blurb">{x.blurb}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        {step === 'sides' && (
-          <>
-            <h1 className="guide-h" tabIndex={-1} ref={headRef}>How should the sides be?</h1>
-            <p className="guide-p">Pick the closest. You can close in or open up any wall later.</p>
-            <div className="guide-list">
-              {SIDE_CHOICES.map((x) => (
+              {STYLES.map((x) => (
                 <button
-                  key={x.type}
+                  key={x.key}
                   type="button"
-                  className="guide-card guide-card-plain"
+                  className="guide-card"
                   onClick={() => {
-                    setSides(x.type);
+                    setStyle(x.key);
                     setGuide('size');
                   }}
                 >
+                  <img className="guide-pic" src={PICTURE(x.key)} alt="" width="120" height="75" loading="lazy" decoding="async" />
                   <span className="guide-card-text">
                     <span className="guide-card-title">{x.title}</span>
                     <span className="guide-card-blurb">{x.blurb}</span>
@@ -187,12 +120,15 @@ export function Guide({ banner }: { banner?: ReactNode }) {
           </>
         )}
 
-        {step === 'size' && p && (
+        {step === 'size' && st && (
           <>
             <h1 className="guide-h" tabIndex={-1} ref={headRef}>How much room?</h1>
-            <p className="guide-p">Pick a starting size. You can change it on the next screen.</p>
+            <p className="guide-p">
+              {st.title}: pick a starting size. You can change it on the next screen.
+              {st.leanTos ? ' The size is the center building; a 12′ lean-to goes on each side.' : ''}
+            </p>
             <div className="guide-list">
-              {p.sizes.map((s) => (
+              {st.sizes.map((s) => (
                 <button key={s.label} type="button" className="guide-card guide-card-plain" onClick={() => chooseSize(s)}>
                   <span className="guide-card-text">
                     <span className="guide-card-title">{s.label}</span>

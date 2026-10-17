@@ -47,6 +47,9 @@ if (token) {
   void checkLink(token).then((status) => useWebStore.getState().setLink(token, status));
 }
 
+// Picture-making for the guided cards (dev server only: tools/make-guide-pictures; never in the built page).
+if (import.meta.env.DEV) (window as unknown as { __ssStore?: unknown }).__ssStore = useWebStore;
+
 // Design → 3D (and 3D drags → design).
 installSync();
 

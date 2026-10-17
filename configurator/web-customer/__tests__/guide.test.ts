@@ -1,14 +1,19 @@
 // The guided start (owner 10/17/26): every starting size is one the builder accepts exactly as listed,
-// for every kind of building a card can lead to, and nothing is added to the design.
+// for every building style a card leads to; an ag barn is a center building with a lean-to on each
+// side (not a garage + carport); nothing but the style's own parts is added to the design.
 import { describe, expect, it } from 'vitest';
 import { cloneDesign, DEFAULT_DESIGN } from '../src/model/design';
 import { normalizeDesign } from '../src/model/normalize';
-import { applyPreset, PURPOSES, SIDE_CHOICES } from '../src/model/guide';
+import { applyStyle, STYLES } from '../src/model/guide';
 import { heightOptions, isWideSpan, widthOptions } from '../src/model/rules';
 
 describe('guided starting sizes', () => {
+  it('the five styles the owner asked for, in plain words', () => {
+    expect(STYLES.map((s) => s.title)).toEqual(['Carport', 'Partially enclosed', 'Garage', 'Utility carport', 'Ag barn']);
+  });
+
   it('the owner list is all there (width x length x height)', () => {
-    const all = PURPOSES.flatMap((p) => p.sizes).map((s) => `${s.label} ${s.w}x${s.l}x${s.h}`);
+    const all = new Set(STYLES.flatMap((p) => p.sizes).map((s) => `${s.label} ${s.w}x${s.l}x${s.h}`));
     for (const want of [
       '1 car 12x21x9',
       '2 cars 24x26x9',
@@ -21,35 +26,71 @@ describe('guided starting sizes', () => {
       'Tractor & equipment 24x31x14',
       'Ag / barn 30x51x12',
       'Commercial / clear span 40x53x14',
-    ]) expect(all).toContain(want);
+    ]) expect(all.has(want), want).toBe(true);
   });
 
-  it('every size is kept exactly, for every type its card can lead to', () => {
-    for (const p of PURPOSES) {
-      const types = p.type ? [p.type] : SIDE_CHOICES.map((c) => c.type);
-      for (const type of types) {
-        for (const s of p.sizes) {
-          if (isWideSpan(s.w) && type !== 'garage') continue; // wide span is a garage only (the card never leads there)
-          const d = cloneDesign(DEFAULT_DESIGN);
-          applyPreset(d, type, s);
-          const n = normalizeDesign(d, false);
-          expect([p.key, type, s.label, n.type, n.width, n.length, n.height]).toEqual([p.key, type, s.label, type, s.w, s.l, s.h]);
-          expect(widthOptions(type)).toContain(s.w);
-          expect(heightOptions(s.w)).toContain(s.h);
-          expect(n.openings).toEqual([]);
-          expect(n.leanTos).toEqual([]);
-          if (type === 'combo') {
-            expect(n.enclosedLength).toBeGreaterThanOrEqual(5);
-            expect(n.enclosedLength).toBeLessThanOrEqual(n.length - 5);
-          }
+  it('every size is kept exactly, for every style', () => {
+    for (const st of STYLES) {
+      for (const s of st.sizes) {
+        const d = cloneDesign(DEFAULT_DESIGN);
+        applyStyle(d, st.key, s);
+        const n = normalizeDesign(d, false);
+        expect([st.key, s.label, n.type, n.width, n.length, n.height]).toEqual([st.key, s.label, st.type, s.w, s.l, s.h]);
+        expect(widthOptions(st.type)).toContain(s.w);
+        expect(heightOptions(s.w)).toContain(s.h);
+        expect(n.openings).toEqual([]);
+        expect(n.walls).toEqual(st.walls);
+        if (st.type === 'combo') {
+          expect(n.enclosedLength).toBeGreaterThanOrEqual(5);
+          expect(n.enclosedLength).toBeLessThanOrEqual(n.length - 5);
         }
       }
     }
   });
 
+  it('an ag barn is the center building plus a 12′ lean-to on each side, kept by the rules', () => {
+    const ag = STYLES.find((s) => s.key === 'ag')!;
+    for (const s of ag.sizes) {
+      const n = normalizeDesign(applyStyle2(ag.key, s), false);
+      expect(n.type).toBe('garage');
+      expect(n.leanTos.map((l) => l.side).sort()).toEqual(['Left Eave', 'Right Eave']);
+      for (const l of n.leanTos) {
+        expect(l.width).toBe(12);
+        expect(l.length).toBe(s.l);
+        expect(l.enclosure).toBe('open');
+      }
+    }
+  });
+
+  it('no other style has lean-tos, and picking again replaces the last pick (Back, then another style)', () => {
+    const d = cloneDesign(DEFAULT_DESIGN);
+    const ag = STYLES.find((s) => s.key === 'ag')!;
+    applyStyle(d, 'ag', ag.sizes[0]);
+    expect(d.leanTos).toHaveLength(2);
+    const carport = STYLES.find((s) => s.key === 'carport')!;
+    applyStyle(d, 'carport', carport.sizes[0]);
+    expect(d.leanTos).toEqual([]);
+    expect(normalizeDesign(d, false).type).toBe('carport');
+    expect(normalizeDesign(d, false).walls).toEqual(carport.walls);
+    // partially enclosed -> carport again: the walls come back open
+    applyStyle(d, 'partial', carport.sizes[0]);
+    expect(normalizeDesign(d, false).walls.back).toBe('closed');
+    applyStyle(d, 'carport', carport.sizes[0]);
+    expect(normalizeDesign(d, false).walls).toEqual(carport.walls);
+  });
+
   it('wide span (40 wide) is only offered as a closed garage', () => {
-    const wide = PURPOSES.filter((p) => p.sizes.some((s) => isWideSpan(s.w)));
-    expect(wide.map((p) => p.key)).toEqual(['other']);
-    expect(wide[0].type).toBe('garage');
+    const wide = STYLES.filter((p) => p.sizes.some((s) => isWideSpan(s.w)));
+    expect(wide.map((p) => p.key)).toEqual(['garage']);
+  });
+
+  it('a free-standing lean-to is not offered (the builder has no such building)', () => {
+    expect(STYLES.some((s) => /free/i.test(s.title))).toBe(false);
   });
 });
+
+function applyStyle2(key: Parameters<typeof applyStyle>[1], s: Parameters<typeof applyStyle>[2]) {
+  const d = cloneDesign(DEFAULT_DESIGN);
+  applyStyle(d, key, s);
+  return d;
+}

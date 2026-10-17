@@ -97,10 +97,17 @@ function StepNav() {
   // Doors with nothing added: the teal "Add" button is the one to tap, so Next is a quiet outline
   // (re-check 10/16/26: the teal Next was the only teal button on screen, so doors got skipped)
   const quietNext = tab === 'doors' && d.openings.length === 0;
+  // Step 1: Back goes to the guided questions (the sizes if they came through them, else the first screen)
+  const guideStyle = useWebStore((s) => s.guideStyle);
+  const setGuide = useWebStore((s) => s.setGuide);
   return (
     <div className="stepnav">
       {prev ? (
         <button type="button" className="btn-ghost" onClick={() => setTab(prev.key)}>
+          ← Back
+        </button>
+      ) : !FRAMED ? (
+        <button type="button" className="btn-ghost" onClick={() => setGuide(guideStyle ? 'size' : 'welcome')}>
           ← Back
         </button>
       ) : (
@@ -397,6 +404,8 @@ export function App() {
   const setTab = useWebStore((s) => s.setTab);
   const busy = useWebStore((s) => s.busy);
   const guide = useWebStore((s) => s.guide);
+  const setGuide = useWebStore((s) => s.setGuide);
+  const setGuideStyle = useWebStore((s) => s.setGuideStyle);
   const replace = useWebStore((s) => s.replace);
   const selMain = useEditorStore((s) => s.selectedOpeningId);
   const selLean = useEditorStore((s) => s.selectedLeanToOpeningId);
@@ -419,10 +428,11 @@ export function App() {
     }
   }, [design, cleared]);
   useEffect(() => {
-    if (!cleared) return;
+    // the "Go back to my building" link stays while the first screen is up; otherwise the Undo line goes after 10 s
+    if (!cleared || guide) return;
     const t = setTimeout(() => setCleared(false), 10000);
     return () => clearTimeout(t);
-  }, [cleared]);
+  }, [cleared, guide]);
   const startOver = () => {
     const before = { design: useWebStore.getState().design, tab };
     replace(DEFAULT_DESIGN);
@@ -435,7 +445,24 @@ export function App() {
     setTab('size');
     setCleared(true);
     setTimeout(() => cameraApi.fit('iso'), 200);
+    // on its own page, starting over goes back to the first screen (the guided questions)
+    if (!FRAMED) {
+      setGuideStyle(null);
+      setGuide('welcome');
+      return;
+    }
     setTimeout(() => document.querySelector<HTMLButtonElement>('.cleared .linkish')?.focus(), 60);
+  };
+  const undo = () => {
+    const u = undoRef.current;
+    if (u) {
+      replace(u.design);
+      setTab(u.tab);
+      setTimeout(() => cameraApi.fit('iso'), 200);
+    }
+    undoRef.current = null;
+    setCleared(false);
+    setGuide(null);
   };
   // the steel-frame view is a look, not a setting: a new step shows the building as it is again
   useEffect(() => {
@@ -503,16 +530,7 @@ export function App() {
           <button
             type="button"
             className="linkish"
-            onClick={() => {
-              const u = undoRef.current;
-              if (u) {
-                replace(u.design);
-                setTab(u.tab);
-                setTimeout(() => cameraApi.fit('iso'), 200);
-              }
-              undoRef.current = null;
-              setCleared(false);
-            }}
+            onClick={undo}
           >
             Undo
           </button>
@@ -565,7 +583,7 @@ export function App() {
           </div>
         </aside>
       </div>
-      {guide ? <Guide banner={<LinkBanner />} /> : null}
+      {guide ? <Guide banner={<LinkBanner />} onUndo={cleared && undoRef.current ? undo : null} /> : null}
       {busy && (
         <div className="busy" role="alert" aria-live="assertive">
           <div className="busy-card">

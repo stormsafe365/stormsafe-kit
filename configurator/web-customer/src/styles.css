@@ -1617,3 +1617,17 @@ html.vv-kb .stepnav {
     min-height: 56px;
   }
 }
+.guide-pic {
+  flex: none;
+  width: 120px;
+  height: 75px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #f3f6f8;
+}
+@media (max-width: 340px) {
+  .guide-pic {
+    width: 96px;
+    height: 60px;
+  }
+}

@@ -1729,3 +1729,17 @@ html.vv-kb .stepnav {
     grid-template-rows: minmax(150px, 36%) minmax(0, 1fr);
   }
 }
+
+.chosen-style {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-vis);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.chosen-style strong {
+  font-size: 16px;
+}

@@ -39,7 +39,7 @@ function useSteps() {
  * tells me what to do or how many steps there are"; Lean-tos and Upgrades are optional).
  */
 const STEP_HELP: Record<TabKey, { text: string | ((s: ReturnType<typeof useWebStore.getState>) => string); optional?: boolean }> = {
-  size: { text: 'Pick the kind of building and its size. You can change anything later.' },
+  size: { text: (s) => (s.guideStyle ? 'Set the exact size of your building. You can change anything later.' : 'Pick the kind of building and its size. You can change anything later.') },
   walls: {
     text: (s) =>
       s.design.type === 'carport'

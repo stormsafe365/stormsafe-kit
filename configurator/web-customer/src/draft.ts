@@ -7,6 +7,7 @@
 import { currentState, useWebStore, type TabKey } from './store';
 import { checkState } from './model/validate';
 import { withoutOldStarterParts } from './model/design';
+import { BARNS, STYLES } from './model/guide';
 
 const KEY = (token: string | null) => `ss-design-draft:${token || 'no-link'}`;
 const MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
@@ -30,6 +31,10 @@ export function restoreDraft(token: string | null, now = Date.now()): boolean {
     // a draft saved before the plain-building start (10/16/26) loses the old starter parts if untouched -
     // never one already sent (the rep has that design; the page must keep showing what was sent)
     st.replace(j.blankStart === 1 || typeof j.sentAt === 'number' ? chk.design : withoutOldStarterParts(chk.design));
+    // the building style picked in the guided questions (so the Size step keeps showing it)
+    if (STYLES.some((x) => x.key === j.gs)) st.setGuideStyle(j.gs as (typeof STYLES)[number]['key']);
+    if (BARNS.some((x) => x.key === j.gb)) st.setGuideBarn(j.gb as (typeof BARNS)[number]['key']);
+    if (j.gm === 'help' || j.gm === 'know') st.setGuideMode(j.gm);
     if (typeof j.sentAt === 'number') st.setSent(j.sentAt);
     if (typeof j.tab === 'string' && (TABS as string[]).includes(j.tab)) st.setTab(j.tab as TabKey);
     return true;
@@ -41,11 +46,11 @@ export function restoreDraft(token: string | null, now = Date.now()): boolean {
 /** Save the draft right now (also before the page reloads itself for a newer version - freshness.ts). */
 export function saveDraftNow(token: string | null): void {
   try {
-    const { contact, sentAt, tab } = useWebStore.getState();
+    const { contact, sentAt, tab, guideStyle, guideBarn, guideMode } = useWebStore.getState();
     // once the design is sent, the contact details are not kept on the device (only the ZIP for the county)
     const keep = sentAt ? { zip: contact.zip } : { name: contact.name, phone: contact.phone, email: contact.email, zip: contact.zip, notes: contact.notes };
     // blankStart: saved by a page that starts with a plain building (no old starter parts to take off)
-    window.localStorage.setItem(KEY(token), JSON.stringify({ t: Date.now(), blankStart: 1, state: currentState(), contact: keep, sentAt, tab }));
+    window.localStorage.setItem(KEY(token), JSON.stringify({ t: Date.now(), blankStart: 1, state: currentState(), contact: keep, sentAt, tab, gs: guideStyle, gb: guideBarn, gm: guideMode }));
   } catch {
     /* storage blocked or full: no draft */
   }
@@ -55,7 +60,7 @@ export function saveDraftNow(token: string | null): void {
 export function keepDraft(token: string | null): () => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
   return useWebStore.subscribe((s, prev) => {
-    if (s.design === prev.design && s.contact === prev.contact && s.sentAt === prev.sentAt && s.tab === prev.tab) return;
+    if (s.design === prev.design && s.contact === prev.contact && s.sentAt === prev.sentAt && s.tab === prev.tab && s.guideStyle === prev.guideStyle && s.guideBarn === prev.guideBarn) return;
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => saveDraftNow(token), 400);
   });

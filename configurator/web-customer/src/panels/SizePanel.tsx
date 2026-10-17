@@ -3,6 +3,7 @@ import type { WebBuildingType, WebDesign } from '../model/design';
 import { COMBO_MIN_PART, heightOptions, isWideSpan, LENGTH_MAX, LENGTH_MIN, panelsLocked, pitchRise, roofStyleLocked, ROOF_VERTICAL_OVER_LENGTH, widthOptions, wallTakesOpenings } from '../model/rules';
 import { Note, Segmented, Select, Stepper, ft } from './ui';
 import { LocationField } from './LocationField';
+import { BARNS, STYLES } from '../model/guide';
 
 const TYPES: Array<{ value: WebBuildingType; label: string; blurb: string }> = [
   { value: 'garage', label: 'Garage', blurb: 'Closed on all sides' },
@@ -35,9 +36,26 @@ export function SizePanel() {
   const d = useWebStore((s) => s.design);
   const update = useWebStore((s) => s.update);
   const roofLocked = roofStyleLocked(d);
+  // a style picked in the guided questions is not asked again here: it is shown, with a way to change it
+  const guideStyle = useWebStore((s) => s.guideStyle);
+  const guideBarn = useWebStore((s) => s.guideBarn);
+  const setGuide = useWebStore((s) => s.setGuide);
+  const chosen = STYLES.find((x) => x.key === guideStyle) ?? null;
+  const chosenName = chosen ? (chosen.leanTos && guideBarn ? BARNS.find((b) => b.key === guideBarn)?.title ?? chosen.title : chosen.title) : '';
   const rise = d.width > 31 ? 2 : 3;
   return (
     <div className="panel-body">
+      {chosen ? (
+        <div className="field">
+          <span className="field-label">Your building style</span>
+          <div className="chosen-style">
+            <strong>{chosenName}</strong>
+            <button type="button" className="btn-ghost" onClick={() => setGuide('style')}>
+              Change
+            </button>
+          </div>
+        </div>
+      ) : (
       <div className="field">
         <span className="field-label">Building type</span>
         <div className="cards" role="group" aria-label="Building type">
@@ -55,6 +73,7 @@ export function SizePanel() {
           ))}
         </div>
       </div>
+      )}
 
       <div className="row3">
         <Select

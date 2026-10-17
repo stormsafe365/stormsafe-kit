@@ -4,8 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import { cloneDesign, DEFAULT_DESIGN } from '../src/model/design';
 import { normalizeDesign } from '../src/model/normalize';
-import { applyStyle, STYLES } from '../src/model/guide';
-import { heightOptions, isWideSpan, widthOptions } from '../src/model/rules';
+import { applyStyle, BARNS, joinDrop, raisedDrop, STYLES } from '../src/model/guide';
+import { heightOptions, isWideSpan, pitchRise, widthOptions } from '../src/model/rules';
 
 describe('guided starting sizes', () => {
   it('the five styles the owner asked for, in plain words', () => {
@@ -48,24 +48,51 @@ describe('guided starting sizes', () => {
     }
   });
 
-  it('an ag barn is the center building plus a 12′ lean-to on each side, kept by the rules', () => {
-    const ag = STYLES.find((s) => s.key === 'ag')!;
-    for (const s of ag.sizes) {
-      const n = normalizeDesign(applyStyle2(ag.key, s), false);
-      expect(n.type).toBe('garage');
-      expect(n.leanTos.map((l) => l.side).sort()).toEqual(['Left Eave', 'Right Eave']);
-      for (const l of n.leanTos) {
-        expect(l.width).toBe(12);
-        expect(l.length).toBe(s.l);
-        expect(l.enclosure).toBe('open');
+  it('three barn styles, the way the owner described them (10/17/26)', () => {
+    expect(BARNS.map((x) => x.title)).toEqual(['Standard barn', 'Raised center barn', 'Straight roof barn']);
+    const ag = STYLES.find((x) => x.key === 'ag')!;
+    for (const size of ag.sizes) {
+      for (const barn of ['standard', 'raised', 'straight'] as const) {
+        const d = cloneDesign(DEFAULT_DESIGN);
+        applyStyle(d, 'ag', size, barn);
+        const n = normalizeDesign(d, false);
+        expect(n.type).toBe('garage');
+        expect([n.width, n.length, n.height]).toEqual([size.w, size.l, size.h]);
+        expect(n.leanTos.map((l) => l.side)).toEqual(['Left Eave', 'Right Eave']);
+        // the rules keep every lean-to as built (nothing is snapped to something else)
+        expect(n.leanTos).toEqual(d.leanTos);
+        for (const l of n.leanTos) {
+          expect(l.length).toBe(size.l);
+          const drop = joinDrop(n, l);
+          if (barn === 'standard') expect(drop).toBeCloseTo(2, 9);
+          if (barn === 'raised') expect(drop).toBeCloseTo(raisedDrop(size.h), 9);
+          if (barn === 'straight') {
+            expect(drop).toBeCloseTo(0, 9); // meets the eave exactly...
+            expect(l.pitch).toBe(pitchRise(n) === 3 ? '3:12' : '2:12'); // ...on the center building's own slope
+          }
+        }
+        // standard: one lean-to closed in, the other open; the other barns: both open
+        expect(n.leanTos.map((l) => l.enclosure)).toEqual(barn === 'standard' ? ['enclosed', 'open'] : ['open', 'open']);
       }
+    }
+  });
+
+  it('raised center barn: the drop follows the wall height (10 or less 1′, 11-14 2′, 15-16 3′, 18-20 4′)', () => {
+    for (const [h, drop] of [[6, 1], [8, 1], [10, 1], [11, 2], [12, 2], [14, 2], [15, 3], [16, 3], [17, 3], [18, 4], [20, 4]] as const) expect(raisedDrop(h)).toBe(drop);
+    // and the exact join is built at every wall height from 9′ to 20′ (a 3:12 lean-to where 2:12 has no leg that fits)
+    for (let h = 9; h <= 20; h++) {
+      const d = cloneDesign(DEFAULT_DESIGN);
+      applyStyle(d, 'ag', { label: '', w: h > 16 ? 40 : 24, l: 40, h }, 'raised');
+      const n = normalizeDesign(d, false);
+      expect(n.leanTos).toEqual(d.leanTos);
+      for (const l of n.leanTos) expect(joinDrop(n, l), 'height ' + h).toBeCloseTo(raisedDrop(h), 9);
     }
   });
 
   it('no other style has lean-tos, and picking again replaces the last pick (Back, then another style)', () => {
     const d = cloneDesign(DEFAULT_DESIGN);
     const ag = STYLES.find((s) => s.key === 'ag')!;
-    applyStyle(d, 'ag', ag.sizes[0]);
+    applyStyle(d, 'ag', ag.sizes[0], 'standard');
     expect(d.leanTos).toHaveLength(2);
     const carport = STYLES.find((s) => s.key === 'carport')!;
     applyStyle(d, 'carport', carport.sizes[0]);

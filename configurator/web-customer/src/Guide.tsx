@@ -8,7 +8,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore, type GuideStep } from './store';
-import { applyStyle, STYLES, type SizePreset } from './model/guide';
+import { applyStyle, BARNS, STYLES, type SizePreset } from './model/guide';
 import { cameraApi } from './cameraFit';
 
 // Pictures made from our own 3D model (tools/make-guide-pictures.mjs).
@@ -21,6 +21,8 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
   const setGuide = useWebStore((s) => s.setGuide);
   const style = useWebStore((s) => s.guideStyle);
   const setStyle = useWebStore((s) => s.setGuideStyle);
+  const barn = useWebStore((s) => s.guideBarn);
+  const setBarn = useWebStore((s) => s.setGuideBarn);
   const update = useWebStore((s) => s.update);
   const setTab = useWebStore((s) => s.setTab);
   const headRef = useRef<HTMLHeadingElement>(null);
@@ -39,8 +41,9 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
   }, [step]);
   // A size screen needs a style: a way in without one (should not happen) asks the style first.
   useEffect(() => {
-    if (step === 'size' && !st) setGuide('style');
-  }, [step, st, setGuide]);
+    if ((step === 'size' || step === 'barn') && !st) setGuide('style');
+    else if (step === 'size' && st?.leanTos && !barn) setGuide('barn');
+  }, [step, st, barn, setGuide]);
 
   const toBuilder = () => {
     setTab('size');
@@ -53,7 +56,7 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
   };
   const chooseSize = (size: SizePreset) => {
     if (!st) return;
-    update((d) => applyStyle(d, st.key, size));
+    update((d) => applyStyle(d, st.key, size, barn ?? 'standard'));
     toBuilder();
   };
   // own size: the kind of building is kept (its walls and lean-tos too), the size boxes are theirs
@@ -62,7 +65,7 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
     update((d) => applyStyle(d, st.key, { label: '', w: d.width, l: d.length, h: d.height }));
     toBuilder();
   };
-  const back = () => setGuide(step === 'size' ? 'style' : 'welcome');
+  const back = () => setGuide(step === 'size' ? (st?.leanTos ? 'barn' : 'style') : step === 'barn' ? 'style' : 'welcome');
 
   return (
     <section className="guide" aria-label="Guided start">
@@ -106,10 +109,36 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
                   className="guide-card"
                   onClick={() => {
                     setStyle(x.key);
-                    setGuide('size');
+                    setGuide(x.leanTos ? 'barn' : 'size');
                   }}
                 >
                   <img className="guide-pic" src={PICTURE(x.key)} alt="" width="120" height="75" loading="lazy" decoding="async" />
+                  <span className="guide-card-text">
+                    <span className="guide-card-title">{x.title}</span>
+                    <span className="guide-card-blurb">{x.blurb}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {step === 'barn' && (
+          <>
+            <h1 className="guide-h" tabIndex={-1} ref={headRef}>Which barn style?</h1>
+            <p className="guide-p">Each has a lean-to roof on both sides of a center building. You can change the details later.</p>
+            <div className="guide-list">
+              {BARNS.map((x) => (
+                <button
+                  key={x.key}
+                  type="button"
+                  className="guide-card"
+                  onClick={() => {
+                    setBarn(x.key);
+                    setGuide('size');
+                  }}
+                >
+                  <img className="guide-pic" src={PICTURE('barn-' + x.key)} alt="" width="120" height="75" loading="lazy" decoding="async" />
                   <span className="guide-card-text">
                     <span className="guide-card-title">{x.title}</span>
                     <span className="guide-card-blurb">{x.blurb}</span>
@@ -125,7 +154,7 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
             <h1 className="guide-h" tabIndex={-1} ref={headRef}>How much room?</h1>
             <p className="guide-p">
               {st.title}: pick a starting size. You can change it on the next screen.
-              {st.leanTos ? ' The size is the center building; a 12′ lean-to goes on each side.' : ''}
+              {st.leanTos ? ' The size is the center building; the lean-tos are added on each side of it.' : ''}
             </p>
             <div className="guide-list">
               {st.sizes.map((s) => (

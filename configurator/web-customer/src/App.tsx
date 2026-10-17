@@ -406,6 +406,7 @@ export function App() {
   const guide = useWebStore((s) => s.guide);
   const setGuide = useWebStore((s) => s.setGuide);
   const setGuideStyle = useWebStore((s) => s.setGuideStyle);
+  const setGuideBarn = useWebStore((s) => s.setGuideBarn);
   const replace = useWebStore((s) => s.replace);
   const selMain = useEditorStore((s) => s.selectedOpeningId);
   const selLean = useEditorStore((s) => s.selectedLeanToOpeningId);
@@ -448,6 +449,7 @@ export function App() {
     // on its own page, starting over goes back to the first screen (the guided questions)
     if (!FRAMED) {
       setGuideStyle(null);
+      setGuideBarn(null);
       setGuide('welcome');
       return;
     }

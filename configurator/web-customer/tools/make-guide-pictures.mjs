@@ -28,7 +28,10 @@ const PICS = {
   partial: { size: '2 cars', colors: { roof: 'barn-red', walls: 'barn-red', trim: 'white' } },
   garage: { size: '2 cars', colors: { roof: 'evergreen', walls: 'evergreen', trim: 'white' }, door: true },
   utility: { size: '2 cars + storage', colors: { roof: 'earth-brown', walls: 'sandstone', trim: 'earth-brown' } },
-  ag: { size: 'Ag / barn', colors: { roof: 'slate-blue', walls: 'slate-blue', trim: 'white' } },
+  ag: { style: 'ag', barn: 'standard', size: 'Ag / barn', colors: { roof: 'slate-blue', walls: 'slate-blue', trim: 'white' } },
+  'barn-standard': { style: 'ag', barn: 'standard', size: 'Ag / barn', colors: { roof: 'slate-blue', walls: 'slate-blue', trim: 'white' } },
+  'barn-raised': { style: 'ag', barn: 'raised', size: 'Ag / barn', colors: { roof: 'earth-brown', walls: 'tan', trim: 'earth-brown' } },
+  'barn-straight': { style: 'ag', barn: 'straight', size: 'Ag / barn', colors: { roof: 'barn-red', walls: 'barn-red', trim: 'white' } },
 };
 
 let ws;
@@ -49,7 +52,8 @@ try {
   await send('Emulation.setDeviceMetricsOverride', { width: 1100, height: 700, deviceScaleFactor: 1, mobile: false });
   await send('Page.navigate', { url });
   await sleep(4500);
-  for (const [style, cfg] of Object.entries(PICS)) {
+  for (const [name, cfg] of Object.entries(PICS)) {
+    const style = cfg.style ?? name;
     const jpg = await ev(`
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       const store = window.__ssStore; if (!store) throw new Error('no dev hook: is this the dev server?');
@@ -60,7 +64,7 @@ try {
       const preset = s.sizes.find((p) => p.label === ${JSON.stringify(cfg.size)});
       if (!preset) throw new Error('no size ${cfg.size} for ${style}');
       store.getState().update((d) => {
-        G.applyStyle(d, ${JSON.stringify(style)}, preset);
+        G.applyStyle(d, ${JSON.stringify(style)}, preset, ${JSON.stringify(cfg.barn ?? 'standard')});
         Object.assign(d.colors, ${JSON.stringify(cfg.colors)});
         d.openings = ${cfg.door ? 'D.OLD_STARTER_OPENINGS.filter((o) => o.kind === "rollup").map((o) => ({ ...o }))' : '[]'};
       });
@@ -86,9 +90,9 @@ try {
       g.drawImage(c, x0, y0, bw, bh, (640 - bw * k) / 2, (400 - bh * k) / 2, bw * k, bh * k);
       return o.toDataURL('image/jpeg', 0.86);
     `);
-    const file = path.join(outDir, `${style}.jpg`);
+    const file = path.join(outDir, `${name}.jpg`);
     writeFileSync(file, Buffer.from(jpg.split(',')[1], 'base64'));
-    console.log(style, '->', file, Math.round(jpg.length * 0.75 / 1024) + ' KB');
+    console.log(name, '->', file, Math.round(jpg.length * 0.75 / 1024) + ' KB');
   }
 } finally {
   try { ws?.close(); } catch {}

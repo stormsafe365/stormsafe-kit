@@ -4,7 +4,7 @@
  * (sync.ts) — the only thing that flows back is where a door was dragged.
  */
 import { create } from 'zustand';
-import type { GuideStyle } from './model/guide';
+import type { BarnStyle, GuideStyle } from './model/guide';
 import { cloneDesign, DEFAULT_DESIGN, STATE_SCHEMA, STATE_VERSION, type WebContext, type WebDesign, type WebState } from './model/design';
 import { normalizeDesign } from './model/normalize';
 import { impactRequired } from './model/rules';
@@ -12,7 +12,7 @@ import { countyForZip } from './model/flZips';
 import { EMPTY_CONTACT, type Contact, type LinkStatus } from './model/link';
 
 /** The guided start screens (null = the builder itself). */
-export type GuideStep = 'welcome' | 'style' | 'size';
+export type GuideStep = 'welcome' | 'style' | 'barn' | 'size';
 
 export type TabKey = 'size' | 'walls' | 'doors' | 'leantos' | 'upgrades' | 'colors' | 'send';
 
@@ -27,6 +27,8 @@ interface WebStore {
   /** The building style picked in the guided questions (so Back from the builder returns to the sizes). */
   guideStyle: GuideStyle | null;
   setGuideStyle: (s: GuideStyle | null) => void;
+  guideBarn: BarnStyle | null;
+  setGuideBarn: (b: BarnStyle | null) => void;
   /** Overlay text while a picture is being made (null = none). */
   busy: string | null;
   /** Edit a copy of the design; the result is normalized against the rules. */
@@ -67,6 +69,8 @@ export const useWebStore = create<WebStore>((set, get) => ({
   setGuide: (guide) => set({ guide }),
   guideStyle: null,
   setGuideStyle: (guideStyle) => set({ guideStyle }),
+  guideBarn: null,
+  setGuideBarn: (guideBarn) => set({ guideBarn }),
   busy: null,
   update: (edit) => {
     const draft = cloneDesign(get().design);

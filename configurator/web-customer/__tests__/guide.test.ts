@@ -74,7 +74,7 @@ describe('guided starting sizes', () => {
     expect(normalizeDesign(d, false).walls).toEqual(carport.walls);
     // partially enclosed -> carport again: the walls come back open
     applyStyle(d, 'partial', carport.sizes[0]);
-    expect(normalizeDesign(d, false).walls.back).toBe('closed');
+    expect(normalizeDesign(d, false).walls).toEqual({ front: 'gableOnly', back: 'closed', left: 'closed', right: 'closed' });
     applyStyle(d, 'carport', carport.sizes[0]);
     expect(normalizeDesign(d, false).walls).toEqual(carport.walls);
   });

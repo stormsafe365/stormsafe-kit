@@ -51,9 +51,9 @@ export const STYLES: Array<{
   {
     key: 'partial',
     title: 'Partially enclosed',
-    blurb: 'A carport with the back and one side closed in',
+    blurb: 'Open front end (roof peak closed in); back and both sides closed in',
     type: 'carport',
-    walls: { front: 'open', back: 'closed', left: 'open', right: 'closed' },
+    walls: { front: 'gableOnly', back: 'closed', left: 'closed', right: 'closed' },
     leanTos: false,
     sizes: [ONE, TWO, THREE, TRAVEL, CLASS_A, BOAT, TRACTOR],
   },

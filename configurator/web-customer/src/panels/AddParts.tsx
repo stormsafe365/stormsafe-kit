@@ -7,7 +7,8 @@
  * the program's rule that 2+ roll-up doors on an end wall are at most 1′
  * shorter than the walls.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore } from '../store';
 import { WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
 import { WALL_LABEL, type OpeningKind, type WebDesign, type WebOpening, type WebWall } from '../model/design';
@@ -16,7 +17,7 @@ import { maxQty, respaceWithSame, spreadPositions, whyNoMore } from '../model/ad
 import { isEave, openingWalls, rollupFits, rollupSizes, walkDoorFitsHeight, windowFitsHeight } from '../model/rules';
 import { cameraApi } from '../cameraFit';
 import { revealInPanel } from '../reveal';
-import { Note, Segmented, Select, ft } from './ui';
+import { Note, Select, ft } from './ui';
 
 const KINDS: OpeningKind[] = ['rollup', 'walk', 'window', 'frame'];
 const SHORT: Record<OpeningKind, string> = { rollup: 'Garage door', walk: 'Walk-in door', window: 'Window', frame: 'Opening' };
@@ -51,12 +52,20 @@ function fitWidths<T extends number>(d: WebDesign, wall: WebWall, widths: readon
   return widths.filter((x) => spreadPositions(d, wall, x, 1) !== null || respaceWithSame(d, wall, 'rollup', x, 1) !== null);
 }
 
-export function AddParts() {
+export function AddParts({ onAdding }: { onAdding?: (adding: boolean) => void }) {
   const d = useWebStore((s) => s.design);
   const update = useWebStore((s) => s.update);
   const setTab = useWebStore((s) => s.setTab);
   const walls = openingWalls(d);
-  const [kind, setKind] = useState<OpeningKind>('rollup');
+  // null = the four big buttons; a kind = its add screen (one thing at a time: no long form to scroll)
+  const [picked, setPicked] = useState<OpeningKind | null>(null);
+  const kind: OpeningKind = picked ?? 'rollup';
+  useEffect(() => onAdding?.(picked !== null), [picked, onAdding]);
+  // a door tapped on the model opens its card in the list: leave the add screen
+  const selected = useEditorStore((s) => s.selectedOpeningId);
+  useEffect(() => {
+    if (selected) setPicked(null);
+  }, [selected]);
   const [wall, setWall] = useState<WebWall | null>(null); // null = the first wall with room
   const [rw, setRw] = useState(10);
   const [rh, setRh] = useState(8);
@@ -138,15 +147,16 @@ export function AddParts() {
       }
     });
     setQty(1);
+    setPicked(null); // back to the four buttons, with a short 'Added ...' line and the new part in the list
     const lowered = lowerTo !== null ? ` The garage doors there are now ${ft(lowerTo)} tall.` : '';
     setAdded({
-      text: `Added ${n} ${plural(kind, n)} to the ${WALL_LABEL[curWall].toLowerCase()}.${respace ? ` The ${NOUN[kind][1]} there were spaced out evenly.` : ''}${lowered}`,
+      text: `Added ${n} ${plural(kind, n)} to the ${WALL_LABEL[curWall].toLowerCase()}.${respace ? ` The ${NOUN[kind][1]} there were spaced out evenly.` : ''}${lowered} Tap it below to change it.`,
       count: base.openings.length + spots.length,
     });
     setTimeout(() => cameraApi.fit(curWall === 'partition' ? 'front' : curWall), 60);
-    // show the "Added ..." line above the pinned Back / Next bar
+    // the four buttons and the "Added ..." line back in view above the pinned Back / Next bar
     setTimeout(() => {
-      const el = document.querySelector<HTMLElement>('.added-note');
+      const el = document.querySelector<HTMLElement>('.addhub');
       if (el) revealInPanel(el);
     }, 120);
   };
@@ -170,15 +180,10 @@ export function AddParts() {
   // the width asked for does not fit there (something else on the wall): say so, do not shrink it quietly
   const narrower = kind === 'rollup' && !!w && w < rw;
   // camera follows the form: a new "what" shows the wall it will go on
-  const firstKind = useRef(true);
   useEffect(() => {
-    if (firstKind.current) {
-      firstKind.current = false;
-      return;
-    }
-    if (curWall) setTimeout(() => cameraApi.fit(curWall === 'partition' ? 'front' : curWall), 60);
+    if (picked && curWall) setTimeout(() => cameraApi.fit(curWall === 'partition' ? 'front' : curWall), 60);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [kind]);
+  }, [picked]);
 
   const addedNote = added && added.count === d.openings.length ? added.text : null;
 
@@ -199,6 +204,39 @@ export function AddParts() {
     );
   }
 
+  // ── The four big buttons (nothing picked yet) ──
+  if (!picked) {
+    return (
+      <div className="addhub" role="group" aria-label="Add doors and windows">
+        <div className="tiles">
+          {KINDS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              className="tile"
+              disabled={!kindOk(k)}
+              onClick={() => {
+                setPicked(k);
+                setWall(null);
+                setQty(1);
+                setAdded(null);
+              }}
+            >
+              <KindIcon k={k} />
+              <span className="tile-name">{SHORT[k]}</span>
+              {!kindOk(k) ? <span className="tile-why">Needs walls 7′+</span> : null}
+            </button>
+          ))}
+        </div>
+        {addedNote ? (
+          <p className="toast" role="status">
+            <span aria-hidden="true">✓</span> {addedNote}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
   let blocked: string | null = null;
   if (!kindOk(kind)) blocked = kind === 'walk' ? 'Walk-in doors need walls at least 7′ tall (Size step).' : 'Windows need walls at least 7′ tall (Size step).';
   else if (!wallChoices.length) blocked = kind === 'rollup' ? 'Garage doors need taller walls: at least 8′ on the sides, 6′ on the ends (Size step).' : 'No wall can take this one.';
@@ -207,50 +245,42 @@ export function AddParts() {
     const some = d.openings.some((o) => o.wall === curWall && o.kind === kind);
     blocked = why ?? `The ${wallName} has no room for ${some ? 'another' : kind === 'rollup' ? 'a' : /^[aeio]/.test(NOUN[kind][0]) ? 'an' : 'a'} ${kind === 'rollup' ? `${ft(w)} wide garage door` : NOUN[kind][0]}. Pick another wall, or remove or move one that is there.`;
   }
+  const article = /^[aeio]/.test(NOUN[kind][0]) ? 'an' : 'a';
 
+  // ── Adding one kind: big wall buttons, the size, how many, Add ──
   return (
-    <div className="addparts" role="group" aria-label="Add doors and windows">
-      <Segmented<OpeningKind>
-        label="What do you want to add?"
-        value={kind}
-        options={KINDS.map((k) => ({ value: k, label: SHORT[k], disabled: !kindOk(k) }))}
-        onChange={(k) => {
-          setKind(k);
-          setWall(null);
-          setQty(1);
-          setAdded(null);
-        }}
-      />
+    <div className="addparts" role="group" aria-label={`Add ${article} ${NOUN[kind][0]}`}>
+      <div className="add-head">
+        <button type="button" className="btn-ghost add-back" onClick={() => setPicked(null)} aria-label="Back to the list of things to add">
+          ←
+        </button>
+        <KindIcon k={kind} />
+        <strong className="add-title">
+          Add {article} {NOUN[kind][0]}
+        </strong>
+      </div>
       {wallChoices.length ? (
-        <div className="row3">
-          <Select<WebWall>
-            label="Which wall"
-            value={curWall ?? wallChoices[0]}
-            options={wallChoices.map((x) => ({ value: x, label: WALL_LABEL[x] }))}
-            onChange={(x) => {
-              setWall(x);
-              setQty(1);
-              setAdded(null);
-              // show that wall on the model, so "Front end" / "Left side" mean something
-              setTimeout(() => cameraApi.fit(x === 'partition' ? 'front' : x), 60);
-            }}
-          />
-          {kind === 'rollup' && !blocked ? (
-            <Select<string>
-              label="Door size"
-              value={`${w}x${h}`}
-              options={sizeOptions}
-              onChange={(v) => {
-                const [a, b] = v.split('x').map(Number);
-                setRw(a);
-                setRh(b);
-                setWall(curWall);
-              }}
-            />
-          ) : null}
-          {kind !== 'rollup' && !blocked && qtyOptions.length > 1 ? (
-            <Select<number> label="How many" value={q} options={qtyOptions} onChange={(x) => { setQty(x); setWall(curWall); }} />
-          ) : null}
+        <div className="field">
+          <span className="field-label">Which wall?</span>
+          <div className="picks" role="radiogroup" aria-label="Which wall">
+            {wallChoices.map((x) => (
+              <button
+                key={x}
+                type="button"
+                role="radio"
+                aria-checked={curWall === x}
+                className={`pick${curWall === x ? ' on' : ''}`}
+                onClick={() => {
+                  setWall(x);
+                  setQty(1);
+                  // show that wall on the model, so "Front end" / "Left side" mean something
+                  setTimeout(() => cameraApi.fit(x === 'partition' ? 'front' : x), 60);
+                }}
+              >
+                {WALL_LABEL[x]}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
       {blocked ? (
@@ -261,11 +291,61 @@ export function AddParts() {
               Make the garage doors there {ft(maxH2)} tall and add another
             </button>
           </>
-        ) : addedNote ? null : (
+        ) : (
           <Note>{blocked}</Note>
         )
       ) : (
         <>
+          <div className="add-grid">
+            {kind === 'rollup' ? (
+              <Select<string>
+                label="Door size"
+                value={`${w}x${h}`}
+                options={sizeOptions}
+                onChange={(v) => {
+                  const [a, b] = v.split('x').map(Number);
+                  setRw(a);
+                  setRh(b);
+                  setWall(curWall);
+                }}
+              />
+            ) : (
+              <div className="field">
+                <span className="field-label">Size</span>
+                <span className="fixed-size">{kind === 'walk' ? '3′ × 6′8″ standard' : kind === 'window' ? '30″ × 30″ standard' : `${ft(w)} × ${ft(h)}`}</span>
+              </div>
+            )}
+            <div className="field">
+              <span className="field-label">How many</span>
+              <div className="qty">
+                <button
+                  type="button"
+                  aria-label="One fewer"
+                  disabled={q <= 1}
+                  onClick={() => {
+                    setQty(Math.max(1, q - 1));
+                    setWall(curWall);
+                  }}
+                >
+                  −
+                </button>
+                <span className="qty-n" aria-live="polite">
+                  {q}
+                </span>
+                <button
+                  type="button"
+                  aria-label="One more"
+                  disabled={q >= most}
+                  onClick={() => {
+                    setQty(Math.min(most, q + 1));
+                    setWall(curWall);
+                  }}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
           {why ? (
             <p className="field-hint">{why}</p>
           ) : heightCapped ? (
@@ -278,52 +358,41 @@ export function AddParts() {
               A {ft(rw)} wide garage door does not fit on the {wallName} next to what is there; {ft(w)} is the widest. Or pick another wall.
             </p>
           ) : null}
-          {kind === 'rollup' && qtyOptions.length > 1 ? (
-            <div className="add-line">
-              <Select<number> label="How many" value={q} options={qtyOptions} onChange={(x) => { setQty(x); setWall(curWall); }} />
-              <button type="button" className="btn-primary btn-add" onClick={add}>
-                Add {q} {plural(kind, q)}
-              </button>
-            </div>
-          ) : (
-            <button type="button" className="btn-primary btn-add" onClick={add}>
-              Add {q} {plural(kind, q)} to the {wallName}
-            </button>
-          )}
+          <button type="button" className="btn-primary btn-add" onClick={add}>
+            Add {q} {plural(kind, q)} to the {wallName}
+          </button>
         </>
       )}
-      {addedNote ? (
-        <p className="field-hint added-note" role="status">
-          {addedNote}
-          {blocked ? (why && !tallFix ? ` ${why}` : tallFix ? '' : ` That is all that fit on the ${wallName}.`) : ` Need another? Tap Add again.`}
-        </p>
-      ) : null}
-      {addedNote && blocked && !tallFix ? (
-        // the wall is full: the next thing most people add, one tap away
-        <div className="quick-row">
-          {(['walk', 'window'] as OpeningKind[])
-            .filter((k) => k !== kind && kindOk(k))
-            .map((k) => (
-              <button
-                key={k}
-                type="button"
-                className="btn-ghost"
-                onClick={() => {
-                  setKind(k);
-                  setWall(null);
-                  setQty(1);
-                  setAdded(null);
-                  setTimeout(() => {
-                    const el = document.querySelector<HTMLElement>('.addparts');
-                    if (el) revealInPanel(el);
-                  }, 60);
-                }}
-              >
-                Add {k === 'walk' ? 'a walk-in door' : 'a window'}
-              </button>
-            ))}
-        </div>
-      ) : null}
+      {kind === 'frame' ? <p className="field-hint">An opening is framed and ready for a door or window you supply.</p> : null}
     </div>
+  );
+}
+
+/** Simple line pictures for the four things (teal on the dark card). */
+function KindIcon({ k }: { k: OpeningKind }) {
+  return (
+    <svg className="kind-icon" viewBox="0 0 40 40" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      {k === 'rollup' ? (
+        <>
+          <rect x="6" y="8" width="28" height="26" rx="1.5" />
+          <path d="M6 14h28M6 19h28M6 24h28M6 29h28" />
+        </>
+      ) : k === 'walk' ? (
+        <>
+          <rect x="11" y="5" width="18" height="30" rx="1.5" />
+          <circle cx="25" cy="21" r="1.6" fill="currentColor" />
+        </>
+      ) : k === 'window' ? (
+        <>
+          <rect x="7" y="9" width="26" height="22" rx="1.5" />
+          <path d="M20 9v22M7 20h26" />
+        </>
+      ) : (
+        <>
+          <path d="M9 35V7h22v28" />
+          <path d="M5 35h30" strokeDasharray="3 3" />
+        </>
+      )}
+    </svg>
   );
 }

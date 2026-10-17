@@ -1743,3 +1743,476 @@ html.vv-kb .stepnav {
 .chosen-style strong {
   font-size: 16px;
 }
+
+/* ── Easy mode (owner 10/17/26: "really make this easy ... no ton of scrolling ... cool") ── */
+/* big picture buttons: Doors & windows */
+.addhub {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (max-width: 380px) {
+  .tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 92px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  border: 1px solid var(--border-vis);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: center;
+}
+.tile .kind-icon {
+  color: var(--teal);
+}
+.tile:hover:not(:disabled) {
+  border-color: var(--teal);
+  background: var(--surface-3);
+}
+.tile:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.tile:disabled {
+  opacity: 0.45;
+}
+.tile-name {
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1.2;
+}
+.tile-why {
+  font-size: 11px;
+  color: var(--muted);
+}
+.toast {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--teal-glow);
+  border: 1px solid rgba(34, 211, 200, 0.35);
+  color: var(--text);
+  font-size: 14px;
+}
+.toast > span {
+  color: var(--teal);
+  font-weight: 800;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .toast,
+  .addparts,
+  .addhub {
+    animation: pop-in 0.18s ease-out;
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+}
+.add-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.add-head .kind-icon {
+  color: var(--teal);
+  width: 30px;
+  height: 30px;
+}
+.add-back {
+  min-width: 44px;
+  min-height: 40px;
+  font-size: 18px;
+}
+.add-title {
+  font-size: 17px;
+}
+.picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pick {
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-vis);
+  background: var(--surface-3);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 15px;
+}
+.pick.on {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: #062027;
+}
+.pick:hover:not(.on) {
+  border-color: var(--teal-dim);
+}
+.add-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+.fixed-size {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 600;
+  color: var(--sub);
+}
+.qty {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-vis);
+  border-radius: 10px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.qty button {
+  width: 46px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--teal);
+  font-size: 22px;
+  font-weight: 700;
+}
+.qty button:disabled {
+  color: var(--muted);
+  opacity: 0.5;
+}
+.qty-n {
+  min-width: 34px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 18px;
+}
+.parts-label {
+  margin-top: 4px;
+}
+/* Walls: the building seen from above, its walls as buttons */
+.wallmap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr);
+  grid-template-areas:
+    '. back .'
+    'left roof right'
+    '. front .';
+  gap: 6px;
+  align-items: stretch;
+}
+.wall-back {
+  grid-area: back;
+}
+.wall-left {
+  grid-area: left;
+}
+.wall-right {
+  grid-area: right;
+}
+.wall-front {
+  grid-area: front;
+}
+.wallmap-roof {
+  grid-area: roof;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 84px;
+  border-radius: 8px;
+  border: 2px dashed var(--border-vis);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+.wallmap-roof small {
+  font-size: 11px;
+}
+.wallbtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 52px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border-vis);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: center;
+}
+.wallbtn.is-closed {
+  background: var(--surface-3);
+}
+.wallbtn.on {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 1px var(--teal), 0 0 14px var(--teal-glow);
+}
+.wallbtn:disabled {
+  opacity: 0.6;
+}
+.wallbtn-name {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--sub);
+}
+.wallbtn-state {
+  font-size: 14px;
+  font-weight: 700;
+}
+.wallbtn.on .wallbtn-state {
+  color: var(--teal);
+}
+/* Colors: Roof / Walls / Trim buttons over one grid */
+.colorparts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
+  gap: 8px;
+}
+.colorpart {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-vis);
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+}
+.colorpart.on {
+  border-color: var(--teal);
+  box-shadow: 0 0 0 1px var(--teal);
+}
+.colorpart-dot {
+  grid-row: 1 / span 2;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+.colorpart-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+.colorpart-val {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* phones: the size line is already on the model; no need to say it twice */
+@media (max-width: 899px) {
+  .panel .dims-line {
+    display: none;
+  }
+}
+
+/* step head: the title + "All steps" (phones) */
+.stephead-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.steps-btn {
+  display: none;
+  flex: none;
+  min-height: 36px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-vis);
+  background: transparent;
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 600;
+}
+.steps-btn[aria-expanded='true'] {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+.steps-menu {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 6px;
+  border: 1px solid var(--border-vis);
+  border-radius: 12px;
+  background: var(--surface-2);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+.steps-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+.steps-menu button.on {
+  background: var(--teal-glow);
+  color: var(--teal);
+}
+.steps-n {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  background: var(--surface-3);
+  color: var(--sub);
+}
+.steps-menu button.on .steps-n {
+  background: var(--teal);
+  color: #062027;
+}
+@media (max-width: 899px) {
+  /* phones: the step names live in "All steps"; the strip they took goes to the options */
+  .panel .tabs {
+    display: none;
+  }
+  .steps-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .stephead {
+    padding-top: 10px;
+  }
+  .stepnav {
+    margin-top: 10px;
+  }
+  /* the tight walls map */
+  .wallbtn {
+    min-height: 44px;
+    padding: 4px;
+  }
+  .wallmap-roof {
+    min-height: 48px;
+  }
+  .wallmap-roof small {
+    display: none;
+  }
+  .pick {
+    min-height: 40px;
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+  .more-hint {
+    display: none;
+  }
+}
+/* the add screen's wall buttons: one row of equal buttons */
+.addparts .picks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 6px;
+}
+.addparts .pick {
+  padding: 6px 4px;
+  border-radius: 10px;
+  line-height: 1.15;
+}
+
+/* step list over the options, not pushing them down */
+.stephead {
+  position: relative;
+}
+.steps-menu {
+  position: absolute;
+  right: 12px;
+  top: 52px;
+  z-index: 30;
+  width: min(320px, calc(100% - 24px));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+@media (max-width: 899px) {
+  .swatches {
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .swatch {
+    min-height: 0;
+  }
+  .wallmap {
+    gap: 5px;
+  }
+  .wall-back,
+  .wall-front {
+    flex-direction: row;
+    gap: 6px;
+    min-height: 40px;
+  }
+  .colorpart {
+    min-height: 46px;
+    padding: 6px 8px;
+  }
+  /* size: width, length and height on one line */
+  .panel .row3 {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);
+  }
+  .panel .row3 > :nth-child(2) {
+    grid-column: auto;
+    order: 0;
+  }
+  .panel .row3 .stepper button {
+    width: 32px;
+    min-width: 32px;
+  }
+  .panel .row3 .stepper .unit {
+    display: none;
+  }
+  .chosen-style {
+    padding: 6px 6px 6px 12px;
+  }
+  .stephead-text {
+    font-size: 13px;
+  }
+}
+/* small phones (shorter than 700px): a little less model so a step still fits without scrolling */
+@media (max-width: 899px) and (orientation: portrait) and (min-height: 521px) and (max-height: 700px) {
+  html:not(.vv-kb) .app:not(.big-view) .split {
+    grid-template-rows: minmax(150px, 44%) minmax(0, 1fr);
+  }
+  html:not(.vv-kb) .app.working:not(.big-view) .split {
+    grid-template-rows: minmax(130px, 32%) minmax(0, 1fr);
+  }
+  .stephead-text {
+    display: none;
+  }
+}

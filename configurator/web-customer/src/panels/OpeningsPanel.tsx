@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore } from '../store';
 import { WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
@@ -68,6 +69,8 @@ export function OpeningsPanel() {
   const update = useWebStore((s) => s.update);
   const selectedId = useEditorStore((s) => s.selectedOpeningId);
   const walls = openingWalls(d);
+  // while one thing is being added, only its short form shows (the list comes back after Add)
+  const [adding, setAdding] = useState(false);
 
   /** Apply a change to one opening if it still fits; returns a message when it doesn't. */
   const change = (id: string, edit: (o: WebOpening, d: WebDesign) => void): string | null => {
@@ -95,10 +98,10 @@ export function OpeningsPanel() {
 
   return (
     <div className="panel-body">
-      <AddParts />
+      <AddParts onAdding={setAdding} />
       {impact && <Note tone="warn">Your area uses impact-rated walk-in doors and windows, so those are the ones offered here. Garage doors stay as they are.</Note>}
-      {d.openings.length === 0 && walls.length > 0 && <p className="empty">No doors or windows yet. Add one above, then drag it on the model or type its position.</p>}
-      {d.openings.map((o, i) => {
+      {!adding && d.openings.length > 0 ? <span className="field-label parts-label">On your building ({d.openings.length})</span> : null}
+      {!adding && d.openings.map((o, i) => {
         const face = wallLength(d, o.wall);
         const onClosed = walls.includes(o.wall);
         const onWall = d.openings.filter((k) => k.wall === o.wall && k.kind === 'rollup').length;

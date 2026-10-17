@@ -39,19 +39,19 @@ function useSteps() {
  * tells me what to do or how many steps there are"; Lean-tos and Upgrades are optional).
  */
 const STEP_HELP: Record<TabKey, { text: string | ((s: ReturnType<typeof useWebStore.getState>) => string); optional?: boolean }> = {
-  size: { text: (s) => (s.guideStyle ? 'Set the exact size of your building. You can change anything later.' : 'Pick the kind of building and its size. You can change anything later.') },
+  size: { text: (s) => (s.guideStyle ? 'Set the size. You can change it any time.' : 'Pick the kind of building and its size. You can change anything later.') },
   walls: {
     text: (s) =>
       s.design.type === 'carport'
-        ? 'A carport is open on all sides. Tap Next unless you want a side closed in.'
+        ? 'Tap a wall to close it in, or just tap Next.'
         : s.design.type === 'combo'
-          ? 'The room in back is closed on all sides; the carport in front stays open. Tap Next unless you want a carport side closed.'
-          : 'A garage keeps all four sides closed, so you can just tap Next.',
+          ? 'Tap a carport wall to close it in, or just tap Next.'
+          : 'Tap a wall to change it, or tap Next.',
   },
-  doors: { text: 'Add garage doors, walk-in doors and windows here. Pick what, which wall, then tap Add.' },
+  doors: { text: 'Tap what you want to add: a garage door, walk-in door, window or opening.' },
   leantos: { text: 'A lean-to is a lower roof on one side: open for cover, or closed in for storage. Most people skip this.', optional: true },
-  upgrades: { text: 'Leave these off if you are not sure; your rep will go over them with you.', optional: true },
-  colors: { text: 'Pick colors for the roof, the walls and the trim (the edges and corners).' },
+  upgrades: { text: 'Not sure? Leave them off; your rep goes over them with you.', optional: true },
+  colors: { text: 'Tap Roof, Walls or Trim (edges and corners), then a color.' },
   send: {
     text: (s) =>
       s.sentAt ? 'Your rep has your design. Changed something? You can send it again.'
@@ -71,15 +71,61 @@ function StepHead() {
   const text = typeof help.text === 'function' ? help.text(state) : help.text;
   return (
     <div className="stephead">
-      <h2 className="stephead-title">
-        <span className="stephead-count">
-          Step {i + 1} of {steps.length}
-          {help.optional ? ' · optional' : ''}
-        </span>{' '}
-        {steps[i].title}
-      </h2>
+      <div className="stephead-row">
+        <h2 className="stephead-title">
+          <span className="stephead-count">
+            Step {i + 1} of {steps.length}
+            {help.optional ? ' · optional' : ''}
+          </span>{' '}
+          {steps[i].title}
+        </h2>
+        <StepsMenu steps={steps} i={i} />
+      </div>
       <p className="stephead-text">{text}</p>
     </div>
+  );
+}
+
+/**
+ * Phones: the list of steps behind one small button (the row of step names took a strip of the screen
+ * and was cut off at the edge - owner 10/17/26 "no ton of scrolling"). Tap a step to go straight there.
+ */
+function StepsMenu({ steps, i }: { steps: Array<{ key: TabKey; title: string }>; i: number }) {
+  const setTab = useWebStore((s) => s.setTab);
+  const [open, setOpen] = useState(false);
+  const btn = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    setOpen(false);
+  }, [i]);
+  useEffect(() => {
+    if (!open) return;
+    const esc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        btn.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', esc);
+    return () => document.removeEventListener('keydown', esc);
+  }, [open]);
+  return (
+    <>
+      <button type="button" ref={btn} className="steps-btn" aria-expanded={open} aria-controls="steps-menu" onClick={() => setOpen((v) => !v)}>
+        All steps <span aria-hidden="true">{open ? '▴' : '▾'}</span>
+      </button>
+      {open ? (
+        <ol id="steps-menu" className="steps-menu">
+          {steps.map((t, j) => (
+            <li key={t.key}>
+              <button type="button" className={j === i ? 'on' : ''} aria-current={j === i ? 'step' : undefined} onClick={() => setTab(t.key)}>
+                <span className="steps-n">{j + 1}</span>
+                {t.title}
+              </button>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </>
   );
 }
 
@@ -509,7 +555,7 @@ export function App() {
   }, [tab, selMain, selLean]);
 
   return (
-    <div className={`app${bigView ? ' big-view' : ''}${touched ? ' touched' : ''}${tab === 'doors' || tab === 'leantos' ? ' working' : ''}`}>
+    <div className={`app${bigView ? ' big-view' : ''}${touched ? ' touched' : ''}${tab === 'doors' || tab === 'leantos' || tab === 'walls' || tab === 'upgrades' ? ' working' : ''}`}>
       <header className="topbar">
         <div className="brand">
           <span className="wordmark" aria-label="StormSafe Steel">

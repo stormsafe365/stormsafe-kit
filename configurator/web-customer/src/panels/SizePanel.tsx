@@ -2,7 +2,6 @@ import { useWebStore } from '../store';
 import type { WebBuildingType, WebDesign } from '../model/design';
 import { COMBO_MIN_PART, heightOptions, isWideSpan, LENGTH_MAX, LENGTH_MIN, panelsLocked, pitchRise, roofStyleLocked, ROOF_VERTICAL_OVER_LENGTH, widthOptions, wallTakesOpenings } from '../model/rules';
 import { Note, Segmented, Select, Stepper, ft } from './ui';
-import { LocationField } from './LocationField';
 import { BARNS, STYLES } from '../model/guide';
 
 const TYPES: Array<{ value: WebBuildingType; label: string; blurb: string }> = [
@@ -84,7 +83,7 @@ export function SizePanel() {
         />
         <Stepper label={d.type === 'combo' ? 'Total length (carport + room)' : 'Length'} value={d.length} min={LENGTH_MIN} max={LENGTH_MAX} onChange={(l) => update((x) => void (x.length = Math.round(l)))} />
         <Select
-          label="Height (side walls)"
+          label="Wall height"
           value={d.height}
           options={heightOptions(d.width).map((h) => ({ value: h, label: `${h}′` }))}
           onChange={(h) => update((x) => void (x.height = h))}
@@ -94,8 +93,7 @@ export function SizePanel() {
         {ft(d.width)} W × {ft(d.length)} L × {ft(d.height)} H <span className="muted">· width × length × side-wall height</span>
       </p>
 
-      {/* after the size (walkthroughs 10/16/26: a ZIP box first read as "must fill this in now") */}
-      <LocationField label="ZIP code where it will go (optional)" />
+      {/* the ZIP box is on the last step only (owner 10/17/26: one thing at a time, no long screens) */}
 
       {d.type === 'combo' && (
         <Stepper
@@ -110,7 +108,7 @@ export function SizePanel() {
 
       {/* expert choices, folded away: most people keep them as they are (walkthroughs 10/16/26) */}
       <details className="more">
-        <summary>More options: roof style, roof pitch, wall panels <span className="muted">(most people keep these)</span></summary>
+        <summary>More options: roof &amp; wall panels <span className="muted">(most keep these)</span></summary>
         <div className="more-body">
       <Segmented
         label="Roof style"

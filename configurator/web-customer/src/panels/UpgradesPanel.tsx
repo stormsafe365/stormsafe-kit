@@ -26,8 +26,6 @@ export function UpgradesPanel() {
 
   return (
     <div className="panel-body">
-      <p className="send-lede">Pick any upgrades you would like. Your rep confirms what fits your building and puts them in your quote.</p>
-
       <Segmented<Insulation>
         label="Insulation"
         value={u.insulation}
@@ -37,12 +35,12 @@ export function UpgradesPanel() {
           { value: 'roofWalls', label: 'Roof + walls', disabled: !vertical },
         ]}
         onChange={(v) => update((x) => void (x.upgrades.insulation = v))}
-        hint={vertical ? 'Insulation for the roof, or for the roof and the walls.' : 'Insulation goes with a vertical roof (Size step).'}
+        hint={vertical ? undefined : 'Insulation goes with a vertical roof (Size step).'}
       />
 
       <div className="field">
         <Toggle
-          label="12-gauge frame: heavier steel tubing for the legs and trusses"
+          label="12-gauge frame (heavier steel)"
           checked={u.frame12 || frameNeeded}
           disabled={frameNeeded}
           onChange={set('frame12')}
@@ -51,7 +49,7 @@ export function UpgradesPanel() {
       </div>
 
       <div className="field">
-        <Toggle label="Legs and roof trusses every 4′ (instead of every 5′)" checked={u.oc4 || ocNeeded} disabled={ocNeeded} onChange={set('oc4')} />
+        <Toggle label="Legs and trusses every 4′ (not 5′)" checked={u.oc4 || ocNeeded} disabled={ocNeeded} onChange={set('oc4')} />
         {ocNeeded ? (
           <p className="field-hint">
             {ocByWidth
@@ -71,11 +69,11 @@ export function UpgradesPanel() {
       </div>
 
       <div className="field">
-        <Toggle label="Electric openers on the garage doors" checked={u.openers} disabled={!rollups} onChange={set('openers')} />
+        <Toggle label="Electric garage door openers" checked={u.openers} disabled={!rollups} onChange={set('openers')} />
         {!rollups ? <p className="field-hint">Add a garage door first (Doors step).</p> : null}
       </div>
 
-      <Note>Wall panel direction and roof pitch are in the Size step (More options); wainscot is in the Colors step.</Note>
+      <p className="field-hint more-hint">Wall panel direction and roof pitch are in the Size step (More options); wainscot is in Colors.</p>
     </div>
   );
 }

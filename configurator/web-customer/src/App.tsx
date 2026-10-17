@@ -12,11 +12,12 @@ import { SendPanel } from './panels/SendPanel';
 import { UpgradesPanel } from './panels/UpgradesPanel';
 import { ft } from './panels/ui';
 import { cameraApi } from './cameraFit';
+import { revealInPanel } from './reveal';
 
 // The steps, in order (owner 10/16/26: building type + size, components, add-ons /
 // upgrades, colors, then the customer's contact + "Send to my steel building rep").
 const TABS: Array<{ key: TabKey; label: string; title: string }> = [
-  { key: 'size', label: 'Size', title: 'Building type, size & roof' },
+  { key: 'size', label: 'Size', title: 'Building type & size' },
   { key: 'walls', label: 'Walls', title: 'Walls' },
   { key: 'doors', label: 'Doors', title: 'Doors & windows' },
   { key: 'leantos', label: 'Lean-tos', title: 'Lean-tos' },
@@ -36,30 +37,47 @@ function useSteps() {
  * What each step is for, in plain words, shown at the top of the step (walkthroughs 10/16/26: "nothing
  * tells me what to do or how many steps there are"; Lean-tos and Upgrades are optional).
  */
-const STEP_HELP: Record<TabKey, { text: string; optional?: boolean }> = {
+const STEP_HELP: Record<TabKey, { text: string | ((s: ReturnType<typeof useWebStore.getState>) => string); optional?: boolean }> = {
   size: { text: 'Pick the kind of building and its size. You can change anything later.' },
-  walls: { text: 'Choose which sides are closed in. A garage usually keeps all four closed, so you can just tap Next.' },
-  doors: { text: 'Add garage doors, walk-in doors and windows: pick what, pick the wall, then tap Add.' },
-  leantos: { text: 'A lean-to is an extra covered area on one side - a carport, porch or storage room. Skip it if you do not need one.', optional: true },
+  walls: {
+    text: (s) =>
+      s.design.type === 'carport'
+        ? 'A carport is open on all sides. Tap Next unless you want a side closed in.'
+        : s.design.type === 'combo'
+          ? 'The room in back is closed on all sides; the carport in front stays open. Tap Next unless you want a carport side closed.'
+          : 'A garage keeps all four sides closed, so you can just tap Next.',
+  },
+  doors: { text: 'Pick what and the wall, then tap Add.' },
+  leantos: { text: 'A lean-to is a lower roof on one side: open for cover, or closed in for storage. Most people skip this.', optional: true },
   upgrades: { text: 'Leave these off if you are not sure; your rep will go over them with you.', optional: true },
   colors: { text: 'Pick colors for the roof, the walls and the trim (the edges and corners).' },
-  send: { text: 'Add your name and a phone number or email, then send your design to your rep. It is free.' },
+  send: {
+    text: (s) =>
+      s.sentAt ? 'Your rep has your design. Changed something? You can send it again.'
+        : !s.token || s.link === 'none' || s.link === 'invalid' || s.link === 'expired' ? 'To send it, open the design link your rep texted you, or call us.'
+        : 'Add your name and a phone number or email, then send your design to your rep. It is free.',
+  },
 };
 
+/** "STEP 3 OF 7 · Doors & windows" on one line + one plain sentence (slim: the model keeps its room). */
 function StepHead() {
   const tab = useWebStore((s) => s.tab);
+  const state = useWebStore();
   const steps = useSteps();
   const i = steps.findIndex((t) => t.key === tab);
   if (i < 0) return null;
   const help = STEP_HELP[tab];
+  const text = typeof help.text === 'function' ? help.text(state) : help.text;
   return (
     <div className="stephead">
-      <div className="stephead-count">
-        Step {i + 1} of {steps.length}
-        {help.optional ? <span className="stephead-opt"> · optional</span> : null}
-      </div>
-      <h2 className="stephead-title">{steps[i].title}</h2>
-      <p className="stephead-text">{help.text}</p>
+      <h2 className="stephead-title">
+        <span className="stephead-count">
+          Step {i + 1} of {steps.length}
+          {help.optional ? ' · optional' : ''}
+        </span>{' '}
+        {steps[i].title}
+      </h2>
+      <p className="stephead-text">{text}</p>
     </div>
   );
 }
@@ -75,6 +93,9 @@ function StepNav() {
   // an optional step with nothing added says Skip (walkthroughs 10/16/26: 'do I have to fill this in?')
   const d = useWebStore((s) => s.design);
   const skipping = (tab === 'leantos' && d.leanTos.length === 0) || (tab === 'upgrades' && !Object.values(d.upgrades || {}).some((v) => v && v !== 'none'));
+  // Doors with nothing added: the teal "Add" button is the one to tap, so Next is a quiet outline
+  // (re-check 10/16/26: the teal Next was the only teal button on screen, so doors got skipped)
+  const quietNext = tab === 'doors' && d.openings.length === 0;
   return (
     <div className="stepnav">
       {prev ? (
@@ -85,8 +106,8 @@ function StepNav() {
         <span />
       )}
       {next ? (
-        <button type="button" className="btn-primary" onClick={() => setTab(next.key)}>
-          {skipping ? `Skip: ${next.title} →` : next.key === 'send' ? 'Next: Send to your rep →' : `Next: ${next.title} →`}
+        <button type="button" className={quietNext ? 'btn-ghost' : 'btn-primary'} onClick={() => setTab(next.key)}>
+          {quietNext ? 'Skip doors →' : skipping ? `Skip: ${next.title} →` : next.key === 'send' ? 'Next: Send to your rep →' : `Next: ${next.title} →`}
         </button>
       ) : null}
     </div>
@@ -131,6 +152,18 @@ function Summary() {
   );
 }
 
+/** While the steel-frame look is on, say so on the model with a way back (phones have no switch on the bar). */
+function FramePill() {
+  const viewMode = useEditorStore((s) => s.viewMode);
+  const setViewMode = useEditorStore((s) => s.setViewMode);
+  if (viewMode !== 'structure') return null;
+  return (
+    <button type="button" className="frame-pill" onClick={() => setViewMode('exterior')}>
+      Steel frame view · <b>Show the walls</b>
+    </button>
+  );
+}
+
 /** Phones: the size line sits on the model (the top bar is one slim row there). Screen readers use the top bar's. */
 function StageSummary() {
   const d = useWebStore((s) => s.design);
@@ -144,19 +177,6 @@ function StageSummary() {
       {lean}
     </p>
   );
-}
-
-const reduceMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-/** Scroll the panel (only the panel) so `el` is in view. scrollIntoView would also move the
- *  page itself on a phone, which then stays slid up behind overflow: hidden. */
-function revealInPanel(panel: HTMLElement, el: HTMLElement) {
-  const p = panel.getBoundingClientRect();
-  const e = el.getBoundingClientRect();
-  let dy = 0;
-  if (e.top < p.top) dy = e.top - p.top - 8;
-  else if (e.bottom > p.bottom) dy = Math.min(e.bottom - p.bottom + 8, e.top - p.top - 8);
-  if (dy) panel.scrollTo({ top: panel.scrollTop + dy, behavior: reduceMotion() ? 'auto' : 'smooth' });
 }
 
 /** Scroll the step bar (only the bar) sideways so the current step shows. */
@@ -262,7 +282,7 @@ function useFollowVisibleArea(panelRef: RefObject<HTMLElement>) {
         const a = document.activeElement;
         const panel = panelRef.current;
         if (panel && isTextEntry(a) && panel.contains(a)) {
-          requestAnimationFrame(() => revealInPanel(panel, a));
+          requestAnimationFrame(() => revealInPanel(a, panel));
         }
       });
     };
@@ -333,6 +353,14 @@ function StartOver({ onConfirm }: { onConfirm: () => void }) {
         setAsking(false);
         openRef.current?.focus();
       }
+      // Tab stays on the two buttons while the box is open
+      if (e.key === 'Tab') {
+        const b = [...document.querySelectorAll<HTMLButtonElement>('.confirm-card button')];
+        if (!b.length) return;
+        const i = b.indexOf(document.activeElement as HTMLButtonElement);
+        e.preventDefault();
+        b[(i + (e.shiftKey ? b.length - 1 : 1)) % b.length].focus();
+      }
     };
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
@@ -344,7 +372,7 @@ function StartOver({ onConfirm }: { onConfirm: () => void }) {
         <span className="sr-only"> (clear the design)</span>
       </button>
       {asking ? (
-        <div className="confirm-back" onClick={() => setAsking(false)}>
+        <div className="confirm-back" onClick={() => { setAsking(false); openRef.current?.focus(); }}>
           <div className="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="so-title" aria-describedby="so-text" onClick={(e) => e.stopPropagation()}>
             <h2 id="so-title">Start over?</h2>
             <p id="so-text">This clears your building - the size, doors, windows, lean-tos, upgrades and colors - so you can begin again.</p>
@@ -379,15 +407,24 @@ export function App() {
   const [touched, setTouched] = useState(false);
   // Start over: a plain building, back on step 1, the normal outside view, and a short "done" line
   const [cleared, setCleared] = useState(false);
-  const undoRef = useRef<{ design: typeof DEFAULT_DESIGN; tab: TabKey } | null>(null);
+  const undoRef = useRef<{ design: typeof DEFAULT_DESIGN; tab: TabKey; fresh: unknown } | null>(null);
+  const design = useWebStore((s) => s.design);
+  // Undo only while the new plain design is untouched: once the customer starts again, Undo would wipe that work
+  useEffect(() => {
+    if (cleared && undoRef.current && undoRef.current.fresh !== design) {
+      undoRef.current = null;
+      setCleared(false);
+    }
+  }, [design, cleared]);
   useEffect(() => {
     if (!cleared) return;
     const t = setTimeout(() => setCleared(false), 10000);
     return () => clearTimeout(t);
   }, [cleared]);
   const startOver = () => {
-    undoRef.current = { design: useWebStore.getState().design, tab };
+    const before = { design: useWebStore.getState().design, tab };
     replace(DEFAULT_DESIGN);
+    undoRef.current = { ...before, fresh: useWebStore.getState().design };
     const ed = useEditorStore.getState();
     ed.selectOpening(null);
     ed.selectLeanToOpening(null);
@@ -396,12 +433,20 @@ export function App() {
     setTab('size');
     setCleared(true);
     setTimeout(() => cameraApi.fit('iso'), 200);
+    setTimeout(() => document.querySelector<HTMLButtonElement>('.cleared .linkish')?.focus(), 60);
   };
   // the steel-frame view is a look, not a setting: a new step shows the building as it is again
   useEffect(() => {
     if (useEditorStore.getState().viewMode !== 'exterior') useEditorStore.getState().setViewMode('exterior');
-    // Doors with nothing added yet: face the front, where most doors go
-    if (tab === 'doors' && useWebStore.getState().design.openings.length === 0) setTimeout(() => cameraApi.fit('front'), 150);
+    // Doors with nothing added yet: face the front, where most doors go - and bring the Add button
+    // into view above the pinned bar (re-check 10/16/26: it started under the bar on a phone)
+    if (tab === 'doors' && useWebStore.getState().design.openings.length === 0) {
+      setTimeout(() => cameraApi.fit('front'), 150);
+      setTimeout(() => {
+        const add = document.querySelector<HTMLElement>('.btn-add');
+        if (add) revealInPanel(add);
+      }, 250);
+    }
   }, [tab]);
   usePageStaysPut();
   useFollowVisibleArea(bodyRef);
@@ -428,7 +473,7 @@ export function App() {
   }, [tab]);
   useEffect(() => {
     const sel = bodyRef.current?.querySelector<HTMLElement>('.is-selected');
-    if (bodyRef.current && sel) revealInPanel(bodyRef.current, sel);
+    if (bodyRef.current && sel) revealInPanel(sel, bodyRef.current);
   }, [tab, selMain, selLean]);
 
   return (
@@ -446,8 +491,12 @@ export function App() {
           <a className="topphone" href="tel:+15617715555">561-771-5555</a>
         </div>
       </header>
-      {cleared ? (
-        <p className="cleared" role="status">
+      <div className="split">
+        <section className="stage" aria-label="3D model" onPointerDown={() => setTouched(true)}>
+          <WebViewport />
+          <div className="cleared-slot" role="status">
+          {cleared ? (
+        <p className="cleared">
           Started over with a plain building.{' '}
           <button
             type="button"
@@ -467,9 +516,8 @@ export function App() {
           </button>
         </p>
       ) : null}
-      <div className="split">
-        <section className="stage" aria-label="3D model" onPointerDown={() => setTouched(true)}>
-          <WebViewport />
+          </div>
+          <FramePill />
           <div className="stage-foot">
             <StageSummary />
             <button type="button" className="vp-size" aria-pressed={bigView} onClick={() => setBigView((v) => !v)}>

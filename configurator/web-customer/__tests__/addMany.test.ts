@@ -42,6 +42,9 @@ describe('add several at once', () => {
     const r = respaceWithSame(d, 'front', 'rollup', 10, 1)!;
     expect(r.existing).toEqual(['o1']);
     expect(r.spots).toHaveLength(2);
+    // equal gaps on the 24′ end: 1′4″ | door | 1′4″ | door | 1′4″ (to the 1/8″)
+    expect(Math.abs(r.spots[0] - 4 / 3)).toBeLessThan(0.07);
+    expect(Math.abs(r.spots[1] - (4 / 3 + 10 + 4 / 3))).toBeLessThan(0.07);
     const after = { ...d, openings: [...d.openings.map((o) => (o.id === 'o1' ? { ...o, pos: r.spots[0] } : o)), door('n1', 'front', r.spots[1], 10, 8)] };
     for (const o of after.openings.filter((x) => x.wall === 'front')) expect(mainSpotOk(after, o)).toBe(true);
     expect(maxQty(after, 'front', 'rollup', 10, 8)).toBe(0); // three do not fit on 24′

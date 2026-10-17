@@ -107,14 +107,14 @@ export function whyNoMore(d: D, wall: WebWall, kind: WebOpening['kind'], w: numb
   const taller = maxH < lowest ? `make the walls at least ${lowest + 1}′ tall (Size step)` : 'make the walls taller (Size step)';
   if (n > 1 && !rollupFits(d, wall, w, h, n)) {
     return maxH < lowest
-      ? `Two or more roll-up doors on the ${wallLabel} need walls at least ${lowest + 1}′ tall: ${taller}.`
-      : `With 2 or more roll-up doors on the ${wallLabel}, each can be up to ${maxH}′ tall on this building. Pick ${maxH}′ or less, or ${taller}.`;
+      ? `Two or more garage doors on the ${wallLabel} need walls at least ${lowest + 1}′ tall: ${taller}.`
+      : `With 2 or more garage doors on the ${wallLabel}, each can be up to ${maxH}′ tall on this building. Pick ${maxH}′ or less, or ${taller}.`;
   }
   const tall = there.find((o) => !rollupFits(d, wall, o.w, o.h, n));
   if (tall) {
     return maxH < lowest
-      ? `Another roll-up door on the ${wallLabel} needs walls at least ${lowest + 1}′ tall: ${taller}.`
-      : `The ${tall.h}′ tall roll-up door already on the ${wallLabel} would have to be ${maxH}′ or less with another door there. Lower it first (below), or ${taller}.`;
+      ? `Another garage door on the ${wallLabel} needs walls at least ${lowest + 1}′ tall: ${taller}.`
+      : `The ${tall.h}′ tall garage door already on the ${wallLabel} would have to be ${maxH}′ or less with another door there.`;
   }
   return null;
 }

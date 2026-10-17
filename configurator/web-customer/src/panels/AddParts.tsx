@@ -7,7 +7,7 @@
  * the program's rule that 2+ roll-up doors on an end wall are at most 1′
  * shorter than the walls.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWebStore } from '../store';
 import { WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
 import { WALL_LABEL, type OpeningKind, type WebDesign, type WebOpening, type WebWall } from '../model/design';
@@ -15,6 +15,7 @@ import { nextFreeId } from '../model/normalize';
 import { maxQty, respaceWithSame, spreadPositions, whyNoMore } from '../model/addMany';
 import { isEave, openingWalls, rollupSizes, walkDoorFitsHeight, windowFitsHeight } from '../model/rules';
 import { cameraApi } from '../cameraFit';
+import { revealInPanel } from '../reveal';
 import { Note, Segmented, Select, ft } from './ui';
 
 const KINDS: OpeningKind[] = ['rollup', 'walk', 'window', 'frame'];
@@ -53,6 +54,7 @@ function fitWidths<T extends number>(d: WebDesign, wall: WebWall, widths: readon
 export function AddParts() {
   const d = useWebStore((s) => s.design);
   const update = useWebStore((s) => s.update);
+  const setTab = useWebStore((s) => s.setTab);
   const walls = openingWalls(d);
   const [kind, setKind] = useState<OpeningKind>('rollup');
   const [wall, setWall] = useState<WebWall | null>(null); // null = the first wall with room
@@ -97,15 +99,20 @@ export function AddParts() {
   const tallestOne = curWall && kind === 'rollup' ? Math.max(0, ...rollupSizes(d, curWall, 1).heights) : 0;
   const heightCapped = !!endWall && rollupsThere + q > 1 && tallestOne > Math.max(0, ...sizes.heights);
 
-  const add = () => {
-    if (!curWall || !most) return;
-    // free room first (doors the customer placed stay put); else spread them out with the same doors there
-    const free = spreadPositions(d, curWall, w, q);
-    const respace = free ? null : respaceWithSame(d, curWall, kind, w, q);
+  /**
+   * Add `n` parts `pw` × `ph` to the wall, on top of `base` (the design, or the design with the garage
+   * doors there lowered - "make both 9′ and add"). Free room first (doors the customer placed stay put);
+   * else spread them out with the same doors there.
+   */
+  const addOn = (base: WebDesign, n: number, pw: number, ph: number, lowerTo: number | null) => {
+    if (!curWall || n < 1 || !pw || !ph) return;
+    const free = spreadPositions(base, curWall, pw, n);
+    const respace = free ? null : respaceWithSame(base, curWall, kind, pw, n);
     if (!free && !respace) return;
     const spots = free ?? respace!.spots.slice(respace!.existing.length);
     setWall(curWall); // keep this wall picked (it may be full now; the form does not jump to another)
     update((x) => {
+      if (lowerTo !== null) for (const o of x.openings) if (o.wall === curWall && o.kind === 'rollup' && o.h > lowerTo) o.h = lowerTo;
       if (respace) respace.existing.forEach((id, i) => {
         const o = x.openings.find((y) => y.id === id);
         if (o) o.pos = respace.spots[i];
@@ -114,7 +121,7 @@ export function AddParts() {
       for (const pos of spots) {
         const id = nextFreeId('o', used);
         used.add(id);
-        const o: WebOpening = { id, kind, wall: curWall, w, h, sill: kind === 'window' ? WINDOW_SILL_FT : 0, pos };
+        const o: WebOpening = { id, kind, wall: curWall, w: pw, h: ph, sill: kind === 'window' ? WINDOW_SILL_FT : 0, pos };
         if (kind === 'rollup') o.color = 'white';
         if (kind === 'walk' || kind === 'window') o.style = 'std'; // an impact area shows the rated ones (normalize)
         if (kind === 'frame') o.frame = 'door';
@@ -122,22 +129,75 @@ export function AddParts() {
       }
     });
     setQty(1);
+    const lowered = lowerTo !== null ? ` The garage doors there are now ${ft(lowerTo)} tall.` : '';
     setAdded({
-      text: `Added ${q} ${plural(kind, q)} to the ${WALL_LABEL[curWall].toLowerCase()}.${respace ? ' The doors there were spaced out evenly.' : ''}`,
-      count: d.openings.length + spots.length,
+      text: `Added ${n} ${plural(kind, n)} to the ${WALL_LABEL[curWall].toLowerCase()}.${respace ? ` The ${NOUN[kind][1]} there were spaced out evenly.` : ''}${lowered}`,
+      count: base.openings.length + spots.length,
     });
     setTimeout(() => cameraApi.fit(curWall === 'partition' ? 'front' : curWall), 60);
+    // show the "Added ..." line above the pinned Back / Next bar
+    setTimeout(() => {
+      const el = document.querySelector<HTMLElement>('.added-note');
+      if (el) revealInPanel(el);
+    }, 120);
   };
+  const add = () => {
+    if (most) addOn(d, q, w, h, null);
+  };
+
+  // A garage door already on this end wall is too tall for a second one (2+ doors: at most 1′ shorter
+  // than the walls): offer to lower it and add in one tap (re-check 10/16/26: "Lower it first (below)"
+  // was a dead end; Josh's ask was two 10×10s)
+  const maxH2 = d.height - 1;
+  const tallFix = (() => {
+    if (kind !== 'rollup' || !curWall || !endWall || most > 0) return null;
+    if (!d.openings.some((o) => o.wall === curWall && o.kind === 'rollup' && o.h > maxH2)) return null;
+    const lowered: WebDesign = { ...d, openings: d.openings.map((o) => (o.wall === curWall && o.kind === 'rollup' && o.h > maxH2 ? { ...o, h: maxH2 } : o)) };
+    const s = partSize(lowered, kind, curWall, rollupsThere + 1, rw, Math.min(rh, maxH2));
+    if (!s.w || !s.h || maxQty(lowered, curWall, kind, s.w, s.h) < 1) return null;
+    return { lowered, w: s.w, h: s.h };
+  })();
+
+  // the width asked for does not fit there (something else on the wall): say so, do not shrink it quietly
+  const narrower = kind === 'rollup' && !!w && w < rw;
+  // camera follows the form: a new "what" shows the wall it will go on
+  const firstKind = useRef(true);
+  useEffect(() => {
+    if (firstKind.current) {
+      firstKind.current = false;
+      return;
+    }
+    if (curWall) setTimeout(() => cameraApi.fit(curWall === 'partition' ? 'front' : curWall), 60);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kind]);
 
   const addedNote = added && added.count === d.openings.length ? added.text : null;
 
-  if (!walls.length) return <Note>Doors and windows go on closed walls — this building has none yet (Walls step).</Note>;
+  if (!walls.length) {
+    // a carport open on every side: say what to do, with the two ways forward
+    return (
+      <div className="addparts">
+        <Note>Your building is open on every side, so there is no wall for a door or window yet.</Note>
+        <div className="quick-row">
+          <button type="button" className="btn-ghost" onClick={() => setTab('walls')}>
+            Close in a wall
+          </button>
+          <button type="button" className="btn-ghost" onClick={() => setTab('leantos')}>
+            Add a storage room (lean-to)
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   let blocked: string | null = null;
   if (!kindOk(kind)) blocked = kind === 'walk' ? 'Walk-in doors need walls at least 7′ tall (Size step).' : 'Windows need walls at least 7′ tall (Size step).';
   else if (!wallChoices.length) blocked = kind === 'rollup' ? 'Garage doors need taller walls: at least 8′ on the sides, 6′ on the ends (Size step).' : 'No wall can take this one.';
   else if (kind === 'rollup' && !w) blocked = `No garage door fits on the ${wallName} right now. Pick another wall, or remove or move a door there.`;
-  else if (!most) blocked = why ?? `The ${wallName} has no room for another ${kind === 'rollup' ? `${ft(w)} wide garage door` : NOUN[kind][0]}. Pick another wall, or remove or move one that is there.`;
+  else if (!most) {
+    const some = d.openings.some((o) => o.wall === curWall && o.kind === kind);
+    blocked = why ?? `The ${wallName} has no room for ${some ? 'another' : kind === 'rollup' ? 'a' : /^[aeio]/.test(NOUN[kind][0]) ? 'an' : 'a'} ${kind === 'rollup' ? `${ft(w)} wide garage door` : NOUN[kind][0]}. Pick another wall, or remove or move one that is there.`;
+  }
 
   return (
     <div className="addparts" role="group" aria-label="Add doors and windows">
@@ -176,10 +236,30 @@ export function AddParts() {
         </div>
       ) : null}
       {blocked ? (
-        addedNote ? null : <Note>{blocked}</Note>
+        tallFix ? (
+          <>
+            <Note>{blocked}</Note>
+            <button type="button" className="btn-primary btn-add" onClick={() => addOn(tallFix.lowered, 1, tallFix.w, tallFix.h, maxH2)}>
+              Make the garage doors there {ft(maxH2)} tall and add another
+            </button>
+          </>
+        ) : addedNote ? null : (
+          <Note>{blocked}</Note>
+        )
       ) : (
         <>
-          {why ? <p className="field-hint">{why}</p> : heightCapped ? <p className="field-hint">Because the {wallName} will have {rollupsThere + q} garage doors, each can be up to {ft(d.height - 1)} tall.</p> : null}
+          {why ? (
+            <p className="field-hint">{why}</p>
+          ) : heightCapped ? (
+            <p className="field-hint">
+              Because the {wallName} will have {rollupsThere + q} garage doors, each can be up to {ft(d.height - 1)} tall.
+            </p>
+          ) : null}
+          {narrower ? (
+            <p className="field-hint">
+              A {ft(rw)} wide garage door does not fit on the {wallName} next to what is there; {ft(w)} is the widest. Or pick another wall.
+            </p>
+          ) : null}
           <button type="button" className="btn-primary btn-add" onClick={add}>
             Add {q} {plural(kind, q)} to the {wallName}
           </button>
@@ -188,8 +268,34 @@ export function AddParts() {
       {addedNote ? (
         <p className="field-hint added-note" role="status">
           {addedNote}
-          {blocked ? (why ? ` ${why}` : ` That is all that fit on the ${wallName}; add more on another wall, or remove one below.`) : ` Need another? Tap Add again.`}
+          {blocked ? (why && !tallFix ? ` ${why}` : tallFix ? '' : ` That is all that fit on the ${wallName}.`) : ` Need another? Tap Add again.`}
         </p>
+      ) : null}
+      {addedNote && blocked && !tallFix ? (
+        // the wall is full: the next thing most people add, one tap away
+        <div className="quick-row">
+          {(['walk', 'window'] as OpeningKind[])
+            .filter((k) => k !== kind && kindOk(k))
+            .map((k) => (
+              <button
+                key={k}
+                type="button"
+                className="btn-ghost"
+                onClick={() => {
+                  setKind(k);
+                  setWall(null);
+                  setQty(1);
+                  setAdded(null);
+                  setTimeout(() => {
+                    const el = document.querySelector<HTMLElement>('.addparts');
+                    if (el) revealInPanel(el);
+                  }, 60);
+                }}
+              >
+                Add {k === 'walk' ? 'a walk-in door' : 'a window'}
+              </button>
+            ))}
+        </div>
       ) : null}
     </div>
   );

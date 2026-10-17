@@ -71,11 +71,11 @@ export function UpgradesPanel() {
       </div>
 
       <div className="field">
-        <Toggle label="Electric openers on the roll-up doors" checked={u.openers} disabled={!rollups} onChange={set('openers')} />
-        {!rollups ? <p className="field-hint">Add a roll-up door first (Doors step).</p> : null}
+        <Toggle label="Electric openers on the garage doors" checked={u.openers} disabled={!rollups} onChange={set('openers')} />
+        {!rollups ? <p className="field-hint">Add a garage door first (Doors step).</p> : null}
       </div>
 
-      <Note>Wall panel direction and roof pitch are in the Size step; wainscot is in the Colors step.</Note>
+      <Note>Wall panel direction and roof pitch are in the Size step (More options); wainscot is in the Colors step.</Note>
     </div>
   );
 }

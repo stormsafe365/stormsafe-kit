@@ -124,10 +124,17 @@ export function Stepper({
     }
     setDraft(null);
   };
+  // the − / + buttons start from what is TYPED in the box (an iPhone keeps the box focused while a button
+  // is tapped: the step was then undone when the box let go)
+  const base = () => {
+    const v = draft === null ? Number.NaN : parseFloat(draft);
+    setDraft(null);
+    return Number.isFinite(v) ? clamp(v) : value;
+  };
   return (
     <Field label={label} hint={hint} htmlFor={id}>
       <div className="stepper">
-        <button type="button" aria-label={`${label}: less`} onClick={() => onChange(clamp(value - step))} disabled={value <= min}>
+        <button type="button" aria-label={`${label}: less`} onClick={() => onChange(clamp(base() - step))} disabled={value <= min}>
           −
         </button>
         <input
@@ -150,7 +157,7 @@ export function Stepper({
           }}
         />
         <span className="unit">{suffix}</span>
-        <button type="button" aria-label={`${label}: more`} onClick={() => onChange(clamp(value + step))} disabled={value >= max}>
+        <button type="button" aria-label={`${label}: more`} onClick={() => onChange(clamp(base() + step))} disabled={value >= max}>
           +
         </button>
       </div>

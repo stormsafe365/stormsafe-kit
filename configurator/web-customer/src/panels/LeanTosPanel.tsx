@@ -28,12 +28,15 @@ import {
   WRAP_KEYS,
   wrapStatus,
 } from '../model/rules';
-import { KIND_LABEL, PartEditor } from './PartEditor';
+import { PartEditor } from './PartEditor';
 import { Note, Segmented, Select, Stepper, Toggle } from './ui';
 import { cameraApi, type FitView } from '../cameraFit';
 
 /** The camera view that faces a lean-to's side (customer's left = left view). */
 const SIDE_VIEW: Record<string, FitView> = { 'Left Eave': 'left', 'Right Eave': 'right', 'Front Gable': 'front', 'Back Gable': 'back' };
+/** Short customer words for the lean-to add buttons / messages (KIND_LABEL is the long card title). */
+const LT_SHORT: Record<OpeningKind, string> = { rollup: 'Garage door', walk: 'Walk-in door', window: 'Window', frame: 'Opening' };
+const LT_NOUN: Record<OpeningKind, string> = { rollup: 'a garage door', walk: 'a walk-in door', window: 'a window', frame: 'an opening' };
 
 const startFrom = (side: LeanToSide) => (leanToIsEave(side) ? 'the front end' : side === 'Front Gable' ? 'the front-left corner' : 'the back-right corner');
 
@@ -134,7 +137,7 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
   const addPart = (kind: OpeningKind) => {
     if (lt.openings.length >= MAX_LEANTO_OPENINGS) return setAddMsg(`A lean-to holds up to ${MAX_LEANTO_OPENINGS} doors and windows here.`);
     const o = newLeanToOpening(d, lt, kind);
-    if (!o) return setAddMsg(`No room for a ${KIND_LABEL[kind].toLowerCase()} on this lean-to’s closed walls${kind === 'walk' || kind === 'window' ? ' (needs a 7′ or taller low leg)' : ''}.`);
+    if (!o) return setAddMsg(`No room for ${LT_NOUN[kind]} on this lean-to’s closed walls${kind === 'walk' || kind === 'window' ? ' (it needs a 7′ or taller outer edge)' : ''}.`);
     setAddMsg(null);
     edit((l) => void l.openings.push(o));
   };
@@ -199,12 +202,12 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
         <div className="add-row add-row-sm" role="group" aria-label="Add to this lean-to">
           {(['rollup', 'walk', 'window', 'frame'] as const).map((k) => (
             <button key={k} type="button" className="add-btn" onClick={() => addPart(k)}>
-              + {KIND_LABEL[k]}
+              + {LT_SHORT[k]}
             </button>
           ))}
         </div>
       ) : (
-        <p className="field-hint">Close a lean-to wall (Enclosed, or Custom → Closed) to add doors or windows.</p>
+        <p className="field-hint">Close in a lean-to wall (Closed in, or Mix → Closed) to add doors or windows.</p>
       )}
       {addMsg && <Note tone="warn">{addMsg}</Note>}
       {lt.openings.map((o, j) => {
@@ -261,7 +264,6 @@ export function LeanTosPanel() {
 
   return (
     <div className="panel-body">
-      <p className="field-hint">A lean-to is a lower roof added to one side or end. Leave it open for extra cover (a carport or porch), or close it in to make a storage room.</p>
       {free.length > 0 && (
         <div className="add-lt">
           <Select label="Which side?" value={pick} options={free.map((s) => ({ value: s, label: LEANTO_SIDE_LABEL[s] }))} onChange={setSide} />

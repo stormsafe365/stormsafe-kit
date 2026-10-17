@@ -96,7 +96,7 @@ export function OpeningsPanel() {
   return (
     <div className="panel-body">
       <AddParts />
-      {impact && <Note tone="warn">Your area uses impact-rated walk-in doors and windows, so those are the ones offered here. Roll-up doors stay as they are.</Note>}
+      {impact && <Note tone="warn">Your area uses impact-rated walk-in doors and windows, so those are the ones offered here. Garage doors stay as they are.</Note>}
       {d.openings.length === 0 && walls.length > 0 && <p className="empty">No doors or windows yet. Add one above, then drag it on the model or type its position.</p>}
       {d.openings.map((o, i) => {
         const face = wallLength(d, o.wall);

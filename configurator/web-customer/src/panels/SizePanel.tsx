@@ -63,7 +63,7 @@ export function SizePanel() {
           options={widthOptions(d.type).map((w) => ({ value: w, label: `${w}′${isWideSpan(w) ? ' (wide span)' : ''}` }))}
           onChange={(w) => update((x) => void (x.width = w))}
         />
-        <Stepper label="Length" value={d.length} min={LENGTH_MIN} max={LENGTH_MAX} onChange={(l) => update((x) => void (x.length = Math.round(l)))} />
+        <Stepper label={d.type === 'combo' ? 'Total length (carport + room)' : 'Length'} value={d.length} min={LENGTH_MIN} max={LENGTH_MAX} onChange={(l) => update((x) => void (x.length = Math.round(l)))} />
         <Select
           label="Height (side walls)"
           value={d.height}
@@ -80,7 +80,7 @@ export function SizePanel() {
 
       {d.type === 'combo' && (
         <Stepper
-          label="Garage (enclosed) length"
+          label="Closed room length (in back)"
           value={d.enclosedLength}
           min={COMBO_MIN_PART}
           max={d.length - COMBO_MIN_PART}

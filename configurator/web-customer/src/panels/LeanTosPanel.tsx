@@ -29,7 +29,10 @@ import {
   wrapStatus,
 } from '../model/rules';
 import { PartEditor } from './PartEditor';
-import { Note, Segmented, Select, Stepper, Toggle } from './ui';
+import { Note, Segmented, Select, Toggle } from './ui';
+
+/** Every whole foot from a to b, as drop-down choices (owner 10/18/26: sizes are drop-downs, like width). */
+const feet = (a: number, b: number) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => ({ value: a + i, label: `${a + i}′` }));
 import { cameraApi, type FitView } from '../cameraFit';
 
 /** The camera view that faces a lean-to's side (customer's left = left view). */
@@ -153,7 +156,7 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
       </header>
       <div className="part-grid">
         <Select label="Width" value={lt.width} options={LEANTO_WIDTHS.map((w) => ({ value: w, label: `${w}′` }))} onChange={(w) => edit((l) => void (l.width = w))} />
-        <Stepper label="Length" value={lt.length} min={Math.min(10, host)} max={host} onChange={(v) => edit((l) => void (l.length = Math.round(v)))} />
+        <Select label="Length" value={lt.length} options={feet(Math.min(10, host), host)} onChange={(v) => edit((l) => void (l.length = v))} />
         <Select
           label="Height at the outer edge"
           value={lt.lowLeg}
@@ -171,12 +174,11 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
         />
       </div>
       {lt.length < host && (
-        <Stepper
+        <Select
           label={`Starts at: from ${startFrom(lt.side)}`}
           value={lt.start}
-          min={0}
-          max={host - lt.length}
-          onChange={(v) => edit((l) => void (l.start = Math.round(v)))}
+          options={feet(0, host - lt.length)}
+          onChange={(v) => edit((l) => void (l.start = v))}
         />
       )}
       {!legs.length && <Note tone="warn">This lean-to’s roof would meet the building above its eave. Raise the building height or pick a narrower lean-to.</Note>}

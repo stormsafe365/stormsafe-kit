@@ -150,7 +150,7 @@ export function AddParts({ onAdding }: { onAdding?: (adding: boolean) => void })
     setPicked(null); // back to the four buttons, with a short 'Added ...' line and the new part in the list
     const lowered = lowerTo !== null ? ` The garage doors there are now ${ft(lowerTo)} tall.` : '';
     setAdded({
-      text: `Added ${n} ${plural(kind, n)} to the ${WALL_LABEL[curWall].toLowerCase()}.${respace ? ` The ${NOUN[kind][1]} there were spaced out evenly.` : ''}${lowered} Tap it below to change it.`,
+      text: `Added ${n} ${plural(kind, n)} to the ${WALL_LABEL[curWall].toLowerCase()}.${respace ? ` The ${NOUN[kind][1]} there were spaced out evenly.` : ''}${lowered} Drag it on the model to move it.`,
       count: base.openings.length + spots.length,
     });
     setTimeout(() => cameraApi.fit(curWall === 'partition' ? 'front' : curWall), 60);
@@ -251,8 +251,8 @@ export function AddParts({ onAdding }: { onAdding?: (adding: boolean) => void })
   return (
     <div className="addparts" role="group" aria-label={`Add ${article} ${NOUN[kind][0]}`}>
       <div className="add-head">
-        <button type="button" className="btn-ghost add-back" onClick={() => setPicked(null)} aria-label="Back to the list of things to add">
-          ←
+        <button type="button" className="btn-ghost add-back" onClick={() => setPicked(null)}>
+          ← Back
         </button>
         <KindIcon k={kind} />
         <strong className="add-title">

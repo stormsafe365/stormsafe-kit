@@ -2359,3 +2359,50 @@ html.vv-kb .stepnav {
     max-width: calc(100% - 110px);
   }
 }
+
+/* The questions in neon (owner 10/18/26: "make those little questions like written in neon"): lime words,
+   a touch bigger, a glow so faint you almost cannot tell */
+.panel .field-label,
+.guide .field-label {
+  color: var(--lime);
+  font-size: 15px;
+  text-shadow: 0 0 8px rgba(163, 230, 53, 0.22);
+}
+/* Back easy to see (owner 10/18/26: "the back button is not obvious enough") */
+.stepnav .btn-ghost,
+.add-back,
+.guide-foot .btn-ghost {
+  color: var(--text);
+  border: 1.5px solid #7fa3b0;
+  background: var(--surface-3);
+  font-weight: 700;
+  font-size: 15px;
+  min-height: 44px;
+  padding: 8px 16px;
+}
+.stepnav .btn-ghost:hover,
+.add-back:hover,
+.guide-foot .btn-ghost:hover {
+  border-color: var(--text);
+  color: var(--text);
+}
+.add-back {
+  min-height: 40px;
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+/* "you can drag them" - said plainly under the add buttons once something is on the building */
+.drag-tip {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px dashed rgba(163, 230, 53, 0.45);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.35;
+}
+.drag-tip > span {
+  color: var(--lime);
+  margin-right: 4px;
+}

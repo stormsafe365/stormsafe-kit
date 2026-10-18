@@ -1,7 +1,10 @@
 import { useWebStore } from '../store';
 import type { WebBuildingType, WebDesign } from '../model/design';
 import { COMBO_MIN_PART, heightOptions, isWideSpan, LENGTH_MAX, LENGTH_MIN, panelsLocked, pitchRise, roofStyleLocked, ROOF_VERTICAL_OVER_LENGTH, widthOptions, wallTakesOpenings } from '../model/rules';
-import { Note, Segmented, Select, Stepper, ft } from './ui';
+import { Note, Segmented, Select, ft } from './ui';
+
+/** Every whole foot from a to b, as drop-down choices (owner 10/18/26: length a drop-down like width). */
+const feet = (a: number, b: number) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => ({ value: a + i, label: `${a + i}′` }));
 import { BARNS, STYLES } from '../model/guide';
 
 const TYPES: Array<{ value: WebBuildingType; label: string; blurb: string }> = [
@@ -79,7 +82,12 @@ export function SizePanel() {
           options={widthOptions(d.type).map((w) => ({ value: w, label: `${w}′${isWideSpan(w) ? ' (wide span)' : ''}` }))}
           onChange={(w) => update((x) => void (x.width = w))}
         />
-        <Stepper label={d.type === 'combo' ? 'Total length (carport + room)' : 'Length'} value={d.length} min={LENGTH_MIN} max={LENGTH_MAX} onChange={(l) => update((x) => void (x.length = Math.round(l)))} />
+        <Select
+          label={d.type === 'combo' ? 'Total length' : 'Length'}
+          value={d.length}
+          options={feet(LENGTH_MIN, LENGTH_MAX)}
+          onChange={(l) => update((x) => void (x.length = l))}
+        />
         <Select
           label="Wall height"
           value={d.height}
@@ -94,12 +102,11 @@ export function SizePanel() {
       {/* the ZIP box is on the last step only (owner 10/17/26: one thing at a time, no long screens) */}
 
       {d.type === 'combo' && (
-        <Stepper
+        <Select
           label="Closed room length (in back)"
           value={d.enclosedLength}
-          min={COMBO_MIN_PART}
-          max={d.length - COMBO_MIN_PART}
-          onChange={(v) => update((x) => void (x.enclosedLength = Math.round(v)))}
+          options={feet(COMBO_MIN_PART, d.length - COMBO_MIN_PART)}
+          onChange={(v) => update((x) => void (x.enclosedLength = v))}
           hint={`Open carport in front: ${ft(d.length - d.enclosedLength)}`}
         />
       )}

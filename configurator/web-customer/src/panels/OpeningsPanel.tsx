@@ -100,7 +100,15 @@ export function OpeningsPanel() {
     <div className="panel-body">
       <AddParts onAdding={setAdding} />
       {impact && <Note tone="warn">Your area uses impact-rated walk-in doors and windows, so those are the ones offered here. Garage doors stay as they are.</Note>}
-      {!adding && d.openings.length > 0 ? <span className="field-label parts-label">On your building ({d.openings.length})</span> : null}
+      {!adding && d.openings.length > 0 ? (
+        <>
+          {/* owner 10/18/26: "some people will not know they can click and drag windows and doors" */}
+          <p className="drag-tip">
+            <span aria-hidden="true">☝</span> To move a door or window, press it on the model and slide it along the wall.
+          </p>
+          <span className="field-label parts-label">On your building ({d.openings.length}) · tap one to change it</span>
+        </>
+      ) : null}
       {!adding && d.openings.map((o, i) => {
         const face = wallLength(d, o.wall);
         const onClosed = walls.includes(o.wall);

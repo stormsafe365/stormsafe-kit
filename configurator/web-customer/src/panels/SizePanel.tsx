@@ -45,15 +45,13 @@ export function SizePanel() {
   return (
     <div className="panel-body">
       {chosen ? (
-        <div className="field">
-          <span className="field-label">Your building style</span>
-          <div className="chosen-style">
-            <strong>{chosenName}</strong>
-            <button type="button" className="btn-ghost" onClick={() => setGuide('style')}>
-              Change
-            </button>
-          </div>
-        </div>
+        // one short line (owner 10/18/26: the boxed "Your building style" took too much room)
+        <p className="chosen-line">
+          Style: <strong>{chosenName}</strong>{' '}
+          <button type="button" className="linkish" onClick={() => setGuide('style')}>
+            Change style
+          </button>
+        </p>
       ) : (
       <div className="field">
         <span className="field-label">Building type</span>

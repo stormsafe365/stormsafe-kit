@@ -2172,12 +2172,6 @@ html.vv-kb .stepnav {
   .wallmap {
     gap: 5px;
   }
-  .wall-back,
-  .wall-front {
-    flex-direction: row;
-    gap: 6px;
-    min-height: 40px;
-  }
   .colorpart {
     min-height: 46px;
     padding: 6px 8px;
@@ -2250,4 +2244,31 @@ html.vv-kb .stepnav {
     padding: 4px 10px;
     font-size: 12px;
   }
+}
+
+/* the chosen style, one short line */
+.chosen-line {
+  margin: 0;
+  font-size: 14px;
+  color: var(--sub);
+}
+.chosen-line strong {
+  color: var(--text);
+  margin-right: 6px;
+}
+.chosen-line .linkish {
+  font-size: 13px;
+}
+/* side names on the model: small plain labels, not a button or a drop-down (owner 10/18/26) */
+.side-tag {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(8, 27, 36, 0.72);
+  color: var(--teal);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+  user-select: none;
 }

@@ -57,13 +57,14 @@ export function FrontMarker() {
   if (!box) return null;
   const midX = (box.min.x + box.max.x) / 2;
   const midZ = (box.min.z + box.max.z) / 2;
-  const y = box.max.y + 0.8;
-  // above the middle of each wall
+  // on the ground just outside the middle of each wall (owner 10/18/26: above the roof they were in the way)
+  const y = box.min.y + 0.1;
+  const out = 2.5;
   const spot: Record<Side, [number, number, number]> = {
-    front: [midX, y, box.min.z],
-    back: [midX, y, box.max.z],
-    left: [box.max.x, y, midZ],
-    right: [box.min.x, y, midZ],
+    front: [midX, y, box.min.z - out],
+    back: [midX, y, box.max.z + out],
+    left: [box.max.x + out, y, midZ],
+    right: [box.min.x - out, y, midZ],
   };
   return (
     <>

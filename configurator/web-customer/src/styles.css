@@ -2272,3 +2272,90 @@ html.vv-kb .stepnav {
   transition: opacity 0.15s;
   user-select: none;
 }
+
+/* ── Make the choices stand out (owner 10/18/26: "things start to blend in too much when everything is the
+   same exact color"; lime goes with the theme; any glow so faint you almost cannot tell) ──
+   teal = the button that does something (Next, Add, Send) · lime = what you picked · white = the question */
+:root {
+  --lime: #a3e635;
+  --lime-dim: #84cc16;
+  --lime-ink: #142400;
+  --lime-glow: rgba(163, 230, 53, 0.1);
+  --choice-border: #3a6474;
+}
+/* the questions read as questions: plain white words, not small teal capitals */
+.panel .field-label,
+.guide .field-label {
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+.panel .field-value {
+  color: var(--lime);
+  font-weight: 700;
+}
+/* choices you can tap: a clear outline; the one picked: lime */
+.pick,
+.wallbtn,
+.colorpart,
+.tile,
+.panel .card {
+  border-color: var(--choice-border);
+}
+.pick.on {
+  background: var(--lime);
+  border-color: var(--lime);
+  color: var(--lime-ink);
+  box-shadow: 0 0 6px var(--lime-glow);
+}
+.wallbtn.on,
+.colorpart.on,
+.panel .card.on {
+  border-color: var(--lime);
+  box-shadow: inset 0 0 0 1px var(--lime), 0 0 6px var(--lime-glow);
+  background: var(--surface-3);
+}
+.wallbtn.on .wallbtn-state,
+.panel .card.on .card-title {
+  color: var(--lime);
+}
+.panel .seg > button.on {
+  background: var(--lime);
+  color: var(--lime-ink);
+}
+.swatch.on {
+  outline-color: var(--lime);
+}
+.tile .kind-icon {
+  color: var(--lime);
+}
+.tile:hover:not(:disabled) {
+  border-color: var(--lime-dim);
+}
+.qty button {
+  color: var(--lime);
+}
+/* side names on the model: on the ground outside each wall, small and quiet */
+.side-tag {
+  padding: 0;
+  background: none;
+  color: rgba(163, 230, 53, 0.85);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+/* phones: the "drag to turn" line sits at the top right, next to View, so the side names on the ground
+   stay readable (it still goes away after the first touch on the model) */
+@media (max-width: 599px) {
+  .vp-hint {
+    top: 12px;
+    bottom: auto;
+    left: auto;
+    right: 10px;
+    transform: none;
+    font-size: 11px;
+    max-width: calc(100% - 110px);
+  }
+}

@@ -1173,9 +1173,9 @@ export default function BuildHost() {
       </header>
 
       {/* ── Two panes ── */}
-      {/* Pricing form pinned at ~500px; the 3D pane takes every remaining pixel
-          so long buildings fit in the eave views without zooming out. */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(440px, 500px) 1fr', minHeight: 0 }}>
+      {/* Pricing form pinned at ~560px (owner 10/19/26: "a tiny bit wider ... less condensed"; was 500); the 3D
+          pane takes every remaining pixel so long buildings fit in the eave views without zooming out. */}
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(470px, 560px) 1fr', minHeight: 0 }}>
         {/* Left: the program (untouched) */}
         <div style={{ position: 'relative', minWidth: 0, background: '#fff' }}>
           {/* RELATIVE path (no leading slash) so it resolves next to build.html

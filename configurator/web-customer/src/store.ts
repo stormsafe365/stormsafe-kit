@@ -12,7 +12,7 @@ import { countyForZip } from './model/flZips';
 import { EMPTY_CONTACT, type Contact, type LinkStatus } from './model/link';
 
 /** The guided start screens (null = the builder itself). */
-export type GuideStep = 'welcome' | 'style' | 'barn' | 'size';
+export type GuideStep = 'resume' | 'welcome' | 'style' | 'barn' | 'size';
 
 export type TabKey = 'size' | 'walls' | 'doors' | 'leantos' | 'upgrades' | 'colors' | 'send';
 

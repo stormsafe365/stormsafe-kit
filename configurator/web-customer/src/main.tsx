@@ -33,8 +33,10 @@ const token = parseToken(window.location.search);
 // Work in progress survives a reload / closed tab (this browser only).
 const restored = restoreDraft(token);
 keepDraft(token);
-// A first visit on its own page (not a website frame, nothing saved yet) starts with the guided questions.
-if (!restored && window.parent === window) useWebStore.getState().setGuide('welcome');
+// On its own page (not a website frame) a first visit starts with the guided questions.
+// Coming back to a design already started: say so first, with Keep going / Start a new design
+// (owner 10/18/26: "why when i click on the link does it not start at the first part?").
+if (window.parent === window) useWebStore.getState().setGuide(restored ? 'resume' : 'welcome');
 // An old tab coming back to the screen picks up a newer version of this page (the draft comes back).
 installFreshness({ busy: () => !!useWebStore.getState().busy, save: () => saveDraftNow(token) });
 // The page going to the background (the phone number tapped, the app switched): save now, not 400 ms later.

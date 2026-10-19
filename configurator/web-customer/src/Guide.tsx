@@ -10,13 +10,15 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore, type GuideStep } from './store';
 import { applyStyle, BARNS, STYLES, type BarnStyle, type GuideStyle, type SizePreset } from './model/guide';
 import { cameraApi } from './cameraFit';
+import { TYPE_LABEL } from './model/design';
+import { ft } from './panels/ui';
 
 // Pictures made from our own 3D model (tools/make-guide-pictures.mjs).
 const PICTURE = (k: string) => new URL(`./assets/guide/${k}.jpg`, import.meta.url).href;
 
 const dims = (p: SizePreset) => `${p.w}′ W × ${p.l}′ L × ${p.h}′ H`;
 
-export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => void) | null }) {
+export function Guide({ banner, onUndo, onStartOver }: { banner?: ReactNode; onUndo?: (() => void) | null; onStartOver?: () => void }) {
   const step = useWebStore((s) => s.guide) as GuideStep;
   const setGuide = useWebStore((s) => s.setGuide);
   const style = useWebStore((s) => s.guideStyle);
@@ -26,6 +28,8 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
   const barn = useWebStore((s) => s.guideBarn);
   const setBarn = useWebStore((s) => s.setGuideBarn);
   const update = useWebStore((s) => s.update);
+  const design = useWebStore((s) => s.design);
+  const sentAt = useWebStore((s) => s.sentAt);
   const setTab = useWebStore((s) => s.setTab);
   const headRef = useRef<HTMLHeadingElement>(null);
   const st = STYLES.find((x) => x.key === style) ?? null;
@@ -81,6 +85,36 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
           Storm<span className="wm-teal">Safe</span> Steel
         </span>
         {banner}
+
+        {step === 'resume' && (
+          <>
+            <h1 className="guide-h" tabIndex={-1} ref={headRef}>Welcome back!</h1>
+            <p className="guide-p">Your building is saved on this device:</p>
+            <p className="resume-card">
+              <strong>{st ? (st.leanTos && barn ? BARNS.find((b) => b.key === barn)?.title ?? st.title : st.title) : TYPE_LABEL[design.type]}</strong>
+              <span>
+                {ft(design.width)} W × {ft(design.length)} L × {ft(design.height)} H
+                {design.openings.length ? ` · ${design.openings.length} door${design.openings.length === 1 ? '' : 's'} / window${design.openings.length === 1 ? '' : 's'}` : ''}
+                {design.leanTos.length ? ` · ${design.leanTos.length} lean-to${design.leanTos.length === 1 ? '' : 's'}` : ''}
+              </span>
+              {sentAt ? <span className="resume-sent">Sent to your rep</span> : null}
+            </p>
+            <button
+              type="button"
+              className="btn-primary guide-btn"
+              onClick={() => {
+                setGuide(null);
+                setTimeout(() => cameraApi.fit('iso'), 250);
+              }}
+            >
+              Keep going with this design
+            </button>
+            <button type="button" className="btn-ghost guide-btn guide-btn-2" onClick={() => onStartOver?.()}>
+              Start a new design
+            </button>
+            <p className="guide-small">Questions? <a href="tel:+15617715555">561-771-5555</a></p>
+          </>
+        )}
 
         {step === 'welcome' && (
           <>
@@ -202,7 +236,7 @@ export function Guide({ banner, onUndo }: { banner?: ReactNode; onUndo?: (() => 
           </>
         )}
 
-        {step !== 'welcome' && (
+        {step !== 'welcome' && step !== 'resume' && (
           <div className="guide-foot">
             <button type="button" className="btn-ghost" onClick={back}>← Back</button>
             <button type="button" className="linkish" onClick={() => toBuilder()}>Skip the questions</button>

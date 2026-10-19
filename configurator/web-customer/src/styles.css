@@ -2406,3 +2406,24 @@ html.vv-kb .stepnav {
   color: var(--lime);
   margin-right: 4px;
 }
+
+.resume-card {
+  margin: 0 0 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--choice-border, var(--border-vis));
+  background: var(--surface-2);
+  font-size: 15px;
+  color: var(--sub);
+}
+.resume-card strong {
+  color: var(--text);
+  font-size: 17px;
+}
+.resume-sent {
+  color: var(--lime, var(--teal));
+  font-weight: 700;
+}

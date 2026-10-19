@@ -632,7 +632,7 @@ export function App() {
           </div>
         </aside>
       </div>
-      {guide ? <Guide banner={<LinkBanner />} onUndo={cleared && undoRef.current ? undo : null} /> : null}
+      {guide ? <Guide banner={<LinkBanner />} onUndo={cleared && undoRef.current ? undo : null} onStartOver={startOver} /> : null}
       {busy && (
         <div className="busy" role="alert" aria-live="assertive">
           <div className="busy-card">

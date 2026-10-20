@@ -66,6 +66,14 @@ interface WebStore {
   /** When the design was last sent (ms since epoch); null = not sent yet. */
   sentAt: number | null;
   setSent: (t: number | null) => void;
+  /**
+   * V2 Doors & windows sheet: the design WITH the part being added / changed, shown on the 3D model
+   * while the sheet is open (null = none). Never saved, never sent: Add / Save writes the design.
+   */
+  preview: WebDesign | null;
+  setPreview: (d: WebDesign | null) => void;
+  /** A part dragged on the model while the sheet was open: its new typed position (the sheet picks it up). */
+  previewDrag: { id: string; pos: number; n: number } | null;
 }
 
 /** Normalize with the impact rule of the design's own size (Okaloosa / Okeechobee depend on it). */
@@ -125,6 +133,9 @@ export const useWebStore = create<WebStore>((set, get) => ({
   setSeedNote: (seedNote) => set({ seedNote }),
   sentAt: null,
   setSent: (sentAt) => set({ sentAt }),
+  preview: null,
+  setPreview: (d) => set({ preview: d ? settle(d, get().ctx).design : null }),
+  previewDrag: null,
 }));
 
 /** The saved state sent to the website (ss-design `state`). */

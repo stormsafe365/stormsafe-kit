@@ -60,8 +60,20 @@ interface OrbitLike {
   dispatchEvent: (e: { type: string }) => void;
 }
 
+/** How many px at the bottom of the model view the page's own overlay (.stage-foot: size line + Bigger view) covers. */
+function coveredBottomPx(canvas: HTMLCanvasElement): number {
+  if (typeof document === 'undefined') return 0;
+  const foot = document.querySelector<HTMLElement>('.stage-foot');
+  if (!foot || getComputedStyle(foot).display === 'none') return 0;
+  const c = canvas.getBoundingClientRect();
+  const r = foot.getBoundingClientRect();
+  if (r.height === 0 || r.top >= c.bottom) return 0;
+  return Math.max(0, c.bottom - r.top + 4);
+}
+
 export function CameraFit() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera;
+  const gl = useThree((s) => s.gl);
   const controls = useThree((s) => s.controls) as unknown as OrbitLike | null;
   const scene = useThree((s) => s.scene);
   const size = useThree((s) => s.size);
@@ -86,13 +98,27 @@ export function CameraFit() {
       const up = new THREE.Vector3().crossVectors(right, fwd).normalize();
       const tanV = Math.tan((camera.fov * Math.PI) / 360);
       const tanH = tanV * (size.width / Math.max(1, size.height));
+      // V2 fix (FRONT tag under the size line): the side names stand on the ground 2.5′ outside each
+      // wall (FrontMarker), so they are framed too; and on phones the bottom of the model is covered by
+      // the size line + Bigger view (.stage-foot, z-index 200, above the tags' 0-50), so that band is
+      // not room for the model: fit into the rest and lift the picture by half the band.
+      const tagPts = [
+        new THREE.Vector3(center.x, box.min.y, box.min.z - 3.5),
+        new THREE.Vector3(center.x, box.min.y, box.max.z + 3.5),
+        new THREE.Vector3(box.min.x - 3.5, box.min.y, center.z),
+        new THREE.Vector3(box.max.x + 3.5, box.min.y, center.z),
+      ];
+      const band = coveredBottomPx(gl.domElement);
+      const f = Math.min(0.35, band / Math.max(1, size.height));
+      const tanFit = tanV * (1 - f);
       let d = 0;
-      for (const p of pts) {
+      for (const p of [...pts, ...tagPts]) {
         const r = p.clone().sub(center);
         const z = r.dot(dir);
-        d = Math.max(d, z + Math.abs(r.dot(right)) / tanH, z + Math.abs(r.dot(up)) / tanV);
+        d = Math.max(d, z + Math.abs(r.dot(right)) / tanH, z + Math.abs(r.dot(up)) / tanFit);
       }
       d = Math.max(4, d * 1.1);
+      center.addScaledVector(up, -f * d * tanV);
       const pos = center.clone().add(dir.multiplyScalar(d));
       // Cancel the shared rig's own glide (it listens for 'start', the orbit-grab event).
       controls.dispatchEvent({ type: 'start' });
@@ -115,7 +141,7 @@ export function CameraFit() {
       controls.removeEventListener('start', cancel);
       cameraApi.fit = () => {};
     };
-  }, [camera, controls, scene, size.width, size.height]);
+  }, [camera, controls, scene, gl, size.width, size.height]);
 
   useFrame(() => {
     const g = goal.current;

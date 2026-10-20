@@ -2509,3 +2509,330 @@ html.vv-kb .stepnav {
 .wall-empty {
   margin: 0;
 }
+
+/* ══ V2 test version (design-v2, owner's reviewers 10/20/26) ══════════════════════════════════════ */
+/* the small marker so the owner can tell V2 from the live page */
+.v2-mark {
+  position: fixed;
+  z-index: 3000;
+  top: 31px;
+  left: 12px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(240, 136, 62, 0.16);
+  border: 1px solid rgba(240, 136, 62, 0.55);
+  color: var(--orange);
+  font-size: 9px;
+  line-height: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  white-space: nowrap;
+}
+/* wall cards: a small wall outline + the wall's real size */
+.wallcard {
+  position: relative;
+}
+.wallcard .wall-icon {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 34px;
+  height: 22px;
+  color: var(--muted);
+}
+.wallcard.on .wall-icon {
+  color: var(--lime);
+}
+.wallcard-name {
+  padding-right: 38px;
+}
+.wallcard-size {
+  font-size: 13px;
+  color: var(--sub);
+  font-variant-numeric: tabular-nums;
+}
+.wallcard.on .wallcard-size {
+  color: var(--text);
+}
+/* placed parts: one tappable row each (opens the sheet) + remove */
+.placed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.placed-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 6px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-vis);
+  background: var(--surface-2);
+}
+.placed-row > .note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.placed-row.is-selected {
+  border-color: var(--lime);
+}
+.placed-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+.placed-main .kind-icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  color: var(--lime);
+}
+.placed-num {
+  flex: none;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--teal-glow);
+  color: var(--teal);
+  font-weight: 700;
+  font-size: 12px;
+  display: grid;
+  place-items: center;
+}
+.placed-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.placed-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+.placed-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+/* the sheet: fills the options area (under the model on phones, the side panel on desktop) */
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: -4px -4px 0;
+  padding: 6px 14px 14px;
+  border-radius: 16px 16px 12px 12px;
+  border: 1px solid var(--border-vis);
+  background: var(--surface);
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.35);
+}
+.sheet-grip {
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-vis);
+}
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.sheet-title {
+  margin: 0;
+  font-family: Orbitron, Inter, sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+.sheet-x {
+  width: 40px;
+  height: 40px;
+}
+.sheet-step {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+}
+.sheet-wallline {
+  margin: -6px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+.wallpic {
+  margin: 0;
+  padding: 8px 8px 2px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.wallpic svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 150px;
+}
+.wp-ground {
+  stroke: var(--border-vis);
+  stroke-width: 0.15;
+}
+.wp-wall {
+  fill: var(--surface-3);
+  stroke: var(--sub);
+  stroke-width: 0.15;
+}
+.wp-open {
+  fill: url(#wp-hatch);
+  color: var(--muted);
+  stroke: none;
+}
+.wp-part rect {
+  fill: var(--surface);
+  stroke: var(--muted);
+  stroke-width: 0.15;
+}
+.wp-part line {
+  stroke: var(--muted);
+  stroke-width: 0.08;
+}
+.wp-part.on rect {
+  fill: rgba(163, 230, 53, 0.22);
+  stroke: var(--lime);
+  stroke-width: 0.22;
+}
+.wp-part.on line {
+  stroke: var(--lime);
+}
+.wp-part.bad rect {
+  fill: rgba(240, 136, 62, 0.2);
+  stroke: var(--orange);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wp-part {
+    transition: transform 0.25s ease;
+  }
+}
+.wp-end,
+.wp-len {
+  fill: var(--muted);
+  font-family: Inter, system-ui, sans-serif;
+}
+.wp-len {
+  fill: var(--sub);
+  font-weight: 700;
+}
+.presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.preset {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 52px;
+  padding: 8px 4px;
+  border-radius: 10px;
+  border: 1px solid var(--choice-border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.preset:hover:not(.on) {
+  border-color: var(--lime-dim);
+}
+.preset.on {
+  border-color: var(--lime);
+  background: var(--lime);
+  color: var(--lime-ink);
+  box-shadow: 0 0 6px var(--lime-glow);
+}
+.preset-size {
+  font-weight: 800;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.preset-custom .preset-size {
+  font-size: 13px;
+  font-weight: 700;
+}
+.preset-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.preset-tag.pop {
+  color: var(--teal);
+}
+.preset.on .preset-tag {
+  color: var(--lime-ink);
+}
+.posseg > button {
+  min-height: 42px;
+  font-weight: 700;
+}
+.sheet-info {
+  color: var(--sub);
+}
+.sheet-qty .qty {
+  max-width: 180px;
+}
+.sheet-actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin-top: 4px;
+}
+.sheet-actions .btn-ghost {
+  min-height: 42px;
+  padding: 6px 16px;
+}
+.sheet-remove:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  background: var(--teal);
+}
+/* the sheet's own Cancel / Add stay in reach; the step's Back / Next wait until it closes */
+.panel-scroll:has(.sheet) > .stepnav {
+  display: none;
+}
+.sheet-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 6;
+  margin: 4px -14px -14px;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 12px 12px;
+  background: var(--surface);
+}
+@media (max-width: 899px) {
+  .wallpic svg {
+    max-height: 104px;
+  }
+  .sheet {
+    gap: 8px;
+  }
+}

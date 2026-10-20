@@ -625,6 +625,8 @@ export function App() {
   }
   return (
     <div className={`app${bigView ? ' big-view' : ''}${touched ? ' touched' : ''}${tab === 'doors' || tab === 'leantos' || tab === 'walls' || tab === 'upgrades' ? ' working' : ''}`}>
+      {/* V2 test copy (v2.stormsafe-design.pages.dev): a small marker so the owner can tell it from the live page */}
+      <span className="v2-mark">Test version (V2)</span>
       <header className="topbar">
         <div className="brand">
           <span className="wordmark" aria-label="StormSafe Steel">

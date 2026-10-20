@@ -15,8 +15,9 @@ import { useWebStore } from './store';
 let lastSig = '';
 
 function applyToScene() {
-  const { design, ctx } = useWebStore.getState();
-  const config = designToConfig(design, ctx);
+  const { design, preview, ctx } = useWebStore.getState();
+  // V2: while the Doors & windows sheet is open the model shows the part being placed (preview)
+  const config = designToConfig(preview ?? design, ctx);
   const sig = JSON.stringify(config);
   if (sig === lastSig) return;
   lastSig = sig;
@@ -30,7 +31,21 @@ function readBackDrags() {
   const st = useBuildingStore.getState();
   const byId = new Map(st.openings.map((o) => [o.id, o.offset]));
   const ltById = new Map(st.leanTos.flatMap((lt) => (lt.openings ?? []).map((o) => [o.id, o.offsetFt] as const)));
-  const { design, update } = useWebStore.getState();
+  const { design, update, preview } = useWebStore.getState();
+  if (preview) {
+    // the sheet is open: a drag moves the part being placed (the sheet takes the new spot); the design waits for Add / Save
+    const moved = preview.openings.find((o) => {
+      const off = byId.get(o.id);
+      return off !== undefined && Math.abs(offset3DToPos(preview, o.wall, off, o.w) - o.pos) > 1e-6;
+    });
+    if (moved) {
+      const pos = offset3DToPos(preview, moved.wall, byId.get(moved.id)!, moved.w);
+      const n = (useWebStore.getState().previewDrag?.n ?? 0) + 1;
+      useWebStore.setState({ previewDrag: { id: moved.id, pos, n } });
+    }
+    applyToScene();
+    return;
+  }
   const mainMoved = design.openings.some((o) => {
     const off = byId.get(o.id);
     return off !== undefined && Math.abs(offset3DToPos(design, o.wall, off, o.w) - o.pos) > 1e-6;
@@ -57,7 +72,7 @@ function readBackDrags() {
 export function installSync(): () => void {
   applyToScene();
   const unDesign = useWebStore.subscribe((s, prev) => {
-    if (s.design !== prev.design || s.ctx !== prev.ctx) applyToScene();
+    if (s.design !== prev.design || s.ctx !== prev.ctx || s.preview !== prev.preview) applyToScene();
   });
   const unDrag = useEditorStore.subscribe((s, prev) => {
     // Only after a REAL drag (moved >= 5px); a click just opens / closes a door.

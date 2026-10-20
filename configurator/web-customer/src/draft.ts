@@ -4,7 +4,7 @@
  * design. Nothing here is sent anywhere; storage that is blocked or full is
  * simply skipped (the page works the same without it).
  */
-import { currentState, useWebStore, type TabKey } from './store';
+import { currentState, isPlainStart, useWebStore, type TabKey } from './store';
 import { checkState } from './model/validate';
 import { withoutOldStarterParts } from './model/design';
 import { BARNS, STYLES } from './model/guide';
@@ -47,7 +47,10 @@ export function restoreDraft(token: string | null, now = Date.now()): boolean {
 export function saveDraftNow(token: string | null): void {
   try {
     // waiting for the rep's building: the plain starter must not be stored as the customer's draft
-    if (useWebStore.getState().seedHold) return;
+    const now = useWebStore.getState();
+    if (now.seedHold) return;
+    // a link that has not answered yet: the untouched plain building is not the customer's work
+    if (token && (now.link === 'checking' || now.link === 'offline') && isPlainStart(now.design, now.ctx)) return;
     const { contact, sentAt, tab, guideStyle, guideBarn, guideMode } = useWebStore.getState();
     // once the design is sent, the contact details are not kept on the device (only the ZIP for the county)
     const keep = sentAt ? { zip: contact.zip } : { name: contact.name, phone: contact.phone, email: contact.email, zip: contact.zip, notes: contact.notes };

@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseSeed } from '../src/model/seed';
 import { fetchLink, checkLink } from '../src/send';
-import { applyLinkResult, beginHold, startOverDesign } from '../src/linkStart';
+import { applyLinkResult, beginHold, retryLinkCheck, runLinkCheck, startOverDesign } from '../src/linkStart';
 import { restoreDraft, saveDraftNow } from '../src/draft';
 import { useWebStore } from '../src/store';
 import { cloneDesign, DEFAULT_DESIGN, OLD_STARTER_OPENINGS, type WebDesign } from '../src/model/design';
@@ -115,6 +115,8 @@ describe('start-up with a link building', () => {
     st.setSeed(null);
     st.setSeedHold(false);
     st.setSeedNote(false);
+    st.setGuideStyle(null);
+    st.setGuideBarn(null);
     st.setBusy(null);
     st.setGuide(null);
     st.setLink(null, 'none');
@@ -167,16 +169,15 @@ describe('start-up with a link building', () => {
     const before = useWebStore.getState().design;
     applyLinkResult(TOK, { status: 'ok', seed: env() }, { own: true, restored: true, hold: false });
     const s = useWebStore.getState();
-    expect(s.design).toBe(before);
+    expect(s.design).toEqual(before);
     expect(s.guide).toBe('resume');
     expect(s.seed?.design.length).toBe(40);
     expect(s.seedNote).toBe(false);
   });
-  it('no building / expired / offline / framed / unusable: the page is unchanged', () => {
+  it('no building / expired / framed / unusable: the page is unchanged', () => {
     for (const [r, own] of [
       [{ status: 'ok', seed: null }, true],
       [{ status: 'expired', seed: null }, true],
-      [{ status: 'offline', seed: null }, true],
       [{ status: 'ok', seed: { schema: 'nope' } }, true],
       [{ status: 'ok', seed: env() }, false],
     ] as const) {
@@ -195,6 +196,125 @@ describe('start-up with a link building', () => {
       expect(s.seedHold).toBe(false);
       expect(s.busy).toBe(null);
     }
+  });
+  it('a saved draft + the quote saying no impact: the county rule no longer flips the doors / windows', () => {
+    useWebStore.getState().setZip('33401'); // Palm Beach: impact by the county rule
+    useWebStore.getState().replace(seedDesign());
+    const walk = () => useWebStore.getState().design.openings.find((o) => o.kind === 'walk')!;
+    const rated = walk().style;
+    const before = JSON.stringify(useWebStore.getState().design.length);
+    applyLinkResult(TOK, { status: 'ok', seed: env(seedDesign(), { zip: '33401', impact: false }) }, { own: true, restored: true, hold: false });
+    expect(useWebStore.getState().ctx.impactParam).toBe(false);
+    expect(walk().style).not.toBe(rated);
+    expect(JSON.stringify(useWebStore.getState().design.length)).toBe(before);
+    expect(useWebStore.getState().design.openings).toHaveLength(3);
+  });
+  it('an unreachable link (no draft): a clear screen, the hold stays, no blank draft is saved', () => {
+    beginHold();
+    useWebStore.getState().setLink(TOK, 'checking');
+    useWebStore.getState().setGuide('welcome');
+    applyLinkResult(TOK, { status: 'offline', seed: null }, { own: true, restored: false, hold: true });
+    let s = useWebStore.getState();
+    expect(s.guide).toBe('offline');
+    expect(s.seedHold).toBe(true);
+    expect(s.busy).toBe(null);
+    s.setTab('walls');
+    saveDraftNow(TOK);
+    expect(mem.size).toBe(0);
+  });
+  it('Try again: the building opens when the second check works', async () => {
+    const answers = [{ status: 'offline' as const, seed: null }, { status: 'ok' as const, seed: env() }];
+    const fetcher = (async () => answers.shift()!) as never;
+    beginHold();
+    useWebStore.getState().setLink(TOK, 'checking');
+    await runLinkCheck(TOK, { own: true, restored: false, hold: true }, () => {}, fetcher, 60_000);
+    expect(useWebStore.getState().guide).toBe('offline');
+    const p = retryLinkCheck();
+    expect(useWebStore.getState().link).toBe('checking');
+    await p;
+    const s = useWebStore.getState();
+    expect(s.guide).toBe(null);
+    expect(s.design.length).toBe(40);
+    expect(s.seedHold).toBe(false);
+  });
+  it('one automatic retry after a few seconds', async () => {
+    const answers = [{ status: 'offline' as const, seed: null }, { status: 'ok' as const, seed: env() }];
+    const fetcher = (async () => answers.shift()!) as never;
+    beginHold();
+    await runLinkCheck(TOK, { own: true, restored: false, hold: true }, () => {}, fetcher, 4000);
+    expect(useWebStore.getState().guide).toBe('offline');
+    await vi.advanceTimersByTimeAsync(4100);
+    expect(useWebStore.getState().guide).toBe(null);
+    expect(useWebStore.getState().design.length).toBe(40);
+  });
+  it('Start a blank design releases the hold; a late answer then changes nothing', () => {
+    beginHold();
+    applyLinkResult(TOK, { status: 'offline', seed: null }, { own: true, restored: false, hold: true });
+    useWebStore.getState().setSeedHold(false);
+    useWebStore.getState().setGuide('welcome');
+    applyLinkResult(TOK, { status: 'ok', seed: env() }, { own: true, restored: false, hold: true });
+    expect(useWebStore.getState().design).toEqual(fresh.design);
+    expect(useWebStore.getState().guide).toBe('welcome');
+  });
+  it('an unreachable link after the customer began: no hijack, the hold is released', () => {
+    beginHold();
+    useWebStore.getState().setGuideStyle('garage');
+    useWebStore.getState().setGuide('size');
+    applyLinkResult(TOK, { status: 'offline', seed: null }, { own: true, restored: false, hold: true });
+    expect(useWebStore.getState().guide).toBe('size');
+    expect(useWebStore.getState().seedHold).toBe(false);
+  });
+  it('the busy screen is capped; the building still lands when it arrives late and nothing was touched', () => {
+    beginHold();
+    useWebStore.getState().setGuide('welcome');
+    vi.advanceTimersByTime(2600);
+    expect(useWebStore.getState().busy).toBe(null);
+    expect(useWebStore.getState().seedHold).toBe(true);
+    applyLinkResult(TOK, { status: 'ok', seed: env() }, { own: true, restored: false, hold: true });
+    expect(useWebStore.getState().design.length).toBe(40);
+    expect(useWebStore.getState().guide).toBe(null);
+    expect(useWebStore.getState().seedHold).toBe(false);
+  });
+  it('a late building never replaces what the customer already began; it is remembered for Start over', () => {
+    beginHold();
+    vi.advanceTimersByTime(2600);
+    useWebStore.getState().setGuideStyle('carport');
+    useWebStore.getState().setGuide('size');
+    useWebStore.getState().update((d) => {
+      d.length = 50;
+    });
+    applyLinkResult(TOK, { status: 'ok', seed: env() }, { own: true, restored: false, hold: true });
+    const s = useWebStore.getState();
+    expect(s.design.length).toBe(50);
+    expect(s.guide).toBe('size');
+    expect(s.seed).not.toBe(null);
+    expect(s.seedHold).toBe(false);
+  });
+  it('an untouched plain building is never saved while the link has not answered', () => {
+    useWebStore.getState().setLink(TOK, 'checking');
+    saveDraftNow(TOK);
+    expect(mem.size).toBe(0);
+    useWebStore.getState().setLink(TOK, 'offline');
+    saveDraftNow(TOK);
+    expect(mem.size).toBe(0);
+    useWebStore.getState().update((d) => {
+      d.length = 44;
+    });
+    saveDraftNow(TOK);
+    expect(mem.size).toBe(1);
+  });
+  it('the hold is released even if applying the building throws', () => {
+    beginHold();
+    const real = useWebStore.getState().replace;
+    useWebStore.setState({
+      replace: () => {
+        throw new Error('boom');
+      },
+    });
+    expect(() => applyLinkResult(TOK, { status: 'ok', seed: env() }, { own: true, restored: false, hold: true })).toThrow('boom');
+    useWebStore.setState({ replace: real });
+    expect(useWebStore.getState().seedHold).toBe(false);
+    expect(useWebStore.getState().busy).toBe(null);
   });
   it('saveDraftNow writes nothing while the page waits; afterwards it writes', () => {
     beginHold();

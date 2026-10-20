@@ -11,7 +11,7 @@ import type { WebState } from './model/design';
 const API = '';
 
 /** A link check that has not answered after this long is given up (weak signal): the page opens as if the link had no building. */
-export const LINK_TIMEOUT_MS = 8000;
+export const LINK_TIMEOUT_MS = 15_000;
 
 /** The link's status and, for a live link that carries one, the building it opens on (unchecked: see model/seed.ts). */
 export async function fetchLink(token: string, f: typeof fetch = fetch, timeoutMs = LINK_TIMEOUT_MS): Promise<{ status: LinkStatus; seed: unknown | null }> {

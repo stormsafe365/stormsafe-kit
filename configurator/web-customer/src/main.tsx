@@ -13,8 +13,7 @@ import { parseAllowList } from './model/origins';
 import { buildSpec } from './model/spec';
 import { currentState, useWebStore } from './store';
 import { parseToken } from './model/link';
-import { fetchLink } from './send';
-import { applyLinkResult, beginHold } from './linkStart';
+import { beginHold, runLinkCheck } from './linkStart';
 import { cameraApi } from './cameraFit';
 import { keepDraft, restoreDraft, saveDraftNow } from './draft';
 import { installFreshness } from './freshness';
@@ -39,7 +38,7 @@ keepDraft(token);
 // Coming back to a design already started: say so first, with Keep going / Start a new design
 // (owner 10/18/26: "why when i click on the link does it not start at the first part?").
 const own = window.parent === window;
-// No saved draft: the rep's building may be on its way. Wait for it (8 s at most) behind the busy screen,
+// No saved draft: the rep's building may be on its way. Hold (a short busy screen, then the first screen),
 // and save no draft meanwhile, so the plain starter is never mistaken for the customer's work.
 const hold = own && !!token && !restored;
 if (hold) beginHold();
@@ -53,7 +52,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', () => saveDraftNow(token));
 if (token) {
   useWebStore.getState().setLink(token, 'checking');
-  void fetchLink(token).then((r) => applyLinkResult(token, r, { own, restored, hold }, () => cameraApi.fit('iso')));
+  void runLinkCheck(token, { own, restored, hold }, () => cameraApi.fit('iso'));
 }
 
 // Picture-making for the guided cards (dev server only: tools/make-guide-pictures; never in the built page).

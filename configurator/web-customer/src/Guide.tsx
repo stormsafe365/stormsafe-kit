@@ -5,7 +5,8 @@
  * where it can all be changed, and Back in the builder returns here. Shown only on the design page's
  * own screen (never inside the website's frame).
  */
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { retryLinkCheck } from './linkStart';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore, type GuideStep } from './store';
 import { applyStyle, BARNS, STYLES, type BarnStyle, type GuideStyle, type SizePreset } from './model/guide';
@@ -32,6 +33,13 @@ export function Guide({ banner, onUndo, onStartOver }: { banner?: ReactNode; onU
   const sentAt = useWebStore((s) => s.sentAt);
   const seed = useWebStore((s) => s.seed);
   const link = useWebStore((s) => s.link);
+  const setSeedHold = useWebStore((s) => s.setSeedHold);
+  // a tap before the rep's building has had a moment to arrive would reset to the plain building
+  const [waited, setWaited] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setWaited(true), 2500);
+    return () => clearTimeout(t);
+  }, []);
   const setTab = useWebStore((s) => s.setTab);
   const headRef = useRef<HTMLHeadingElement>(null);
   const st = STYLES.find((x) => x.key === style) ?? null;
@@ -111,8 +119,29 @@ export function Guide({ banner, onUndo, onStartOver }: { banner?: ReactNode; onU
             >
               Keep going with this design
             </button>
-            <button type="button" className="btn-ghost guide-btn guide-btn-2" disabled={link === 'checking'} onClick={() => onStartOver?.()}>
+            <button type="button" className="btn-ghost guide-btn guide-btn-2" disabled={link === 'checking' && !waited} onClick={() => onStartOver?.()}>
               {seed ? "Start over from my rep's design" : 'Start a new design'}
+            </button>
+            <p className="guide-small">Questions? <a href="tel:+15617715555">561-771-5555</a></p>
+          </>
+        )}
+
+        {step === 'offline' && (
+          <>
+            <h1 className="guide-h" tabIndex={-1} ref={headRef}>We couldn’t open your design</h1>
+            <p className="guide-p">Check your connection, then try again. Your rep’s building is waiting for you.</p>
+            <button type="button" className="btn-primary guide-btn" disabled={link === 'checking'} onClick={() => void retryLinkCheck()}>
+              {link === 'checking' ? 'Trying again…' : 'Try again'}
+            </button>
+            <button
+              type="button"
+              className="btn-ghost guide-btn guide-btn-2"
+              onClick={() => {
+                setSeedHold(false);
+                setGuide('welcome');
+              }}
+            >
+              Start a blank design
             </button>
             <p className="guide-small">Questions? <a href="tel:+15617715555">561-771-5555</a></p>
           </>
@@ -238,7 +267,7 @@ export function Guide({ banner, onUndo, onStartOver }: { banner?: ReactNode; onU
           </>
         )}
 
-        {step !== 'welcome' && step !== 'resume' && (
+        {step !== 'welcome' && step !== 'resume' && step !== 'offline' && (
           <div className="guide-foot">
             <button type="button" className="btn-ghost" onClick={back}>← Back</button>
             <button type="button" className="linkish" onClick={() => toBuilder()}>Skip the questions</button>

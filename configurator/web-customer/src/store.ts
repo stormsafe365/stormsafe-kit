@@ -13,7 +13,7 @@ import type { Seed } from './model/seed';
 import { EMPTY_CONTACT, type Contact, type LinkStatus } from './model/link';
 
 /** The guided start screens (null = the builder itself). */
-export type GuideStep = 'resume' | 'welcome' | 'style' | 'barn' | 'size';
+export type GuideStep = 'resume' | 'welcome' | 'style' | 'barn' | 'size' | 'offline';
 
 export type TabKey = 'size' | 'walls' | 'doors' | 'leantos' | 'upgrades' | 'colors' | 'send';
 
@@ -70,6 +70,11 @@ export function settle(d: WebDesign, ctx: WebContext): { design: WebDesign; impa
   const sized = normalizeDesign(d, false);
   const impact = impactRequired(ctx, sized);
   return { design: impact ? normalizeDesign(d, true) : sized, impact };
+}
+
+/** The design is exactly the plain starting building (nothing built yet). */
+export function isPlainStart(d: WebDesign, ctx: WebContext): boolean {
+  return JSON.stringify(d) === JSON.stringify(settle(DEFAULT_DESIGN, ctx).design);
 }
 
 const EMPTY_CTX: WebContext = { zip: null, county: null, impactParam: null };

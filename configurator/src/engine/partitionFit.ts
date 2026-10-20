@@ -7,7 +7,7 @@ import {
   LT_PARTITION_WINDOW_HEADER_FT as WIN_HDR,
   LT_PARTITION_EPS_FT as EPS,
 } from '@/config/constants';
-import { snapGapInto } from './wallFit';
+import { snapGapInto, vertConflict } from './wallFit';
 
 /**
  * Lean-to STORAGE PARTITION fit rules in the 3D (owner 9/30/26: "same spacing
@@ -19,7 +19,8 @@ import { snapGapInto } from './wallFit';
  *   - 1' clear of each corner post (main gable: door width <= W - 2);
  *   - a door's top + 1' header fits under the sloped partition at the door's
  *     LOW (outer) jamb; a window's top fits there (no header);
- *   - 1' between openings on the partition.
+ *   - 1' between openings on the partition, or 2' of wall between one above
+ *     the other (owner 10/20/26; wallFit vertConflict, program OVL_VGAP).
  * Offsets run like an end wall's: from the partition's min-coordinate end
  * (LeanToSiding dragInfo / leanToShell: minA + offset), so the outer (low) post
  * is at 0 when the outer edge has the smaller coordinate (Right Eave / Front
@@ -81,18 +82,24 @@ export function partitionNeedFt(o: Pick<LeanToOpening, 'type' | 'heightFt' | 'si
   return (o.sillFt || 0) + o.heightFt + (isWin ? WIN_HDR : DOOR_HDR);
 }
 
+/** A sibling on the partition: its spot + (optionally) its up-and-down extent. */
+type PartSibling = Pick<LeanToOpening, 'offsetFt' | 'widthFt'> & Partial<Pick<LeanToOpening, 'sillFt' | 'heightFt'>>;
+const partSelfV = (o: Pick<LeanToOpening, 'heightFt' | 'sillFt'>) => ({ sill: o.sillFt, height: o.heightFt });
+const partSibV = (s: PartSibling) => ({ sill: s.sillFt, height: s.heightFt });
+
 /** Does an opening (centre `center`) keep every rule, siblings included? */
 export function partitionSpotOk(
   center: number,
   o: Pick<LeanToOpening, 'type' | 'widthFt' | 'heightFt' | 'sillFt'>,
   g: PartitionGeom,
-  siblings: Array<Pick<LeanToOpening, 'offsetFt' | 'widthFt'>>,
+  siblings: PartSibling[],
 ): boolean {
   const x = center - o.widthFt / 2;
   if (x < CLR - EPS || x + o.widthFt > g.len - CLR + EPS) return false;
   const lowX = g.lowAtZero ? x : x + o.widthFt;
   if (partitionNeedFt(o) > partitionWallHeightAt(g, lowX) + EPS) return false;
   for (const s of siblings) {
+    if (!vertConflict(partSelfV(o), partSibV(s))) continue; // stacked with 2' of wall between: fine
     const sL = s.offsetFt - s.widthFt / 2;
     const sR = s.offsetFt + s.widthFt / 2;
     if (x + o.widthFt > sL - GAP + EPS && x < sR + GAP - EPS) return false;
@@ -111,10 +118,11 @@ export function clampPartitionCenter(
   rawCenter: number,
   o: Pick<LeanToOpening, 'type' | 'widthFt' | 'heightFt' | 'sillFt'>,
   g: PartitionGeom,
-  siblings: Array<Pick<LeanToOpening, 'offsetFt' | 'widthFt'>>,
+  siblingsAll: PartSibling[],
   currentCenter: number,
 ): number {
   const w = o.widthFt;
+  const siblings = siblingsAll.filter((s) => vertConflict(partSelfV(o), partSibV(s))); // only openings it shares height with
   // Allowed LEFT-EDGE interval: corner posts, then the height at the low jamb
   // (same EPS tolerance as partitionSpotOk / the program).
   let lo = CLR - EPS;

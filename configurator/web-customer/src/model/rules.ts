@@ -16,7 +16,7 @@
  *   permitting lock         impact counties (Okaloosa / Okeechobee over 720 sq ft)
  */
 import type { LeanToWrapCorner } from '@/types/building';
-import { OPENING_CORNER_CLEAR_FT, OPENING_GAP_FT } from '@/config/constants';
+import { OPENING_CORNER_CLEAR_FT, OPENING_GAP_FT, OPENING_VERT_GAP_FT } from '@/config/constants';
 import {
   HIGH_WIND_COUNTIES,
   IMPACT_LOCK_COUNTIES,
@@ -248,6 +248,13 @@ export function activeWraps(d: Pick<WebDesign, 'width' | 'length' | 'leanTos' | 
 
 // ─── No-overlap (same numbers as engine/wallFit) ────────────────────────────
 
-/** Near-edge positions must keep 1′ from each corner and 1′ between openings. */
+/**
+ * Near-edge positions must keep 1′ from each corner and 1′ between openings
+ * side by side, OR `VERT_GAP` (2′) of wall between one opening and the one
+ * above it (owner 10/20/26): two openings clash only when they overlap both ways.
+ */
 export const CORNER_CLEAR = OPENING_CORNER_CLEAR_FT;
 export const GAP = OPENING_GAP_FT;
+export const VERT_GAP = OPENING_VERT_GAP_FT;
+/** The customer-facing rule, for the red card and the "no room" message. */
+export const SPACING_RULE = `1′ from corners and from the next opening, or ${VERT_GAP}′ of wall above or below it`;

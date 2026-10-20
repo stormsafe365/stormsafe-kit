@@ -5,29 +5,34 @@
  * the no-overlap rule (1′ from each corner and every other opening), checked
  * with the same fitMainPos the drag and the cards use.
  */
+import { WINDOW_SILL_FT } from './catalog';
 import type { WebDesign, WebOpening, WebWall } from './design';
 import { MAX_OPENINGS } from './normalize';
-import { fitMainPos, q8 } from './positions';
+import { fitMainPos, q8, type Vert } from './positions';
 import { comboBlockedFromFront, CORNER_CLEAR, GAP, rollupFits, wallLength } from './rules';
 
 type D = Pick<WebDesign, 'type' | 'width' | 'length' | 'height' | 'enclosedLength' | 'openings'>;
 
 /** Place `wants` one after another (each checked against the ones before); null = one does not fit. */
-function placeAll(d: D, wall: WebWall, w: number, wants: Array<(prev: number | null) => number>): number[] | null {
+function placeAll(d: D, wall: WebWall, w: number, wants: Array<(prev: number | null) => number>, v?: Vert): number[] | null {
   const work: D = { ...d, openings: d.openings.slice() };
   const out: number[] = [];
   for (let k = 0; k < wants.length; k++) {
     const want = Math.max(0, wants[k](out.length ? out[out.length - 1] : null));
-    const p = fitMainPos(work, wall, w, want, null);
+    const p = fitMainPos(work, wall, w, want, null, v);
     if (p === null) return null;
     out.push(p);
-    work.openings.push({ id: `__new${k}`, kind: 'frame', wall, w, h: 1, sill: 0, pos: p } as WebOpening);
+    work.openings.push({ id: `__new${k}`, kind: 'frame', wall, w, h: v ? v.h : 1, sill: v ? v.sill : 0, pos: p } as WebOpening);
   }
   return out;
 }
 
-/** Spots (typed positions) for `qty` new openings `w` wide on `wall`; null = they do not all fit. */
-export function spreadPositions(d: D, wall: WebWall, w: number, qty: number): number[] | null {
+/**
+ * Spots (typed positions) for `qty` new openings `w` wide on `wall`; null = they do not all fit.
+ * `v` = the new part's sill + height: without it the part counts as sharing height with everything
+ * (the old, side-by-side-only rule); with it a part can go above / below another with 2′ of wall between.
+ */
+export function spreadPositions(d: D, wall: WebWall, w: number, qty: number, v?: Vert): number[] | null {
   if (qty < 1) return [];
   const face = wallLength(d, wall);
   const empty = !d.openings.some((o) => o.wall === wall);
@@ -37,16 +42,16 @@ export function spreadPositions(d: D, wall: WebWall, w: number, qty: number): nu
     const start = comboBlockedFromFront(d, wall) ?? 0;
     const gap = (face - start - qty * w) / (qty + 1);
     if (gap >= Math.max(CORNER_CLEAR, GAP) - 1e-9) {
-      const even = placeAll(d, wall, w, Array.from({ length: qty }, (_, k) => () => q8(start + gap + k * (w + gap))));
+      const even = placeAll(d, wall, w, Array.from({ length: qty }, (_, k) => () => q8(start + gap + k * (w + gap))), v);
       if (even) return even;
     }
   }
   // Doors already there (or a tight wall): even targets, nudged clear of the others ...
   let k = 0;
-  const nudged = placeAll(d, wall, w, Array.from({ length: qty }, () => () => (face * ++k) / (qty + 1) - w / 2));
+  const nudged = placeAll(d, wall, w, Array.from({ length: qty }, () => () => (face * ++k) / (qty + 1) - w / 2), v);
   if (nudged) return nudged;
   // ... else packed from one end, each next to the last one.
-  return placeAll(d, wall, w, Array.from({ length: qty }, () => (prev: number | null) => (prev === null ? 0 : prev + w + GAP)));
+  return placeAll(d, wall, w, Array.from({ length: qty }, () => (prev: number | null) => (prev === null ? 0 : prev + w + GAP)), v);
 }
 
 /**
@@ -65,7 +70,7 @@ export function maxQty(d: D, wall: WebWall, kind: WebOpening['kind'], w: number,
       if (!rollupFits(d, wall, w, h, n)) break;
       if (there.some((o) => !rollupFits(d, wall, o.w, o.h, n))) break;
     }
-    if (!spreadPositions(d, wall, w, q)) break;
+    if (!spreadPositions(d, wall, w, q, { sill: kind === 'window' ? WINDOW_SILL_FT : 0, h })) break;
     best = q;
   }
   return best;
@@ -79,7 +84,7 @@ export function maxQty(d: D, wall: WebWall, kind: WebOpening['kind'], w: number,
 export function whyNoMore(d: D, wall: WebWall, kind: WebOpening['kind'], w: number, h: number, wantQty: number, wallLabel = 'wall'): string | null {
   if (MAX_OPENINGS - d.openings.length < wantQty) return `A design can hold up to ${MAX_OPENINGS} doors and windows.`;
   if (kind !== 'rollup') return null;
-  if (!spreadPositions(d, wall, w, wantQty)) return null; // no room anyway: a lower door would not help
+  if (!spreadPositions(d, wall, w, wantQty, { sill: 0, h })) return null; // no room anyway: a lower door would not help
   const there = d.openings.filter((o) => o.wall === wall && o.kind === 'rollup');
   const n = there.length + wantQty;
   const maxH = d.height - 1; // the program's rule for 2+ roll-ups on an end / divider wall

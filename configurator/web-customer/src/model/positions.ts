@@ -12,7 +12,7 @@
  */
 import type { WallSide } from '@/types/building';
 import { offset3DToProgramX, programXTo3DOffset, programXToTyped, type ProgramLoc } from '@/build/positionMap';
-import { clampWallCenter, wallSpotOk, type WallSpan } from '@/engine/wallFit';
+import { clampWallCenter, wallSpotOk, type VertSpan, type WallSpan } from '@/engine/wallFit';
 import type { LeanToWall, WebDesign, WebLeanTo, WebLeanToOpening, WebOpening, WebWall } from './design';
 import { comboBlockedFromFront, CORNER_CLEAR, GAP, leanToWallLength, wallLength } from './rules';
 
@@ -70,11 +70,15 @@ export function offset3DToPos(d: Pick<WebDesign, 'width' | 'length'>, wall: WebW
   return q8(Math.max(0, programXToTyped(loc, x, w, face, 'left')));
 }
 
+/** An opening's up-and-down extent (bottom edge above the floor + height); without it the old horizontal-only rule applies. */
+export type Vert = { sill: number; h: number };
+const vspan = (v?: Partial<Vert>): VertSpan | undefined => (v && v.sill !== undefined && v.h !== undefined ? { sill: v.sill, height: v.h } : undefined);
+
 /** Everything else on that wall, in the 3D frame (wallFit's input) — plus the open carport bay of a Garage + Carport side. */
 function mainSiblings(d: Pick<WebDesign, 'type' | 'width' | 'length' | 'enclosedLength' | 'openings'>, wall: WebWall, excludeId: string | null): WallSpan[] {
   const sibs: WallSpan[] = d.openings
     .filter((o) => o.wall === wall && o.id !== excludeId)
-    .map((o) => ({ offset: posToOffset3D(d, wall, o.pos, o.w), width: o.w }));
+    .map((o) => ({ offset: posToOffset3D(d, wall, o.pos, o.w), width: o.w, sill: o.sill, height: o.h }));
   const blocked = comboBlockedFromFront(d, wall);
   if (blocked !== null && blocked > 0) {
     // Eave offsets run from the FRONT in the 3D. Ending the blocked span at
@@ -87,7 +91,8 @@ function mainSiblings(d: Pick<WebDesign, 'type' | 'width' | 'length' | 'enclosed
 
 /**
  * Where a main opening of width `w` may sit on `wall`, nearest to `wantPos`
- * (the no-overlap rule: 1′ from each corner and every other opening).
+ * (the no-overlap rule: 1′ from each corner and every other opening beside
+ * it, or 2′ of wall above / below one — `v` is the part's sill + height).
  * null = no room on that wall.
  */
 export function fitMainPos(
@@ -96,18 +101,19 @@ export function fitMainPos(
   w: number,
   wantPos: number,
   excludeId: string | null,
+  v?: Partial<Vert>,
 ): number | null {
   const face = wallLength(d, wall);
   const raw = posToOffset3D(d, wall, wantPos, w);
-  const c = clampWallCenter(raw, w, face, mainSiblings(d, wall, excludeId), Number.NaN);
+  const c = clampWallCenter(raw, w, face, mainSiblings(d, wall, excludeId), Number.NaN, vspan(v));
   return Number.isFinite(c) ? offset3DToPos(d, wall, c, w) : null;
 }
 
 /** A free spot for a NEW opening: try the middle of the wall, then the ends. */
-export function freeMainPos(d: Pick<WebDesign, 'type' | 'width' | 'length' | 'enclosedLength' | 'openings'>, wall: WebWall, w: number): number | null {
+export function freeMainPos(d: Pick<WebDesign, 'type' | 'width' | 'length' | 'enclosedLength' | 'openings'>, wall: WebWall, w: number, v?: Partial<Vert>): number | null {
   const face = wallLength(d, wall);
   for (const want of [(face - w) / 2, CORNER_CLEAR, face - w - CORNER_CLEAR]) {
-    const p = fitMainPos(d, wall, w, Math.max(0, want), null);
+    const p = fitMainPos(d, wall, w, Math.max(0, want), null, v);
     if (p !== null) return p;
   }
   return null;
@@ -122,29 +128,30 @@ export function fitLeanToPos(
   w: number,
   wantPos: number,
   excludeId: string | null,
+  v?: Partial<Vert>,
 ): number | null {
   const len = leanToWallLength(d, lt, wall);
-  const sibs = lt.openings.filter((o) => o.wall === wall && o.id !== excludeId).map((o) => ({ offset: o.pos + o.w / 2, width: o.w }));
-  const c = clampWallCenter(wantPos + w / 2, w, len, sibs, Number.NaN);
+  const sibs = lt.openings.filter((o) => o.wall === wall && o.id !== excludeId).map((o) => ({ offset: o.pos + o.w / 2, width: o.w, sill: o.sill, height: o.h }));
+  const c = clampWallCenter(wantPos + w / 2, w, len, sibs, Number.NaN, vspan(v));
   return Number.isFinite(c) ? q8(c - w / 2) : null;
 }
 
-export function freeLeanToPos(d: Pick<WebDesign, 'width' | 'length'>, lt: WebLeanTo, wall: LeanToWall, w: number): number | null {
+export function freeLeanToPos(d: Pick<WebDesign, 'width' | 'length'>, lt: WebLeanTo, wall: LeanToWall, w: number, v?: Partial<Vert>): number | null {
   const len = leanToWallLength(d, lt, wall);
   for (const want of [(len - w) / 2, CORNER_CLEAR, len - w - CORNER_CLEAR]) {
-    const p = fitLeanToPos(d, lt, wall, w, Math.max(0, want), null);
+    const p = fitLeanToPos(d, lt, wall, w, Math.max(0, want), null, v);
     if (p !== null) return p;
   }
   return null;
 }
 
-/** Does a main opening keep the no-overlap rule where it is (1′ from corners and every other opening)? */
-export function mainSpotOk(d: Pick<WebDesign, 'type' | 'width' | 'length' | 'enclosedLength' | 'openings'>, o: Pick<WebOpening, 'id' | 'wall' | 'pos' | 'w'>): boolean {
-  return wallSpotOk(posToOffset3D(d, o.wall, o.pos, o.w), o.w, wallLength(d, o.wall), mainSiblings(d, o.wall, o.id));
+/** Does a main opening keep the no-overlap rule where it is (1′ from corners; 1′ beside / 2′ above or below every other opening)? */
+export function mainSpotOk(d: Pick<WebDesign, 'type' | 'width' | 'length' | 'enclosedLength' | 'openings'>, o: Pick<WebOpening, 'id' | 'wall' | 'pos' | 'w'> & Partial<Vert>): boolean {
+  return wallSpotOk(posToOffset3D(d, o.wall, o.pos, o.w), o.w, wallLength(d, o.wall), mainSiblings(d, o.wall, o.id), vspan(o));
 }
 
 /** The same for a lean-to opening. */
-export function leanToSpotOk(d: Pick<WebDesign, 'width' | 'length'>, lt: WebLeanTo, o: Pick<WebLeanToOpening, 'id' | 'wall' | 'pos' | 'w'>): boolean {
-  const sibs = lt.openings.filter((x) => x.wall === o.wall && x.id !== o.id).map((x) => ({ offset: x.pos + x.w / 2, width: x.w }));
-  return wallSpotOk(o.pos + o.w / 2, o.w, leanToWallLength(d, lt, o.wall), sibs);
+export function leanToSpotOk(d: Pick<WebDesign, 'width' | 'length'>, lt: WebLeanTo, o: Pick<WebLeanToOpening, 'id' | 'wall' | 'pos' | 'w'> & Partial<Vert>): boolean {
+  const sibs = lt.openings.filter((x) => x.wall === o.wall && x.id !== o.id).map((x) => ({ offset: x.pos + x.w / 2, width: x.w, sill: x.sill, height: x.h }));
+  return wallSpotOk(o.pos + o.w / 2, o.w, leanToWallLength(d, lt, o.wall), sibs, vspan(o));
 }

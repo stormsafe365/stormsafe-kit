@@ -1140,8 +1140,8 @@ export function DraggableLeanToOpening({
           const curOff = cur?.offsetFt ?? opening.offsetFt;
           const sibs = lt.openings
             .filter((o) => o.wall === opening.wall && o.id !== oid)
-            .map((o) => ({ offset: o.offsetFt, width: o.widthFt }));
-          off = clampWallCenter(raw, info.w, info.wallLen, sibs, curOff);
+            .map((o) => ({ offset: o.offsetFt, width: o.widthFt, sill: o.sillFt, height: o.heightFt }));
+          off = clampWallCenter(raw, info.w, info.wallLen, sibs, curOff, { sill: cur?.sillFt ?? opening.sillFt, height: cur?.heightFt ?? opening.heightFt });
           if (Math.abs(off - curOff) < 1e-9) return; // no new spot: nothing moves, nothing to write back
           if (!useEditorStore.getState().dragMoved) useEditorStore.getState().setDragMoved(true);
         }

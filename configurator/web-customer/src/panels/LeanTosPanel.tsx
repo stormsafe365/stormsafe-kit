@@ -25,6 +25,7 @@ import {
   leanToRollupFits,
   leanToRollupSizes,
   leanToWallLength,
+  SPACING_RULE,
   WRAP_KEYS,
   wrapStatus,
 } from '../model/rules';
@@ -82,7 +83,7 @@ function newLeanToOpening(d: WebDesign, lt: WebLeanTo, kind: OpeningKind): WebLe
       h = Math.max(1, Math.min(6, lt.lowLeg - 1));
       extra.frame = 'door';
     }
-    const pos = freeLeanToPos(d, lt, wall, w);
+    const pos = freeLeanToPos(d, lt, wall, w, { sill, h });
     if (pos === null) continue;
     return { id: nextFreeId('lo', used), kind, wall, w, h, sill, pos, ...extra };
   }
@@ -116,10 +117,10 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
         err = 'That door size doesn’t fit this lean-to wall.';
         return;
       }
-      const pos = fitLeanToPos(x, l, o.wall, o.w, o.pos, o.id);
+      const pos = fitLeanToPos(x, l, o.wall, o.w, o.pos, o.id, o);
       if (pos === null) {
         Object.assign(o, before);
-        err = 'There isn’t room for that on this wall (openings keep 1′ from corners and from each other).';
+        err = `There isn’t room for that on this wall (openings keep ${SPACING_RULE}).`;
         return;
       }
       o.pos = pos;
@@ -209,7 +210,7 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
         const problem = !onClosed
           ? 'This wall isn’t closed, so the model doesn’t show this.'
           : !leanToSpotOk(d, lt, o)
-            ? 'This overlaps another opening or sits too close to a corner. Move it.'
+            ? `This overlaps another opening or sits too close to a corner. Keep ${SPACING_RULE}. Move it.`
             : o.kind === 'rollup' && !leanToRollupFits(lt, o.wall, o.w, o.h)
               ? 'This door is too big for this lean-to wall.'
               : null;
@@ -232,7 +233,7 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
             onWall={(wall) =>
               change(o.id, (k, l, x) => {
                 k.wall = wall as LeanToWall;
-                const p = freeLeanToPos(x, { ...l, openings: l.openings.filter((q) => q.id !== k.id) }, k.wall, k.w);
+                const p = freeLeanToPos(x, { ...l, openings: l.openings.filter((q) => q.id !== k.id) }, k.wall, k.w, k);
                 if (p !== null) k.pos = p;
               })
             }

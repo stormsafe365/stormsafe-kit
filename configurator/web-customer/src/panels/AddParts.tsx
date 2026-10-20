@@ -90,7 +90,7 @@ export function AddParts() {
 
   const add = () => {
     if (!curWall || !most) return;
-    const spots = spreadPositions(d, curWall, w, q);
+    const spots = spreadPositions(d, curWall, w, q, { sill: kind === 'window' ? WINDOW_SILL_FT : 0, h });
     if (!spots) return;
     setWall(curWall); // keep this wall picked (it may be full now; the form does not jump to another)
     update((x) => {

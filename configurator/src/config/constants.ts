@@ -54,6 +54,17 @@ export const LT_PARTITION_EPS_FT = 0.01;
 export const OPENING_CORNER_CLEAR_FT = 1;
 export const OPENING_GAP_FT = 1;
 export const OPENING_EPS_FT = 0.01;
+/**
+ * Vertical room between two openings on a wall that share a run of it (owner
+ * 10/20/26: "if there is room to put something above or below something then
+ * we should be able to ... 2' of space ... at least"): wall between the TOP of
+ * the lower and the BOTTOM of the upper. Two openings clash only when they
+ * overlap sideways (OPENING_GAP_FT) AND up-and-down (this). Mirrors the
+ * program's OVL_VGAP (a test holds them equal). To be confirmed with CCI.
+ */
+export const OPENING_VERT_GAP_FT = 2;
+/** Float tolerance only for the vertical check (spots sit on a 1/96 ft grid: 1.99 ft is short of 2 ft and blocked). */
+export const OPENING_VERT_EPS_FT = 0.0001;
 
 export const DEFAULT_CONFIG: BuildingConfig = {
   buildingType: 'garage',

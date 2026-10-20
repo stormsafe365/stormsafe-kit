@@ -8,8 +8,10 @@ import {
   OPENING_CORNER_CLEAR_FT,
   OPENING_EPS_FT,
   OPENING_GAP_FT,
+  OPENING_VERT_GAP_FT,
 } from '@/config/constants';
-import { clampWallCenter, openingIdsUnder, pressBelongsToSmaller, wallSpotOk } from '../wallFit';
+import { spreadAutoOverlaps } from '../autoSpread';
+import { clampWallCenter, openingIdsUnder, pressBelongsToSmaller, vertConflict, wallSpotOk } from '../wallFit';
 
 /**
  * NO-OVERLAP RULE (owner 10/2/26: "Components & framed openings cant overlap so
@@ -43,23 +45,27 @@ function programFn(name: string): string {
 
 const ovlConst = HTML.match(/var OVL_CLR=[^;]+;/);
 const partConst = HTML.match(/var LT_PART_CLR=[^;]+;/);
-type Span = { x: number; w: number };
-type Issue = { k: 'corner' | 'pair'; a: number; b: number | null; gap: number; end?: number };
-type Item = { w: number; x: number; fixed: boolean; g: number | string };
+type Span = { x: number; w: number; y?: number; h?: number };
+type Issue = { k: 'corner' | 'pair'; a: number; b: number | null; gap: number; end?: number; vg?: number };
+type Item = { w: number; x: number; fixed: boolean; g: number | string; y?: number; h?: number };
 const P = new Function(
   `${ovlConst ? ovlConst[0] : ''}
    ${partConst ? partConst[0] : ''}
    ${programFn('ovlClear')}
+   ${programFn('ovlVClear')}
+   ${programFn('ovlVHit')}
    ${programFn('ovlIssues')}
    ${programFn('ovlFree')}
    ${programFn('ovlPack')}
    ${programFn('ovlLayoutWall')}
-   return { ovlClear: ovlClear, ovlIssues: ovlIssues, ovlFree: ovlFree, ovlPack: ovlPack, ovlLayoutWall: ovlLayoutWall,
+   return { ovlVClear: ovlVClear, V: OVL_VGAP, ovlClear: ovlClear, ovlIssues: ovlIssues, ovlFree: ovlFree, ovlPack: ovlPack, ovlLayoutWall: ovlLayoutWall,
             C: { CLR: OVL_CLR, GAP: OVL_GAP, EPS: OVL_EPS }, PART: { CLR: LT_PART_CLR, GAP: LT_PART_GAP, EPS: LT_PART_EPS } };`,
 )() as {
   ovlClear: (a: Span, b: Span) => number;
+  ovlVClear: (a: Span, b: Span) => number;
+  V: number;
   ovlIssues: (len: number, sp: Span[]) => Issue[];
-  ovlFree: (len: number, fixed: Span[]) => Array<[number, number]>;
+  ovlFree: (len: number, fixed: Span[], bars?: number[] | null, mv?: Array<{ y?: number; h?: number }>) => Array<[number, number]>;
   ovlPack: (iv: Array<[number, number]>, ws: number[]) => number[] | null;
   ovlLayoutWall: (len: number, items: Item[]) => { xs: number[]; moved: boolean[]; re: boolean; fit: boolean };
   C: { CLR: number; GAP: number; EPS: number };
@@ -362,5 +368,222 @@ describe('3D picking — only an opening the press actually went through can tak
     const fo = root('fo'), win = root('win');
     const ids = openingIdsUnder([{ object: child(child(fo)) }, { object: child(win) }, { object: { userData: {}, parent: null } }]);
     expect([...ids].sort()).toEqual(['fo', 'win']);
+  });
+});
+
+// ───────────────────────────────────────────────────────────────────────────────
+// Owner 10/20/26: "the overlap rule is so the program doesnt add a component right
+// on top of another component (i dont mean above it i mean literally on it) ...
+// if there is room to put something above or below something then we should be
+// able to ... 2' of space would be needed between them, at least."
+// Two openings clash only when they overlap BOTH sideways (1') AND up-and-down (2').
+describe('vertical room — stacked openings (owner 10/20/26)', () => {
+  const SILL = 50 / 12; // a standard window sill
+  const win = (x: number, y = SILL, h = 2.5, w = 2.5): Span => ({ x, w, y, h });
+  const hasPair = (len: number, sp: Span[]) => P.ovlIssues(len, sp).some((i) => i.k === 'pair');
+  const g96 = (a: number) => Math.round(a * 96) / 96;
+
+  it('the vertical gap is ONE named constant, 2 ft, equal in the 3D', () => {
+    expect(P.V).toBe(2);
+    expect(OPENING_VERT_GAP_FT).toBe(2);
+    expect(HTML.match(/OVL_VGAP/g)!.length).toBeGreaterThan(8);
+    expect(HTML).not.toMatch(/OVL_VGAP\s*=\s*[^2]/);
+  });
+
+  it('ovlVClear: sill-to-top distance, negative when they overlap, -Infinity when a height is unknown', () => {
+    expect(P.ovlVClear({ x: 0, w: 1, y: 0, h: 8 }, { x: 0, w: 1, y: 10, h: 2 })).toBe(2);
+    expect(P.ovlVClear({ x: 0, w: 1, y: 10, h: 2 }, { x: 0, w: 1, y: 0, h: 8 })).toBe(2);
+    expect(P.ovlVClear(win(0), win(0))).toBeLessThan(0);
+    expect(P.ovlVClear({ x: 0, w: 1 }, win(0))).toBe(-Infinity);
+    expect(P.ovlVClear({ x: 0, w: 1, y: 0, h: 0 }, win(0))).toBe(-Infinity);
+  });
+
+  it('a window straight BELOW another with room between is accepted; on top of it is blocked', () => {
+    const upper = win(10, 10.5); // 10.5 - 13
+    expect(hasPair(40, [upper, win(10)])).toBe(false); // lower window 4'2" - 6'8": 3'10" of wall between
+    expect(hasPair(40, [upper, win(10, 10.5)])).toBe(true); // literally on it
+    expect(hasPair(40, [upper, win(10, 9)])).toBe(true); // overlaps vertically
+    expect(hasPair(40, [upper, win(11.2, 11)])).toBe(true); // partly on it
+  });
+
+  it('exact boundary: 2 ft between top and bottom is allowed; 1.99 and one 1/96 ft less are blocked', () => {
+    const lower = win(10); // top = 4.1667 + 2.5 = 6.6667
+    const top = SILL + 2.5;
+    expect(hasPair(40, [lower, win(10, top + 2)])).toBe(false);
+    expect(hasPair(40, [lower, win(10, top + 1.99)])).toBe(true);
+    expect(hasPair(40, [lower, win(10, top + 2 - 1 / 96)])).toBe(true);
+    expect(hasPair(40, [lower, win(10, top + 1.9)])).toBe(true);
+    expect(hasPair(40, [lower, win(10, top + 1.5)])).toBe(true);
+    expect(hasPair(40, [lower, win(10, top + 3)])).toBe(false);
+    // the issue carries the vertical gap so the message can say how much room is missing
+    const is = P.ovlIssues(40, [lower, win(10, top + 1.5)]).find((i) => i.k === 'pair')!;
+    expect(is.vg).toBeCloseTo(1.5, 9);
+    expect(P.ovlIssues(40, [lower, win(10, 10.5)]).find((i) => i.k === 'pair')).toBeUndefined(); // 3 ft 10 in apart: no issue at all
+  });
+
+  it('sideways stays 1 ft: with vertical overlap, 1 ft apart is fine, a hair under is blocked', () => {
+    const a = { x: 10, w: 3, y: 0, h: 6.67 };
+    expect(hasPair(40, [a, { x: 14, w: 3, y: 0, h: 6.67 }])).toBe(false);
+    expect(hasPair(40, [a, { x: 14 - 1 / 96, w: 3, y: 0, h: 6.67 }])).toBe(true);
+    expect(hasPair(40, [a, { x: 13.5, w: 3, y: 0, h: 6.67 }])).toBe(true);
+    expect(hasPair(40, [a, win(13.5)])).toBe(true); // a window beside a door still needs the 1 ft
+    expect(hasPair(40, [a, win(14)])).toBe(false);
+  });
+
+  it('a roll-up door beside a window: unchanged (they share height); a window high above the door is fine', () => {
+    const roll = { x: 10, w: 10, y: 0, h: 8 };
+    expect(hasPair(40, [roll, win(20.5)])).toBe(true);
+    expect(hasPair(40, [roll, win(21)])).toBe(false);
+    expect(hasPair(40, [roll, win(12)])).toBe(true); // inside the door's width
+    expect(hasPair(40, [roll, win(12, 10)])).toBe(false); // 14 ft gable: window 10 - 12.5, 2 ft over the 8 ft door
+    expect(hasPair(40, [roll, win(12, 9.5)])).toBe(true);
+  });
+
+  it('corners are still 1 ft for a stacked opening', () => {
+    const iss = P.ovlIssues(30, [win(0.5, 10.5), win(10)]);
+    expect(iss.some((i) => i.k === 'corner' && i.a === 0)).toBe(true);
+    expect(iss.some((i) => i.k === 'pair')).toBe(false);
+  });
+
+  it('no sill / height known -> the old horizontal-only rule (nothing slips through)', () => {
+    expect(hasPair(40, [{ x: 10, w: 3 }, { x: 10, w: 3 }])).toBe(true);
+    expect(hasPair(40, [{ x: 10, w: 3 }, win(10, 20)])).toBe(true);
+  });
+
+  it('Auto spots: an Auto window right under two high typed windows (2 ft+ clear) is NOT moved', () => {
+    const high = [{ w: 2.5, x: 10, fixed: true, g: 1, y: 10.5, h: 2.5 }, { w: 2.5, x: 14, fixed: true, g: 1, y: 10.5, h: 2.5 }];
+    const newAuto = { w: 2.5, x: 10.5, fixed: false, g: 2, y: SILL, h: 2.5 };
+    const r = P.ovlLayoutWall(40, [...high, newAuto]);
+    expect(r.moved[2]).toBe(false);
+    expect(r.xs[2]).toBe(10.5);
+    expect(r.re).toBe(false);
+    // the same wall read the OLD way (no heights) moves it off the windows
+    const old = P.ovlLayoutWall(40, [...high, newAuto].map((i) => ({ ...i, y: undefined, h: undefined })));
+    expect(old.moved[2]).toBe(true);
+  });
+
+  it('Auto spots: 1.83 ft under the high windows is a clash again — it is re-spread and the result is clean', () => {
+    const high = [{ w: 2.5, x: 10, fixed: true, g: 1, y: 8.5, h: 2.5 }, { w: 2.5, x: 14, fixed: true, g: 1, y: 8.5, h: 2.5 }]; // gap to 6.6667 = 1.83
+    const newAuto = { w: 2.5, x: 10.5, fixed: false, g: 2, y: SILL, h: 2.5 };
+    const its = [...high, newAuto];
+    const r = P.ovlLayoutWall(40, its);
+    expect(r.moved[2]).toBe(true);
+    expect(r.fit).toBe(true);
+    expect(hasPair(40, its.map((it, i) => ({ x: r.xs[i], w: it.w, y: it.y, h: it.h })))).toBe(false);
+  });
+
+  it('Auto re-spread packs around the fixed openings it shares height with, ignores the ones it is stacked clear of', () => {
+    const door = { w: 10, x: 15, fixed: true, g: 1, y: 0, h: 8 };
+    const highWin = { w: 6, x: 30, fixed: true, g: 2, y: 11, h: 2 }; // 3 ft over the door top, away from it
+    const autoWin = { w: 2.5, x: 17, fixed: false, g: 3, y: SILL, h: 2.5 }; // in the door's span -> clashes with the door only
+    const its = [door, highWin, autoWin];
+    const r = P.ovlLayoutWall(40, its);
+    expect(r.moved[2]).toBe(true);
+    expect(hasPair(40, its.map((it, i) => ({ x: r.xs[i], w: it.w, y: it.y, h: it.h })))).toBe(false);
+    // 30-36 is 4.17..6.67 + 4.3 ft below the high window: the stretch over there stays free for it
+    expect(P.ovlFree(40, [door, highWin], null, [{ y: SILL, h: 2.5 }])).toEqual([[1, 14], [26, 39]]);
+    expect(P.ovlFree(40, [door, highWin])).toEqual([[1, 14], [26, 29], [37, 39]]); // old call: every kept span cuts
+    expect(P.ovlFree(40, [{ x: 2, w: 3, y: 11, h: 2 }], null, [{ y: 2, h: 2 }])).toEqual([[1, 39]]); // far below it: not cut
+    expect(P.ovlFree(40, [{ x: 2, w: 3, y: 11, h: 2 }], null, [{ y: 9, h: 2 }])).toEqual([[6, 39]]); // touching: cut
+  });
+
+  it('fuzz: wallSpotOk (3D) with the vertical extent = no ovlIssues (program); without it = the old rule', () => {
+    let seed = 7;
+    const rnd = () => ((seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296);
+    let blocked = 0;
+    let stackedOk = 0;
+    for (let n = 0; n < 4000; n++) {
+      const len = 20 + Math.floor(rnd() * 30);
+      const mk = () => {
+        const w = g96(1 + rnd() * 6);
+        return { x: g96(1 + rnd() * (len - 2 - w)), w, y: g96(rnd() * 12), h: g96(1 + rnd() * 7) };
+      };
+      const a = mk();
+      const b = mk();
+      const prog = P.ovlIssues(len, [a, b]).length === 0;
+      const sib = { offset: a.x + a.w / 2, width: a.w, sill: a.y, height: a.h };
+      expect(wallSpotOk(b.x + b.w / 2, b.w, len, [sib], { sill: b.y, height: b.h })).toBe(prog);
+      const old = P.ovlIssues(len, [{ x: a.x, w: a.w }, { x: b.x, w: b.w }]).length === 0;
+      expect(wallSpotOk(b.x + b.w / 2, b.w, len, [{ offset: a.x + a.w / 2, width: a.w }])).toBe(old);
+      if (!prog) blocked++;
+      if (prog && !old) stackedOk++;
+    }
+    expect(blocked).toBeGreaterThan(100);
+    expect(stackedOk).toBeGreaterThan(100); // cases the old rule refused and the new one allows
+  });
+});
+
+describe('3D (wallFit / autoSpread) — stacked openings', () => {
+  const sib = (x: number, w: number, sill?: number, height?: number) => ({ offset: x + w / 2, width: w, sill, height });
+  it('vertConflict: boundary at exactly 2 ft', () => {
+    const self = { sill: 8.6667, height: 2.5 };
+    expect(vertConflict(self, { sill: 4.1667, height: 2.5 })).toBe(false); // 8.6667 - 6.6667 = 2
+    expect(vertConflict(self, { sill: 4.1771, height: 2.5 })).toBe(true); // 1/96 ft closer
+    expect(vertConflict(undefined, { sill: 4, height: 2 })).toBe(true);
+    expect(vertConflict(self, {})).toBe(true);
+  });
+  it('wallSpotOk: a window placed under another is accepted at 2 ft, refused at 1.99 and 1.9', () => {
+    const above = sib(10, 2.5, 10.5, 2.5); // 10.5 - 13
+    const below = (sill: number) => ({ sill, height: 2.5 });
+    expect(wallSpotOk(11.25, 2.5, 40, [above], below(6))).toBe(true); // top 8.5: 2 ft under
+    expect(wallSpotOk(11.25, 2.5, 40, [above], below(6.1))).toBe(false); // 1.9 ft
+    expect(wallSpotOk(11.25, 2.5, 40, [above], below(6.01))).toBe(false); // 1.99 ft
+    expect(wallSpotOk(11.25, 2.5, 40, [above])).toBe(false); // no heights: the old rule
+  });
+  it('a drag onto a spot under another opening is NOT pushed sideways (clampWallCenter)', () => {
+    const above = sib(10, 2.5, 10.5, 2.5);
+    const self = { sill: 4.1667, height: 2.5 };
+    expect(clampWallCenter(11.25, 2.5, 40, [above], 30, self)).toBeCloseTo(11.25, 6);
+    expect(Math.abs(clampWallCenter(11.25, 2.5, 40, [above], 30) - 11.25)).toBeGreaterThan(0.5); // old callers: moved out
+    const near = { sill: 6.1, height: 2.5 }; // 1.9 ft under: pushed out sideways as before
+    const c3 = clampWallCenter(11.25, 2.5, 40, [above], 30, near);
+    expect(Math.abs(c3 - 11.25)).toBeGreaterThan(0.5);
+    expect(wallSpotOk(c3, 2.5, 40, [above], near)).toBe(true);
+  });
+  it('view-only Auto spread (autoSpread): a stacked Auto window is left where the program put it', () => {
+    const items = [
+      { offset: 11.25, width: 2.5, group: 'a', movable: false, sill: 10.5, height: 2.5 },
+      { offset: 11.25, width: 2.5, group: 'b', movable: true, sill: 50 / 12, height: 2.5 },
+    ];
+    expect(spreadAutoOverlaps(items, 40)).toEqual([11.25, 11.25]);
+    const clash = [items[0], { ...items[1], sill: 7, height: 2.5 }]; // 1 ft under: a clash -> moved
+    expect(spreadAutoOverlaps(clash, 40)[1]).not.toBe(11.25);
+    const noH = items.map(({ sill: _s, height: _h, ...r }) => r); // old callers: the old rule
+    expect(spreadAutoOverlaps(noH, 40)[1]).not.toBe(11.25);
+  });
+});
+
+describe('owner 10/20/26 — a custom frame-out with no size typed yet is never refused for room', () => {
+  const F = new Function(
+    `${programFn('foSillFt')}
+     ${programFn('foCustomFeet')}
+     ${HTML.slice(HTML.indexOf('function ovlFoDims('), HTML.indexOf('// One main-building entry (.re/.we/.ne/.ace)'))} // (a regex with a quote in it defeats programFn)
+     return { ovlFoDims: ovlFoDims, foCustomFeet: foCustomFeet };`,
+  )() as {
+    ovlFoDims: (el: unknown, comp: string) => { w: number; h: number; yo: number } | null;
+    foCustomFeet: (el: unknown) => { w: number; h: number };
+  };
+  const entry = (v: Record<string, string>) => ({ querySelector: (s: string) => (s.startsWith('.') && v[s.slice(1)] !== undefined ? { value: v[s.slice(1)] } : null) });
+  const WIN = 'Framed Opening — Window (Custom Size)';
+  const DOOR = 'Framed Opening — Custom Frame Out (Custom Size)';
+  it('blank size: no footprint (w 0 -> the model skips it), while drawing / pricing still default to 10x8', () => {
+    const el = entry({ 'fo-cw': '', 'fo-ch': '', 'fo-unit': 'ft', 'fo-sill': '4.17' });
+    expect(F.ovlFoDims(el, WIN)!.w).toBe(0);
+    expect(F.ovlFoDims(el, DOOR)!.w).toBe(0);
+    expect(F.foCustomFeet(el)).toEqual({ w: 10, h: 8 });
+    // a zero-width item can never clash with anything
+    expect(P.ovlIssues(30, [{ x: 5, w: 2.5, y: 10.5, h: 2.5 }, { x: 5, w: 0, y: 0, h: 8 }])).toEqual([]);
+  });
+  it('entered size + entered sill are used as typed (inches too); window-type frames sit raised', () => {
+    expect(F.ovlFoDims(entry({ 'fo-cw': '3', 'fo-ch': '3', 'fo-unit': 'ft', 'fo-sill': '6' }), WIN)).toEqual({ w: 3, h: 3, yo: 6 });
+    expect(F.ovlFoDims(entry({ 'fo-cw': '36', 'fo-ch': '36', 'fo-unit': 'in', 'fo-sill': '4.17' }), WIN)).toEqual({ w: 3, h: 3, yo: 4.17 });
+    expect(F.ovlFoDims(entry({ 'fo-cw': '10', 'fo-ch': '8', 'fo-unit': 'ft', 'fo-sill': '6' }), DOOR)).toEqual({ w: 10, h: 8, yo: 0 });
+  });
+  it('under two high windows with >= 2 ft clear it is accepted; closer is blocked', () => {
+    const d = F.ovlFoDims(entry({ 'fo-cw': '3', 'fo-ch': '3', 'fo-unit': 'ft', 'fo-sill': '4.17' }), WIN)!;
+    const hi = [{ x: 5, w: 2.5, y: 10.5, h: 2.5 }, { x: 15, w: 2.5, y: 10.5, h: 2.5 }];
+    expect(P.ovlIssues(24, [...hi, { x: 5, w: d.w, y: d.yo, h: d.h }])).toEqual([]); // top 7.17, 3.33 ft clear
+    expect(P.ovlIssues(24, [...hi, { x: 5, w: 3, y: 4.5, h: 3 }]).length).toBe(0); // top 7.5: exactly 3 ft
+    expect(P.ovlIssues(24, [...hi, { x: 5, w: 3, y: 5.6, h: 3 }]).some((i) => i.k === 'pair')).toBe(true); // 1.9 ft
   });
 });

@@ -15,7 +15,15 @@
  * that spot — moving it would draw it where it was not priced). Items of the
  * same `group` (one program row) are never checked against each other: the
  * program already spaces a row's own items. When no spot fits, the item stays.
+ *
+ * Two openings clash only when they overlap BOTH ways (owner 10/20/26): within
+ * `gapFt` sideways AND within OPENING_VERT_GAP_FT (2') up-and-down — a window
+ * above / below another (2' of wall between) is not a clash and is left alone,
+ * exactly like the program's own rule. Items with no sill / height count as
+ * sharing height with everything (the old side-by-side-only rule).
  */
+import { vertConflict } from './wallFit';
+
 export interface SpreadItem {
   /** Centerline along the wall (ft, wall-local). */
   offset: number;
@@ -24,6 +32,9 @@ export interface SpreadItem {
   group: unknown;
   /** Auto-placed and its spot feeds no price: may be moved off an overlap. */
   movable: boolean;
+  /** Bottom edge above the floor (ft) and height (ft): lets openings stack. */
+  sill?: number;
+  height?: number;
 }
 
 export const AUTO_SPREAD_GAP_FT = 1;
@@ -33,8 +44,9 @@ export function spreadAutoOverlaps(items: SpreadItem[], spanFt: number, gapFt = 
   const out = items.map((it) => it.offset);
   if (items.length < 2 || !(spanFt > 0)) return out;
   const EPS = 1e-6;
-  const placed: Array<{ l: number; r: number; group: unknown }> = [];
-  const put = (i: number) => placed.push({ l: out[i] - items[i].width / 2, r: out[i] + items[i].width / 2, group: items[i].group });
+  const placed: Array<{ l: number; r: number; group: unknown; sill?: number; height?: number }> = [];
+  const put = (i: number) =>
+    placed.push({ l: out[i] - items[i].width / 2, r: out[i] + items[i].width / 2, group: items[i].group, sill: items[i].sill, height: items[i].height });
   // Fixed items first (typed or priced spots), then the movable ones in order.
   items.forEach((it, i) => {
     if (!it.movable) put(i);
@@ -44,9 +56,11 @@ export function spreadAutoOverlaps(items: SpreadItem[], spanFt: number, gapFt = 
     const w = it.width;
     const l = out[i] - w / 2;
     const r = out[i] + w / 2;
-    const clash = placed.some((p) => p.group !== it.group && l < p.r + gapFt - EPS && r > p.l - gapFt + EPS);
+    const mine = it.sill !== undefined && it.height !== undefined ? { sill: it.sill, height: it.height } : undefined;
+    const share = placed.filter((p) => vertConflict(mine, p)); // only openings it shares height with
+    const clash = share.some((p) => p.group !== it.group && l < p.r + gapFt - EPS && r > p.l - gapFt + EPS);
     if (clash) {
-      const best = nearestFreeSpot(out[i], w, spanFt, placed, gapFt);
+      const best = nearestFreeSpot(out[i], w, spanFt, share, gapFt);
       if (best !== null) out[i] = best;
     }
     put(i);

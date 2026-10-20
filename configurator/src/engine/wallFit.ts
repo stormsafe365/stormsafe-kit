@@ -1,4 +1,4 @@
-import { OPENING_CORNER_CLEAR_FT as CLR, OPENING_EPS_FT as EPS, OPENING_GAP_FT as GAP } from '@/config/constants';
+import { OPENING_CORNER_CLEAR_FT as CLR, OPENING_EPS_FT as EPS, OPENING_GAP_FT as GAP, OPENING_VERT_GAP_FT as VGAP, OPENING_VERT_EPS_FT as VEPS } from '@/config/constants';
 
 /**
  * No-overlap rule in the 3D (owner 10/2/26: "Components & framed openings cant
@@ -10,6 +10,11 @@ import { OPENING_CORNER_CLEAR_FT as CLR, OPENING_EPS_FT as EPS, OPENING_GAP_FT a
  * outer / end walls). The lean-to storage partition keeps its own stricter
  * clamp (partitionFit.ts — it adds the sloped-header rule).
  *
+ * Two openings clash only when they overlap BOTH ways (owner 10/20/26): within
+ * 1' sideways AND within OPENING_VERT_GAP_FT (2') up-and-down. An opening above
+ * or below another, with that wall between them, is fine. A span with no known
+ * sill / height counts as overlapping vertically (the old horizontal-only rule).
+ *
  * Offsets are opening CENTRES along the wall, measured from the wall's start
  * (the store's frame); `len` is the wall's length.
  */
@@ -18,14 +23,37 @@ export interface WallSpan {
   offset: number;
   /** Opening width (ft). */
   width: number;
+  /** Bottom edge above the floor (ft). With `height`, lets openings stack. */
+  sill?: number;
+  /** Opening height (ft). */
+  height?: number;
 }
 
-/** Does an opening `width` wide centred at `center` keep 1' from the corners and every sibling? */
-export function wallSpotOk(center: number, width: number, len: number, siblings: WallSpan[]): boolean {
+/** The up-and-down extent of the opening being placed (sill = bottom edge above the floor). */
+export interface VertSpan {
+  sill: number;
+  height: number;
+}
+
+/** Wall between two vertical extents (ft); negative = they overlap; -Infinity = unknown (counts as overlapping). */
+export function vertClear(a: VertSpan | undefined, b: { sill?: number; height?: number }): number {
+  if (!a || b.sill === undefined || b.height === undefined) return -Infinity;
+  if (!(a.height > 0) || !(b.height > 0) || !isFinite(a.sill) || !isFinite(b.sill)) return -Infinity;
+  return Math.max(b.sill - (a.sill + a.height), a.sill - (b.sill + b.height));
+}
+
+/** Is `s` within OPENING_VERT_GAP_FT (up-and-down) of the opening `self`? Unknown extents = yes. */
+export function vertConflict(self: VertSpan | undefined, s: { sill?: number; height?: number }): boolean {
+  return vertClear(self, s) < VGAP - VEPS;
+}
+
+/** Does an opening `width` wide centred at `center` keep 1' from the corners and every sibling it shares height with? */
+export function wallSpotOk(center: number, width: number, len: number, siblings: WallSpan[], self?: VertSpan): boolean {
   const x = center - width / 2;
   if (x < CLR - EPS || x + width > len - CLR + EPS) return false;
   for (const s of siblings) {
     if (!(s.width > 0)) continue;
+    if (!vertConflict(self, s)) continue; // stacked with 2' of wall between: fine
     const sL = s.offset - s.width / 2;
     const sR = s.offset + s.width / 2;
     if (x + width > sL - GAP + EPS && x < sR + GAP - EPS) return false;
@@ -39,8 +67,9 @@ export function wallSpotOk(center: number, width: number, len: number, siblings:
  * program stores the drag on the same 1/8" grid, so the stored spot is valid too). No valid spot on the
  * wall -> stays at `currentCenter` (nothing moves, nothing is written back).
  */
-export function clampWallCenter(rawCenter: number, width: number, len: number, siblings: WallSpan[], currentCenter: number): number {
+export function clampWallCenter(rawCenter: number, width: number, len: number, siblingsAll: WallSpan[], currentCenter: number, self?: VertSpan): number {
   const w = width;
+  const siblings = siblingsAll.filter((s) => vertConflict(self, s)); // only openings it shares height with
   // Allowed LEFT-EDGE intervals: the corner posts first, then 1' from each sibling.
   let ivs: Array<[number, number]> = [];
   const lo = CLR - EPS;

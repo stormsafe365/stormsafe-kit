@@ -45,9 +45,12 @@ function programFn(name: string): string {
 }
 
 const constLine = HTML.match(/var LT_PART_CLR=[^;]+;/);
+const ovlLine = HTML.match(/var OVL_CLR=[^;]+;/);
 type ProgItem = { ae: unknown; x: number; w: number; h: number; sill: number; kind: 'door' | 'win'; what: string; n: number; i: number };
 const program = new Function(
   `${constLine ? constLine[0] : ''}
+   ${ovlLine ? ovlLine[0] : ''}
+   ${programFn('ovlVClear')}
    ${programFn('dimQ')}
    ${programFn('_dim8')}
    ${programFn('_dimFtIn')}
@@ -312,5 +315,30 @@ describe('partition fit — 3D drag clamp (clampPartitionCenter)', () => {
         }
       }
     }
+  });
+});
+
+describe('partition fit — stacked openings (owner 10/20/26: 1 ft beside, or 2 ft of wall above / below)', () => {
+  const win = (id: string, sill: number, offsetFt: number, extra: Partial<LeanToOpening> = {}) =>
+    op({ id, type: 'window', widthFt: 2.5, heightFt: 2.5, sillFt: sill, offsetFt, ...extra });
+  const g = geom(30, 16, 0, true);
+  it('3D clamp = program: a window 2 ft under another is fine, 1.9 ft is not', () => {
+    const upper = win('u', 10.5, 15); // 10.5 - 13
+    const lowerAt = (sill: number) => win('l', sill, 15);
+    for (const sill of [4, 5.9, 6, 6.01, 6.1, 4.1667]) {
+      const me = lowerAt(sill);
+      expect(partitionSpotOk(15, me, g, [upper])).toBe(programOk(g, me, 15, [upper]));
+    }
+    expect(partitionSpotOk(15, lowerAt(6), g, [upper])).toBe(true);
+    expect(partitionSpotOk(15, lowerAt(6.1), g, [upper])).toBe(false);
+    expect(partitionSpotOk(15, lowerAt(6.01), g, [upper])).toBe(false);
+    expect(program.ltPartGapPairs([{ ae: 1, x: 13.75, w: 2.5, h: 2.5, sill: 6, kind: 'win', what: 'w', n: 1, i: 0 }, { ae: 2, x: 13.75, w: 2.5, h: 2.5, sill: 10.5, kind: 'win', what: 'w', n: 1, i: 0 }], true)).toHaveLength(0);
+    expect(program.ltPartGapPairs([{ ae: 1, x: 13.75, w: 2.5, h: 2.5, sill: 6.1, kind: 'win', what: 'w', n: 1, i: 0 }, { ae: 2, x: 13.75, w: 2.5, h: 2.5, sill: 10.5, kind: 'win', what: 'w', n: 1, i: 0 }], true)).toHaveLength(1);
+  });
+  it('a drag under a window keeps its spot; siblings with no heights keep the old rule', () => {
+    const me = win('l', 4.1667, 15);
+    const upper = win('u', 10.5, 15);
+    expect(clampPartitionCenter(15, me, g, [upper], 5)).toBeCloseTo(15, 6);
+    expect(Math.abs(clampPartitionCenter(15, me, g, [{ offsetFt: 15, widthFt: 2.5 }], 5) - 15)).toBeGreaterThan(0.5);
   });
 });

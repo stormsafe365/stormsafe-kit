@@ -177,6 +177,8 @@ function spreadAutoPlaced(out: DesiredOpening[], faceOf: Map<DesiredOpening, num
         width: d.width,
         group: d.entry,
         movable: !!autoOf.get(d) && !(eave && (d.type === 'walkDoor' || d.type === 'window' || d.type === 'frameOut')),
+        sill: d.sillHeight,
+        height: d.height,
       })),
       faceOf.get(list[0]) ?? 0,
     );

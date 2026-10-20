@@ -335,8 +335,8 @@ function DraggableOpening({
         const st = useBuildingStore.getState();
         const cur = st.openings.find((o) => o.id === oid);
         const curOff = cur?.offset ?? opening.offset;
-        const sibs = st.openings.filter((o) => o.side === oside && o.id !== oid).map((o) => ({ offset: o.offset, width: o.width }));
-        const off = clampWallCenter(worldToOffset(oside, hit, structure), ow, wall.spanFt, sibs, curOff);
+        const sibs = st.openings.filter((o) => o.side === oside && o.id !== oid).map((o) => ({ offset: o.offset, width: o.width, sill: o.sillHeight, height: o.height }));
+        const off = clampWallCenter(worldToOffset(oside, hit, structure), ow, wall.spanFt, sibs, curOff, { sill: cur?.sillHeight ?? opening.sillHeight, height: cur?.height ?? opening.height });
         // No new valid spot: nothing moves and nothing is written back (the
         // program keeps — and flags, if it clashes — the spot it has).
         if (Math.abs(off - curOff) < 1e-9) return;

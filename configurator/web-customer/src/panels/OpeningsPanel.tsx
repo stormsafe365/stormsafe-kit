@@ -4,7 +4,7 @@ import { WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog
 import { WALL_LABEL, type OpeningKind, type WebDesign, type WebOpening, type WebWall } from '../model/design';
 import { nextFreeId } from '../model/normalize';
 import { CUSTOMER_REF, fitMainPos, freeMainPos, mainSpotOk } from '../model/positions';
-import { isEave, openingWalls, rollupFits, rollupSizes, wallLength, walkDoorFitsHeight, windowFitsHeight } from '../model/rules';
+import { isEave, openingWalls, rollupFits, rollupSizes, SPACING_RULE, wallLength, walkDoorFitsHeight, windowFitsHeight } from '../model/rules';
 import { PartEditor } from './PartEditor';
 import { Note } from './ui';
 import { AddParts } from './AddParts';
@@ -55,7 +55,7 @@ export function newOpening(d: WebDesign, kind: OpeningKind, impact: boolean): We
       h = Math.min(7, d.height - 1);
       extra.frame = 'door';
     }
-    const pos = freeMainPos(d, wall, w);
+    const pos = freeMainPos(d, wall, w, { sill, h });
     if (pos === null) continue;
     return { id: nextFreeId('o', used), kind, wall, w, h, sill, pos, ...extra };
   }
@@ -82,10 +82,10 @@ export function OpeningsPanel() {
         err = 'That door size doesn’t fit this wall.';
         return;
       }
-      const pos = fitMainPos(x, o.wall, o.w, o.pos, o.id);
+      const pos = fitMainPos(x, o.wall, o.w, o.pos, o.id, o);
       if (pos === null) {
         Object.assign(o, before);
-        err = 'There isn’t room for that on this wall (openings keep 1′ from corners and from each other).';
+        err = `There isn’t room for that on this wall (openings keep ${SPACING_RULE}).`;
         return;
       }
       o.pos = pos;
@@ -105,7 +105,7 @@ export function OpeningsPanel() {
         const problem = !onClosed
           ? 'This wall isn’t closed, so the model doesn’t show this. Pick a closed wall.'
           : !mainSpotOk(d, o)
-            ? 'This overlaps another opening or sits too close to a corner. Move it.'
+            ? `This overlaps another opening or sits too close to a corner. Keep ${SPACING_RULE}. Move it.`
             : o.kind === 'rollup' && !rollupFits(d, o.wall, o.w, o.h, onWall)
               ? `Too tall for this wall (max ${isEave(o.wall) ? d.height - 2 : onWall > 1 ? d.height - 1 : d.height}′ here).`
               : null;
@@ -128,7 +128,7 @@ export function OpeningsPanel() {
             onWall={(wall) =>
               change(o.id, (k, x) => {
                 k.wall = wall as WebWall;
-                const p = freeMainPos({ ...x, openings: x.openings.filter((q) => q.id !== k.id) }, k.wall, k.w);
+                const p = freeMainPos({ ...x, openings: x.openings.filter((q) => q.id !== k.id) }, k.wall, k.w, k);
                 if (p !== null) k.pos = p;
               })
             }

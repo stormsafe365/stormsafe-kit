@@ -65,6 +65,14 @@ const PATCHES: Array<{ file: string; find: string; replace: string }> = [
     find: "  ground: '#101c2a',",
     replace: "  ground: '#0c2430',",
   },
+  // A 12-gauge frame is drawn 0.27' thick: its roof rafters / truss chords stand ~0.02' above the roof panels
+  // (ROOF_LIFT clears only the 14-gauge 0.2'), which shows as pale stripes down every roof slope, one per truss.
+  // The customer drawing keeps the roof members at the 14-gauge size so the roof reads plain, as the rep's 14-gauge builder does.
+  {
+    file: 'src/three/Frame.tsx',
+    find: 'break; // legs + rafters + truss chords use full gauge size',
+    replace: "if (m.kind === 'rafter' || m.kind === 'chord') size = Math.min(size, 0.2); /* never above the roof panels (ROOF_LIFT clears 0.2) */ break; // legs + rafters + truss chords use full gauge size",
+  },
 ];
 
 function customerPatches(): Plugin {

@@ -15,6 +15,7 @@ import { ft } from './panels/ui';
 import { cameraApi } from './cameraFit';
 import { revealInPanel } from './reveal';
 import { Guide } from './Guide';
+import { startOverDesign } from './linkStart';
 
 // The steps, in order (owner 10/16/26: building type + size, components, add-ons /
 // upgrades, colors, then the customer's contact + "Send to my steel building rep").
@@ -134,6 +135,7 @@ function StepsMenu({ steps, i }: { steps: Array<{ key: TabKey; title: string }>;
 function StepNav() {
   const tab = useWebStore((s) => s.tab);
   const setTab = useWebStore((s) => s.setTab);
+  const seeded = useWebStore((s) => !!s.seed);
   const steps = useSteps();
   const i = steps.findIndex((t) => t.key === tab);
   const prev = i > 0 ? steps[i - 1] : null;
@@ -154,7 +156,7 @@ function StepNav() {
         <button type="button" className="btn-ghost" onClick={() => setTab(prev.key)}>
           ← Back
         </button>
-      ) : !FRAMED ? (
+      ) : !FRAMED && !seeded ? (
         <button type="button" className="btn-ghost" onClick={() => setGuide(guideStyle ? (guideMode === 'know' ? 'style' : 'size') : 'welcome')}>
           ← Back
         </button>
@@ -167,6 +169,23 @@ function StepNav() {
         </button>
       ) : null}
     </div>
+  );
+}
+
+/** The one-time note when the page opens on the building from the customer's quote. */
+function SeedNote() {
+  const setSeedNote = useWebStore((s) => s.setSeedNote);
+  useEffect(() => {
+    const t = setTimeout(() => setSeedNote(false), 20000);
+    return () => clearTimeout(t);
+  }, [setSeedNote]);
+  return (
+    <p className="cleared">
+      This is the building from your quote. Change anything you like, then tap Send to my steel building rep.{' '}
+      <button type="button" className="linkish" onClick={() => setSeedNote(false)}>
+        Got it
+      </button>
+    </p>
   );
 }
 
@@ -397,7 +416,7 @@ function useBarEdges(bar: RefObject<HTMLElement>, count: number) {
  * want to clear what theyve built and start from scratch"). It asks first, in a small box with two
  * plain buttons (no window.confirm: a website frame may block dialogs).
  */
-function StartOver({ onConfirm }: { onConfirm: () => void }) {
+function StartOver({ onConfirm, seeded }: { onConfirm: () => void; seeded: boolean }) {
   const [asking, setAsking] = useState(false);
   const keepRef = useRef<HTMLButtonElement>(null);
   const openRef = useRef<HTMLButtonElement>(null);
@@ -431,7 +450,7 @@ function StartOver({ onConfirm }: { onConfirm: () => void }) {
         <div className="confirm-back" onClick={() => { setAsking(false); openRef.current?.focus(); }}>
           <div className="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="so-title" aria-describedby="so-text" onClick={(e) => e.stopPropagation()}>
             <h2 id="so-title">Start over?</h2>
-            <p id="so-text">This clears your building - the size, doors, windows, lean-tos, upgrades and colors - so you can begin again.</p>
+            <p id="so-text">{seeded ? 'This puts your building back the way your rep set it up.' : 'This clears your building - the size, doors, windows, lean-tos, upgrades and colors - so you can begin again.'}</p>
             <div className="confirm-actions">
               <button type="button" className="btn-ghost" ref={keepRef} onClick={() => { setAsking(false); openRef.current?.focus(); }}>
                 Keep my design
@@ -453,6 +472,8 @@ export function App() {
   const busy = useWebStore((s) => s.busy);
   const guide = useWebStore((s) => s.guide);
   const setGuide = useWebStore((s) => s.setGuide);
+  const seed = useWebStore((s) => s.seed);
+  const seedNote = useWebStore((s) => s.seedNote);
   const setGuideStyle = useWebStore((s) => s.setGuideStyle);
   const setGuideBarn = useWebStore((s) => s.setGuideBarn);
   const replace = useWebStore((s) => s.replace);
@@ -484,11 +505,16 @@ export function App() {
   }, [cleared, guide]);
   const startOver = () => {
     const before = { design: useWebStore.getState().design, tab };
-    replace(DEFAULT_DESIGN);
+    replace(startOverDesign(seed));
     undoRef.current = { ...before, fresh: useWebStore.getState().design };
     // a shared link on a shared phone / computer: the next person must not inherit the last one's name, phone and email
     useWebStore.getState().setContact({ ...EMPTY_CONTACT });
+    if (seed?.zip) {
+      useWebStore.getState().setZip(seed.zip); // the building's ZIP comes back with it
+      undoRef.current = { ...before, fresh: useWebStore.getState().design }; // (setting it settled the design again)
+    }
     useWebStore.getState().setSent(null);
+    useWebStore.getState().setSeedNote(false);
     const ed = useEditorStore.getState();
     ed.selectOpening(null);
     ed.selectLeanToOpening(null);
@@ -498,10 +524,11 @@ export function App() {
     setCleared(true);
     setTimeout(() => cameraApi.fit('iso'), 200);
     // on its own page, starting over goes back to the first screen (the guided questions)
+    // (a rep's building goes straight back to the builder: the questions would replace it)
     if (!FRAMED) {
       setGuideStyle(null);
       setGuideBarn(null);
-      setGuide('welcome');
+      setGuide(seed ? null : 'welcome');
       return;
     }
     setTimeout(() => document.querySelector<HTMLButtonElement>('.cleared .linkish')?.focus(), 60);
@@ -569,7 +596,7 @@ export function App() {
         </div>
         <Summary />
         <div className="topright">
-          <StartOver onConfirm={startOver} />
+          <StartOver onConfirm={startOver} seeded={!!seed} />
           <a className="topphone" href="tel:+15617715555">561-771-5555</a>
         </div>
       </header>
@@ -579,7 +606,7 @@ export function App() {
           <div className="cleared-slot" role="status">
           {cleared ? (
         <p className="cleared">
-          Started over with a plain building.{' '}
+          {seed ? 'Back to the building your rep set up.' : 'Started over with a plain building.'}{' '}
           <button
             type="button"
             className="linkish"
@@ -589,6 +616,7 @@ export function App() {
           </button>
         </p>
       ) : null}
+          {seedNote && !cleared && !guide ? <SeedNote /> : null}
           </div>
           <FramePill />
           <div className="stage-foot">

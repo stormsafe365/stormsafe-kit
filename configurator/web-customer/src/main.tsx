@@ -13,7 +13,9 @@ import { parseAllowList } from './model/origins';
 import { buildSpec } from './model/spec';
 import { currentState, useWebStore } from './store';
 import { parseToken } from './model/link';
-import { checkLink } from './send';
+import { fetchLink } from './send';
+import { applyLinkResult, beginHold } from './linkStart';
+import { cameraApi } from './cameraFit';
 import { keepDraft, restoreDraft, saveDraftNow } from './draft';
 import { installFreshness } from './freshness';
 import './styles.css';
@@ -36,7 +38,12 @@ keepDraft(token);
 // On its own page (not a website frame) a first visit starts with the guided questions.
 // Coming back to a design already started: say so first, with Keep going / Start a new design
 // (owner 10/18/26: "why when i click on the link does it not start at the first part?").
-if (window.parent === window) useWebStore.getState().setGuide(restored ? 'resume' : 'welcome');
+const own = window.parent === window;
+// No saved draft: the rep's building may be on its way. Wait for it (8 s at most) behind the busy screen,
+// and save no draft meanwhile, so the plain starter is never mistaken for the customer's work.
+const hold = own && !!token && !restored;
+if (hold) beginHold();
+if (own) useWebStore.getState().setGuide(restored ? 'resume' : 'welcome');
 // An old tab coming back to the screen picks up a newer version of this page (the draft comes back).
 installFreshness({ busy: () => !!useWebStore.getState().busy, save: () => saveDraftNow(token) });
 // The page going to the background (the phone number tapped, the app switched): save now, not 400 ms later.
@@ -46,7 +53,7 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', () => saveDraftNow(token));
 if (token) {
   useWebStore.getState().setLink(token, 'checking');
-  void checkLink(token).then((status) => useWebStore.getState().setLink(token, status));
+  void fetchLink(token).then((r) => applyLinkResult(token, r, { own, restored, hold }, () => cameraApi.fit('iso')));
 }
 
 // Picture-making for the guided cards (dev server only: tools/make-guide-pictures; never in the built page).

@@ -1,7 +1,7 @@
 /**
  * Talks to the design page's own server functions (functions/api/*.js on the
  * same Cloudflare Pages site). The page itself holds no database key.
- *   GET  /api/link?t=<token>  -> { status: 'ok' | 'expired' | 'invalid' }
+ *   GET  /api/link?t=<token>  -> { status: 'ok' | 'expired' | 'invalid', seed?: <the building the link opens on> }
  *   POST /api/submit          -> { ok: true } | { ok: false, error: <code> }
  */
 import type { Contact, LinkStatus } from './model/link';
@@ -10,15 +10,29 @@ import type { WebState } from './model/design';
 /** Same-origin API base ('' in production; the dev server proxies /api). */
 const API = '';
 
-export async function checkLink(token: string, f: typeof fetch = fetch): Promise<LinkStatus> {
+/** A link check that has not answered after this long is given up (weak signal): the page opens as if the link had no building. */
+export const LINK_TIMEOUT_MS = 8000;
+
+/** The link's status and, for a live link that carries one, the building it opens on (unchecked: see model/seed.ts). */
+export async function fetchLink(token: string, f: typeof fetch = fetch, timeoutMs = LINK_TIMEOUT_MS): Promise<{ status: LinkStatus; seed: unknown | null }> {
+  const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), timeoutMs) : null;
   try {
-    const r = await f(`${API}/api/link?t=${encodeURIComponent(token)}`, { cache: 'no-store' });
-    if (!r.ok) return 'offline';
-    const j = (await r.json()) as { status?: string };
-    return j.status === 'ok' || j.status === 'expired' || j.status === 'invalid' ? j.status : 'offline';
+    const r = await f(`${API}/api/link?t=${encodeURIComponent(token)}`, { cache: 'no-store', signal: ctl?.signal });
+    if (!r.ok) return { status: 'offline', seed: null };
+    const j = (await r.json()) as { status?: string; seed?: unknown };
+    if (j.status !== 'ok' && j.status !== 'expired' && j.status !== 'invalid') return { status: 'offline', seed: null };
+    const seed = j.status === 'ok' && j.seed && typeof j.seed === 'object' && !Array.isArray(j.seed) ? j.seed : null;
+    return { status: j.status, seed };
   } catch {
-    return 'offline';
+    return { status: 'offline', seed: null };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
+}
+
+export async function checkLink(token: string, f: typeof fetch = fetch): Promise<LinkStatus> {
+  return (await fetchLink(token, f)).status;
 }
 
 export interface SubmitPayload {

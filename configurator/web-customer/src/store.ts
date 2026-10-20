@@ -9,6 +9,7 @@ import { cloneDesign, DEFAULT_DESIGN, STATE_SCHEMA, STATE_VERSION, type WebConte
 import { normalizeDesign } from './model/normalize';
 import { impactRequired } from './model/rules';
 import { countyForZip } from './model/flZips';
+import type { Seed } from './model/seed';
 import { EMPTY_CONTACT, type Contact, type LinkStatus } from './model/link';
 
 /** The guided start screens (null = the builder itself). */
@@ -50,6 +51,15 @@ interface WebStore {
   setContact: (patch: Partial<Contact>) => void;
   /** Where the building goes: a 5-digit Florida ZIP sets the county (and the impact rule), as the quote does. */
   setZip: (zip: string) => void;
+  /** The building the rep's link opened on (null = none): Start over goes back to it. */
+  seed: Seed | null;
+  setSeed: (s: Seed | null) => void;
+  /** True while the page waits for the link's building: nothing is saved as a draft yet. */
+  seedHold: boolean;
+  setSeedHold: (b: boolean) => void;
+  /** The one-time note on first opening the rep's building. */
+  seedNote: boolean;
+  setSeedNote: (b: boolean) => void;
   /** When the design was last sent (ms since epoch); null = not sent yet. */
   sentAt: number | null;
   setSent: (t: number | null) => void;
@@ -97,6 +107,12 @@ export const useWebStore = create<WebStore>((set, get) => ({
     const ctx: WebContext = { ...get().ctx, zip: full ? zip : null, county: full ? countyForZip(zip) : null };
     set({ ctx, contact: { ...get().contact, zip }, ...settle(get().design, ctx) });
   },
+  seed: null,
+  setSeed: (seed) => set({ seed }),
+  seedHold: false,
+  setSeedHold: (seedHold) => set({ seedHold }),
+  seedNote: false,
+  setSeedNote: (seedNote) => set({ seedNote }),
   sentAt: null,
   setSent: (sentAt) => set({ sentAt }),
 }));

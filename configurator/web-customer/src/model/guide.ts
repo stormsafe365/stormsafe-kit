@@ -4,8 +4,8 @@
  * The sizes are the owner's common sizes, width x length x height in feet; they are starting points,
  * never a promise that a vehicle fits. Pure data + one pure function (tested).
  *
- * Not offered: a free-standing lean-to. The builder has no such building (it only has lean-tos
- * attached to a building), so a card for it would promise something the quote cannot build.
+ * Not offered: a free-standing lean-to. The customer page does not offer that building (it only has
+ * lean-tos attached to a building), so a card for it would promise something this page cannot show.
  */
 import type { LeanToSide, WebBuildingType, WebDesign, WebLeanTo } from './design';
 import { LEANTO_LOW_LEGS, LEANTO_WIDTHS } from './catalog';

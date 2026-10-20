@@ -30,6 +30,8 @@ export function Guide({ banner, onUndo, onStartOver }: { banner?: ReactNode; onU
   const update = useWebStore((s) => s.update);
   const design = useWebStore((s) => s.design);
   const sentAt = useWebStore((s) => s.sentAt);
+  const seed = useWebStore((s) => s.seed);
+  const link = useWebStore((s) => s.link);
   const setTab = useWebStore((s) => s.setTab);
   const headRef = useRef<HTMLHeadingElement>(null);
   const st = STYLES.find((x) => x.key === style) ?? null;
@@ -109,8 +111,8 @@ export function Guide({ banner, onUndo, onStartOver }: { banner?: ReactNode; onU
             >
               Keep going with this design
             </button>
-            <button type="button" className="btn-ghost guide-btn guide-btn-2" onClick={() => onStartOver?.()}>
-              Start a new design
+            <button type="button" className="btn-ghost guide-btn guide-btn-2" disabled={link === 'checking'} onClick={() => onStartOver?.()}>
+              {seed ? "Start over from my rep's design" : 'Start a new design'}
             </button>
             <p className="guide-small">Questions? <a href="tel:+15617715555">561-771-5555</a></p>
           </>

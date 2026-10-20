@@ -9,7 +9,7 @@ import { parseToken, checkContact, sendErrorText, EMPTY_CONTACT, FIELD_ERRORS } 
 import { countyForZip, FL_ZIP_COUNT } from '../src/model/flZips';
 import { readProgramZips } from '../tools/gen-fl-zips.mjs';
 import { submitBody, submitDesign, checkLink } from '../src/send';
-import { handleLink, handleSubmit, MAX_BODY, readLimited } from '../server/core.js';
+import { handleLink, handleSubmit, MAX_BODY, MAX_SEED_CHARS, readLimited } from '../server/core.js';
 import { restoreDraft, keepDraft } from '../src/draft';
 import { useWebStore } from '../src/store';
 import { cloneDesign, DEFAULT_DESIGN } from '../src/model/design';
@@ -287,6 +287,54 @@ describe('server: /api/link', () => {
     expect((await handleLink(get(`?t=${TOK}`), CFG, fakeDb(() => new Response('x', { status: 500 })).f)).status).toBe(502);
   });
 });
+
+describe('server: /api/link seed', () => {
+  const get = (q) => new Request(`${SITE}/api/link${q}`);
+  const SEED = { schema: 'ss-web-design', v: 1, design: { type: 'garage', width: 24 }, ctx: { zip: '33401', county: 'Palm Beach', impact: true } };
+  const names = (db) => db.calls.map((c) => c.url.split('/').pop());
+  const dbWith = (seedAnswer) => fakeDb((url) => (url.endsWith('design_link_status') ? rpcOk('ok') : seedAnswer(url)));
+  it('a live link with a building returns it after the status', async () => {
+    const db = dbWith(() => rpcOk(SEED));
+    const r = await handleLink(get(`?t=${TOK}`), CFG, db.f);
+    expect(await r.json()).toEqual({ status: 'ok', seed: SEED });
+    expect(names(db)).toEqual(['design_link_status', 'design_link_seed']);
+    expect(db.calls[1].body).toEqual({ p_token: TOK });
+  });
+  it('anything but a valid building leaves the key out and the status untouched', async () => {
+    const cases = {
+      'no function (404)': () => new Response('{"code":"PGRST202"}', { status: 404 }),
+      'server error (500)': () => new Response('x', { status: 500 }),
+      throws: () => {
+        throw new Error('down');
+      },
+      'null (no building)': () => rpcOk(null),
+      'empty body': () => new Response('', { status: 200 }),
+      'not JSON': () => new Response('nope', { status: 200 }),
+      'a string': () => rpcOk('ok'),
+      'an array': () => rpcOk([SEED]),
+      'wrong schema': () => rpcOk({ ...SEED, schema: 'other' }),
+      oversize: () => rpcOk({ ...SEED, pad: 'x'.repeat(MAX_SEED_CHARS) }),
+    };
+    for (const [name, a] of Object.entries(cases)) {
+      const r = await handleLink(get(`?t=${TOK}`), CFG, dbWith(a).f);
+      expect(r.status, name).toBe(200);
+      const j = await r.json();
+      expect(j, name).toEqual({ status: 'ok' });
+      expect('seed' in j, name).toBe(false);
+    }
+  });
+  it('expired / invalid / bad token never ask for the building', async () => {
+    for (const s of ['expired', 'invalid']) {
+      const db = fakeDb(() => rpcOk(s));
+      expect(await (await handleLink(get(`?t=${TOK}`), CFG, db.f)).json()).toEqual({ status: s });
+      expect(names(db)).toEqual(['design_link_status']);
+    }
+    const db = fakeDb(() => rpcOk(SEED));
+    await handleLink(get('?t=x'), CFG, db.f);
+    expect(db.calls).toHaveLength(0);
+  });
+});
+
 
 describe('server: readLimited', () => {
   it('reads a small body, stops a big one', async () => {

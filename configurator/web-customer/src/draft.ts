@@ -46,6 +46,8 @@ export function restoreDraft(token: string | null, now = Date.now()): boolean {
 /** Save the draft right now (also before the page reloads itself for a newer version - freshness.ts). */
 export function saveDraftNow(token: string | null): void {
   try {
+    // waiting for the rep's building: the plain starter must not be stored as the customer's draft
+    if (useWebStore.getState().seedHold) return;
     const { contact, sentAt, tab, guideStyle, guideBarn, guideMode } = useWebStore.getState();
     // once the design is sent, the contact details are not kept on the device (only the ZIP for the county)
     const keep = sentAt ? { zip: contact.zip } : { name: contact.name, phone: contact.phone, email: contact.email, zip: contact.zip, notes: contact.notes };

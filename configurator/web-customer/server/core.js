@@ -1,7 +1,7 @@
 // Design-link server functions (Cloudflare Pages Functions, functions/api/*.js).
 // The design page never holds a database key: it posts here, and this calls the
 // two database functions from CRM db/migrations/020_design_links.sql:
-//   GET  /api/link?t=<token>  -> design_link_status(token) -> { status }
+//   GET  /api/link?t=<token>  -> design_link_status(token) -> { status } (+ seed: design_link_seed(token), live links that carry one)
 //   POST /api/submit          -> submit_design(...)         -> { ok } | { ok:false, error }
 // Plain JS (no build step), pure functions so the tests can run them in Node.
 
@@ -89,6 +89,23 @@ const statusFor = (code) =>
   code === 'too_many' || code === 'busy' ? 429 : code === 'link_invalid' || code === 'link_expired' || code === 'link_full' ? 403 : code === 'server' ? 502 : 400;
 const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
 
+/** The most seed text passed on (the database allows 64 KB; the page's own limit is larger). */
+export const MAX_SEED_CHARS = 70000;
+
+/** The building a live link opens on, or null (no building, an old database without it, a bad answer: all the same). */
+async function fetchSeed(cfg, t, f) {
+  try {
+    const r = await rpc(cfg, 'design_link_seed', { p_token: t }, f);
+    if (!r.ok) return null;
+    const text = await r.text();
+    if (text.length > MAX_SEED_CHARS) return null;
+    const j = JSON.parse(text);
+    return j && typeof j === 'object' && !Array.isArray(j) && j.schema === 'ss-web-design' ? j : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function handleLink(request, cfg, f = fetch) {
   if (request.method !== 'GET') return json({ error: 'method' }, 405);
   const t = new URL(request.url).searchParams.get('t') || '';
@@ -97,7 +114,9 @@ export async function handleLink(request, cfg, f = fetch) {
     const res = await rpc(cfg, 'design_link_status', { p_token: t }, f);
     if (!res.ok) return json({ error: 'server' }, 502);
     const s = await res.json();
-    return json({ status: s === 'ok' || s === 'expired' ? s : 'invalid' });
+    const status = s === 'ok' || s === 'expired' ? s : 'invalid';
+    const seed = status === 'ok' ? await fetchSeed(cfg, t, f) : null;
+    return json(seed ? { status, seed } : { status });
   } catch {
     return json({ error: 'server' }, 502);
   }

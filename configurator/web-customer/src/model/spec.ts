@@ -87,6 +87,7 @@ export function upgradeLines(d: WebDesign): string[] {
   if (u.panels26 && !isWideSpan(d.width)) out.push('26-gauge wall panels'); // wide span: standard
   if (u.colorScrews) out.push('Color-matched screws');
   if (u.openers) out.push('Electric openers on the roll-up doors');
+  if (u.angle45) out.push('45-degree angle cut on the roll-up doors');
   return out;
 }
 

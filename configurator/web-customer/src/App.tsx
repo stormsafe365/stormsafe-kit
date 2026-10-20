@@ -15,7 +15,7 @@ import { ft } from './panels/ui';
 import { cameraApi } from './cameraFit';
 import { revealInPanel } from './reveal';
 import { Guide } from './Guide';
-import { startOverDesign } from './linkStart';
+import { prefillContact, startOverDesign } from './linkStart';
 
 // The steps, in order (owner 10/16/26: building type + size, components, add-ons /
 // upgrades, colors, then the customer's contact + "Send to my steel building rep").
@@ -50,7 +50,7 @@ const STEP_HELP: Record<TabKey, { text: string | ((s: ReturnType<typeof useWebSt
           ? 'Tap a carport wall to close it in, or just tap Next.'
           : 'Tap a wall to change it, or tap Next.',
   },
-  doors: { text: 'Tap what you want to add: a garage door, walk-in door, window or opening.' },
+  doors: { text: 'Go wall by wall: pick a wall, then add a garage door, walk-in door, window or opening to it.' },
   leantos: { text: 'A lean-to is a lower roof on one side: open for cover, or closed in for storage. Most people skip this.', optional: true },
   upgrades: { text: 'Not sure? Leave them off; your rep goes over them with you.', optional: true },
   colors: { text: 'Tap Roof, Walls or Trim (edges and corners), then a color.' },
@@ -509,6 +509,7 @@ export function App() {
     undoRef.current = { ...before, fresh: useWebStore.getState().design };
     // a shared link on a shared phone / computer: the next person must not inherit the last one's name, phone and email
     useWebStore.getState().setContact({ ...EMPTY_CONTACT });
+    prefillContact(seed?.contact ?? null);
     if (seed?.zip) {
       useWebStore.getState().setZip(seed.zip); // the building's ZIP comes back with it
       undoRef.current = { ...before, fresh: useWebStore.getState().design }; // (setting it settled the design again)

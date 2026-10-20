@@ -197,6 +197,7 @@ export function normalizeDesign(input: WebDesign, impact: boolean): WebDesign {
     panels26: u.panels26 === true, // kept through a wide-span width (included there; spec.ts does not list it)
     colorScrews: u.colorScrews === true,
     openers: u.openers === true,
+    angle45: u.angle45 === true,
   };
 
   // ── Main openings ──
@@ -285,6 +286,8 @@ export function normalizeDesign(input: WebDesign, impact: boolean): WebDesign {
   out.wraps = WRAP_KEYS.filter((k) => Array.isArray(d.wraps) && d.wraps.includes(k) && WRAP_SIDES[k].every((s) => sides.has(s)));
   // Roll-up openers need a roll-up door to go on.
   if (out.upgrades.openers && !hasRollupDoor(out)) out.upgrades.openers = false;
+  // The 45° angle cut is on roll-up doors only.
+  if (out.upgrades.angle45 && !hasRollupDoor(out)) out.upgrades.angle45 = false;
   return out;
 }
 

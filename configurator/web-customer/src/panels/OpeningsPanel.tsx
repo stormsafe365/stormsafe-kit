@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore } from '../store';
 import { WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
@@ -9,6 +9,7 @@ import { isEave, openingWalls, rollupFits, rollupSizes, wallLength, walkDoorFits
 import { PartEditor } from './PartEditor';
 import { Note } from './ui';
 import { AddParts } from './AddParts';
+import { cameraApi } from '../cameraFit';
 
 const PREFER: Record<OpeningKind, WebWall[]> = {
   rollup: ['front', 'partition', 'back', 'left', 'right'],
@@ -63,14 +64,57 @@ export function newOpening(d: WebDesign, kind: OpeningKind, impact: boolean): We
   return null;
 }
 
+/** The walls that can hold parts, in the order a person walks around the building. */
+const WALL_ORDER: WebWall[] = ['front', 'left', 'right', 'back', 'partition'];
+
+/** A big numbered step: "1  Pick a wall" + one plain line of help. */
+function BigStep({ n, title, help, dim }: { n: number; title: string; help?: string; dim?: boolean }) {
+  return (
+    <div className={`bigstep${dim ? ' dim' : ''}`}>
+      <span className="bigstep-n" aria-hidden="true">
+        {n}
+      </span>
+      <div>
+        <h3 className="bigstep-t">
+          <span className="sr-only">Step {n}: </span>
+          {title}
+        </h3>
+        {help ? <p className="bigstep-h">{help}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+const camWall = (w: WebWall) => (w === 'partition' ? 'front' : w);
+
 export function OpeningsPanel() {
   const d = useWebStore((s) => s.design);
   const impact = useWebStore((s) => s.impact);
   const update = useWebStore((s) => s.update);
+  const setTab = useWebStore((s) => s.setTab);
   const selectedId = useEditorStore((s) => s.selectedOpeningId);
   const walls = openingWalls(d);
+  // step 1: the wall picked (null = none yet)
+  const [wallSel, setWallSel] = useState<WebWall | null>(null);
   // while one thing is being added, only its short form shows (the list comes back after Add)
   const [adding, setAdding] = useState(false);
+  const shown = WALL_ORDER.filter((w) => (d.type === 'combo' ? true : w !== 'partition') && (walls.includes(w) || d.openings.some((o) => o.wall === w)));
+  const openWalls = WALL_ORDER.filter((w) => w !== 'partition' && !walls.includes(w) && !shown.includes(w));
+  // a part tapped on the model: its wall is the one picked
+  useEffect(() => {
+    const o = selectedId ? d.openings.find((k) => k.id === selectedId) : null;
+    if (o) setWallSel(o.wall);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+  // the wall picked is gone (walls changed): pick again
+  useEffect(() => {
+    if (wallSel && !shown.includes(wallSel)) setWallSel(null);
+  }, [wallSel, shown]);
+  const pickWall = (w: WebWall) => {
+    setWallSel(w);
+    // the model turns to that wall, so "Front end" / "Left side" mean something
+    setTimeout(() => cameraApi.fit(camWall(w)), 60);
+  };
 
   /** Apply a change to one opening if it still fits; returns a message when it doesn't. */
   const change = (id: string, edit: (o: WebOpening, d: WebDesign) => void): string | null => {
@@ -96,59 +140,113 @@ export function OpeningsPanel() {
     return err;
   };
 
+  const count = (w: WebWall) => d.openings.filter((o) => o.wall === w).length;
+  const wallName = wallSel ? WALL_LABEL[wallSel].toLowerCase() : '';
+  const onThisWall = wallSel ? d.openings.filter((o) => o.wall === wallSel) : [];
+
   return (
     <div className="panel-body">
-      <AddParts onAdding={setAdding} />
       {impact && <Note tone="warn">Your area uses impact-rated walk-in doors and windows, so those are the ones offered here. Garage doors stay as they are.</Note>}
-      {!adding && d.openings.length > 0 ? (
+
+      {/* ── Step 1: pick a wall ── */}
+      <BigStep n={1} title="Pick a wall" help="Tap the wall you want to add a door or window to. The model turns to it." />
+      {shown.length ? (
+        <div className="wallcards" role="radiogroup" aria-label="Pick a wall">
+          {shown.map((w) => {
+            const n = count(w);
+            const closed = walls.includes(w);
+            return (
+              <button
+                key={w}
+                type="button"
+                role="radio"
+                aria-checked={wallSel === w}
+                className={`wallcard${wallSel === w ? ' on' : ''}`}
+                onClick={() => pickWall(w)}
+              >
+                <span className="wallcard-name">{WALL_LABEL[w]}</span>
+                <span className="wallcard-n">{n ? `${n} ${n === 1 ? 'part' : 'parts'}` : 'empty'}</span>
+                {!closed ? <span className="wallcard-warn">wall not closed</span> : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      {openWalls.length ? (
+        <p className="field-hint">
+          Open (no wall yet): {openWalls.map((w) => WALL_LABEL[w].toLowerCase()).join(', ')}.{' '}
+          <button type="button" className="linkish" onClick={() => setTab('walls')}>
+            Close a wall in the Walls step
+          </button>{' '}
+          to add to it.
+        </p>
+      ) : null}
+
+      {/* ── Step 2: add to that wall ── */}
+      <BigStep n={2} title={wallSel ? `Add to the ${wallName}` : 'Then add a door or window'} help={wallSel ? undefined : 'Pick a wall above first.'} dim={!wallSel} />
+      {!walls.length ? (
+        <AddParts wall="front" />
+      ) : wallSel && walls.includes(wallSel) ? (
+        <AddParts wall={wallSel} onAdding={setAdding} />
+      ) : wallSel ? (
+        <Note>
+          This wall isn’t closed in, so nothing can go on it. Close it in the Walls step, or fix or move what is on it below.
+        </Note>
+      ) : null}
+
+      {/* ── Step 3: what is on that wall ── */}
+      {wallSel && !adding && onThisWall.length > 0 ? (
         <>
+          <BigStep n={3} title={`On the ${wallName} (${onThisWall.length})`} help="Tap one to change its size, look or place, or to take it off." />
           {/* owner 10/18/26: "some people will not know they can click and drag windows and doors" */}
           <p className="drag-tip">
             <span aria-hidden="true">☝</span> To move a door or window, press it on the model and slide it along the wall.
           </p>
-          <span className="field-label parts-label">On your building ({d.openings.length}) · tap one to change it</span>
         </>
       ) : null}
-      {!adding && d.openings.map((o, i) => {
-        const face = wallLength(d, o.wall);
-        const onClosed = walls.includes(o.wall);
-        const onWall = d.openings.filter((k) => k.wall === o.wall && k.kind === 'rollup').length;
-        const problem = !onClosed
-          ? 'This wall isn’t closed, so the model doesn’t show this. Pick a closed wall.'
-          : !mainSpotOk(d, o)
-            ? 'This overlaps another opening or sits too close to a corner. Move it.'
-            : o.kind === 'rollup' && !rollupFits(d, o.wall, o.w, o.h, onWall)
-              ? `Too tall for this wall (max ${isEave(o.wall) ? d.height - 2 : onWall > 1 ? d.height - 1 : d.height}′ here).`
-              : null;
-        return (
-          <PartEditor
-            key={o.id}
-            label={String(i + 1)}
-            o={o}
-            wallOptions={(['front', 'back', 'left', 'right', 'partition'] as const)
-              .filter((w) => walls.includes(w) || w === o.wall)
-              .map((w) => ({ value: w, label: WALL_LABEL[w], disabled: !walls.includes(w) }))}
-            sizes={rollupSizes(d, o.wall, Math.max(1, onWall))}
-            maxFrameW={face - 2}
-            maxFrameH={isEave(o.wall) ? d.height - 1 : d.height}
-            posFrom={CUSTOMER_REF[o.wall]}
-            posMax={face - o.w}
-            impact={impact}
-            selected={selectedId === o.id}
-            problem={problem}
-            onWall={(wall) =>
-              change(o.id, (k, x) => {
-                k.wall = wall as WebWall;
-                const p = freeMainPos({ ...x, openings: x.openings.filter((q) => q.id !== k.id) }, k.wall, k.w);
-                if (p !== null) k.pos = p;
-              })
-            }
-            onPatch={(patch) => change(o.id, (k) => void Object.assign(k, patch))}
-            onPos={(pos) => change(o.id, (k) => void (k.pos = pos))}
-            onRemove={() => update((x) => void (x.openings = x.openings.filter((k) => k.id !== o.id)))}
-          />
-        );
-      })}
+      {wallSel && !adding && onThisWall.length === 0 && walls.includes(wallSel) ? <p className="field-hint wall-empty">Nothing on the {wallName} yet.</p> : null}
+      {!adding &&
+        d.openings.map((o, i) => {
+          if (o.wall !== wallSel) return null;
+          const face = wallLength(d, o.wall);
+          const onClosed = walls.includes(o.wall);
+          const onWall = d.openings.filter((k) => k.wall === o.wall && k.kind === 'rollup').length;
+          const problem = !onClosed
+            ? 'This wall isn’t closed, so the model doesn’t show this. Pick a closed wall.'
+            : !mainSpotOk(d, o)
+              ? 'This overlaps another opening or sits too close to a corner. Move it.'
+              : o.kind === 'rollup' && !rollupFits(d, o.wall, o.w, o.h, onWall)
+                ? `Too tall for this wall (max ${isEave(o.wall) ? d.height - 2 : onWall > 1 ? d.height - 1 : d.height}′ here).`
+                : null;
+          return (
+            <PartEditor
+              key={o.id}
+              label={String(i + 1)}
+              o={o}
+              wallOptions={(['front', 'back', 'left', 'right', 'partition'] as const)
+                .filter((w) => walls.includes(w) || w === o.wall)
+                .map((w) => ({ value: w, label: WALL_LABEL[w], disabled: !walls.includes(w) }))}
+              sizes={rollupSizes(d, o.wall, Math.max(1, onWall))}
+              maxFrameW={face - 2}
+              maxFrameH={isEave(o.wall) ? d.height - 1 : d.height}
+              posFrom={CUSTOMER_REF[o.wall]}
+              posMax={face - o.w}
+              impact={impact}
+              selected={selectedId === o.id}
+              problem={problem}
+              onWall={(wall) =>
+                change(o.id, (k, x) => {
+                  k.wall = wall as WebWall;
+                  const p = freeMainPos({ ...x, openings: x.openings.filter((q) => q.id !== k.id) }, k.wall, k.w);
+                  if (p !== null) k.pos = p;
+                })
+              }
+              onPatch={(patch) => change(o.id, (k) => void Object.assign(k, patch))}
+              onPos={(pos) => change(o.id, (k) => void (k.pos = pos))}
+              onRemove={() => update((x) => void (x.openings = x.openings.filter((k) => k.id !== o.id)))}
+            />
+          );
+        })}
     </div>
   );
 }

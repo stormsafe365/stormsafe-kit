@@ -12,7 +12,7 @@ const ctx = { zip: null, county: null, impactParam: null };
 const specCtx = { zip: null, county: null, impact: false };
 const all = (): WebDesign => {
   const d = cloneDesign(SAMPLE_DESIGN);
-  d.upgrades = { insulation: 'roofWalls', frame12: true, oc4: true, panels26: true, colorScrews: true, openers: true };
+  d.upgrades = { insulation: 'roofWalls', frame12: true, oc4: true, panels26: true, colorScrews: true, openers: true, angle45: true };
   return d;
 };
 
@@ -21,7 +21,7 @@ describe('upgrades: saved design', () => {
     const d = cloneDesign(SAMPLE_DESIGN) as Partial<WebDesign>;
     delete d.upgrades;
     const n = normalizeDesign(d as WebDesign, false);
-    expect(n.upgrades).toEqual({ insulation: 'none', frame12: false, oc4: false, panels26: false, colorScrews: false, openers: false });
+    expect(n.upgrades).toEqual({ insulation: 'none', frame12: false, oc4: false, panels26: false, colorScrews: false, openers: false, angle45: false });
     const chk = checkState({ schema: 'ss-web-design', v: 1, design: d, ctx: {} });
     expect(chk.ok).toBe(true);
   });
@@ -29,7 +29,7 @@ describe('upgrades: saved design', () => {
     const d = cloneDesign(SAMPLE_DESIGN) as unknown as Record<string, unknown>;
     d.upgrades = { insulation: 'everything', frame12: 'yes', oc4: 1, panels26: true };
     const n = normalizeDesign(d as unknown as WebDesign, false);
-    expect(n.upgrades).toEqual({ insulation: 'none', frame12: false, oc4: false, panels26: true, colorScrews: false, openers: false });
+    expect(n.upgrades).toEqual({ insulation: 'none', frame12: false, oc4: false, panels26: true, colorScrews: false, openers: false, angle45: false });
     expect(checkState({ schema: 'ss-web-design', v: 1, design: { ...cloneDesign(SAMPLE_DESIGN), upgrades: 'x' }, ctx: {} }).ok).toBe(false);
   });
   it('insulation only with a vertical roof (the program rule)', () => {
@@ -68,7 +68,7 @@ describe('upgrades: drawing + spec', () => {
     expect(buildSpec(normalizeDesign(cloneDesign(SAMPLE_DESIGN), false), specCtx)).toContain('Upgrades requested: None');
     const s = buildSpec(normalizeDesign(all(), false), specCtx);
     expect(s).toContain('Upgrades requested:\n- Insulation: roof and walls\n- 12-gauge frame\n');
-    expect(upgradeLines(normalizeDesign(all(), false))).toHaveLength(6);
+    expect(upgradeLines(normalizeDesign(all(), false))).toHaveLength(7);
     expect(s).not.toMatch(/\$|price|cost|mph|CCI|Carolina|CRM/i);
   });
 });
@@ -123,5 +123,26 @@ describe('impact area: the customer keeps their own door / window pick', () => {
     d.width = 24;
     expect(upgradeLines(normalizeDesign(d, false))).toContain('26-gauge wall panels');
     expect(designToConfig(n, ctx).sheetingGauge).toBe('26-gauge');
+  });
+});
+
+describe('upgrades: 45-degree angle cut on the roll-up doors', () => {
+  it('kept with a roll-up door, cleared without one, false when missing', () => {
+    const d = all();
+    expect(normalizeDesign(d, false).upgrades.angle45).toBe(true);
+    d.openings = d.openings.filter((o) => o.kind !== 'rollup');
+    expect(normalizeDesign(d, false).upgrades.angle45).toBe(false);
+    const old = cloneDesign(SAMPLE_DESIGN) as unknown as Record<string, unknown>;
+    old.upgrades = { insulation: 'none', frame12: false, oc4: false, panels26: false, colorScrews: false, openers: false };
+    expect(normalizeDesign(old as unknown as WebDesign, false).upgrades.angle45).toBe(false);
+    old.upgrades = { angle45: 'yes' };
+    expect(normalizeDesign(old as unknown as WebDesign, false).upgrades.angle45).toBe(false);
+  });
+  it('is listed in the upgrades and the spec text', () => {
+    const n = normalizeDesign(all(), false);
+    expect(upgradeLines(n)).toContain('45-degree angle cut on the roll-up doors');
+    expect(buildSpec(n, specCtx)).toContain('45-degree angle cut');
+    n.upgrades.angle45 = false;
+    expect(upgradeLines(n).join(' ')).not.toContain('45-degree');
   });
 });

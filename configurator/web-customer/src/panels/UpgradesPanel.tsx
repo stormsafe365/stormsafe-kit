@@ -22,7 +22,7 @@ export function UpgradesPanel() {
   const wide = isWideSpan(d.width); // wide span comes with 26-gauge wall panels (the program's rule)
   const vertical = d.roofStyle === 'Vertical';
   const rollups = hasRollupDoor(d);
-  const set = (k: 'frame12' | 'oc4' | 'panels26' | 'colorScrews' | 'openers') => (on: boolean) => update((x) => void (x.upgrades[k] = on));
+  const set = (k: 'frame12' | 'oc4' | 'panels26' | 'colorScrews' | 'openers' | 'angle45') => (on: boolean) => update((x) => void (x.upgrades[k] = on));
 
   return (
     <div className="panel-body">
@@ -71,6 +71,11 @@ export function UpgradesPanel() {
       <div className="field">
         <Toggle label="Electric garage door openers" checked={u.openers} disabled={!rollups} onChange={set('openers')} />
         {!rollups ? <p className="field-hint">Add a garage door first (Doors step).</p> : null}
+      </div>
+
+      <div className="field">
+        <Toggle label="45° angle cut on the garage doors" checked={u.angle45} disabled={!rollups} onChange={set('angle45')} />
+        {!rollups ? <p className="field-hint">Add a garage door first (Doors step).</p> : <p className="field-hint">Applies to every garage door on your building.</p>}
       </div>
 
       <p className="field-hint more-hint">Wall panel direction and roof pitch are in the Size step (More options); wainscot is in Colors.</p>

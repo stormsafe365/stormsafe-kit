@@ -27,12 +27,6 @@ const NOUN: Record<OpeningKind, [string, string]> = {
   window: ['window', 'windows'],
   frame: ['opening', 'openings'],
 };
-const PREFER: Record<OpeningKind, WebWall[]> = {
-  rollup: ['front', 'partition', 'back', 'left', 'right'],
-  walk: ['left', 'right', 'front', 'back', 'partition'],
-  window: ['left', 'right', 'back', 'front'],
-  frame: ['left', 'right', 'front', 'back', 'partition'],
-};
 const plural = (k: OpeningKind, n: number) => NOUN[k][n === 1 ? 0 : 1];
 const pick = <T extends number>(list: readonly T[], want: number): number => (list.includes(want as T) ? want : (list.filter((x) => x <= want).pop() ?? list[0] ?? 0));
 
@@ -52,7 +46,8 @@ function fitWidths<T extends number>(d: WebDesign, wall: WebWall, widths: readon
   return widths.filter((x) => spreadPositions(d, wall, x, 1) !== null || respaceWithSame(d, wall, 'rollup', x, 1) !== null);
 }
 
-export function AddParts({ onAdding }: { onAdding?: (adding: boolean) => void }) {
+/** The picked wall's add area: the four things to add, then size / how many for that wall. */
+export function AddParts({ wall, onAdding }: { wall: WebWall; onAdding?: (adding: boolean) => void }) {
   const d = useWebStore((s) => s.design);
   const update = useWebStore((s) => s.update);
   const setTab = useWebStore((s) => s.setTab);
@@ -66,7 +61,6 @@ export function AddParts({ onAdding }: { onAdding?: (adding: boolean) => void })
   useEffect(() => {
     if (selected) setPicked(null);
   }, [selected]);
-  const [wall, setWall] = useState<WebWall | null>(null); // null = the first wall with room
   const [rw, setRw] = useState(10);
   const [rh, setRh] = useState(8);
   const [qty, setQty] = useState(1);
@@ -75,19 +69,17 @@ export function AddParts({ onAdding }: { onAdding?: (adding: boolean) => void })
 
   const kindOk = (k: OpeningKind) => (k === 'walk' ? walkDoorFitsHeight(d.height) : k === 'window' ? windowFitsHeight(d.height, 2.5) : true);
   const thereFor = (x: WebWall) => d.openings.filter((o) => o.wall === x && o.kind === 'rollup').length;
-  // walls this kind can go on at all (a roll-up needs a catalog size that fits the wall's height)
-  const wallChoices = PREFER[kind].filter((x) => {
-    if (!walls.includes(x) || (kind === 'window' && x === 'partition')) return false;
-    if (kind !== 'rollup') return true;
-    const s = rollupSizes(d, x, thereFor(x) + 1);
+  // can this kind go on the picked wall at all (a roll-up needs a catalog size that fits the wall's height)
+  const hereOk = (k: OpeningKind) => {
+    if (!kindOk(k)) return false;
+    if (k === 'window' && wall === 'partition') return false;
+    if (k !== 'rollup') return true;
+    const s = rollupSizes(d, wall, thereFor(wall) + 1);
     return s.widths.length > 0 && s.heights.length > 0;
-  });
-  // the first wall that still has room for one (the starting design's front end already has a door)
-  const roomy = wallChoices.find((x) => {
-    const { w, h } = partSize(d, kind, x, thereFor(x) + 1, rw, rh);
-    return w > 0 && h > 0 && maxQty(d, x, kind, w, h) >= 1;
-  });
-  const curWall = wall && wallChoices.includes(wall) ? wall : (roomy ?? wallChoices[0] ?? null);
+  };
+  const curWall: WebWall = wall;
+  // a different wall picked: back to the four buttons
+  useEffect(() => setPicked(null), [wall]);
 
   const rollupsThere = curWall ? thereFor(curWall) : 0;
   const first = curWall ? partSize(d, kind, curWall, rollupsThere + 1, rw, rh) : { w: 0, h: 0 };
@@ -128,7 +120,6 @@ export function AddParts({ onAdding }: { onAdding?: (adding: boolean) => void })
     const respace = free ? null : respaceWithSame(base, curWall, kind, pw, n);
     if (!free && !respace) return;
     const spots = free ?? respace!.spots.slice(respace!.existing.length);
-    setWall(curWall); // keep this wall picked (it may be full now; the form does not jump to another)
     update((x) => {
       if (lowerTo !== null) for (const o of x.openings) if (o.wall === curWall && o.kind === 'rollup' && o.h > lowerTo) o.h = lowerTo;
       if (respace) respace.existing.forEach((id, i) => {
@@ -214,17 +205,16 @@ export function AddParts({ onAdding }: { onAdding?: (adding: boolean) => void })
               key={k}
               type="button"
               className="tile"
-              disabled={!kindOk(k)}
+              disabled={!hereOk(k)}
               onClick={() => {
                 setPicked(k);
-                setWall(null);
                 setQty(1);
                 setAdded(null);
               }}
             >
               <KindIcon k={k} />
               <span className="tile-name">{SHORT[k]}</span>
-              {!kindOk(k) ? <span className="tile-why">Needs walls 7′+</span> : null}
+              {!hereOk(k) ? <span className="tile-why">{!kindOk(k) ? 'Needs walls 7′+' : k === 'window' ? 'Not on this wall' : 'Too short here'}</span> : null}
             </button>
           ))}
         </div>
@@ -239,7 +229,6 @@ export function AddParts({ onAdding }: { onAdding?: (adding: boolean) => void })
 
   let blocked: string | null = null;
   if (!kindOk(kind)) blocked = kind === 'walk' ? 'Walk-in doors need walls at least 7′ tall (Size step).' : 'Windows need walls at least 7′ tall (Size step).';
-  else if (!wallChoices.length) blocked = kind === 'rollup' ? 'Garage doors need taller walls: at least 8′ on the sides, 6′ on the ends (Size step).' : 'No wall can take this one.';
   else if (kind === 'rollup' && !w) blocked = `No garage door fits on the ${wallName} right now. Pick another wall, or remove or move a door there.`;
   else if (!most) {
     const some = d.openings.some((o) => o.wall === curWall && o.kind === kind);
@@ -256,33 +245,9 @@ export function AddParts({ onAdding }: { onAdding?: (adding: boolean) => void })
         </button>
         <KindIcon k={kind} />
         <strong className="add-title">
-          Add {article} {NOUN[kind][0]}
+          Add {article} {NOUN[kind][0]} to the {wallName}
         </strong>
       </div>
-      {wallChoices.length ? (
-        <div className="field">
-          <span className="field-label">Which wall?</span>
-          <div className="picks" role="radiogroup" aria-label="Which wall">
-            {wallChoices.map((x) => (
-              <button
-                key={x}
-                type="button"
-                role="radio"
-                aria-checked={curWall === x}
-                className={`pick${curWall === x ? ' on' : ''}`}
-                onClick={() => {
-                  setWall(x);
-                  setQty(1);
-                  // show that wall on the model, so "Front end" / "Left side" mean something
-                  setTimeout(() => cameraApi.fit(x === 'partition' ? 'front' : x), 60);
-                }}
-              >
-                {WALL_LABEL[x]}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
       {blocked ? (
         tallFix ? (
           <>
@@ -306,7 +271,6 @@ export function AddParts({ onAdding }: { onAdding?: (adding: boolean) => void })
                   const [a, b] = v.split('x').map(Number);
                   setRw(a);
                   setRh(b);
-                  setWall(curWall);
                 }}
               />
             ) : (
@@ -324,7 +288,6 @@ export function AddParts({ onAdding }: { onAdding?: (adding: boolean) => void })
                   disabled={q <= 1}
                   onClick={() => {
                     setQty(Math.max(1, q - 1));
-                    setWall(curWall);
                   }}
                 >
                   −
@@ -338,7 +301,6 @@ export function AddParts({ onAdding }: { onAdding?: (adding: boolean) => void })
                   disabled={q >= most}
                   onClick={() => {
                     setQty(Math.min(most, q + 1));
-                    setWall(curWall);
                   }}
                 >
                   +

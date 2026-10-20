@@ -1,9 +1,9 @@
 // A design link that opens on the lead's own building (the "seed"): parsing the untrusted seed,
 // the link check on the page side (fetchLink), the start-up rules (applyLinkResult) and the draft hold.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { parseSeed } from '../src/model/seed';
+import { parseSeed, cleanSeedContact } from '../src/model/seed';
 import { fetchLink, checkLink } from '../src/send';
-import { applyLinkResult, beginHold, retryLinkCheck, runLinkCheck, startOverDesign } from '../src/linkStart';
+import { applyLinkResult, beginHold, prefillContact, retryLinkCheck, runLinkCheck, startOverDesign } from '../src/linkStart';
 import { restoreDraft, saveDraftNow } from '../src/draft';
 import { useWebStore } from '../src/store';
 import { cloneDesign, DEFAULT_DESIGN, OLD_STARTER_OPENINGS, type WebDesign } from '../src/model/design';
@@ -70,6 +70,56 @@ describe('parseSeed', () => {
     warn.mockRestore();
   });
 });
+
+describe('seed contact (what the rep already has)', () => {
+  const withC = (contact: unknown) => ({ ...env(), contact });
+  it('is accepted and cleaned with the send form rules', () => {
+    expect(parseSeed(withC({ name: 'Jane Doe', phone: '(561) 555-0100', email: 'Jane@Example.com' }))!.contact).toEqual({ name: 'Jane Doe', phone: '(561) 555-0100', email: 'Jane@Example.com' });
+    expect(cleanSeedContact({ name: '  Jo <b>' + String.fromCharCode(34, 96) + 'Smith</b> ' })).toEqual({ name: 'Jo bSmith/b' });
+    expect(cleanSeedContact({ phone: '12345', email: 'nope', name: '<>"' })).toBe(null);
+    expect(cleanSeedContact({ phone: '561-555-0100 ext 5' })).toBe(null);
+    expect(cleanSeedContact({ name: 'x'.repeat(121) })).toBe(null);
+    expect(cleanSeedContact({ email: 'a@b.co'.padStart(200, 'x') })).toBe(null);
+    expect(cleanSeedContact({ name: 5, phone: ['5615550100'], email: {} })).toBe(null);
+    expect(cleanSeedContact([])).toBe(null);
+    expect(cleanSeedContact('x')).toBe(null);
+    expect(cleanSeedContact({ name: 'Jane', phone: 'bad' })).toEqual({ name: 'Jane' });
+    expect(parseSeed(env())!.contact).toBe(null);
+  });
+});
+
+describe('seed contact prefill on open', () => {
+  beforeEach(() => {
+    const st = useWebStore.getState();
+    st.setCtx({ zip: null, county: null, impactParam: null });
+    st.replace(DEFAULT_DESIGN);
+    st.setSeed(null);
+    st.setSeedHold(false);
+    st.setContact({ name: '', phone: '', email: '', zip: '', notes: '' });
+    st.setGuide(null);
+  });
+  const C = { name: 'Jane Doe', phone: '5615550100', email: 'jane@example.com' };
+  it('no draft: the boxes are filled (zip stays empty: the page still asks for it)', () => {
+    applyLinkResult(TOK, { status: 'ok', seed: { ...env(), contact: C } }, { own: true, restored: false, hold: false });
+    const c = useWebStore.getState().contact;
+    expect([c.name, c.phone, c.email]).toEqual(['Jane Doe', '5615550100', 'jane@example.com']);
+  });
+  it('never over what the customer typed; a restored draft is not prefilled', () => {
+    useWebStore.getState().setContact({ name: 'Mine' });
+    applyLinkResult(TOK, { status: 'ok', seed: { ...env(), contact: C } }, { own: true, restored: false, hold: false });
+    expect(useWebStore.getState().contact.name).toBe('Mine');
+    expect(useWebStore.getState().contact.phone).toBe('5615550100');
+    useWebStore.getState().setContact({ name: '', phone: '', email: '' });
+    applyLinkResult(TOK, { status: 'ok', seed: { ...env(), contact: C } }, { own: true, restored: true, hold: false });
+    expect(useWebStore.getState().contact.name).toBe('');
+  });
+  it('prefillContact is what Start over uses to put them back', () => {
+    prefillContact(null);
+    prefillContact({ email: 'a@b.co' });
+    expect(useWebStore.getState().contact.email).toBe('a@b.co');
+  });
+});
+
 
 describe('fetchLink / checkLink', () => {
   const answer = (body: unknown, status = 200) => async () => new Response(JSON.stringify(body), { status });

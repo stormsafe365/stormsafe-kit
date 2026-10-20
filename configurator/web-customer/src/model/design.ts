@@ -110,6 +110,8 @@ export interface WebUpgrades {
   panels26: boolean;
   colorScrews: boolean;
   openers: boolean;
+  /** 45° angle cut on the roll-up doors (every roll-up). Missing in older saved states = false. */
+  angle45: boolean;
 }
 
 export interface WebDesign {
@@ -168,7 +170,7 @@ export const DEFAULT_DESIGN: WebDesign = {
   openings: [],
   leanTos: [],
   wraps: [],
-  upgrades: { insulation: 'none', frame12: false, oc4: false, panels26: false, colorScrews: false, openers: false },
+  upgrades: { insulation: 'none', frame12: false, oc4: false, panels26: false, colorScrews: false, openers: false, angle45: false },
 };
 
 /** The three parts every design started with before 10/16/26 (a 10×8 roll-up, a walk door, a window). */
@@ -199,7 +201,7 @@ const isUntouchedStarter = (o: WebOpening, s: WebOpening) => {
  */
 export function withoutOldStarterParts(d: WebDesign): WebDesign {
   if (d.openings.length !== OLD_STARTER_OPENINGS.length) return d;
-  if (d.leanTos.some((l) => l.openings.length > 0) || d.upgrades?.openers) return d;
+  if (d.leanTos.some((l) => l.openings.length > 0) || d.upgrades?.openers || d.upgrades?.angle45) return d;
   if (!d.openings.every((o) => OLD_STARTER_OPENINGS.some((s) => isUntouchedStarter(o, s)))) return d;
   return { ...d, openings: [] };
 }

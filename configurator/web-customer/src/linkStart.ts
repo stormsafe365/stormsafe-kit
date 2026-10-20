@@ -4,7 +4,7 @@
  */
 import { isPlainStart, useWebStore } from './store';
 import { DEFAULT_DESIGN, type WebDesign } from './model/design';
-import { parseSeed, type Seed } from './model/seed';
+import { parseSeed, type Seed, type SeedContact } from './model/seed';
 import { fetchLink } from './send';
 import type { LinkStatus } from './model/link';
 
@@ -35,6 +35,18 @@ export function beginHold(capMs = HOLD_CAP_MS): void {
     const t = useWebStore.getState();
     if (t.seedHold && t.busy === HOLD_MSG) t.setBusy(null);
   }, capMs);
+}
+
+/** What the rep already has goes into the EMPTY send-form boxes only (the customer can change it; never over what was typed). */
+export function prefillContact(contact: SeedContact | null): void {
+  if (!contact) return;
+  const c = useWebStore.getState().contact;
+  const patch: Partial<typeof c> = {};
+  for (const k of ['name', 'phone', 'email'] as const) {
+    const v = contact[k];
+    if (v && !c[k].trim()) patch[k] = v;
+  }
+  if (Object.keys(patch).length) useWebStore.getState().setContact(patch);
 }
 
 /** The design "Start over" goes back to. */
@@ -71,6 +83,8 @@ export function applyLinkResult(token: string, r: LinkResult, info: StartInfo, f
         st().setTab('size');
         st().setGuide(null);
         st().setSeedNote(true);
+        // what the rep already has: into the empty boxes only (the customer can change it; never over what was typed)
+        prefillContact(seed.contact);
         setTimeout(fit, 250);
       }
     } else if (holding && info.own && r.status === 'offline' && untouched()) {

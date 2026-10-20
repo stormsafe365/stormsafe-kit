@@ -553,31 +553,31 @@ describe('3D (wallFit / autoSpread) — stacked openings', () => {
   });
 });
 
-describe('owner 10/20/26 — a custom frame-out with no size typed yet is never refused for room', () => {
+describe('owner 10/20/26 — a custom frame-out with a blank size keeps its layout footprint but is never refused / flagged for room', () => {
   const F = new Function(
     `${programFn('foSillFt')}
      ${programFn('foCustomFeet')}
      ${HTML.slice(HTML.indexOf('function ovlFoDims('), HTML.indexOf('// One main-building entry (.re/.we/.ne/.ace)'))} // (a regex with a quote in it defeats programFn)
      return { ovlFoDims: ovlFoDims, foCustomFeet: foCustomFeet };`,
   )() as {
-    ovlFoDims: (el: unknown, comp: string) => { w: number; h: number; yo: number } | null;
+    ovlFoDims: (el: unknown, comp: string) => { w: number; h: number; yo: number; nf: boolean } | null;
     foCustomFeet: (el: unknown) => { w: number; h: number };
   };
   const entry = (v: Record<string, string>) => ({ querySelector: (s: string) => (s.startsWith('.') && v[s.slice(1)] !== undefined ? { value: v[s.slice(1)] } : null) });
   const WIN = 'Framed Opening — Window (Custom Size)';
   const DOOR = 'Framed Opening — Custom Frame Out (Custom Size)';
-  it('blank size: no footprint (w 0 -> the model skips it), while drawing / pricing still default to 10x8', () => {
-    const el = entry({ 'fo-cw': '', 'fo-ch': '', 'fo-unit': 'ft', 'fo-sill': '4.17' });
-    expect(F.ovlFoDims(el, WIN)!.w).toBe(0);
-    expect(F.ovlFoDims(el, DOOR)!.w).toBe(0);
-    expect(F.foCustomFeet(el)).toEqual({ w: 10, h: 8 });
-    // a zero-width item can never clash with anything
-    expect(P.ovlIssues(30, [{ x: 5, w: 2.5, y: 10.5, h: 2.5 }, { x: 5, w: 0, y: 0, h: 8 }])).toEqual([]);
+  it('blank width or height: the 10x8 default footprint stays for the layout (as ever) but nf says it is never refused / flagged', () => {
+    for (const [cw, ch] of [['', ''], ['4', ''], ['', '5']]) {
+      const d = F.ovlFoDims(entry({ 'fo-cw': cw, 'fo-ch': ch, 'fo-unit': 'ft', 'fo-sill': '4.17' }), WIN)!;
+      expect(d.nf).toBe(true);
+      expect({ w: d.w, h: d.h }).toEqual(F.foCustomFeet(entry({ 'fo-cw': cw, 'fo-ch': ch, 'fo-unit': 'ft' })));
+    }
+    expect(F.foCustomFeet(entry({ 'fo-cw': '', 'fo-ch': '', 'fo-unit': 'ft' }))).toEqual({ w: 10, h: 8 });
   });
   it('entered size + entered sill are used as typed (inches too); window-type frames sit raised', () => {
-    expect(F.ovlFoDims(entry({ 'fo-cw': '3', 'fo-ch': '3', 'fo-unit': 'ft', 'fo-sill': '6' }), WIN)).toEqual({ w: 3, h: 3, yo: 6 });
-    expect(F.ovlFoDims(entry({ 'fo-cw': '36', 'fo-ch': '36', 'fo-unit': 'in', 'fo-sill': '4.17' }), WIN)).toEqual({ w: 3, h: 3, yo: 4.17 });
-    expect(F.ovlFoDims(entry({ 'fo-cw': '10', 'fo-ch': '8', 'fo-unit': 'ft', 'fo-sill': '6' }), DOOR)).toEqual({ w: 10, h: 8, yo: 0 });
+    expect(F.ovlFoDims(entry({ 'fo-cw': '3', 'fo-ch': '3', 'fo-unit': 'ft', 'fo-sill': '6' }), WIN)).toEqual({ w: 3, h: 3, yo: 6, nf: false });
+    expect(F.ovlFoDims(entry({ 'fo-cw': '36', 'fo-ch': '36', 'fo-unit': 'in', 'fo-sill': '4.17' }), WIN)).toEqual({ w: 3, h: 3, yo: 4.17, nf: false });
+    expect(F.ovlFoDims(entry({ 'fo-cw': '10', 'fo-ch': '8', 'fo-unit': 'ft', 'fo-sill': '6' }), DOOR)).toEqual({ w: 10, h: 8, yo: 0, nf: false });
   });
   it('under two high windows with >= 2 ft clear it is accepted; closer is blocked', () => {
     const d = F.ovlFoDims(entry({ 'fo-cw': '3', 'fo-ch': '3', 'fo-unit': 'ft', 'fo-sill': '4.17' }), WIN)!;

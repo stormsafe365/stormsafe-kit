@@ -161,7 +161,7 @@ function hasTypedPos(entry: Element, i: number): boolean {
  * auto-sets its side frames from that auto spot (runTrussChecks), so the 3D
  * keeps drawing it exactly where it was priced. The program is not touched.
  */
-function spreadAutoPlaced(out: DesiredOpening[], faceOf: Map<DesiredOpening, number>, autoOf: Map<DesiredOpening, boolean>) {
+function spreadAutoPlaced(out: DesiredOpening[], faceOf: Map<DesiredOpening, number>, autoOf: Map<DesiredOpening, boolean>, unsized: Set<DesiredOpening>) {
   const bySide = new Map<WallSide, DesiredOpening[]>();
   for (const d of out) {
     const l = bySide.get(d.side);
@@ -177,8 +177,9 @@ function spreadAutoPlaced(out: DesiredOpening[], faceOf: Map<DesiredOpening, num
         width: d.width,
         group: d.entry,
         movable: !!autoOf.get(d) && !(eave && (d.type === 'walkDoor' || d.type === 'window' || d.type === 'frameOut')),
-        sill: d.sillHeight,
-        height: d.height,
+        // a custom frame-out with a blank size keeps its 10x8 default footprint but has NO known height (the program's rule: shares height with everything)
+        sill: unsized.has(d) ? undefined : d.sillHeight,
+        height: unsized.has(d) ? undefined : d.height,
       })),
       faceOf.get(list[0]) ?? 0,
     );
@@ -231,6 +232,8 @@ function readOpenings(
   // Per item: its wall's face width and whether the program auto-placed it (for spreadAutoPlaced).
   const faceOf = new Map<DesiredOpening, number>();
   const autoOf = new Map<DesiredOpening, boolean>();
+  const unsized = new Set<DesiredOpening>(); // custom frame-outs with a blank width or height
+  let nextUnsized = false;
 
   const push = (el: Element, loc: string, qty: number, itemW: number, itemH: number, type: string, extraH?: number) => {
     const side = SIDE_MAP[loc];
@@ -278,6 +281,7 @@ function readOpenings(
       out.push(d);
       faceOf.set(d, face);
       autoOf.set(d, !hasTypedPos(el, i));
+      if (nextUnsized) unsized.add(d);
     });
   };
 
@@ -339,10 +343,12 @@ function readOpenings(
       foH = 6.67;
       foYo = 0;
     }
+    nextUnsized = comp.indexOf('(Custom Size)') >= 0 && !(fnum(el, '.fo-cw') > 0 && fnum(el, '.fo-ch') > 0);
     push(el, loc, qty, foW, foH, 'fo', foYo);
+    nextUnsized = false;
   });
 
-  spreadAutoPlaced(out, faceOf, autoOf);
+  spreadAutoPlaced(out, faceOf, autoOf, unsized);
   return out;
 }
 

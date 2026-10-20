@@ -93,7 +93,7 @@ describe('spreadAutoOverlaps', () => {
 describe('BuildHost wiring (source check)', () => {
   const src = readFileSync(fileURLToPath(new URL('../../build/BuildHost.tsx', import.meta.url)), 'utf8');
   it('readOpenings spreads auto-placed items, keeping eave walk doors / windows / framed openings (side-frame priced) fixed', () => {
-    expect(src).toMatch(/spreadAutoPlaced\(out, faceOf, autoOf\);\s*return out;/);
+    expect(src).toMatch(/spreadAutoPlaced\(out, faceOf, autoOf, unsized\);\s*return out;/);
     expect(src).toMatch(/movable: !!autoOf\.get\(d\) && !\(eave && \(d\.type === 'walkDoor' \|\| d\.type === 'window' \|\| d\.type === 'frameOut'\)\)/);
     // the program is only read: no position is written back by the spread
     const fn = src.slice(src.indexOf('function spreadAutoPlaced'), src.indexOf('function readOpenings'));

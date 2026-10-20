@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseSeed, cleanSeedContact } from '../src/model/seed';
 import { fetchLink, checkLink } from '../src/send';
-import { applyLinkResult, beginHold, prefillContact, retryLinkCheck, runLinkCheck, startOverDesign } from '../src/linkStart';
+import { applyLinkResult, beginHold, prefillContact, startOverPlan, retryLinkCheck, runLinkCheck, startOverDesign } from '../src/linkStart';
 import { restoreDraft, saveDraftNow } from '../src/draft';
 import { useWebStore } from '../src/store';
 import { cloneDesign, DEFAULT_DESIGN, OLD_STARTER_OPENINGS, type WebDesign } from '../src/model/design';
@@ -117,6 +117,56 @@ describe('seed contact prefill on open', () => {
     prefillContact(null);
     prefillContact({ email: 'a@b.co' });
     expect(useWebStore.getState().contact.email).toBe('a@b.co');
+  });
+});
+
+
+describe('brand-new design on a link with the rep building', () => {
+  const realWindow = (globalThis as { window?: unknown }).window;
+  const mem = new Map<string, string>();
+  beforeEach(() => {
+    mem.clear();
+    (globalThis as { window?: unknown }).window = {
+      localStorage: { getItem: (k: string) => (mem.has(k) ? mem.get(k)! : null), setItem: (k: string, v: string) => mem.set(k, String(v)), removeItem: (k: string) => mem.delete(k) },
+    };
+    useWebStore.getState().setSeedHold(false);
+    useWebStore.getState().setLink(null, 'none');
+    useWebStore.getState().setBlankFromSeed(false);
+  });
+  afterEach(() => {
+    (globalThis as { window?: unknown }).window = realWindow;
+  });
+  const seed = parseSeed(env())!;
+  it('the plan: the rep design goes straight to the builder; a brand-new one starts the questions', () => {
+    expect(startOverPlan(seed)).toEqual({ design: seed.design, guide: null, blank: false });
+    expect(startOverPlan(seed, 'seed').guide).toBe(null);
+    const b = startOverPlan(seed, 'blank');
+    expect(b.design).toBe(DEFAULT_DESIGN);
+    expect(b.guide).toBe('welcome');
+    expect(b.blank).toBe(true);
+    expect(startOverPlan(null)).toEqual({ design: DEFAULT_DESIGN, guide: 'welcome', blank: false });
+    expect(startOverPlan(null, 'blank').blank).toBe(false);
+  });
+  it('the blank choice is kept in the draft, so the next visit is the plain-link one and the draft wins', () => {
+    const st = useWebStore.getState();
+    st.setBlankFromSeed(true);
+    st.update((d) => {
+      d.length = 44;
+    });
+    saveDraftNow(TOK);
+    st.setBlankFromSeed(false);
+    expect(restoreDraft(TOK)).toBe(true);
+    expect(useWebStore.getState().blankFromSeed).toBe(true);
+    expect(useWebStore.getState().design.length).toBe(44);
+    // the rep building arriving after a restored draft changes nothing on the page
+    applyLinkResult(TOK, { status: 'ok', seed: env() }, { own: true, restored: true, hold: false });
+    expect(useWebStore.getState().design.length).toBe(44);
+    expect(useWebStore.getState().seed).not.toBe(null);
+    useWebStore.getState().setBlankFromSeed(false);
+    saveDraftNow(TOK);
+    useWebStore.getState().setBlankFromSeed(true);
+    restoreDraft(TOK);
+    expect(useWebStore.getState().blankFromSeed).toBe(false);
   });
 });
 

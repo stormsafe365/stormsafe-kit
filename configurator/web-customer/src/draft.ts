@@ -36,6 +36,7 @@ export function restoreDraft(token: string | null, now = Date.now()): boolean {
     if (BARNS.some((x) => x.key === j.gb)) st.setGuideBarn(j.gb as (typeof BARNS)[number]['key']);
     if (j.gm === 'help' || j.gm === 'know') st.setGuideMode(j.gm);
     if (typeof j.sentAt === 'number') st.setSent(j.sentAt);
+    st.setBlankFromSeed(j.bs === 1);
     if (typeof j.tab === 'string' && (TABS as string[]).includes(j.tab)) st.setTab(j.tab as TabKey);
     return true;
   } catch {
@@ -51,11 +52,11 @@ export function saveDraftNow(token: string | null): void {
     if (now.seedHold) return;
     // a link that has not answered yet: the untouched plain building is not the customer's work
     if (token && (now.link === 'checking' || now.link === 'offline') && isPlainStart(now.design, now.ctx)) return;
-    const { contact, sentAt, tab, guideStyle, guideBarn, guideMode } = useWebStore.getState();
+    const { contact, sentAt, tab, guideStyle, guideBarn, guideMode, blankFromSeed } = useWebStore.getState();
     // once the design is sent, the contact details are not kept on the device (only the ZIP for the county)
     const keep = sentAt ? { zip: contact.zip } : { name: contact.name, phone: contact.phone, email: contact.email, zip: contact.zip, notes: contact.notes };
     // blankStart: saved by a page that starts with a plain building (no old starter parts to take off)
-    window.localStorage.setItem(KEY(token), JSON.stringify({ t: Date.now(), blankStart: 1, state: currentState(), contact: keep, sentAt, tab, gs: guideStyle, gb: guideBarn, gm: guideMode }));
+    window.localStorage.setItem(KEY(token), JSON.stringify({ t: Date.now(), blankStart: 1, state: currentState(), contact: keep, sentAt, tab, gs: guideStyle, gb: guideBarn, gm: guideMode, bs: blankFromSeed ? 1 : 0 }));
   } catch {
     /* storage blocked or full: no draft */
   }

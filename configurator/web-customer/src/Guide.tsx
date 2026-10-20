@@ -19,7 +19,7 @@ const PICTURE = (k: string) => new URL(`./assets/guide/${k}.jpg`, import.meta.ur
 
 const dims = (p: SizePreset) => `${p.w}′ W × ${p.l}′ L × ${p.h}′ H`;
 
-export function Guide({ banner, onUndo, onStartOver }: { banner?: ReactNode; onUndo?: (() => void) | null; onStartOver?: () => void }) {
+export function Guide({ banner, onUndo, onStartOver }: { banner?: ReactNode; onUndo?: (() => void) | null; onStartOver?: (mode?: 'seed' | 'blank') => void }) {
   const step = useWebStore((s) => s.guide) as GuideStep;
   const setGuide = useWebStore((s) => s.setGuide);
   const style = useWebStore((s) => s.guideStyle);
@@ -119,9 +119,14 @@ export function Guide({ banner, onUndo, onStartOver }: { banner?: ReactNode; onU
             >
               Keep going with this design
             </button>
-            <button type="button" className="btn-ghost guide-btn guide-btn-2" disabled={link === 'checking' && !waited} onClick={() => onStartOver?.()}>
+            <button type="button" className="btn-ghost guide-btn guide-btn-2" disabled={link === 'checking' && !waited} onClick={() => onStartOver?.('seed')}>
               {seed ? "Start over from my rep's design" : 'Start a new design'}
             </button>
+            {seed ? (
+              <button type="button" className="btn-ghost guide-btn guide-btn-2" onClick={() => onStartOver?.('blank')}>
+                Start a brand-new design
+              </button>
+            ) : null}
             <p className="guide-small">Questions? <a href="tel:+15617715555">561-771-5555</a></p>
           </>
         )}

@@ -37,6 +37,14 @@ export function beginHold(capMs = HOLD_CAP_MS): void {
   }, capMs);
 }
 
+export type StartOverMode = 'seed' | 'blank';
+
+/** What Start over does on this page: back to the rep's building (straight to the builder) or a brand-new design (the guided questions). */
+export function startOverPlan(seed: { design: WebDesign } | null, mode: StartOverMode = 'seed'): { design: WebDesign; guide: 'welcome' | null; blank: boolean } {
+  const useSeed = !!seed && mode === 'seed';
+  return { design: startOverDesign(useSeed ? seed : null), guide: useSeed ? null : 'welcome', blank: !!seed && !useSeed };
+}
+
 /** What the rep already has goes into the EMPTY send-form boxes only (the customer can change it; never over what was typed). */
 export function prefillContact(contact: SeedContact | null): void {
   if (!contact) return;

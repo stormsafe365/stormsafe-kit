@@ -54,6 +54,9 @@ interface WebStore {
   /** The building the rep's link opened on (null = none): Start over goes back to it. */
   seed: Seed | null;
   setSeed: (s: Seed | null) => void;
+  /** The customer chose a brand-new design on a link that has the rep's building: Back / questions are the plain ones. */
+  blankFromSeed: boolean;
+  setBlankFromSeed: (b: boolean) => void;
   /** True while the page waits for the link's building: nothing is saved as a draft yet. */
   seedHold: boolean;
   setSeedHold: (b: boolean) => void;
@@ -114,6 +117,8 @@ export const useWebStore = create<WebStore>((set, get) => ({
   },
   seed: null,
   setSeed: (seed) => set({ seed }),
+  blankFromSeed: false,
+  setBlankFromSeed: (blankFromSeed) => set({ blankFromSeed }),
   seedHold: false,
   setSeedHold: (seedHold) => set({ seedHold }),
   seedNote: false,

@@ -15,7 +15,7 @@ import { ft } from './panels/ui';
 import { cameraApi } from './cameraFit';
 import { revealInPanel } from './reveal';
 import { Guide } from './Guide';
-import { prefillContact, startOverDesign } from './linkStart';
+import { prefillContact, startOverPlan, type StartOverMode } from './linkStart';
 
 // The steps, in order (owner 10/16/26: building type + size, components, add-ons /
 // upgrades, colors, then the customer's contact + "Send to my steel building rep").
@@ -135,7 +135,7 @@ function StepsMenu({ steps, i }: { steps: Array<{ key: TabKey; title: string }>;
 function StepNav() {
   const tab = useWebStore((s) => s.tab);
   const setTab = useWebStore((s) => s.setTab);
-  const seeded = useWebStore((s) => !!s.seed);
+  const seeded = useWebStore((s) => !!s.seed && !s.blankFromSeed);
   const steps = useSteps();
   const i = steps.findIndex((t) => t.key === tab);
   const prev = i > 0 ? steps[i - 1] : null;
@@ -416,7 +416,7 @@ function useBarEdges(bar: RefObject<HTMLElement>, count: number) {
  * want to clear what theyve built and start from scratch"). It asks first, in a small box with two
  * plain buttons (no window.confirm: a website frame may block dialogs).
  */
-function StartOver({ onConfirm, seeded }: { onConfirm: () => void; seeded: boolean }) {
+function StartOver({ onConfirm, seeded }: { onConfirm: (mode: StartOverMode) => void; seeded: boolean }) {
   const [asking, setAsking] = useState(false);
   const keepRef = useRef<HTMLButtonElement>(null);
   const openRef = useRef<HTMLButtonElement>(null);
@@ -450,14 +450,25 @@ function StartOver({ onConfirm, seeded }: { onConfirm: () => void; seeded: boole
         <div className="confirm-back" onClick={() => { setAsking(false); openRef.current?.focus(); }}>
           <div className="confirm-card" role="alertdialog" aria-modal="true" aria-labelledby="so-title" aria-describedby="so-text" onClick={(e) => e.stopPropagation()}>
             <h2 id="so-title">Start over?</h2>
-            <p id="so-text">{seeded ? 'This puts your building back the way your rep set it up.' : 'This clears your building - the size, doors, windows, lean-tos, upgrades and colors - so you can begin again.'}</p>
+            <p id="so-text">{seeded ? 'Go back to the building your rep set up (this puts it back the way your rep set it up), or begin a brand-new design.' : 'This clears your building - the size, doors, windows, lean-tos, upgrades and colors - so you can begin again.'}</p>
             <div className="confirm-actions">
               <button type="button" className="btn-ghost" ref={keepRef} onClick={() => { setAsking(false); openRef.current?.focus(); }}>
                 Keep my design
               </button>
-              <button type="button" className="btn-primary" onClick={() => { setAsking(false); onConfirm(); }}>
-                Yes, start over
-              </button>
+              {seeded ? (
+                <>
+                  <button type="button" className="btn-ghost" onClick={() => { setAsking(false); onConfirm('blank'); }}>
+                    A brand-new design
+                  </button>
+                  <button type="button" className="btn-primary" onClick={() => { setAsking(false); onConfirm('seed'); }}>
+                    Back to my rep’s design
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="btn-primary" onClick={() => { setAsking(false); onConfirm('seed'); }}>
+                  Yes, start over
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -474,6 +485,7 @@ export function App() {
   const setGuide = useWebStore((s) => s.setGuide);
   const seed = useWebStore((s) => s.seed);
   const seedNote = useWebStore((s) => s.seedNote);
+  const blankFromSeed = useWebStore((s) => s.blankFromSeed);
   const setGuideStyle = useWebStore((s) => s.setGuideStyle);
   const setGuideBarn = useWebStore((s) => s.setGuideBarn);
   const replace = useWebStore((s) => s.replace);
@@ -503,9 +515,11 @@ export function App() {
     const t = setTimeout(() => setCleared(false), 10000);
     return () => clearTimeout(t);
   }, [cleared, guide]);
-  const startOver = () => {
+  const startOver = (mode: StartOverMode = 'seed') => {
     const before = { design: useWebStore.getState().design, tab };
-    replace(startOverDesign(seed));
+    const plan = startOverPlan(seed, mode);
+    useWebStore.getState().setBlankFromSeed(plan.blank);
+    replace(plan.design);
     undoRef.current = { ...before, fresh: useWebStore.getState().design };
     // a shared link on a shared phone / computer: the next person must not inherit the last one's name, phone and email
     // (the name / phone / email the rep gave for THIS link's building are put back just below: they came from the rep's own link)
@@ -530,7 +544,7 @@ export function App() {
     if (!FRAMED) {
       setGuideStyle(null);
       setGuideBarn(null);
-      setGuide(seed ? null : 'welcome');
+      setGuide(plan.guide);
       return;
     }
     setTimeout(() => document.querySelector<HTMLButtonElement>('.cleared .linkish')?.focus(), 60);
@@ -608,7 +622,7 @@ export function App() {
           <div className="cleared-slot" role="status">
           {cleared ? (
         <p className="cleared">
-          {seed ? 'Back to the building your rep set up.' : 'Started over with a plain building.'}{' '}
+          {seed && !blankFromSeed ? 'Back to the building your rep set up.' : 'Started over with a plain building.'}{' '}
           <button
             type="button"
             className="linkish"

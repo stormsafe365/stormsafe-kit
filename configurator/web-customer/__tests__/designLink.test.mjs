@@ -30,25 +30,31 @@ describe('link token', () => {
 
 describe('contact checks', () => {
   const c = (o) => ({ ...EMPTY_CONTACT, ...o });
-  it('needs a name and a phone or an email', () => {
-    expect(checkContact(c({}))).toMatchObject({ name: expect.any(String), phone: expect.any(String) });
-    expect(checkContact(c({ name: 'Jane', phone: '561-555-0100' }))).toEqual({});
-    expect(checkContact(c({ name: 'Jane', email: 'jane@example.com' }))).toEqual({});
+  // owner 10/19/26: name, phone, email AND ZIP are all required
+  const ok = { name: 'Jane', phone: '561-555-0100', email: 'jane@example.com', zip: '33401' };
+  it('needs a name, a phone, an email and a ZIP', () => {
+    expect(checkContact(c({}))).toMatchObject({ name: expect.any(String), phone: expect.any(String), email: expect.any(String), zip: expect.any(String) });
+    expect(checkContact(c(ok))).toEqual({});
+    expect(checkContact(c({ ...ok, email: '' }))).toEqual({ email: expect.stringMatching(/email/i) });
+    expect(checkContact(c({ ...ok, phone: '' }))).toEqual({ phone: expect.stringMatching(/phone/i) });
+    expect(checkContact(c({ ...ok, zip: '' }))).toEqual({ zip: expect.stringMatching(/ZIP/) });
+    expect(checkContact(c({ ...ok, zip: '  ' }))).toEqual({ zip: expect.stringMatching(/ZIP/) });
   });
   it('rejects what the database rejects', () => {
-    expect(checkContact(c({ name: 'Jane', phone: '555-0100' })).phone).toBeTruthy();
-    expect(checkContact(c({ name: 'Jane', phone: '561<b>5550100' })).phone).toBeTruthy();
-    expect(checkContact(c({ name: 'Jane', email: 'nope' })).email).toBeTruthy();
-    expect(checkContact(c({ name: 'Jane', phone: '5615550100', zip: '3340' })).zip).toBeTruthy();
-    expect(checkContact(c({ name: 'x'.repeat(121), phone: '5615550100' })).name).toBeTruthy();
-    expect(checkContact(c({ name: 'Jane', phone: '5615550100', notes: 'x'.repeat(2001) })).notes).toBeTruthy();
+    expect(checkContact(c({ ...ok, phone: '555-0100' })).phone).toBeTruthy();
+    expect(checkContact(c({ ...ok, phone: '561<b>5550100' })).phone).toBeTruthy();
+    expect(checkContact(c({ ...ok, email: 'nope' })).email).toBeTruthy();
+    expect(checkContact(c({ ...ok, zip: '3340' })).zip).toBeTruthy();
+    expect(checkContact(c({ ...ok, name: 'x'.repeat(121) })).name).toBeTruthy();
+    expect(checkContact(c({ ...ok, notes: 'x'.repeat(2001) })).notes).toBeTruthy();
     // markup in a name, odd email shapes (the database refuses them too)
-    expect(checkContact(c({ name: '<img src=x>', phone: '5615550100' })).name).toBeTruthy();
-    expect(checkContact(c({ name: 'Bob "Q" Smith', phone: '5615550100' })).name).toBeTruthy();
-    expect(checkContact(c({ name: 'Bob', email: 'a@b.co?cc=x%40evil.tld' })).email).toBeTruthy();
-    expect(checkContact(c({ name: "Mary O'Brien & Tom", email: 'Mary.OBrien+steel@Sub.Example.co' }))).toEqual({});
-    expect(checkContact(c({ name: 'Bob', phone: '5615550100', notes: 'gate code <1234>' })).notes).toBeTruthy();
+    expect(checkContact(c({ ...ok, name: '<img src=x>' })).name).toBeTruthy();
+    expect(checkContact(c({ ...ok, name: 'Bob "Q" Smith' })).name).toBeTruthy();
+    expect(checkContact(c({ ...ok, email: 'a@b.co?cc=x%40evil.tld' })).email).toBeTruthy();
+    expect(checkContact(c({ ...ok, name: "Mary O'Brien & Tom", email: 'Mary.OBrien+steel@Sub.Example.co' }))).toEqual({});
+    expect(checkContact(c({ ...ok, notes: 'gate code <1234>' })).notes).toBeTruthy();
     expect(FIELD_ERRORS.bad_notes.field).toBe('notes');
+    expect(FIELD_ERRORS.need_zip.field).toBe('zip');
   });
   it('error texts never mention the CRM and always give the phone number', () => {
     for (const code of ['link_expired', 'link_invalid', 'too_many', 'server', 'offline', 'bad_name']) {
@@ -79,7 +85,7 @@ describe('send body', () => {
   it('trims the contact, carries the design, spec, picture and honeypot', () => {
     const state = { schema: 'ss-web-design', v: 1, design: {}, ctx: {} };
     const b = submitBody({ token: TOK, contact: { name: ' Jane ', phone: ' 5615550100 ', email: '', zip: '33401', notes: ' hi ', website: '' }, state, spec: 's', image: null });
-    expect(b).toEqual({ t: TOK, name: 'Jane', phone: '5615550100', email: '', zip: '33401', notes: 'hi', website: '', design: state, spec: 's', image: null });
+    expect(b).toEqual({ v: 2, t: TOK, name: 'Jane', phone: '5615550100', email: '', zip: '33401', notes: 'hi', website: '', design: state, spec: 's', image: null });
   });
   it('submitDesign / checkLink read the server answers', async () => {
     const ok = async () => new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -126,7 +132,7 @@ const rpcErr = (m) => new Response(JSON.stringify({ code: 'P0001', message: m, d
 const SITE = 'https://stormsafe-design.pages.dev';
 const post = (body, headers = {}) =>
   new Request(`${SITE}/api/submit`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: SITE, ...headers }, body: typeof body === 'string' ? body : JSON.stringify(body) });
-const goodBody = () => ({ t: TOK, name: 'Jane', phone: '5615550100', email: '', zip: '33401', notes: '', website: '', design: { schema: 'ss-web-design', v: 1, design: {} }, spec: 'spec', image: 'data:image/jpeg;base64,QUJD' });
+const goodBody = () => ({ v: 2, t: TOK, name: 'Jane', phone: '5615550100', email: 'jane@example.com', zip: '33401', notes: '', website: '', design: { schema: 'ss-web-design', v: 1, design: {} }, spec: 'spec', image: 'data:image/jpeg;base64,QUJD' });
 
 describe('server: /api/submit', () => {
   it('calls submit_design with the key and the fields, answers ok', async () => {
@@ -185,6 +191,66 @@ describe('server: /api/submit', () => {
     expect((await handleSubmit(post({ ...goodBody(), image: 'data:text/html;base64,PGI+' }), CFG, db.f)).status).toBe(400);
     expect((await handleSubmit(post({ ...goodBody(), image: 'data:image/jpeg;base64,' + 'A'.repeat(900001) }), CFG, db.f)).status).toBe(400);
     expect(db.calls).toHaveLength(0);
+  });
+  it('phone, email and ZIP are all required (owner 10/19/26): refused before the database', async () => {
+    const db = fakeDb(() => rpcOk('ok'));
+    for (const [body, code] of [
+      [{ ...goodBody(), email: '' }, 'need_contact'],
+      [{ ...goodBody(), email: '   ' }, 'need_contact'],
+      [{ ...goodBody(), phone: '' }, 'need_contact'],
+      [{ ...goodBody(), zip: '' }, 'need_zip'],
+      [{ ...goodBody(), zip: '3340' }, 'need_zip'],
+      [{ ...goodBody(), zip: 33401 }, 'need_zip'],
+    ]) {
+      const r = await handleSubmit(post(body), CFG, db.f);
+      expect(r.status).toBe(400);
+      expect(await r.json()).toEqual({ ok: false, error: code });
+    }
+    expect(db.calls).toHaveLength(0);
+    expect((await handleSubmit(post({ ...goodBody(), zip: ' 33401 ' }), CFG, db.f)).status).toBe(200); // the database trims it
+  });
+  it('a tab still on the previous page build (no v marker) keeps the database rule: phone OR email, ZIP optional', async () => {
+    const db = fakeDb(() => rpcOk('ok'));
+    const old = { ...goodBody(), email: '', zip: '' };
+    delete old.v;
+    const r = await handleSubmit(post(old), CFG, db.f);
+    expect(r.status).toBe(200);
+    expect(db.calls.map((c) => c.url.split('/').pop())).toEqual(['design_link_status', 'submit_design']);
+    // the same body from the website is held to the new rule regardless of the marker
+    const web = await handleSubmit(post(old, { Origin: 'https://stormsafe365.github.io' }), CFG, db.f);
+    expect(web.status).toBe(400);
+    expect(await web.json()).toEqual({ ok: false, error: 'need_contact' });
+  });
+  it('the website (stormsafe365.github.io) may post a design: preflight + CORS headers; strangers still refused', async () => {
+    const WEB = 'https://stormsafe365.github.io';
+    const pre = (origin) => new Request(`${SITE}/api/submit`, { method: 'OPTIONS', headers: { Origin: origin, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type' } });
+    const db = fakeDb(() => rpcOk('ok'));
+    // the browser asks first
+    const p = await handleSubmit(pre(WEB), CFG, db.f);
+    expect(p.status).toBe(204);
+    expect(p.headers.get('Access-Control-Allow-Origin')).toBe(WEB);
+    expect(p.headers.get('Access-Control-Allow-Methods')).toBe('POST');
+    expect(p.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type');
+    expect(p.headers.get('Vary')).toBe('Origin');
+    expect((await handleSubmit(pre('https://evil.example'), CFG, db.f)).status).toBe(403);
+    expect((await handleSubmit(pre('https://evil.example'), CFG, db.f)).headers.get('Access-Control-Allow-Origin')).toBe(null);
+    expect(db.calls).toHaveLength(0);
+    // then the design, with the answer readable by the website
+    const r = await handleSubmit(post(goodBody(), { Origin: WEB }), CFG, db.f);
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ ok: true });
+    expect(r.headers.get('Access-Control-Allow-Origin')).toBe(WEB);
+    expect(db.calls).toHaveLength(2);
+    // a refusal is readable too (the website shows nothing to the customer, but can log it)
+    const bad = await handleSubmit(post({ ...goodBody(), zip: '' }, { Origin: WEB }), CFG, db.f);
+    expect(bad.status).toBe(400);
+    expect(bad.headers.get('Access-Control-Allow-Origin')).toBe(WEB);
+    // the page itself: no CORS headers needed, none given; a stranger: refused, no headers
+    const same = await handleSubmit(post(goodBody()), CFG, db.f);
+    expect(same.headers.get('Access-Control-Allow-Origin')).toBe(null);
+    const evil = await handleSubmit(post(goodBody(), { Origin: 'https://evil.example' }), CFG, db.f);
+    expect(evil.status).toBe(403);
+    expect(evil.headers.get('Access-Control-Allow-Origin')).toBe(null);
   });
   it('honeypot: pretends to work, stores nothing', async () => {
     const db = fakeDb(() => rpcOk('ok'));

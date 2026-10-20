@@ -30,8 +30,8 @@ export function applyType(d: WebDesign, t: WebBuildingType) {
   if (from === 'combo') for (const o of d.openings) if (o.wall === 'partition') o.wall = 'front';
   // Doors on walls that are now open go away with the type change.
   d.openings = d.openings.filter((o) => wallTakesOpenings(d, o.wall));
-  if (!isWideSpan(d.width) || t === 'garage') return;
-  d.width = 30; // wide span is a garage only
+  if (!isWideSpan(d.width) || t !== 'combo') return;
+  d.width = 30; // a garage + carport (the quote's GCH) is 12′–30′ wide; a garage or carport keeps its wide span
 }
 
 export function SizePanel() {

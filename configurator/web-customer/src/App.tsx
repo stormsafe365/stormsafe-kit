@@ -3,6 +3,7 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { WebViewport } from './WebViewport';
 import { useWebStore, type TabKey } from './store';
 import { DEFAULT_DESIGN, hasWalkDoorOrWindow, TYPE_LABEL } from './model/design';
+import { EMPTY_CONTACT } from './model/link';
 import { SizePanel } from './panels/SizePanel';
 import { WallsPanel } from './panels/WallsPanel';
 import { OpeningsPanel } from './panels/OpeningsPanel';
@@ -56,7 +57,7 @@ const STEP_HELP: Record<TabKey, { text: string | ((s: ReturnType<typeof useWebSt
     text: (s) =>
       s.sentAt ? 'Your rep has your design. Changed something? You can send it again.'
         : !s.token || s.link === 'none' || s.link === 'invalid' || s.link === 'expired' ? 'To send it, open the design link your rep texted you, or call us.'
-        : 'Add your name and a phone number or email, then send your design to your rep. It is free.',
+        : 'Add your name, phone, email and ZIP code, then send your design to your rep. It is free.',
   },
 };
 
@@ -485,6 +486,9 @@ export function App() {
     const before = { design: useWebStore.getState().design, tab };
     replace(DEFAULT_DESIGN);
     undoRef.current = { ...before, fresh: useWebStore.getState().design };
+    // a shared link on a shared phone / computer: the next person must not inherit the last one's name, phone and email
+    useWebStore.getState().setContact({ ...EMPTY_CONTACT });
+    useWebStore.getState().setSent(null);
     const ed = useEditorStore.getState();
     ed.selectOpening(null);
     ed.selectLeanToOpening(null);

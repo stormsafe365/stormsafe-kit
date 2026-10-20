@@ -48,6 +48,17 @@ describe('buildSpec — the plain-text design spec', () => {
     expect(s).toContain('Roof: Vertical roof, 3:12 pitch (standard)');
   });
 
+  it('a 32′+ building names the quote’s Wide Span type (a 40′ carport is not the quote’s 12′–30′ Carport)', () => {
+    const d = cloneDesign(SAMPLE_DESIGN);
+    d.type = 'carport';
+    d.walls = { front: 'gableOnly', back: 'closed', left: 'closed', right: 'closed' };
+    d.width = 40;
+    d.height = 14;
+    const s = buildSpec(normalizeDesign(d, false), ctx);
+    expect(s).toContain("Building: Carport (Wide Span building type in the quote, walls as listed) — 40' W × 30' L × 14' H");
+    expect(buildSpec(normalizeDesign(SAMPLE_DESIGN, false), ctx)).not.toContain('Wide Span');
+  });
+
   it('gives every door / window its wall, size and position in the program’s words', () => {
     const s = buildSpec(normalizeDesign(SAMPLE_DESIGN, false), ctx);
     expect(s).toContain("1. Roll-up door 10' W × 8' H, White — Front end, 7' from the left eave corner to its near edge");

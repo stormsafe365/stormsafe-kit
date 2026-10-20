@@ -20,7 +20,7 @@ export interface ReviewRow {
 
 /** The rows, in step order (pure: tested). */
 export function reviewRows(d: WebDesign): ReviewRow[] {
-  const building = `${TYPE_LABEL[d.type]}: ${ft(d.width)} W × ${ft(d.length)} L × ${ft(d.height)} H`;
+  const building = `${TYPE_LABEL[d.type]}${d.width >= 32 ? ' (wide span)' : ''}: ${ft(d.width)} W × ${ft(d.length)} L × ${ft(d.height)} H`;
   const sizeLines = [building];
   if (d.type === 'combo') sizeLines.push(`Closed room ${ft(d.enclosedLength)} long in back, open carport ${ft(d.length - d.enclosedLength)} in front`);
   const parts = d.openings.map((o) => `${partTitle(o)} · ${WALL_LABEL[o.wall]}`);

@@ -29,10 +29,11 @@ export interface SubmitPayload {
   image: string | null;
 }
 
-/** The JSON body the server function expects (trimmed contact fields). */
+/** The JSON body the server function expects (trimmed contact fields). v: 2 = this build asks for phone, email AND ZIP (the server then insists too). */
 export function submitBody(p: SubmitPayload) {
   const c = p.contact;
   return {
+    v: 2,
     t: p.token,
     name: c.name.trim(),
     phone: c.phone.trim(),

@@ -19,8 +19,22 @@ const HEADERS = {
   'Referrer-Policy': 'no-referrer',
 };
 
-export function json(body, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: HEADERS });
+/**
+ * Other sites allowed to post a design here, besides the design page itself: the
+ * website's Customize page (it runs at stormsafe365.github.io inside the Wix site)
+ * sends every website design to the CRM too (owner 10/19/26). A browser on one of
+ * these sites asks first (OPTIONS) and then reads the answer, so both carry the
+ * CORS headers; any other site is refused as before.
+ */
+export const PARTNER_ORIGINS = new Set(['https://stormsafe365.github.io', 'https://www.stormsafesteel.com', 'https://stormsafesteel.com']);
+
+/** The CORS headers for a partner site's request ({} for the page itself and for strangers). */
+export function corsHeaders(origin) {
+  return origin && PARTNER_ORIGINS.has(origin) ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {};
+}
+
+export function json(body, status = 200, extra = {}) {
+  return new Response(JSON.stringify(body), { status, headers: { ...HEADERS, ...extra } });
 }
 
 function rpc(cfg, fn, args, f) {
@@ -90,37 +104,50 @@ export async function handleLink(request, cfg, f = fetch) {
 }
 
 export async function handleSubmit(request, cfg, f = fetch) {
-  if (request.method !== 'POST') return json({ ok: false, error: 'method' }, 405);
-  // Only the design page itself (same site) may post.
   const origin = request.headers.get('Origin');
-  if (origin && origin !== new URL(request.url).origin) return json({ ok: false, error: 'origin' }, 403);
-  if (Number(request.headers.get('Content-Length') || 0) > MAX_BODY) return json({ ok: false, error: 'too_long' }, 413);
+  const cors = corsHeaders(origin);
+  const out = (body, status) => json(body, status, cors);
+  if (request.method === 'OPTIONS') {
+    // a partner site's browser asking whether it may post: yes (for a day); anyone else: no
+    if (!cors['Access-Control-Allow-Origin']) return new Response(null, { status: 403, headers: { 'Cache-Control': 'no-store' } });
+    return new Response(null, { status: 204, headers: { ...cors, 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400', 'Cache-Control': 'no-store' } });
+  }
+  if (request.method !== 'POST') return out({ ok: false, error: 'method' }, 405);
+  // Only the design page itself (same site) and the partner sites may post.
+  if (origin && origin !== new URL(request.url).origin && !PARTNER_ORIGINS.has(origin)) return out({ ok: false, error: 'origin' }, 403);
+  if (Number(request.headers.get('Content-Length') || 0) > MAX_BODY) return out({ ok: false, error: 'too_long' }, 413);
   const text = await readLimited(request, MAX_BODY);
-  if (text === null) return json({ ok: false, error: 'too_long' }, 413);
+  if (text === null) return out({ ok: false, error: 'too_long' }, 413);
   let b;
   try {
     b = JSON.parse(text);
   } catch {
-    return json({ ok: false, error: 'bad_design' }, 400);
+    return out({ ok: false, error: 'bad_design' }, 400);
   }
-  if (!b || typeof b !== 'object' || Array.isArray(b)) return json({ ok: false, error: 'bad_design' }, 400);
+  if (!b || typeof b !== 'object' || Array.isArray(b)) return out({ ok: false, error: 'bad_design' }, 400);
   // Honeypot: a person never sees the "website" box. Pretend it worked; store nothing.
-  if (typeof b.website === 'string' && b.website.trim()) return json({ ok: true });
-  if (typeof b.t !== 'string' || !TOKEN_RE.test(b.t)) return json({ ok: false, error: 'link_invalid' }, 403);
+  if (typeof b.website === 'string' && b.website.trim()) return out({ ok: true });
+  if (typeof b.t !== 'string' || !TOKEN_RE.test(b.t)) return out({ ok: false, error: 'link_invalid' }, 403);
   const d = b.design;
-  if (!d || typeof d !== 'object' || Array.isArray(d) || d.schema !== 'ss-web-design') return json({ ok: false, error: 'bad_design' }, 400);
+  if (!d || typeof d !== 'object' || Array.isArray(d) || d.schema !== 'ss-web-design') return out({ ok: false, error: 'bad_design' }, 400);
   const image = typeof b.image === 'string' && b.image ? b.image : null;
+  // Owner 10/19/26: phone, email and ZIP are all required (the database alone takes a phone OR an email).
+  // Enforced for this page build (it sends v: 2) and for the partner sites; a tab still holding the previous
+  // page build (no marker, phone-or-email form) keeps the database's rule so it is not dead-ended mid-send.
+  const strict = (typeof b.v === 'number' && b.v >= 2) || PARTNER_ORIGINS.has(origin || '');
+  if (strict && (!str(b.phone, 60).trim() || !str(b.email, 200).trim())) return out({ ok: false, error: 'need_contact' }, 400);
+  if (strict && !/^\d{5}$/.test(str(b.zip, 12).trim())) return out({ ok: false, error: 'need_zip' }, 400);
   // The database checks these too; checking here keeps big junk away from it.
-  if (JSON.stringify(d).length > MAX_DESIGN_CHARS) return json({ ok: false, error: 'bad_design' }, 400);
-  if (image && (image.length > MAX_IMAGE_CHARS || !IMAGE_RE.test(image))) return json({ ok: false, error: 'bad_image' }, 400);
+  if (JSON.stringify(d).length > MAX_DESIGN_CHARS) return out({ ok: false, error: 'bad_design' }, 400);
+  if (image && (image.length > MAX_IMAGE_CHARS || !IMAGE_RE.test(image))) return out({ ok: false, error: 'bad_image' }, 400);
   try {
     // A link that does not exist / has expired never gets the design sent to the database.
     const st = await rpc(cfg, 'design_link_status', { p_token: b.t }, f);
-    if (!st.ok) return json({ ok: false, error: 'server' }, 502);
+    if (!st.ok) return out({ ok: false, error: 'server' }, 502);
     const status = await st.json();
     if (status !== 'ok') {
       const code = status === 'expired' ? 'link_expired' : 'link_invalid';
-      return json({ ok: false, error: code }, 403);
+      return out({ ok: false, error: code }, 403);
     }
     const res = await rpc(
       cfg,
@@ -138,10 +165,10 @@ export async function handleSubmit(request, cfg, f = fetch) {
       },
       f,
     );
-    if (res.ok) return json({ ok: true });
+    if (res.ok) return out({ ok: true });
     const code = await rpcError(res);
-    return json({ ok: false, error: code }, statusFor(code));
+    return out({ ok: false, error: code }, statusFor(code));
   } catch {
-    return json({ ok: false, error: 'server' }, 502);
+    return out({ ok: false, error: 'server' }, 502);
   }
 }

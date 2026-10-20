@@ -79,8 +79,8 @@ describe('guided starting sizes', () => {
 
   it('raised center barn: the drop follows the wall height (10 or less 1′, 11-14 2′, 15-16 3′, 18-20 4′)', () => {
     for (const [h, drop] of [[6, 1], [8, 1], [10, 1], [11, 2], [12, 2], [14, 2], [15, 3], [16, 3], [17, 3], [18, 4], [20, 4]] as const) expect(raisedDrop(h)).toBe(drop);
-    // and the exact join is built at every wall height from 9′ to 20′ (a 3:12 lean-to where 2:12 has no leg that fits)
-    for (let h = 9; h <= 20; h++) {
+    // and the exact join is built at every wall height the page offers from 9′ up (no 19′: the quote has none)
+    for (const h of [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20]) {
       const d = cloneDesign(DEFAULT_DESIGN);
       applyStyle(d, 'ag', { label: '', w: h > 16 ? 40 : 24, l: 40, h }, 'raised');
       const n = normalizeDesign(d, false);
@@ -106,9 +106,20 @@ describe('guided starting sizes', () => {
     expect(normalizeDesign(d, false).walls).toEqual(carport.walls);
   });
 
-  it('wide span (40 wide) is only offered as a closed garage', () => {
+  it('wide span (40 wide) is a common-size card for the garage only, but the width list offers it to a carport too', () => {
     const wide = STYLES.filter((p) => p.sizes.some((s) => isWideSpan(s.w)));
     expect(wide.map((p) => p.key)).toEqual(['garage']);
+    // owner 10/19/26: a partially enclosed building (a carport with walls) must go past 30′ wide, like the quote's Wide Span
+    expect(widthOptions('carport')).toContain(40);
+    expect(widthOptions('garage')).toContain(60);
+    expect(widthOptions('combo')).not.toContain(32); // garage + carport = the quote's GCH, 12′–30′
+    expect(Math.max(...widthOptions('combo'))).toBe(30);
+  });
+
+  it('wall heights match the quote: 6–18 and 20 on 12′–30′ (no 19′ anywhere), 8–18 and 20 on wide span', () => {
+    expect(heightOptions(30)).toEqual([6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20]);
+    expect(heightOptions(32)).toEqual([8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20]);
+    expect(heightOptions(60)).not.toContain(19);
   });
 
   it('a free-standing lean-to is not offered (the builder has no such building)', () => {

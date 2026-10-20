@@ -94,7 +94,9 @@ export function buildSpec(d: WebDesign, ctx: SpecContext): string {
   const L: string[] = [];
   L.push('StormSafe Steel — building design request (not a quote)');
   L.push('');
-  let size = `Building: ${TYPE_LABEL[d.type]} — ${dims3(d.width, d.length, d.height)}`;
+  // 32′ and wider is the quote's own Wide Span type (any walls), not its 12′–30′ Carport / Standard
+  const typeText = isWideSpan(d.width) ? `${TYPE_LABEL[d.type]} (Wide Span building type in the quote, walls as listed)` : TYPE_LABEL[d.type];
+  let size = `Building: ${typeText} — ${dims3(d.width, d.length, d.height)}`;
   if (d.type === 'combo') {
     size += ` (enclosed garage ${ftIn(d.enclosedLength)} at the back, open carport ${ftIn(d.length - d.enclosedLength)} at the front)`;
   }

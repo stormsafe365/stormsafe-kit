@@ -44,10 +44,13 @@ export function checkContact(c: Contact): Partial<Record<keyof Contact, string>>
   if (!name) e.name = 'Please enter your name.';
   else if (name.length > LIMITS.name) e.name = 'That name is too long.';
   else if (NAME_BAD_RE.test(name)) e.name = 'Please use letters, numbers and simple punctuation in your name.';
-  if (!phone && !email) e.phone = 'Please enter a phone number or an email so your rep can reach you.';
-  if (phone && (phone.length > LIMITS.phone || !/^[0-9 ()+.-]+$/.test(phone) || digits(phone).length < 10)) e.phone = 'Please enter a 10-digit phone number.';
-  if (email && (email.length > LIMITS.email || !EMAIL_RE.test(email.toLowerCase()))) e.email = 'Please check your email address.';
-  if (zip && !/^\d{5}$/.test(zip)) e.zip = 'Please enter a 5-digit ZIP code.';
+  // Owner 10/19/26: name, phone, email AND ZIP are all required (not phone or email).
+  if (!phone) e.phone = 'Please enter your phone number.';
+  else if (phone.length > LIMITS.phone || !/^[0-9 ()+.-]+$/.test(phone) || digits(phone).length < 10) e.phone = 'Please enter a 10-digit phone number.';
+  if (!email) e.email = 'Please enter your email address.';
+  else if (email.length > LIMITS.email || !EMAIL_RE.test(email.toLowerCase())) e.email = 'Please check your email address.';
+  if (!zip) e.zip = 'Please enter the 5-digit ZIP code where the building will go.';
+  else if (!/^\d{5}$/.test(zip)) e.zip = 'Please enter a 5-digit ZIP code.';
   if (c.notes.length > LIMITS.notes) e.notes = `Please keep notes under ${LIMITS.notes} characters.`;
   else if (/[<>]/.test(c.notes)) e.notes = 'Please leave out the < and > characters in your notes.';
   return e;
@@ -56,9 +59,10 @@ export function checkContact(c: Contact): Partial<Record<keyof Contact, string>>
 /** Server refusals that belong to one box on the form (that box gets the message). */
 export const FIELD_ERRORS: Record<string, { field: keyof Contact; text: string }> = {
   bad_name: { field: 'name', text: 'Please use letters, numbers and simple punctuation in your name.' },
-  need_contact: { field: 'phone', text: 'Please enter a phone number or an email so your rep can reach you.' },
+  need_contact: { field: 'phone', text: 'Please enter your phone number and your email address.' },
   bad_phone: { field: 'phone', text: 'Please enter a 10-digit phone number.' },
   bad_email: { field: 'email', text: 'Please check your email address.' },
+  need_zip: { field: 'zip', text: 'Please enter the 5-digit ZIP code where the building will go.' },
   bad_notes: { field: 'notes', text: 'Please leave out the < and > characters in your notes.' },
 };
 
@@ -78,6 +82,7 @@ export function sendErrorText(code: string): string {
     case 'bad_name':
       return 'Please use letters, numbers and simple punctuation in your name, then try again.';
     case 'need_contact':
+    case 'need_zip':
     case 'bad_phone':
     case 'bad_email':
     case 'too_long':

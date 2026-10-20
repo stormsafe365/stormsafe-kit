@@ -213,10 +213,9 @@ export function SendPanel() {
         Happy with your building? Send it to your rep. They will look it over and get back to you with a quote.
       </p>
       <TextInput label="Your name" k="name" autoComplete="name" maxLength={LIMITS.name} error={errors.name} required />
-      <TextInput label="Phone" k="phone" type="tel" autoComplete="tel" inputMode="tel" maxLength={LIMITS.phone} error={errors.phone} />
-      <TextInput label="Email" k="email" type="email" autoComplete="email" inputMode="email" maxLength={LIMITS.email} error={errors.email} />
-      <LocationField label="ZIP code where the building will go" />
-      {errors.zip ? <p className="field-error">{errors.zip}</p> : null}
+      <TextInput label="Phone" k="phone" type="tel" autoComplete="tel" inputMode="tel" maxLength={LIMITS.phone} error={errors.phone} required />
+      <TextInput label="Email" k="email" type="email" autoComplete="email" inputMode="email" maxLength={LIMITS.email} error={errors.email} required />
+      <LocationField label="ZIP code where the building will go" required error={errors.zip} />
       <Field label="Anything else your rep should know? (optional)" htmlFor={notesId} hint={errors.notes ? <span className="field-error">{errors.notes}</span> : undefined}>
         <textarea
           id={notesId}

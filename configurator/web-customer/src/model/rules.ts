@@ -38,20 +38,26 @@ export const WIDTH_MAX_WIDE = 60;
 export const ROOF_VERTICAL_OVER_LENGTH = 35;
 export const COMBO_MIN_PART = 5;
 
-/** Widths offered for a building type (ft). Wide span (32′+) is a garage only. */
+/**
+ * Widths offered for a building type (ft). Wide span (32′+) is the quote's own
+ * building type and takes any walls, so a garage AND a carport (open or partly
+ * closed in) go to 60′ (owner 10/19/26: "why with partially enclosed can i
+ * only go 30' wide"). A garage + carport is the quote's GCH, 12′–30′ only.
+ */
 export function widthOptions(type: WebBuildingType): number[] {
   const out: number[] = [];
   for (let w = 12; w <= WIDTH_MAX_STANDARD; w++) out.push(w);
-  if (type === 'garage') for (let w = WIDE_SPAN_MIN; w <= WIDTH_MAX_WIDE; w++) out.push(w);
+  if (type !== 'combo') for (let w = WIDE_SPAN_MIN; w <= WIDTH_MAX_WIDE; w++) out.push(w);
   return out;
 }
 
-/** Eave heights offered for a width (ft): 6–16 standard, 8–20 wide span. */
+/** Wall heights the quote offers on a 12′–30′ building (no 19′). */
+export const HEIGHTS_STANDARD = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20] as const;
+
+/** Eave heights offered for a width (ft): the quote's 6–18 and 20 on 12′–30′; 8–18 and 20 on wide span (32′+ starts at 8′). */
 export function heightOptions(width: number): number[] {
-  const [lo, hi] = width >= WIDE_SPAN_MIN ? [8, 20] : [6, 16];
-  const out: number[] = [];
-  for (let h = lo; h <= hi; h++) out.push(h);
-  return out;
+  if (width < WIDE_SPAN_MIN) return [...HEIGHTS_STANDARD];
+  return HEIGHTS_STANDARD.filter((h) => h >= 8);
 }
 
 export const isWideSpan = (width: number) => width >= WIDE_SPAN_MIN;

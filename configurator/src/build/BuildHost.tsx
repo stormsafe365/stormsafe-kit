@@ -946,9 +946,14 @@ function syncFromBuilder(win: BuilderWindow) {
         rightBandFt: low.band,
       };
     }
+    // A GCH's ends follow the same rows (owner 10/19/26): its enclosed bay's end
+    // can be open / gable-only / half-closed and its open bay's end closed; the
+    // program prices each end by that choice already, the drawing used to ignore
+    // the back one.
+    const endsFromRows = bt === 'carport' || bt === 'gch';
     return {
-      front: isGarage ? (endMap(fg) ?? 'closed') : bt === 'carport' ? endMap(fg) : undefined,
-      back: isGarage ? (endMap(bg) ?? 'closed') : bt === 'carport' ? endMap(bg) : undefined,
+      front: isGarage ? (endMap(fg) ?? 'closed') : endsFromRows ? endMap(fg) : undefined,
+      back: isGarage ? (endMap(bg) ?? 'closed') : endsFromRows ? endMap(bg) : undefined,
       leftOpen: isGarage && val('wre') === 'Open',
       rightOpen: isGarage && val('wle') === 'Open',
       leftBandFt: isGarage ? sideBand(val('wre')) : undefined,

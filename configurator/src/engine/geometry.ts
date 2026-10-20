@@ -957,13 +957,20 @@ function deriveEnclosure(
     case 'utility': {
       const encLen = Math.max(4, Math.min(L, enclosedLengthFt));
       const split = encLen < L;
-      // Enclosed bay sits against the CLOSED end; the open bay is at `openEnd`.
+      // Enclosed bay sits against the closed end; the open bay is at `openEnd`.
+      // The program's Front / Back Gable rows apply to a GCH too (owner 10/19/26:
+      // "you can still open that wall if you want ... or have gable only sheeting
+      // or half sheeting ... the price just needs to adjust accordingly" — gWalls
+      // already prices each end by that choice): the enclosed bay's end can be
+      // open / gable-only / half-closed, and the open bay's end can be closed.
+      // Without a choice the ends are as before (open bay per the gable rule,
+      // enclosed bay closed).
       if (openEnd === 'front') {
         return {
           type,
           sideZ: { start: halfL - encLen, end: halfL },
-          front: openMode,
-          back: 'closed',
+          front: ov?.front ?? openMode,
+          back: ov?.back ?? 'closed',
           partitionZ: split ? halfL - encLen : null,
           sideOpen: noOpen,
           sideBandFt: noBand,
@@ -972,8 +979,8 @@ function deriveEnclosure(
       return {
         type,
         sideZ: { start: -halfL, end: -halfL + encLen },
-        front: 'closed',
-        back: openMode,
+        front: ov?.front ?? 'closed',
+        back: ov?.back ?? openMode,
         partitionZ: split ? -halfL + encLen : null,
         sideOpen: noOpen,
         sideBandFt: noBand,

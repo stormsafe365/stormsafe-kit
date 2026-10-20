@@ -11,6 +11,15 @@ export function parseToken(search: string): string | null {
   return t && TOKEN_RE.test(t) ? t : null;
 }
 
+/** The calm full screen for a link that is not active (null = the link is fine, or not known yet: checking / offline / none). */
+export function deadLinkScreen(link: LinkStatus): { title: string; text: string } | null {
+  if (link === 'invalid') {
+    return { title: 'We couldn’t open this design link', text: 'It may have been copied incompletely — try opening the whole link again from the message — or it may have been turned off.' };
+  }
+  if (link === 'expired') return { title: 'This design link has expired', text: 'Your rep can send you a fresh one.' };
+  return null;
+}
+
 /** What the server said about the link. 'none' = no token in the address. */
 export type LinkStatus = 'checking' | 'ok' | 'expired' | 'invalid' | 'none' | 'offline';
 

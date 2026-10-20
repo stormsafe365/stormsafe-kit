@@ -1,6 +1,7 @@
 // A design link that opens on the lead's own building (the "seed"): parsing the untrusted seed,
 // the link check on the page side (fetchLink), the start-up rules (applyLinkResult) and the draft hold.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { deadLinkScreen } from '../src/model/link';
 import { parseSeed, cleanSeedContact } from '../src/model/seed';
 import { fetchLink, checkLink } from '../src/send';
 import { applyLinkResult, beginHold, prefillContact, startOverPlan, retryLinkCheck, runLinkCheck, startOverDesign } from '../src/linkStart';
@@ -433,5 +434,27 @@ describe('start-up with a link building', () => {
     useWebStore.getState().replace(startOverDesign(seed));
     expect(useWebStore.getState().design.length).toBe(40);
     expect(useWebStore.getState().design.leanTos).toHaveLength(1);
+  });
+});
+
+describe('a link that is not active', () => {
+  it('invalid / expired get their own calm screen; nothing else does', () => {
+    expect(deadLinkScreen('invalid')!.title).toBe('We couldn’t open this design link');
+    expect(deadLinkScreen('expired')!.title).toBe('This design link has expired');
+    expect(deadLinkScreen('expired')!.text).toMatch(/fresh one/);
+    for (const l of ['ok', 'checking', 'offline', 'none'] as const) expect(deadLinkScreen(l)).toBe(null);
+  });
+  it('the saved draft is left exactly as it is', () => {
+    const mem = new Map<string, string>([['ss-design-draft:' + TOK, 'KEEP']]);
+    const realWindow = (globalThis as { window?: unknown }).window;
+    (globalThis as { window?: unknown }).window = { localStorage: { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => mem.set(k, v), removeItem: (k: string) => mem.delete(k) } };
+    useWebStore.getState().setSeedHold(false);
+    for (const l of ['invalid', 'expired'] as const) {
+      useWebStore.getState().setLink(TOK, l);
+      saveDraftNow(TOK);
+      expect(mem.get('ss-design-draft:' + TOK)).toBe('KEEP');
+    }
+    useWebStore.getState().setLink(null, 'none');
+    (globalThis as { window?: unknown }).window = realWindow;
   });
 });

@@ -3,7 +3,7 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { WebViewport } from './WebViewport';
 import { useWebStore, type TabKey } from './store';
 import { DEFAULT_DESIGN, hasWalkDoorOrWindow, TYPE_LABEL } from './model/design';
-import { EMPTY_CONTACT } from './model/link';
+import { deadLinkScreen, EMPTY_CONTACT } from './model/link';
 import { SizePanel } from './panels/SizePanel';
 import { WallsPanel } from './panels/WallsPanel';
 import { OpeningsPanel } from './panels/OpeningsPanel';
@@ -485,6 +485,7 @@ export function App() {
   const setGuide = useWebStore((s) => s.setGuide);
   const seed = useWebStore((s) => s.seed);
   const seedNote = useWebStore((s) => s.seedNote);
+  const link = useWebStore((s) => s.link);
   const blankFromSeed = useWebStore((s) => s.blankFromSeed);
   const setGuideStyle = useWebStore((s) => s.setGuideStyle);
   const setGuideBarn = useWebStore((s) => s.setGuideBarn);
@@ -601,6 +602,27 @@ export function App() {
     if (bodyRef.current && sel) revealInPanel(sel, bodyRef.current);
   }, [tab, selMain, selLean]);
 
+  // a link that is not active (own page only): one calm screen, no builder and no Welcome back
+  const dead = !FRAMED ? deadLinkScreen(link) : null;
+  if (dead) {
+    return (
+      <section className="guide" aria-label="Design link">
+        <div className="guide-in">
+          <span className="wordmark guide-mark" aria-label="StormSafe Steel">
+            Storm<span className="wm-teal">Safe</span> Steel
+          </span>
+          <h1 className="guide-h">{dead.title}</h1>
+          <p className="guide-p">{dead.text}</p>
+          <a className="btn-primary guide-btn" href="tel:+15617715555">
+            Call 561-771-5555
+          </a>
+          <a className="btn-ghost guide-btn guide-btn-2" href="sms:+15617715555">
+            Text 561-771-5555
+          </a>
+        </div>
+      </section>
+    );
+  }
   return (
     <div className={`app${bigView ? ' big-view' : ''}${touched ? ' touched' : ''}${tab === 'doors' || tab === 'leantos' || tab === 'walls' || tab === 'upgrades' ? ' working' : ''}`}>
       <header className="topbar">

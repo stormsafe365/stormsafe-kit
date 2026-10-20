@@ -50,6 +50,8 @@ export function saveDraftNow(token: string | null): void {
     // waiting for the rep's building: the plain starter must not be stored as the customer's draft
     const now = useWebStore.getState();
     if (now.seedHold) return;
+    // a link that is not active shows no design: the saved draft stays exactly as it is
+    if (token && (now.link === 'invalid' || now.link === 'expired')) return;
     // a link that has not answered yet: the untouched plain building is not the customer's work
     if (token && (now.link === 'checking' || now.link === 'offline') && isPlainStart(now.design, now.ctx)) return;
     const { contact, sentAt, tab, guideStyle, guideBarn, guideMode, blankFromSeed } = useWebStore.getState();

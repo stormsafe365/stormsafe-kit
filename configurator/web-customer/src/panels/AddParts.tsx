@@ -55,7 +55,10 @@ export function AddParts({ wall, onAdding }: { wall: WebWall; onAdding?: (adding
   // null = the four big buttons; a kind = its add screen (one thing at a time: no long form to scroll)
   const [picked, setPicked] = useState<OpeningKind | null>(null);
   const kind: OpeningKind = picked ?? 'rollup';
-  useEffect(() => onAdding?.(picked !== null), [picked, onAdding]);
+  useEffect(() => {
+    onAdding?.(picked !== null);
+    return () => onAdding?.(false); // leaving (another wall picked, add area gone): the list must come back
+  }, [picked, onAdding]);
   // a door tapped on the model opens its card in the list: leave the add screen
   const selected = useEditorStore((s) => s.selectedOpeningId);
   useEffect(() => {

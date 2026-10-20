@@ -508,6 +508,7 @@ export function App() {
     replace(startOverDesign(seed));
     undoRef.current = { ...before, fresh: useWebStore.getState().design };
     // a shared link on a shared phone / computer: the next person must not inherit the last one's name, phone and email
+    // (the name / phone / email the rep gave for THIS link's building are put back just below: they came from the rep's own link)
     useWebStore.getState().setContact({ ...EMPTY_CONTACT });
     prefillContact(seed?.contact ?? null);
     if (seed?.zip) {

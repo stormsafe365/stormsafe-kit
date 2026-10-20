@@ -19,14 +19,14 @@ export function ColorsPanel() {
   const vertical = d.panels === 'Vertical';
   const parts: Part[] = d.wainscot ? ['roof', 'walls', 'trim', 'wainscot'] : ['roof', 'walls', 'trim'];
   // garage doors: one color for all of them (each door's own color can still be changed in the Doors step)
-  const rollups = d.openings.filter((o) => o.kind === 'rollup');
+  const rollups = [...d.openings, ...d.leanTos.flatMap((lt) => lt.openings)].filter((o) => o.kind === 'rollup');
   if (hasRollupDoor(d)) parts.push('rollup');
-  const rollupKey = rollups.length && rollups.every((o) => o.color === rollups[0].color) ? (rollups[0].color ?? 'white') : '';
+  const rollupKey = rollups.length && rollups.every((o) => (o.color ?? 'white') === (rollups[0].color ?? 'white')) ? (rollups[0].color ?? 'white') : '';
   const cur: Part = parts.includes(part) ? part : 'roof';
   const set = (key: string) =>
     update((x) => {
       if (cur === 'rollup') {
-        for (const o of x.openings) if (o.kind === 'rollup') o.color = key;
+        for (const o of [...x.openings, ...x.leanTos.flatMap((lt) => lt.openings)]) if (o.kind === 'rollup') o.color = key;
       } else x.colors[cur] = key;
     });
   const options = cur === 'rollup' ? ROLLUP_COLORS : cur === 'wainscot' ? [...SORTED, ...WAINSCOT_PRINTS.map((p) => ({ ...p, disabled: !vertical }))] : SORTED;
@@ -42,7 +42,7 @@ export function ColorsPanel() {
         ))}
       </div>
       <Swatches label={`${NAME[cur]} color`} value={cur === 'rollup' ? rollupKey : d.colors[cur]} options={options} onChange={set} />
-      {cur === 'rollup' ? <p className="field-hint">This color goes on every garage door{rollups.length > 1 ? ' (all ' + rollups.length + ')' : ''}. To color one door differently, use its card in the Doors step.</p> : null}
+      {cur === 'rollup' ? <p className="field-hint">This color goes on every garage door{rollups.length > 1 ? ' (all ' + rollups.length + ')' : ''}. To color one door differently, use its own card (Doors or Lean-tos step).</p> : null}
       <div className="field">
         <Toggle
           label="Wainscot: a contrasting band along the bottom of the walls"

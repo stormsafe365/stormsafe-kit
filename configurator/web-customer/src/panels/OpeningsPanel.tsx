@@ -99,7 +99,8 @@ export function OpeningsPanel() {
   // while one thing is being added, only its short form shows (the list comes back after Add)
   const [adding, setAdding] = useState(false);
   const shown = WALL_ORDER.filter((w) => (d.type === 'combo' ? true : w !== 'partition') && (walls.includes(w) || d.openings.some((o) => o.wall === w)));
-  const openWalls = WALL_ORDER.filter((w) => w !== 'partition' && !walls.includes(w) && !shown.includes(w));
+  const combo = d.type === 'combo';
+  const openWalls = combo ? [] : WALL_ORDER.filter((w) => w !== 'partition' && !walls.includes(w) && !shown.includes(w));
   // a part tapped on the model: its wall is the one picked
   useEffect(() => {
     const o = selectedId ? d.openings.find((k) => k.id === selectedId) : null;
@@ -110,8 +111,16 @@ export function OpeningsPanel() {
   useEffect(() => {
     if (wallSel && !shown.includes(wallSel)) setWallSel(null);
   }, [wallSel, shown]);
+  // a different wall: the list is not hidden by an add screen that is gone
+  useEffect(() => setAdding(false), [wallSel]);
+  const pickWallKeepSelection = (w: WebWall) => {
+    setWallSel(w);
+    setTimeout(() => cameraApi.fit(camWall(w)), 60);
+  };
   const pickWall = (w: WebWall) => {
     setWallSel(w);
+    // let go of a part picked on the model, so tapping it there again picks its wall again
+    useEditorStore.getState().selectOpening(null);
     // the model turns to that wall, so "Front end" / "Left side" mean something
     setTimeout(() => cameraApi.fit(camWall(w)), 60);
   };
@@ -172,6 +181,9 @@ export function OpeningsPanel() {
           })}
         </div>
       ) : null}
+      {combo ? (
+        <p className="field-hint">The front end is the open carport end, so it has no wall. Doors go on the divider wall between the garage and the carport, the back end and the sides.</p>
+      ) : null}
       {openWalls.length ? (
         <p className="field-hint">
           Open (no wall yet): {openWalls.map((w) => WALL_LABEL[w].toLowerCase()).join(', ')}.{' '}
@@ -206,7 +218,7 @@ export function OpeningsPanel() {
       ) : null}
       {wallSel && !adding && onThisWall.length === 0 && walls.includes(wallSel) ? <p className="field-hint wall-empty">Nothing on the {wallName} yet.</p> : null}
       {!adding &&
-        d.openings.map((o, i) => {
+        d.openings.map((o) => {
           if (o.wall !== wallSel) return null;
           const face = wallLength(d, o.wall);
           const onClosed = walls.includes(o.wall);
@@ -221,7 +233,7 @@ export function OpeningsPanel() {
           return (
             <PartEditor
               key={o.id}
-              label={String(i + 1)}
+              label={String(onThisWall.indexOf(o) + 1)}
               o={o}
               wallOptions={(['front', 'back', 'left', 'right', 'partition'] as const)
                 .filter((w) => walls.includes(w) || w === o.wall)
@@ -234,13 +246,16 @@ export function OpeningsPanel() {
               impact={impact}
               selected={selectedId === o.id}
               problem={problem}
-              onWall={(wall) =>
-                change(o.id, (k, x) => {
+              onWall={(wall) => {
+                const err = change(o.id, (k, x) => {
                   k.wall = wall as WebWall;
                   const p = freeMainPos({ ...x, openings: x.openings.filter((q) => q.id !== k.id) }, k.wall, k.w);
                   if (p !== null) k.pos = p;
-                })
-              }
+                });
+                // follow the part to its new wall, so its card does not vanish from the list
+                if (!err) pickWallKeepSelection(wall as WebWall);
+                return err;
+              }}
               onPatch={(patch) => change(o.id, (k) => void Object.assign(k, patch))}
               onPos={(pos) => change(o.id, (k) => void (k.pos = pos))}
               onRemove={() => update((x) => void (x.openings = x.openings.filter((k) => k.id !== o.id)))}

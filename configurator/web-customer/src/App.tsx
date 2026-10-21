@@ -622,8 +622,6 @@ export function App() {
   }
   return (
     <div className={`app${bigView ? ' big-view' : ''}${touched ? ' touched' : ''}${tab === 'doors' || tab === 'leantos' || tab === 'walls' || tab === 'upgrades' ? ' working' : ''}`}>
-      {/* V2 test copy (v2.stormsafe-design.pages.dev): a small marker so the owner can tell it from the live page */}
-      {!guide ? <span className="v2-mark">Test version (V2)</span> : null}
       <header className="topbar">
         <div className="brand">
           <span className="wordmark" aria-label="StormSafe Steel">
@@ -721,7 +719,6 @@ export function App() {
         </aside>
       </div>
       {guide ? <Guide banner={<LinkBanner />} onUndo={cleared && undoRef.current ? undo : null} onStartOver={startOver} /> : null}
-      {guide ? <span className="v2-mark v2-mark-guide">Test version (V2)</span> : null}
       {busy && (
         <div className="busy" role="alert" aria-live="assertive">
           <div className="busy-card">

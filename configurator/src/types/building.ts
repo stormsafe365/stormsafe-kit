@@ -101,6 +101,8 @@ export interface LeanToOpening {
   offsetFt: number;
   /** Explicit panel color (hex) — e.g. a CA/CCI colored roll-up door, a black walk door / window. */
   color?: string;
+  /** VIEW-ONLY: roll-up top corners cut at 45° (same drawing as a main-wall roll-up's cut45). */
+  cut45?: boolean;
   /**
    * VIEW-ONLY (3D drawing; never written back, never priced here): walk-door
    * face style from the program's lean-to walk-door type (CCI std / 6-panel /

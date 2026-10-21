@@ -31,8 +31,9 @@ export function closureFeet(v: SideWall | 'closed' | 'open', h: number): number 
 const colorCode = (key: string, fallback: string) => colorByKey(key)?.code ?? fallback;
 
 /** One part's 3D look (door face, black, impact swing, roll-up color). */
-function look(o: WebOpening | WebLeanToOpening): Pick<Opening, 'color' | 'doorStyle' | 'impact'> {
-  if (o.kind === 'rollup') return { color: rollupColor(o.color).hex };
+function look(o: WebOpening | WebLeanToOpening, cut45 = false): Pick<Opening, 'color' | 'doorStyle' | 'impact' | 'cut45'> {
+  // the 45° angle cut (Upgrades) is on every roll-up door, so the model draws it on each one
+  if (o.kind === 'rollup') return { color: rollupColor(o.color).hex, ...(cut45 ? { cut45: true } : {}) };
   if (o.kind === 'walk') {
     const t = walkDoorType(o.style) ?? walkDoorType('std')!;
     return { doorStyle: t.face, color: t.black ? FIXTURE_BLACK : undefined, impact: t.impact };
@@ -79,7 +80,7 @@ export function designToConfig(d: WebDesign, ctx: Pick<WebContext, 'county'>): B
       height: dimQ(o.h),
       sillHeight: dimQ(o.sill),
       customerSupplied: o.kind === 'frame',
-      ...look(o),
+      ...look(o, d.upgrades.angle45),
     }));
 
   const wraps = activeWraps(d);
@@ -96,7 +97,7 @@ export function designToConfig(d: WebDesign, ctx: Pick<WebContext, 'county'>): B
         heightFt: dimQ(o.h),
         sillFt: dimQ(o.sill),
         offsetFt: o.pos + o.w / 2,
-        ...look(o),
+        ...look(o, d.upgrades.angle45),
       }));
     const mine = wraps.filter((k) => WRAP_SIDES[k].includes(lt.side));
     return {

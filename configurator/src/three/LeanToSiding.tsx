@@ -1180,6 +1180,7 @@ export function DraggableLeanToOpening({
             color={opening.color}
             doorStyle={opening.doorStyle}
             impact={opening.impact}
+            cut45={opening.cut45}
             sheeted={sheeted}
             frameOutPane={false}
             openTrim={openTrim}

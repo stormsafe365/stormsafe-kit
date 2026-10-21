@@ -362,7 +362,7 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
               setCustom({ w, h });
             }}
           >
-            <span className="preset-size">Custom size</span>
+            <span className="preset-size">{kind === 'rollup' ? 'More sizes' : 'Custom size'}</span>
           </button>
         ) : null}
       </div>

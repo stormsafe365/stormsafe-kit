@@ -37,7 +37,7 @@ import {
   type SizePreset,
 } from '../model/sheet';
 import { cameraApi } from '../cameraFit';
-import { Note, Segmented, Select, Stepper, Toggle, ft } from './ui';
+import { Note, QtyField, Segmented, Select, Stepper, Toggle, ft } from './ui';
 
 export type SheetTarget = { mode: 'add'; kind: OpeningKind; wall: WebWall } | { mode: 'edit'; id: string };
 
@@ -214,10 +214,24 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
       next,
       ids: newIds.slice(0, spots.length),
       pos: spots.length === 1 ? spots[0] : null,
-      info: respace ? `The ${NOUN[kind][1]} there are spaced out evenly to make room.` : qty > 1 ? 'They are spread evenly along the wall.' : null,
+      info: respace ? `The ${NOUN[kind][1]} there are spaced out evenly to make room.` : null,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [d, base, wall, kind, w, h, qty, posMode, exactPos, color, style, winStyle, frame, lowerTo, editing, rollupsThere]);
+
+  // How many: as many as really fit at this size (addMany.maxQty: the no-overlap rule + the garage-door height rule)
+  const startD: WebDesign = useMemo(
+    () => (lowerTo !== null ? { ...base, openings: base.openings.map((o) => (o.wall === wall && o.kind === 'rollup' && o.h > lowerTo ? { ...o, h: lowerTo } : o)) } : base),
+    [base, lowerTo, wall],
+  );
+  const mostFit = !editing && w && h ? maxQty(startD, wall, kind, w, h) : 0;
+  useEffect(() => {
+    if (mostFit >= 1 && qty > mostFit) setQty(mostFit);
+  }, [mostFit, qty]);
+  const qtyWhy = !mostFit
+    ? null
+    : (whyNoMore(startD, wall, kind, w, h, mostFit + 1, WALL_LABEL[wall].toLowerCase()) ??
+      (spreadPositions(startD, wall, w, mostFit + 1) !== null ? `Up to ${mostFit} at a time.` : mostFit === 1 ? 'Only 1 fits on this wall at this size.' : `Only ${mostFit} fit on this wall at this size.`));
 
   // the model shows it as it will be (or the design as it is, when refused)
   useEffect(() => {
@@ -386,22 +400,7 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
           onChange={setFrame}
         />
       )}
-      {!editing ? (
-        <div className="field sheet-qty">
-          <span className="field-label">How many</span>
-          <div className="qty">
-            <button type="button" aria-label="One fewer" disabled={qty <= 1} onClick={() => setQty(Math.max(1, qty - 1))}>
-              −
-            </button>
-            <span className="qty-n" aria-live="polite">
-              {qty}
-            </span>
-            <button type="button" aria-label="One more" disabled={qty >= 12 || !res.next} onClick={() => setQty(qty + 1)}>
-              +
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {!editing && mostFit >= 1 ? <QtyField value={qty} max={mostFit} onChange={setQty} reason={qty >= mostFit ? qtyWhy : null} /> : null}
 
       {/* ── 2. Position ── */}
       <h4 className="sheet-step">2. Position</h4>

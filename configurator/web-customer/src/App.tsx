@@ -73,61 +73,13 @@ function StepHead() {
   const text = typeof help.text === 'function' ? help.text(state) : help.text;
   return (
     <div className="stephead">
-      <div className="stephead-row">
-        <h2 className="stephead-title">
-          <span className="stephead-count">
-            Step {i + 1} of {steps.length}
-            {help.optional ? ' · optional' : ''}
-          </span>{' '}
-          {steps[i].title}
-        </h2>
-        <StepsMenu steps={steps} i={i} />
-      </div>
+      <p className="stephead-eyebrow">
+        Step {i + 1} of {steps.length}
+        {help.optional ? ' · Optional' : ''}
+      </p>
+      <h2 className="stephead-title">{steps[i].title}</h2>
       <p className="stephead-text">{text}</p>
     </div>
-  );
-}
-
-/**
- * Phones: the list of steps behind one small button (the row of step names took a strip of the screen
- * and was cut off at the edge - owner 10/17/26 "no ton of scrolling"). Tap a step to go straight there.
- */
-function StepsMenu({ steps, i }: { steps: Array<{ key: TabKey; title: string }>; i: number }) {
-  const setTab = useWebStore((s) => s.setTab);
-  const [open, setOpen] = useState(false);
-  const btn = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    setOpen(false);
-  }, [i]);
-  useEffect(() => {
-    if (!open) return;
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false);
-        btn.current?.focus();
-      }
-    };
-    document.addEventListener('keydown', esc);
-    return () => document.removeEventListener('keydown', esc);
-  }, [open]);
-  return (
-    <>
-      <button type="button" ref={btn} className="steps-btn" aria-expanded={open} aria-controls="steps-menu" onClick={() => setOpen((v) => !v)}>
-        All steps <span aria-hidden="true">{open ? '▴' : '▾'}</span>
-      </button>
-      {open ? (
-        <ol id="steps-menu" className="steps-menu">
-          {steps.map((t, j) => (
-            <li key={t.key}>
-              <button type="button" className={j === i ? 'on' : ''} aria-current={j === i ? 'step' : undefined} onClick={() => setTab(t.key)}>
-                <span className="steps-n">{j + 1}</span>
-                {t.title}
-              </button>
-            </li>
-          ))}
-        </ol>
-      ) : null}
-    </>
   );
 }
 
@@ -256,10 +208,11 @@ function StageSummary() {
 
 /** Scroll the step bar (only the bar) sideways so the current step shows. */
 function revealInBar(bar: HTMLElement, el: HTMLElement) {
+  // V2: the current step chip sits in the middle of the bar (its neighbours show on both sides)
+  if (bar.scrollWidth <= bar.clientWidth + 1) return;
   const b = bar.getBoundingClientRect();
   const e = el.getBoundingClientRect();
-  if (e.left < b.left) bar.scrollLeft -= b.left - e.left + 12;
-  else if (e.right > b.right) bar.scrollLeft += e.right - b.right + 12;
+  bar.scrollLeft += e.left - b.left - (b.width - e.width) / 2;
 }
 
 /** A box the person types in (a keyboard comes up) - not a switch / checkbox / slider. */
@@ -385,31 +338,52 @@ function useFollowVisibleArea(panelRef: RefObject<HTMLElement>) {
   }, [panelRef]);
 }
 
-/** The step bar's edge fades on screens too narrow for all 7 steps. */
-function useBarEdges(bar: RefObject<HTMLElement>, count: number) {
-  const [edges, setEdges] = useState({ l: false, r: false });
+/**
+ * The step bar's edges on screens too narrow for all 7 steps. V2: every step shows its name when they all
+ * fit; else the other steps shrink to their number (the current one keeps its name) - compact. A chip
+ * only part in view (under an edge arrow) is hidden (cut), so no step name is ever cut in half.
+ * Kept in React state (a class set by hand would be wiped by the next render).
+ */
+function useBarEdges(bar: RefObject<HTMLElement>, count: number, tab: string) {
+  const [edges, setEdges] = useState<{ l: boolean; r: boolean; compact: boolean; cut: string }>({ l: false, r: false, compact: false, cut: '' });
+  const namedW = useRef(0);
   useEffect(() => {
     const el = bar.current;
     if (!el) return;
     const update = () => {
+      const compact = el.classList.contains('compact');
+      if (!compact) namedW.current = el.scrollWidth;
+      const wantCompact = namedW.current > el.clientWidth + 2;
       const l = el.scrollLeft > 2;
       const r = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
-      setEdges((p) => (p.l === l && p.r === r ? p : { l, r }));
+      const b = el.getBoundingClientRect();
+      const from = b.left + (l ? 34 : 0) - 1;
+      const to = b.right - (r ? 34 : 0) + 1;
+      const cut = (Array.from(el.children) as HTMLElement[])
+        .map((c, i) => {
+          const cr = c.getBoundingClientRect();
+          return cr.left < from || cr.right > to ? i : -1;
+        })
+        .filter((i) => i >= 0)
+        .join(',');
+      setEdges((p) => (p.l === l && p.r === r && p.compact === wantCompact && p.cut === cut ? p : { l, r, compact: wantCompact, cut }));
     };
     update();
+    // after a render that changed the chips (compact on / off, another step), measure again
+    const raf = requestAnimationFrame(update);
     el.addEventListener('scroll', update, { passive: true });
     window.addEventListener('resize', update);
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null;
     ro?.observe(el);
     return () => {
+      cancelAnimationFrame(raf);
       el.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
       ro?.disconnect();
     };
-  }, [bar, count]);
+  }, [bar, count, tab, edges.compact]);
   return edges;
 }
-
 /** Two-step reset (no window.confirm: a sandboxed iframe may block dialogs). */
 /**
  * "Start over", always in the top bar (owner 10/16/26: "there should be a clear button in case they
@@ -495,7 +469,7 @@ export function App() {
   const bodyRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLElement>(null);
   const steps = useSteps();
-  const edges = useBarEdges(barRef, steps.length);
+  const edges = useBarEdges(barRef, steps.length, tab);
   // phones: "Bigger view" on the model; the how-to line goes after the first touch on it
   const [bigView, setBigView] = useState(false);
   const [touched, setTouched] = useState(false);
@@ -626,7 +600,7 @@ export function App() {
   return (
     <div className={`app${bigView ? ' big-view' : ''}${touched ? ' touched' : ''}${tab === 'doors' || tab === 'leantos' || tab === 'walls' || tab === 'upgrades' ? ' working' : ''}`}>
       {/* V2 test copy (v2.stormsafe-design.pages.dev): a small marker so the owner can tell it from the live page */}
-      <span className="v2-mark">Test version (V2)</span>
+      {!guide ? <span className="v2-mark">Test version (V2)</span> : null}
       <header className="topbar">
         <div className="brand">
           <span className="wordmark" aria-label="StormSafe Steel">
@@ -669,28 +643,44 @@ export function App() {
         <aside className="panel" aria-label="Building options">
           <LinkBanner />
           {tab === 'size' ? <ImpactBanner /> : null}
-          <nav
-            className={`tabs${edges.l ? ' more-left' : ''}${edges.r ? ' more-right' : ''}`}
-            role="tablist"
-            aria-label="Options"
-            ref={barRef}
-          >
-            {steps.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                role="tab"
-                id={`tab-${t.key}`}
-                aria-selected={tab === t.key}
-                aria-controls="tabpanel"
-                className={tab === t.key ? 'on' : ''}
-                title={t.title}
-                onClick={() => setTab(t.key)}
-              >
-                {t.label}
+          {/* V2 round 2: the steps as chips (number + name; done / current / upcoming), the current one kept in view */}
+          <div className="stepbar">
+            {edges.l ? (
+              <button type="button" className="stepbar-arrow left" aria-label="Earlier steps" tabIndex={-1} onClick={() => barRef.current?.scrollBy({ left: -160, behavior: 'smooth' })}>
+                ‹
               </button>
-            ))}
-          </nav>
+            ) : null}
+            <nav className={`tabs${edges.l ? ' more-left' : ''}${edges.r ? ' more-right' : ''}${edges.compact ? ' compact' : ''}`} role="tablist" aria-label="Steps" ref={barRef}>
+              {steps.map((t, j) => {
+                const cur = steps.findIndex((x) => x.key === tab);
+                const state = t.key === tab ? 'on' : j < cur ? 'done' : 'todo';
+                return (
+                  <button
+                    key={t.key}
+                    type="button"
+                    role="tab"
+                    id={`tab-${t.key}`}
+                    aria-selected={tab === t.key}
+                    aria-controls="tabpanel"
+                    className={`stepchip ${state}${edges.cut.split(',').includes(String(j)) ? ' cut' : ''}`}
+                    title={t.title}
+                    onClick={() => setTab(t.key)}
+                  >
+                    <span className="stepchip-n" aria-hidden="true">
+                      {state === 'done' ? '✓' : j + 1}
+                    </span>
+                    <span className="stepchip-t">{t.label}</span>
+                    {state === 'done' ? <span className="sr-only"> (done)</span> : null}
+                  </button>
+                );
+              })}
+            </nav>
+            {edges.r ? (
+              <button type="button" className="stepbar-arrow right" aria-label="More steps" tabIndex={-1} onClick={() => barRef.current?.scrollBy({ left: 160, behavior: 'smooth' })}>
+                ›
+              </button>
+            ) : null}
+          </div>
           <div className="panel-scroll" id="tabpanel" role="tabpanel" aria-labelledby={`tab-${tab}`} ref={bodyRef}>
             <StepHead />
             {tab === 'size' && <SizePanel />}
@@ -705,6 +695,7 @@ export function App() {
         </aside>
       </div>
       {guide ? <Guide banner={<LinkBanner />} onUndo={cleared && undoRef.current ? undo : null} onStartOver={startOver} /> : null}
+      {guide ? <span className="v2-mark v2-mark-guide">Test version (V2)</span> : null}
       {busy && (
         <div className="busy" role="alert" aria-live="assertive">
           <div className="busy-card">

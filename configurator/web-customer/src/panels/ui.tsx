@@ -203,6 +203,30 @@ export function Swatches({
   );
 }
 
+/**
+ * "How many  − n +" (V2 round 2): + stops at `max` = how many really fit (the caller's fit count),
+ * and the short reason shows there ("Only 3 fit on this wall").
+ */
+export function QtyField({ value, max, onChange, reason }: { value: number; max: number; onChange: (v: number) => void; reason?: string | null }) {
+  return (
+    <div className="field qty-field">
+      <span className="field-label">How many</span>
+      <div className="qty">
+        <button type="button" aria-label="One fewer" disabled={value <= 1} onClick={() => onChange(Math.max(1, value - 1))}>
+          −
+        </button>
+        <span className="qty-n" aria-live="polite">
+          {value}
+        </span>
+        <button type="button" aria-label="One more" disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))}>
+          +
+        </button>
+      </div>
+      {reason ? <p className="field-hint qty-why">{reason}</p> : null}
+    </div>
+  );
+}
+
 export function Note({ tone = 'info', children }: { tone?: 'info' | 'warn'; children: ReactNode }) {
   return <p className={`note note-${tone}`}>{children}</p>;
 }

@@ -28,8 +28,9 @@ import {
   WRAP_KEYS,
   wrapStatus,
 } from '../model/rules';
+import { maxLeanToQty, spreadLeanTo } from '../model/leanToMany';
 import { PartEditor } from './PartEditor';
-import { Note, Segmented, Select, Toggle } from './ui';
+import { Note, QtyField, Segmented, Select, Toggle } from './ui';
 
 /** Every whole foot from a to b, as drop-down choices (owner 10/18/26: sizes are drop-downs, like width). */
 const feet = (a: number, b: number) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => ({ value: a + i, label: `${a + i}′` }));
@@ -61,42 +62,152 @@ export function newLeanTo(d: WebDesign, side: LeanToSide): WebLeanTo {
   };
 }
 
-function newLeanToOpening(d: WebDesign, lt: WebLeanTo, kind: OpeningKind): WebLeanToOpening | null {
-  const used = new Set([...d.openings.map((o) => o.id), ...d.leanTos.flatMap((l) => l.openings.map((o) => o.id))]);
-  const walls = leanToOpeningWalls(lt);
-  for (const wall of walls) {
-    const run = leanToWallLength(d, lt, wall);
-    let w = 3;
-    let h = 6;
-    let sill = 0;
-    const extra: Partial<WebLeanToOpening> = {};
-    if (kind === 'rollup') {
-      const s = leanToRollupSizes(lt, wall, run);
-      w = s.widths.filter((x) => x <= 8).pop() ?? 0;
-      h = s.heights.filter((x) => x <= 7).pop() ?? 0;
-      if (!w || !h) continue;
-      extra.color = 'white';
-    } else if (kind === 'walk') {
-      if (lt.lowLeg < 7) continue;
-      w = WALK_DOOR_W_FT;
-      h = WALK_DOOR_H_FT;
-      extra.style = 'std'; // an impact area shows the rated door (normalize) and gives this back after
-    } else if (kind === 'window') {
-      if (lt.lowLeg < 7) continue;
-      w = 2.5;
-      h = 2.5;
-      sill = WINDOW_SILL_FT;
-      extra.style = 'std';
-    } else {
-      w = Math.min(4, run - 2);
-      h = Math.max(1, Math.min(6, lt.lowLeg - 1));
-      extra.frame = 'door';
-    }
-    const pos = freeLeanToPos(d, lt, wall, w);
-    if (pos === null) continue;
-    return { id: nextFreeId('lo', used), kind, wall, w, h, sill, pos, ...extra };
+/**
+ * The size a new lean-to part starts at on that wall (the sizes the page always used: garage door up to
+ * 8′ × 7′ from the lean-to list, the 3′ × 6′8″ walk-in door, the 30″ × 30″ window, a 4′ × 6′ opening).
+ * null = that kind cannot go on this wall (a walk-in door / window needs a 7′+ outer edge).
+ */
+function leanToPartSize(d: WebDesign, lt: WebLeanTo, wall: LeanToWall, kind: OpeningKind, rw: number, rh: number): { w: number; h: number; sill: number } | null {
+  const run = leanToWallLength(d, lt, wall);
+  if (kind === 'rollup') {
+    const s = leanToRollupSizes(lt, wall, run);
+    const w = s.widths.includes(rw as never) ? rw : (s.widths.filter((x) => x <= 8).pop() ?? 0);
+    const h = s.heights.includes(rh as never) ? rh : (s.heights.filter((x) => x <= 7).pop() ?? 0);
+    return w && h ? { w, h, sill: 0 } : null;
   }
-  return null;
+  if (kind === 'walk') return lt.lowLeg < 7 ? null : { w: WALK_DOOR_W_FT, h: WALK_DOOR_H_FT, sill: 0 };
+  if (kind === 'window') return lt.lowLeg < 7 ? null : { w: 2.5, h: 2.5, sill: WINDOW_SILL_FT };
+  const w = Math.min(4, run - 2);
+  return w > 0 ? { w, h: Math.max(1, Math.min(6, lt.lowLeg - 1)), sill: 0 } : null;
+}
+
+/** Add doors / windows to a lean-to: which wall, what, the size (garage doors), how many (as many as fit), Add. */
+function LeanToAdd({ lt, walls, onAdd }: { lt: WebLeanTo; walls: LeanToWall[]; onAdd: (list: WebLeanToOpening[]) => void }) {
+  const d = useWebStore((s) => s.design);
+  const [wallPick, setWall] = useState<LeanToWall>(walls[0]);
+  const wall = walls.includes(wallPick) ? wallPick : walls[0];
+  const [kind, setKind] = useState<OpeningKind | null>(null);
+  const [rw, setRw] = useState(8);
+  const [rh, setRh] = useState(7);
+  const [qty, setQty] = useState(1);
+  const [done, setDone] = useState<string | null>(null);
+  const run = leanToWallLength(d, lt, wall);
+  const size = kind ? leanToPartSize(d, lt, wall, kind, rw, rh) : null;
+  const most = size ? maxLeanToQty(d, lt, wall, size.w) : 0;
+  const q = Math.max(1, Math.min(qty, most || 1));
+  const full = lt.openings.length >= MAX_LEANTO_OPENINGS;
+  const sizes = kind === 'rollup' ? leanToRollupSizes(lt, wall, run) : null;
+  const pairs = sizes ? sizes.widths.flatMap((a) => sizes.heights.map((b) => ({ value: `${a}x${b}`, label: `${a}′ wide × ${b}′ tall` }))) : [];
+  const add = () => {
+    if (!kind || !size || most < 1) return;
+    const spots = spreadLeanTo(d, lt, wall, size.w, q);
+    if (!spots) return;
+    const used = new Set([...d.openings.map((o) => o.id), ...d.leanTos.flatMap((l) => l.openings.map((o) => o.id))]);
+    const list = spots.map((pos) => {
+      const id = nextFreeId('lo', used);
+      used.add(id);
+      const o: WebLeanToOpening = { id, kind, wall, w: size.w, h: size.h, sill: size.sill, pos };
+      if (kind === 'rollup') o.color = 'white';
+      if (kind === 'walk' || kind === 'window') o.style = 'std'; // an impact area shows the rated ones (normalize)
+      if (kind === 'frame') o.frame = 'door';
+      return o;
+    });
+    onAdd(list);
+    setDone(`Added ${q} ${q === 1 ? LT_SHORT[kind].toLowerCase() : `${LT_SHORT[kind].toLowerCase()}s`} to the ${LEANTO_WALL_LABEL[wall].toLowerCase()}.`);
+    setKind(null);
+    setQty(1);
+  };
+  const why = !kind
+    ? null
+    : full
+      ? `A lean-to holds up to ${MAX_LEANTO_OPENINGS} doors and windows here.`
+      : !size
+        ? kind === 'walk' || kind === 'window'
+          ? `${LT_SHORT[kind]}s need a 7′ or taller outer edge on the lean-to.`
+          : `No ${LT_SHORT[kind].toLowerCase()} fits on this wall.`
+        : most < 1
+          ? `No room for ${LT_NOUN[kind]} on the ${LEANTO_WALL_LABEL[wall].toLowerCase()} (openings keep 1′ from corners and from each other).`
+          : null;
+  return (
+    <div className="lt-add" role="group" aria-label="Add to this lean-to">
+      {walls.length > 1 ? (
+        <Segmented<LeanToWall>
+          label="Wall"
+          value={wall}
+          options={walls.map((w) => ({ value: w, label: `${LEANTO_WALL_LABEL[w]} · ${leanToWallLength(d, lt, w)}′` }))}
+          onChange={(w) => {
+            setWall(w);
+            setQty(1);
+          }}
+        />
+      ) : (
+        <p className="field-hint">
+          On the {LEANTO_WALL_LABEL[wall].toLowerCase()} ({run}′).
+        </p>
+      )}
+      <div className="lt-kinds" role="group" aria-label="What to add">
+        {(['rollup', 'walk', 'window', 'frame'] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            className={`btn-ghost lt-kind${kind === k ? ' on' : ''}`}
+            aria-pressed={kind === k}
+            onClick={() => {
+              setKind(kind === k ? null : k);
+              setQty(1);
+              setDone(null);
+            }}
+          >
+            + {LT_SHORT[k]}
+          </button>
+        ))}
+      </div>
+      {kind ? (
+        <div className="lt-addform">
+          {kind === 'rollup' && size ? (
+            <Select<string>
+              label="Door size"
+              value={`${size.w}x${size.h}`}
+              options={pairs}
+              onChange={(v) => {
+                const [a, b] = v.split('x').map(Number);
+                setRw(a);
+                setRh(b);
+              }}
+            />
+          ) : null}
+          {why ? (
+            <Note tone="warn">{why}</Note>
+          ) : (
+            <>
+              <QtyField
+                value={q}
+                max={most}
+                onChange={setQty}
+                reason={
+                  q < most
+                    ? null
+                    : size && spreadLeanTo(d, lt, wall, size.w, most + 1)
+                      ? `A lean-to holds up to ${MAX_LEANTO_OPENINGS} doors and windows.`
+                      : most === 1
+                        ? 'Only 1 fits on this wall.'
+                        : `Only ${most} fit on this wall.`
+                }
+              />
+              <button type="button" className="btn-primary btn-add" onClick={add}>
+                Add {q} {q === 1 ? LT_SHORT[kind].toLowerCase() : `${LT_SHORT[kind].toLowerCase()}s`}
+              </button>
+            </>
+          )}
+        </div>
+      ) : null}
+      {done && !kind ? (
+        <p className="toast" role="status">
+          <span aria-hidden="true">✓</span> {done}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
@@ -104,7 +215,6 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
   const impact = useWebStore((s) => s.impact);
   const update = useWebStore((s) => s.update);
   const selectedId = useEditorStore((s) => s.selectedLeanToOpeningId);
-  const [addMsg, setAddMsg] = useState<string | null>(null);
   const host = leanToHost(d, lt.side);
   const legs = leanToLowLegOptions(d, lt);
   const oWalls = leanToOpeningWalls(lt);
@@ -135,14 +245,6 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
       o.pos = pos;
     });
     return err;
-  };
-
-  const addPart = (kind: OpeningKind) => {
-    if (lt.openings.length >= MAX_LEANTO_OPENINGS) return setAddMsg(`A lean-to holds up to ${MAX_LEANTO_OPENINGS} doors and windows here.`);
-    const o = newLeanToOpening(d, lt, kind);
-    if (!o) return setAddMsg(`No room for ${LT_NOUN[kind]} on this lean-to’s closed walls${kind === 'walk' || kind === 'window' ? ' (it needs a 7′ or taller outer edge)' : ''}.`);
-    setAddMsg(null);
-    edit((l) => void l.openings.push(o));
   };
 
   return (
@@ -193,7 +295,7 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
         onChange={(v) => edit((l) => void (l.enclosure = v))}
       />
       {lt.enclosure === 'custom' && (
-        <div className="part-grid">
+        <div className="part-grid walls-grid">
           <Select label="Outer side" value={lt.walls.side} options={LEANTO_SIDE_WALLS.map((v) => ({ value: v, label: LEANTO_SIDE_WALL_LABEL[v] }))} onChange={(v) => edit((l) => void (l.walls.side = v))} />
           <Select label="Front end" value={lt.walls.front} options={LEANTO_ENDS.map((v) => ({ value: v, label: LEANTO_END_LABEL[v] }))} onChange={(v) => edit((l) => void (l.walls.front = v))} />
           <Select label="Back end" value={lt.walls.back} options={LEANTO_ENDS.map((v) => ({ value: v, label: LEANTO_END_LABEL[v] }))} onChange={(v) => edit((l) => void (l.walls.back = v))} />
@@ -201,17 +303,10 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
       )}
       <div className="sub-head">Doors &amp; windows on this lean-to</div>
       {oWalls.length ? (
-        <div className="add-row add-row-sm" role="group" aria-label="Add to this lean-to">
-          {(['rollup', 'walk', 'window', 'frame'] as const).map((k) => (
-            <button key={k} type="button" className="add-btn" onClick={() => addPart(k)}>
-              + {LT_SHORT[k]}
-            </button>
-          ))}
-        </div>
+        <LeanToAdd lt={lt} walls={oWalls} onAdd={(list) => edit((l) => void l.openings.push(...list))} />
       ) : (
         <p className="field-hint">Close in a lean-to wall (Closed in, or Mix → Closed) to add doors or windows.</p>
       )}
-      {addMsg && <Note tone="warn">{addMsg}</Note>}
       {lt.openings.map((o, j) => {
         const run = leanToWallLength(d, lt, o.wall);
         const onClosed = oWalls.includes(o.wall);

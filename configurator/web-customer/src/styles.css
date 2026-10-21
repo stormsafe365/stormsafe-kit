@@ -2836,3 +2836,445 @@ html.vv-kb .stepnav {
     gap: 8px;
   }
 }
+
+/* ══ V2 round 2 (owner 10/20/26: "more polished and sleek, less childish, more refined") ═══════════════
+   Restrained palette: muted small labels, teal = actions, lime only on the picked choice. One radius
+   for cards (10px) and controls (8px), 1px borders, one button height (44px), calmer section heads. */
+.v2-mark-guide {
+  top: 8px;
+  left: auto;
+  right: 12px;
+}
+/* labels: small, muted, uppercase, tracked (no neon) */
+.panel .field-label,
+.guide .field-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-shadow: none;
+  line-height: 1.3;
+}
+.panel .field-value,
+.guide .field-value {
+  color: var(--text);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.field-hint {
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.part-grid {
+  align-items: end;
+  gap: 12px;
+}
+.part-grid.walls-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (max-width: 599px) {
+  /* a door / window card on a lean-to: one choice per row, so long names ('Impact-rated (hi-wind), white') read in full */
+  .part .part-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.select {
+  min-height: 44px;
+  border-radius: 8px;
+  padding-right: 28px;
+  text-overflow: ellipsis;
+}
+.sub-head {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  padding-top: 4px;
+}
+/* step head: eyebrow, then the title */
+.stephead {
+  padding: 16px 16px 0;
+}
+.stephead-eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--teal-dim);
+}
+.stephead-title {
+  margin: 3px 0 0;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -0.005em;
+  line-height: 1.2;
+}
+.stephead-text {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+/* section heads inside a step (Doors & windows 1 · 2 · 3): small outlined numbers, plain titles */
+.bigstep {
+  gap: 10px;
+  margin-top: 4px;
+}
+.bigstep-n {
+  width: 24px;
+  height: 24px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  background: transparent;
+  border: 1.5px solid var(--teal-dim);
+  color: var(--teal);
+}
+.bigstep-t {
+  font-size: 15px;
+  font-weight: 700;
+}
+.bigstep-h {
+  font-size: 12.5px;
+}
+/* cards: one radius, 1px borders, no glow */
+.wallcard,
+.tile,
+.lt-card,
+.part,
+.colorpart,
+.panel .card,
+.placed-row,
+.preset,
+.resume-card,
+.review,
+.guide-card {
+  border-radius: 10px;
+}
+.wallcard {
+  border: 1px solid var(--border-vis);
+  min-height: 0;
+  padding: 10px 12px;
+}
+.wallcard.on {
+  border-color: var(--lime);
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--lime);
+}
+.wallcard.on .wallcard-name,
+.wallcard.on .wallcard-n,
+.wallcard.on .wallcard-size {
+  color: var(--text);
+}
+.wallcard-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+.wallcard-n,
+.wallcard-size {
+  font-size: 12.5px;
+}
+.wallcard:hover:not(.on),
+.tile:hover:not(:disabled),
+.preset:hover:not(.on),
+.pick:hover:not(.on),
+.panel .card:hover:not(.on) {
+  border-color: var(--teal-dim);
+}
+.tile {
+  min-height: 84px;
+  border: 1px solid var(--border-vis);
+  gap: 6px;
+}
+.tile .kind-icon,
+.placed-main .kind-icon {
+  color: var(--sub);
+  width: 32px;
+  height: 32px;
+}
+.tile-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.panel .card.on,
+.colorpart.on,
+.wallbtn.on {
+  box-shadow: inset 0 0 0 1px var(--lime);
+}
+.panel .card.on .card-title,
+.wallbtn.on .wallbtn-state {
+  color: var(--text);
+}
+.pick {
+  border-radius: 8px;
+  min-height: 40px;
+}
+.pick.on,
+.preset.on {
+  box-shadow: none;
+}
+.lt-card,
+.part {
+  padding: 14px;
+  gap: 12px;
+  border-color: var(--border);
+}
+.lt-card .part {
+  border-color: var(--border-vis);
+}
+.part-num,
+.placed-num {
+  border-radius: 6px;
+}
+/* buttons: one height, quiet secondary buttons */
+.btn-primary,
+.btn-ghost {
+  min-height: 44px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.btn-primary {
+  font-weight: 700;
+}
+.stepnav .btn-ghost,
+.guide-foot .btn-ghost,
+.add-back {
+  border: 1px solid #4e7280;
+  background: transparent;
+  font-size: 14px;
+}
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  font-size: 18px;
+}
+.qty button {
+  color: var(--teal);
+}
+.qty button:disabled {
+  color: var(--muted);
+  opacity: 0.5;
+}
+.qty-why {
+  color: var(--sub);
+}
+/* the drag tip: a plain note, not a dashed box */
+.drag-tip {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--sub);
+  font-size: 13px;
+}
+.drag-tip > span {
+  color: var(--sub);
+}
+.toast {
+  font-size: 13.5px;
+  border-radius: 8px;
+}
+.note {
+  font-size: 13px;
+  line-height: 1.45;
+}
+/* colors: the part buttons say the whole color name */
+.colorparts {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.colorpart {
+  min-height: 48px;
+  border: 1px solid var(--border-vis);
+}
+.colorpart.on {
+  border-color: var(--lime);
+}
+.colorpart-val {
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.25;
+  font-size: 12px;
+}
+.colorpart-dot {
+  width: 20px;
+  height: 20px;
+}
+/* lean-to: add doors / windows (proper secondary buttons, then size + how many) */
+.lt-add,
+.lt-addform {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.lt-kinds {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.lt-kind {
+  color: var(--text);
+  background: var(--surface-3);
+  border: 1px solid var(--border-vis);
+  font-weight: 600;
+}
+.lt-kind:hover {
+  color: var(--text);
+}
+.lt-kind.on {
+  border-color: var(--lime);
+  box-shadow: inset 0 0 0 1px var(--lime);
+}
+.lt-addform {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+/* review & send, guide */
+.review-k {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.guide-card {
+  border: 1px solid var(--border-vis);
+}
+.guide-btn {
+  min-height: 48px;
+  border-radius: 8px;
+}
+
+/* ── step chips (number + name; done ✓ · current teal · upcoming muted) ── */
+.stepbar {
+  position: relative;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--border);
+}
+.panel .stepbar .tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 0;
+  scroll-snap-type: x proximity;
+  scroll-padding: 0 32px;
+}
+.tabs > button.stepchip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 4px 12px 4px 5px;
+  border: 1px solid var(--border-vis);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  scroll-snap-align: center;
+}
+.stepchip-n {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.tabs > button.stepchip.done {
+  color: var(--text);
+}
+.stepchip.done .stepchip-n {
+  background: rgba(34, 211, 200, 0.14);
+  color: var(--teal);
+}
+.tabs > button.stepchip.on {
+  border-color: var(--teal);
+  background: var(--teal-glow);
+  color: var(--text);
+}
+.stepchip.on .stepchip-n {
+  background: var(--teal);
+  color: #062027;
+}
+.tabs > button.stepchip.todo {
+  color: var(--muted);
+}
+.stepchip.todo .stepchip-n {
+  border: 1px solid var(--border-vis);
+  color: var(--muted);
+}
+.tabs > button.stepchip:hover {
+  border-color: var(--teal-dim);
+  color: var(--text);
+}
+.stepbar-arrow {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 34px;
+  padding: 0;
+  border: 0;
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+.stepbar-arrow.left {
+  left: 0;
+  background: linear-gradient(to right, var(--surface) 55%, rgba(11, 34, 45, 0));
+}
+.stepbar-arrow.right {
+  right: 0;
+  background: linear-gradient(to left, var(--surface) 55%, rgba(11, 34, 45, 0));
+}
+/* a chip only part in view hides (App useBarEdges), so a step name is never cut in half */
+.tabs > button.stepchip.cut {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tabs > button.stepchip {
+    transition: opacity 0.12s ease;
+  }
+}
+/* the arrows sit over the edge; the plain fade is not needed under them */
+.panel .stepbar .tabs {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+/* the old "All steps" button is gone (the chips are always there) */
+.steps-btn {
+  display: none;
+}
+/* not enough room for every name: the other steps show their number (or ✓) only; the current one its name */
+.panel .stepbar .tabs.compact {
+  gap: 4px;
+  padding: 10px 10px;
+  justify-content: space-between;
+}
+.tabs.compact > button.stepchip:not(.on) {
+  padding: 2px;
+}
+.tabs.compact > button.stepchip.on {
+  padding-right: 10px;
+}
+.tabs.compact > button.stepchip:not(.on) .stepchip-t {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.tabs.compact > button.stepchip:not(.on) .stepchip-n {
+  width: 24px;
+  height: 24px;
+}

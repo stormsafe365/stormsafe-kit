@@ -145,4 +145,15 @@ describe('upgrades: 45-degree angle cut on the roll-up doors', () => {
     n.upgrades.angle45 = false;
     expect(upgradeLines(n).join(' ')).not.toContain('45-degree');
   });
+  it('the 3D model draws the cut on every roll-up (main walls + lean-tos), and only on roll-ups', () => {
+    const n = normalizeDesign(all(), false);
+    const cfg = designToConfig(n, { county: null });
+    const ups = cfg.openings.filter((o) => o.type === 'rollUpDoor');
+    expect(ups.length).toBeGreaterThan(0);
+    expect(ups.every((o) => o.cut45 === true)).toBe(true);
+    expect(cfg.openings.filter((o) => o.type !== 'rollUpDoor').some((o) => o.cut45)).toBe(false);
+    for (const lt of cfg.leanTos ?? []) for (const o of lt.openings ?? []) expect(!!o.cut45).toBe(o.type === 'rollUpDoor');
+    n.upgrades.angle45 = false;
+    expect(designToConfig(n, { county: null }).openings.some((o) => o.cut45)).toBe(false);
+  });
 });

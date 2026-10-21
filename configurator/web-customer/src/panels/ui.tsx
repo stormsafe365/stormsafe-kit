@@ -204,6 +204,60 @@ export function Swatches({
 }
 
 /**
+ * V2 round 3: a "spec tile" (icon, small label, the value big). Tapping it opens the same choices as the
+ * old drop-down (a real <select> lies over the tile: the phone's own picker, keyboard and screen readers work).
+ */
+export function SpecTile<T extends string | number>({
+  label,
+  icon,
+  value,
+  display,
+  note,
+  options,
+  onChange,
+}: {
+  label: string;
+  icon: ReactNode;
+  value: T;
+  display: string;
+  note?: string;
+  options: Opt<T>[];
+  onChange: (v: T) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="spec">
+      <label className="spec-label" htmlFor={id}>
+        {label}
+      </label>
+      <span className="spec-value" aria-hidden="true">
+        <span className="spec-icon">{icon}</span>
+        <span className="spec-num">{display}</span>
+        <svg className="spec-caret" viewBox="0 0 10 6" width="10" height="6" aria-hidden="true" focusable="false">
+          <path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+      {note ? <span className="spec-note">{note}</span> : null}
+      <select
+        id={id}
+        className="spec-select"
+        value={String(value)}
+        onChange={(e) => {
+          const o = options.find((x) => String(x.value) === e.target.value);
+          if (o) onChange(o.value);
+        }}
+      >
+        {options.map((o) => (
+          <option key={String(o.value)} value={String(o.value)} disabled={o.disabled}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/**
  * "How many  − n +" (V2 round 2): + stops at `max` = how many really fit (the caller's fit count),
  * and the short reason shows there ("Only 3 fit on this wall").
  */

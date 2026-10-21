@@ -1,11 +1,24 @@
 import { useWebStore } from '../store';
 import type { WebBuildingType, WebDesign } from '../model/design';
 import { COMBO_MIN_PART, heightOptions, isWideSpan, LENGTH_MAX, LENGTH_MIN, panelsLocked, pitchRise, roofStyleLocked, ROOF_VERTICAL_OVER_LENGTH, widthOptions, wallTakesOpenings } from '../model/rules';
-import { Note, Segmented, Select, ft } from './ui';
+import { Note, Segmented, Select, SpecTile, ft } from './ui';
 
 /** Every whole foot from a to b, as drop-down choices (owner 10/18/26: length a drop-down like width). */
 const feet = (a: number, b: number) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => ({ value: a + i, label: `${a + i}′` }));
 import { BARNS, STYLES } from '../model/guide';
+
+/** Pictures made from our own 3D model (the guided questions' cards). */
+const PICTURE = (k: string) => new URL(`../assets/guide/${k}.jpg`, import.meta.url).href;
+const TYPE_PIC: Record<WebBuildingType, string> = { garage: 'garage', carport: 'carport', combo: 'utility' };
+
+/** Small line icons for the size tiles. */
+function DimIcon({ k }: { k: 'w' | 'l' | 'h' }) {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      {k === 'w' ? <path d="M3 12h18M6 9l-3 3 3 3M18 9l3 3-3 3" /> : k === 'l' ? <path d="M5 19L19 5M8 19H5v-3M16 5h3v3" /> : <path d="M12 3v18M9 6l3-3 3 3M9 18l3 3 3-3" />}
+    </svg>
+  );
+}
 
 const TYPES: Array<{ value: WebBuildingType; label: string; blurb: string }> = [
   { value: 'garage', label: 'Garage', blurb: 'Closed on all sides' },
@@ -49,12 +62,16 @@ export function SizePanel() {
     <div className="panel-body">
       {chosen ? (
         // one short line (owner 10/18/26: the boxed "Your building style" took too much room)
-        <p className="chosen-line">
-          Style: <strong>{chosenName}</strong>{' '}
-          <button type="button" className="linkish" onClick={() => setGuide('style')}>
-            Change style
+        <div className="stylecard">
+          <img className="stylecard-pic" src={PICTURE(chosen.leanTos && guideBarn ? `barn-${guideBarn}` : chosen.key)} alt="" width="96" height="60" decoding="async" />
+          <div className="stylecard-text">
+            <span className="stylecard-k">Your style</span>
+            <strong className="stylecard-name">{chosenName}</strong>
+          </div>
+          <button type="button" className="btn-ghost stylecard-btn" onClick={() => setGuide('style')}>
+            Change
           </button>
-        </p>
+        </div>
       ) : (
       <div className="field">
         <span className="field-label">Building type</span>
@@ -67,6 +84,7 @@ export function SizePanel() {
               aria-pressed={d.type === t.value}
               onClick={() => update((x) => applyType(x, t.value))}
             >
+              <img className="card-pic" src={PICTURE(TYPE_PIC[t.value])} alt="" width="96" height="60" decoding="async" />
               <span className="card-title">{t.label}</span>
               <span className="card-blurb">{t.blurb}</span>
             </button>
@@ -75,28 +93,39 @@ export function SizePanel() {
       </div>
       )}
 
-      <div className="row3">
-        <Select
+      {/* V2 round 3: the size as three spec tiles (tap one: the same choices as before) + a live readout */}
+      <div className="specs" role="group" aria-label="Size">
+        <SpecTile
           label="Width"
+          icon={<DimIcon k="w" />}
           value={d.width}
+          display={ft(d.width)}
+          note={isWideSpan(d.width) ? 'Wide span' : undefined}
           options={widthOptions(d.type).map((w) => ({ value: w, label: `${w}′${isWideSpan(w) ? ' (wide span)' : ''}` }))}
           onChange={(w) => update((x) => void (x.width = w))}
         />
-        <Select
+        <SpecTile
           label={d.type === 'combo' ? 'Total length' : 'Length'}
+          icon={<DimIcon k="l" />}
           value={d.length}
+          display={ft(d.length)}
           options={feet(LENGTH_MIN, LENGTH_MAX)}
           onChange={(l) => update((x) => void (x.length = l))}
         />
-        <Select
+        <SpecTile
           label="Wall height"
+          icon={<DimIcon k="h" />}
           value={d.height}
+          display={ft(d.height)}
           options={heightOptions(d.width).map((h) => ({ value: h, label: `${h}′` }))}
           onChange={(h) => update((x) => void (x.height = h))}
         />
       </div>
-      <p className="dims-line">
-        {ft(d.width)} W × {ft(d.length)} L × {ft(d.height)} H <span className="muted">· width × length × side-wall height</span>
+      <p className="readout" aria-live="polite">
+        <span className="readout-k">Your building</span>
+        <span className="readout-v">
+          <b>{ft(d.width)}</b> W <i>×</i> <b>{ft(d.length)}</b> L <i>×</i> <b>{ft(d.height)}</b> H
+        </span>
       </p>
 
       {/* the ZIP box is on the last step only (owner 10/17/26: one thing at a time, no long screens) */}

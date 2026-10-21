@@ -154,6 +154,13 @@ export function Guide({ banner, onUndo, onStartOver }: { banner?: ReactNode; onU
 
         {step === 'welcome' && (
           <>
+            {/* V2 round 3: a small showcase of what can be built (our own 3D pictures) */}
+            <div className="guide-hero" aria-hidden="true">
+              {['garage', 'utility', 'carport'].map((k) => (
+                <img key={k} src={PICTURE(k)} alt="" width="120" height="75" decoding="async" />
+              ))}
+            </div>
+            <p className="guide-eyebrow">3D building designer</p>
             <h1 className="guide-h" tabIndex={-1} ref={headRef}>Let’s design your building!</h1>
             <p className="guide-p">Not sure what you need? No problem. A few easy questions, and you’ll see your building in 3D.</p>
             <button
@@ -184,6 +191,11 @@ export function Guide({ banner, onUndo, onStartOver }: { banner?: ReactNode; onU
                 </button>
               </p>
             ) : null}
+            <ul className="guide-points">
+              <li>See your building in 3D as you go</li>
+              <li>Change anything, any time</li>
+              <li>Send it to your rep when it looks right</li>
+            </ul>
             <p className="guide-small">No building knowledge needed. Questions? <a href="tel:+15617715555">561-771-5555</a></p>
           </>
         )}

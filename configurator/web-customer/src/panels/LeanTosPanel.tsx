@@ -260,7 +260,7 @@ function LeanToCard({ lt, index }: { lt: WebLeanTo; index: number }) {
         <Select label="Width" value={lt.width} options={LEANTO_WIDTHS.map((w) => ({ value: w, label: `${w}′` }))} onChange={(w) => edit((l) => void (l.width = w))} />
         <Select label="Length" value={lt.length} options={feet(Math.min(10, host), host)} onChange={(v) => edit((l) => void (l.length = v))} />
         <Select
-          label="Height at the outer edge"
+          label="Outer edge height"
           value={lt.lowLeg}
           options={(legs.length ? legs : [lt.lowLeg]).map((h) => ({ value: h, label: `${h}′` }))}
           onChange={(h) => edit((l) => void (l.lowLeg = h))}

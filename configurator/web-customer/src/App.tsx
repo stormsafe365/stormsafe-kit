@@ -62,6 +62,24 @@ const STEP_HELP: Record<TabKey, { text: string | ((s: ReturnType<typeof useWebSt
   },
 };
 
+/** V2 round 3: one line icon per step (teal, in the step head). */
+function StepIcon({ k }: { k: TabKey }) {
+  const d: Record<TabKey, string> = {
+    size: 'M3 8l9-5 9 5v8l-9 5-9-5zM3 8l9 5 9-5M12 13v8',
+    walls: 'M3 21V9l9-6 9 6v12M3 21h18M8 21v-7h8v7',
+    doors: 'M6 21V4h12v17M3 21h18M14 13h.01',
+    leantos: 'M2 21V10l8-6 8 6M18 10l4 3v8M2 21h20M10 21v-5',
+    upgrades: 'M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6zM9 12l2 2 4-4',
+    colors: 'M12 3a9 9 0 100 18c1 0 1.5-.8 1.5-1.6 0-.5-.2-.8-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.7-1.6 1.6-1.6H16a5 5 0 005-5c0-4-4-7.4-9-7.4zM7.5 12h.01M10 8h.01M15 8h.01',
+    send: 'M21 3L10 14M21 3l-7 18-4-7-7-4z',
+  };
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" focusable="false">
+      <path d={d[k]} />
+    </svg>
+  );
+}
+
 /** "STEP 3 OF 7 · Doors & windows" on one line + one plain sentence (slim: the model keeps its room). */
 function StepHead() {
   const tab = useWebStore((s) => s.tab);
@@ -73,12 +91,17 @@ function StepHead() {
   const text = typeof help.text === 'function' ? help.text(state) : help.text;
   return (
     <div className="stephead">
+      <span className="stephead-icon" aria-hidden="true">
+        <StepIcon k={tab} />
+      </span>
+      <div className="stephead-main">
       <p className="stephead-eyebrow">
         Step {i + 1} of {steps.length}
-        {help.optional ? ' · Optional' : ''}
+        {help.optional ? <span className="stephead-opt">Optional</span> : null}
       </p>
       <h2 className="stephead-title">{steps[i].title}</h2>
       <p className="stephead-text">{text}</p>
+      </div>
     </div>
   );
 }
@@ -675,6 +698,9 @@ export function App() {
                 );
               })}
             </nav>
+            <span className="stepbar-progress" aria-hidden="true">
+              <span style={{ width: `${Math.round(((Math.max(0, steps.findIndex((x) => x.key === tab)) + 1) / steps.length) * 100)}%` }} />
+            </span>
             {edges.r ? (
               <button type="button" className="stepbar-arrow right" aria-label="More steps" tabIndex={-1} onClick={() => barRef.current?.scrollBy({ left: 160, behavior: 'smooth' })}>
                 ›

@@ -52,11 +52,11 @@ vm.runInContext(
   [
     'gLeg', 'cciUnits', 'cciUnitSum', 'cciColUp', 'cciWideOn', 'cciWideUnits', 'cciWideUnitSum', 'cciWideHeight', 'cci12GA',
     'halfClosedCost', 'gableOnlyCost', 'ecLookup', 'eBkt', 'gAnchors', 'gAnchorLegs', 'acUnitPrice', 'ltFrameoutPrice',
-    'ltAccFoUnitPrice', 'isEaveSide', 'vertEndUpcharge', 'vertSideUpcharge', 'gVertUpgrade', 'eaveVal', 'gAddEndWall', 'gInsul',
+    'ltAccFoUnitPrice', 'isEaveSide', 'vertEndUpcharge', 'vertSideUpcharge', 'gVertUpgrade', 'eaveVal', 'gAddEndWall', 'gInsul', 'insulEndAdd',
     'cciPanelTiers', 'cpJTrim', 'gSidePanels', 'sideClosurePrice', 'sidePanelLength', 'ropUnit', 'cciPBRule', 'cci170OcRule',
     'connFeeFor',
   ].map(grabFn).join('') +
-    grabVar('EXT_SH') + grabVar('EC') + grabVar('VERT_SIDE') + grabArr('EXT_L') + grabArr('LENGTHS') + grabArr('CCI_GA12_L') + grabArr('CCI_GA12_V') +
+    grabVar('EXT_SH') + grabVar('INSUL_END_ADD_PITCH') + grabVar('EC') + grabVar('VERT_SIDE') + grabArr('EXT_L') + grabArr('LENGTHS') + grabArr('CCI_GA12_L') + grabArr('CCI_GA12_V') +
     'var VERT_SIDE_EXT={high:[[60,1680]]}; var ANCHOR_UNIT=70; var INSUL_RATE=1.50;\n' +
     'var VERT_END={12:150,14:210,16:240,18:270,20:300,22:330,24:360,26:450,28:510,30:570};\n' +
     'var HW=["Charlotte","Collier","Duval","Flagler","Indian River","Lake","Lee","Martin","Palm Beach","Pinellas","Sarasota","Seminole","St Lucie","St. Lucie"];\n' +

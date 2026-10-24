@@ -1091,7 +1091,7 @@ export function DraggableLeanToOpening({
       const self = { offset: opening.offsetFt, width: opening.widthFt, sill: opening.sillFt, height: opening.heightFt };
       if (pressBelongsToSmaller(self, info.coord(e.point) - info.start, e.point.y, sibs)) return;
     }
-    if (!partTakesPress({ inside: useEditorStore.getState().interiorView, room: interiorRoom(building), span: leanToOpeningSpan(geo, opening) })) return;
+    if (!partTakesPress({ inside: useEditorStore.getState().interiorView, room: interiorRoom(building), span: leanToOpeningSpan(geo, opening), cut: useEditorStore.getState().interiorCut })) return;
     e.stopPropagation();
     selectLeanToOpening(opening.id);
     setDragging(true);

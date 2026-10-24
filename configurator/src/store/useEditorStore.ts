@@ -61,6 +61,14 @@ interface EditorStore {
    * then restores the normal orbit controls, FOV and near plane.
    */
   interiorView: boolean;
+  /**
+   * The walk-in view's section cut (interiorView.ts sectionCut), set by
+   * InteriorWalk while the eye stands back past the main room's end wall to
+   * frame a storage partition / GCH divider: that end wall is clipped away,
+   * so its parts must not take a press (partTakesPress). null otherwise —
+   * always null outside the walk-in view. VIEW-ONLY.
+   */
+  interiorCut: { z: number; keep: 1 | -1 } | null;
   /** "Spacing" overlay: every component's size + all gaps / heights on every wall. */
   showSpacing: boolean;
   /** Components the user clicked OPEN (door swings, roll-up rolls, window slides). */
@@ -88,6 +96,7 @@ interface EditorStore {
   goToView: (preset: CameraPreset) => void;
   /** Enter / leave the walk-in Interior view without a camera command (instant view setter). */
   setInteriorView: (on: boolean) => void;
+  setInteriorCut: (cut: { z: number; keep: 1 | -1 } | null) => void;
   setShowSpacing: (on: boolean) => void;
   toggleOpen: (id: string) => void;
   closeAllOpenings: () => void;
@@ -106,6 +115,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   cutawayWall: null,
   cameraCmd: null,
   interiorView: false,
+  interiorCut: null,
   showSpacing: false,
   openIds: {},
   // Owner 9/29/26: the NEW look is the default. 'Look: Classic' (ViewControls)
@@ -139,6 +149,7 @@ export const useEditorStore = create<EditorStore>((set) => ({
   goToView: (preset) =>
     set((s) => ({ cameraCmd: { preset, nonce: (s.cameraCmd?.nonce ?? 0) + 1 }, interiorView: preset === 'interior' })),
   setInteriorView: (on) => set({ interiorView: on }),
+  setInteriorCut: (cut) => set({ interiorCut: cut }),
   setShowSpacing: (on) => set({ showSpacing: on }),
   toggleOpen: (id) => set((s) => ({ openIds: { ...s.openIds, [id]: !s.openIds[id] } })),
   closeAllOpenings: () => set({ openIds: {} }),

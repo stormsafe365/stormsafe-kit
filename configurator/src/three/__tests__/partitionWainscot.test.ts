@@ -102,6 +102,8 @@ const flatTris = (a: Float32Array): Tri[] => {
   for (let i = 0; i < a.length / 9; i++) out.push([0, 1, 2].map((k): V3 => [a[i * 9 + k * 3], a[i * 9 + k * 3 + 1], a[i * 9 + k * 3 + 2]]));
   return out;
 };
+/** Numbers rounded to 1e-9 (sums like 13 + SHEET_OUTSET compare exactly). */
+const r9 = <T,>(v: T): T => JSON.parse(JSON.stringify(v, (_k, x) => (typeof x === 'number' ? Math.round(x * 1e9) / 1e9 : x)));
 const area = (ts: Tri[]) => ts.reduce((s, t) => s + Math.hypot(...cross(sub(t[1], t[0]), sub(t[2], t[0]))) / 2, 0);
 
 // ── classic: storagePartitionWainscot (drawn by Siding, capped by Trim) ─────
@@ -116,8 +118,9 @@ describe('classic: End Storage partition wainscot', () => {
     expect(b.plane).toBe('cross');
     expect(b.at).toBeCloseTo(pz - O2, 12); // proud of its sheet (pz - SO), toward the main room
     expect(b.wH).toBe(3);
-    expect(b.strips).toEqual([{ u0: -13, u1: 13, y0: 0, y1: 3 }]);
-    expect(b.cap).toEqual([{ u0: -13, u1: 13 }]);
+    // full width, out over the sheet's end pieces to the eave sheets (owner 10/24/26: no slit at the corners)
+    expect(r9(b.strips)).toEqual([{ u0: -13.18, u1: 13.18, y0: 0, y1: 3 }]);
+    expect(r9(b.cap)).toEqual([{ u0: -13.18, u1: 13.18 }]);
   });
 
   it('front-end storage: the band faces +Z (its main room)', () => {
@@ -137,13 +140,13 @@ describe('classic: End Storage partition wainscot', () => {
     expect(at(7, 2.5)).toBe(false); // the low window reaches down into the band
     expect(at(11, 2.5)).toBe(true);
     // the high window (sill 5') leaves the band alone; the cap breaks at the roll-up and the low window only
-    expect(b.cap).toEqual([
-      { u0: -13, u1: -9 },
+    expect(r9(b.cap)).toEqual([
+      { u0: -13.18, u1: -9 },
       { u0: 1, u1: 5.5 },
-      { u0: 8.5, u1: 13 },
+      { u0: 8.5, u1: 13.18 },
     ]);
-    // total band area = 26 x 3 - the doorway (10 x 3) - the window's part (3 x 1)
-    expect(b.strips.reduce((a, t) => a + (t.u1 - t.u0) * (t.y1 - t.y0), 0)).toBeCloseTo(45, 9);
+    // total band area = 26.36 x 3 (framing lines + the two end pieces) - the doorway (10 x 3) - the window's part (3 x 1)
+    expect(b.strips.reduce((a, t) => a + (t.u1 - t.u0) * (t.y1 - t.y0), 0)).toBeCloseTo(26.36 * 3 - 30 - 3, 9);
   });
 
   it("height follows the outside walls' clamp min(height, H - 0.5)", () => {
@@ -156,8 +159,8 @@ describe('classic: End Storage partition wainscot', () => {
     const bl = storagePartitionWainscot(l.s, l.cfg.openings, l.cfg.wainscot)!;
     expect(bl.plane).toBe('side');
     expect(bl.at).toBeCloseTo(-1 + O2, 12);
-    expect(bl.strips).toEqual([{ u0: -25, u1: 25, y0: 0, y1: 3 }]);
-    expect(bl.cap).toEqual([{ u0: -25, u1: 25 }]);
+    expect(r9(bl.strips)).toEqual([{ u0: -25.18, u1: 25.18, y0: 0, y1: 3 }]); // + its end pieces to the closed end walls
+    expect(r9(bl.cap)).toEqual([{ u0: -25.18, u1: 25.18 }]);
     const r = build({ mode: 'right', lengthFt: 12 }); // x = 1, faces -X
     expect(storagePartitionWainscot(r.s, r.cfg.openings, r.cfg.wainscot)!.at).toBeCloseTo(1 - O2, 12);
   });
@@ -207,8 +210,17 @@ describe('enhanced: End Storage partition wainscot', () => {
 
   it('band region + Z-trim line on the partition, like an outside end wall', () => {
     expect(part.plane.at).toBeCloseTo(zp, 12);
-    expect(part.regions.filter((r) => r.wainscot)).toEqual([{ c0: -13, c1: 13, y0: 0, y1: 3, wainscot: true }]);
-    expect(part.cap).toEqual([{ y: 3, c0: -13, c1: 13 }]);
+    // framing line to framing line + the two end pieces out to the eave sheets
+    expect(r9(part.regions.filter((r) => r.wainscot))).toEqual([
+      { c0: -13, c1: 13, y0: 0, y1: 3, wainscot: true },
+      { c0: -13.18, c1: -13, y0: 0, y1: 3, wainscot: true },
+      { c0: 13, c1: 13.18, y0: 0, y1: 3, wainscot: true },
+    ]);
+    expect(r9(part.cap)).toEqual([
+      { y: 3, c0: -13, c1: 13 },
+      { y: 3, c0: -13.18, c1: -13 },
+      { y: 3, c0: 13, c1: 13.18 },
+    ]);
   });
 
   it('the band is cut around the openings (wainscot colour in the partition plane)', () => {
@@ -241,8 +253,12 @@ describe('enhanced: End Storage partition wainscot', () => {
   it('wainscot off: one full-height wall region, no line, no wainscot colour on the partition', () => {
     const off = build({ mode: 'endBack', lengthFt: 30 }, { ...OFF, openings: [rollUp, lowWin] });
     const p = shellLayout(input(off.cfg, off.s)).walls.find((w) => w.plane.id === 'partition')!;
-    expect(p.regions.length).toBe(1);
+    expect(p.regions.length).toBe(3); // the sheet + its two end pieces
     expect(p.regions[0]).toMatchObject({ c0: -13, c1: 13, y0: 0, wainscot: false });
+    expect(r9(p.regions.slice(1).map((r) => [r.c0, r.c1, r.y0, r.wainscot]))).toEqual([
+      [-13.18, -13, 0, false],
+      [13, 13.18, 0, false],
+    ]);
     expect(p.cap).toEqual([]);
     expect(covers(wallTris(wallBatches(input(off.cfg, off.s)), off.cfg.colors.wainscot), [-11, 1.5, zp])).toBe(false);
   });

@@ -1,5 +1,6 @@
 import { openingWorldTransform, type StructureModel } from '@/engine/geometry';
 import type { Opening } from '@/types/building';
+import { fitDistance } from './cameraMath';
 
 /**
  * Walk-in INTERIOR camera mode — pure math (no three.js, no React), so the
@@ -51,6 +52,23 @@ export const INTERIOR = {
    * part just past the partition — does not).
    */
   wallSpanMinFt: 1,
+  /**
+   * Arrival on a CROSS wall (the End Storage partition — the program's
+   * "Storage wall" tile — or a GCH divider), owner 10/24/26 ("the camera zooms
+   * in very close ... you only see a slab of wall with the door"): framed like
+   * the outside views (cameraMath fitDistance, FIT_MARGIN) at this vertical
+   * FOV, square to the wall, eye at half the wall's height.
+   */
+  frameFovDeg: 60,
+  /**
+   * When that framing stands further back than the main room is deep, the eye
+   * stands beyond the room's end wall and the view is a SECTION: everything
+   * within this of that end wall's framing line, and beyond it on the eye's
+   * side (the end wall, its frame and doors, the roof overhang, anything
+   * outside), is clipped away (sectionCut). Its eave walls, roof and floor
+   * frame the partition from the cut on.
+   */
+  cutInsetFt: 1,
 } as const;
 
 export type Vec3 = [number, number, number];
@@ -64,7 +82,12 @@ export interface InteriorRoom {
   x1: number;
   z0: number;
   z1: number;
-  /** Clamp box: the room shrunk by INTERIOR.wallMarginFt (collapsed to the middle if the room is narrower). */
+  /**
+   * Clamp box: the room shrunk by INTERIOR.wallMarginFt (collapsed to the
+   * middle if the room is narrower). A cross-wall arrival that stands back
+   * past the room's end wall (interiorPose) extends it on that end to the
+   * arrival spot — the section view (sectionCut) — never past the far wall.
+   */
   box: { x0: number; x1: number; z0: number; z1: number; yMin: number };
   /** Eave height (ft) — the LOW eave for a single-slope. */
   eaveFt: number;
@@ -192,15 +215,88 @@ export function yawPitchOf(d: Vec3): { yaw: number; pitch: number } {
   return { yaw: Math.atan2(d[0], d[2]), pitch: Math.atan2(d[1], h) };
 }
 
+/** Height of a cross wall (end-wall shape) spanning plan x0..x1: its highest roof-line point. */
+export function crossWallHeight(s: Pick<StructureModel, 'width' | 'peakHeight' | 'rise' | 'monoDropFt'>, x0: number, x1: number): number {
+  const ys = [roofLineAt(s, x0), roofLineAt(s, x1)];
+  if (x0 < 0 && x1 > 0) ys.push(roofLineAt(s, 0));
+  return Math.max(...ys);
+}
+
 /**
- * Arrival pose: eye height, just inside the end of the main room opposite
- * what it looks at, centred across the room, aimed at the middle of the far
- * wall (the storage partition, the GCH divider or the far gable). When the
- * room is too short for the whole wall to fit, the tilt drops so the wall's
- * foot (where its doors meet the floor) stays in frame and the top crops.
+ * Arrival framing a CROSS wall — the End Storage partition (the program's
+ * "Storage wall" tile) or a GCH divider (owner 10/24/26: the old arrival
+ * stood 1.5' inside the end of the main room, so a short room showed only a
+ * slab of wall). Framed exactly like the outside views frame a wall: square
+ * to it from the main-room side (the side its doors are added to), centred
+ * across the room, eye at half the wall's height (the outside views' midY),
+ * level, at fitDistance(room width, wall height) for INTERIOR.frameFovDeg and
+ * the pane's aspect — the whole wall with the 1.18 margin, the eave walls,
+ * floor and roof around it. A room deeper than that: the eye stands in it. A
+ * shorter one: the eye stands back past the room's end wall, the room's clamp
+ * box is extended on that end to the arrival spot, and the view is a section
+ * (sectionCut clips that end wall away).
  */
-export function interiorPose(s: StructureModel): InteriorPose {
+function crossWallPose(s: StructureModel, room: InteriorRoom, aspect: number): InteriorPose {
+  const xc = (room.x0 + room.x1) / 2;
+  const farZ = room.dirZ > 0 ? room.z1 : room.z0;
+  const wallH = crossWallHeight(s, room.x0, room.x1);
+  const fov = INTERIOR.frameFovDeg;
+  const d = fitDistance(room.x1 - room.x0, wallH, fov, aspect);
+  const standZ = farZ - room.dirZ * d;
+  const box = { ...room.box };
+  if (room.dirZ > 0) box.z0 = Math.min(box.z0, standZ);
+  else box.z1 = Math.max(box.z1, standZ);
+  const framed: InteriorRoom = { ...room, box };
+  const pos = clampToInterior([xc, wallH / 2, standZ], framed, s);
+  // Level when the eye made half height (always, bar a clamp): aim at the wall's middle.
+  const pitch = Math.max(INTERIOR.arrivePitchMin, Math.min(INTERIOR.arrivePitchMax, Math.atan2(wallH / 2 - pos[1], Math.max(0.5, Math.abs(farZ - pos[2])))));
+  return { pos, yaw: room.dirZ > 0 ? 0 : Math.PI, pitch, fov, room: framed };
+}
+
+/**
+ * The walk-in view's section cut: everything on one side of the plane z = `z`
+ * is clipped away (renderer clipping plane), `keep` = the side kept (+1: z >
+ * the plane). Never saved or priced; only while the walk-in view is on.
+ */
+export interface SectionCut {
+  z: number;
+  keep: 1 | -1;
+}
+
+/**
+ * The section cut for an eye at `eye` in `room`: when the eye stands back past
+ * the room's arrival end (only a framed cross-wall arrival extends the box
+ * there), the plane INTERIOR.cutInsetFt inside that end wall's framing line,
+ * keeping the room side. null = the eye is in the room (nothing is cut).
+ */
+export function sectionCut(room: Pick<InteriorRoom, 'z0' | 'z1' | 'dirZ' | 'box'>, eye: Vec3): SectionCut | null {
+  const k = INTERIOR.cutInsetFt;
+  if (room.dirZ > 0) {
+    const z = room.z0 + k;
+    return room.box.z0 < z && eye[2] < z ? { z, keep: 1 } : null;
+  }
+  const z = room.z1 - k;
+  return room.box.z1 > z && eye[2] > z ? { z, keep: -1 } : null;
+}
+
+/** True when a part's whole along-wall span is on the clipped side of the section cut (it is not drawn). */
+export function spanCutAway(cut: SectionCut | null | undefined, span: [Vec3, Vec3]): boolean {
+  if (!cut) return false;
+  return span.every((p) => cut.keep * (p[2] - cut.z) < 0);
+}
+
+/**
+ * Arrival pose. On a cross wall (End Storage partition / GCH divider):
+ * crossWallPose, framed for a pane of `aspect` (width / height; 16:10 when
+ * unknown). Otherwise: eye height, just inside the end of the main room
+ * opposite what it looks at, centred across the room, aimed at the middle of
+ * the far wall (the far gable, or down a lengthwise storage's main room).
+ * When the room is too short for the whole wall to fit, the tilt drops so the
+ * wall's foot (where its doors meet the floor) stays in frame and the top crops.
+ */
+export function interiorPose(s: StructureModel, aspect = 1.6): InteriorPose {
   const room = interiorRoom(s);
+  if (room.kind === 'endStorage' || room.kind === 'gch') return crossWallPose(s, room, aspect > 0 && isFinite(aspect) ? aspect : 1.6);
   const xc = (room.x0 + room.x1) / 2;
   const standZ = room.dirZ > 0 ? room.z0 + INTERIOR.standOffFt : room.z1 - INTERIOR.standOffFt;
   const farZ = room.dirZ > 0 ? room.z1 : room.z0;
@@ -300,8 +396,11 @@ export function openingSpan(o: Pick<Opening, 'side' | 'offset' | 'width' | 'sill
  * is not stopped either: the look-around (lookPressStarts) gets it, exactly
  * like a press on bare wall.
  */
-export function partTakesPress(p: { inside: boolean; room: Pick<InteriorRoom, 'x0' | 'x1' | 'z0' | 'z1'>; span: [Vec3, Vec3] }): boolean {
+export function partTakesPress(p: { inside: boolean; room: Pick<InteriorRoom, 'x0' | 'x1' | 'z0' | 'z1'>; span: [Vec3, Vec3]; cut?: SectionCut | null }): boolean {
   if (!p.inside) return true;
+  // A part the section view clipped away (the room's end wall behind a
+  // framed cross-wall arrival) is not there to press — R3F would still hit it.
+  if (spanCutAway(p.cut, p.span)) return false;
   return spanOnRoomWalls(p.room, p.span[0], p.span[1]);
 }
 

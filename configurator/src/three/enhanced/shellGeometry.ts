@@ -491,6 +491,97 @@ export function sheetSpanAt(w: ShellWall, c: number): [number, number] | null {
   return y1 > y0 ? [y0, y1] : null;
 }
 
+/**
+ * Where a wall is sheeted on the line c (along its axis): the vertical
+ * extents [y0, y1] of its regions and gable / single-slope polygons on that
+ * line, merged, MINUS every opening whose hole spans the line (unlike
+ * sheetSpanAt, which only gives the overall min..max). Bottom-up, pieces of
+ * 0.02 ft or less dropped. A region reaching the line within 0.02 ft counts.
+ * `alsoPast`: an opening must ALSO run past this line to cut (a storage
+ * partition's framing line: an opening whose jamb is the partition's own
+ * bent does not cross the partition, though it spans its sheet line).
+ */
+export function sheetIntervalsAt(w: ShellWall, c: number, alsoPast: number = c): [number, number][] {
+  const raw: [number, number][] = [];
+  for (const r of w.regions) {
+    if (c < Math.min(r.c0, r.c1) - 0.02 || c > Math.max(r.c0, r.c1) + 0.02) continue;
+    raw.push([r.y0, r.y1]);
+  }
+  for (const poly of w.polys) {
+    const only: ShellWall = { ...w, regions: [], polys: [poly] };
+    const s = sheetSpanAt(only, c);
+    if (s) raw.push(s);
+  }
+  raw.sort((a, b) => a[0] - b[0]);
+  let out: [number, number][] = [];
+  for (const [a, b] of raw) {
+    const last = out[out.length - 1];
+    if (last && a <= last[1] + 0.02) last[1] = Math.max(last[1], b);
+    else out.push([a, b]);
+  }
+  for (const h of w.holes) {
+    // Only an opening that runs past the line on both sides cuts it (one that
+    // just ends on the line leaves the sheet edge there).
+    const across = (v: number) => h.c - h.w / 2 < v - EPS && h.c + h.w / 2 > v + EPS;
+    if (!across(c) || !across(alsoPast)) continue;
+    const next: [number, number][] = [];
+    for (const [a, b] of out) {
+      if (h.y1 <= a || h.y0 >= b) {
+        next.push([a, b]);
+        continue;
+      }
+      if (h.y0 > a) next.push([a, h.y0]);
+      if (h.y1 < b) next.push([h.y1, b]);
+    }
+    out = next;
+  }
+  return out.filter(([a, b]) => b - a > 0.02);
+}
+
+/**
+ * A garage / carport STORAGE partition's sheet edges (owner 10/24/26: "the
+ * partition wall doesn't look connected to the eave side walls"). Its sheet
+ * is cut like an end wall's, framing line to framing line (the End Storage
+ * cross wall across -W/2..W/2, a Left / Right lengthwise wall along
+ * -L/2..L/2), but the outside walls it butts against are sheeted SHEET_OUTSET
+ * further out (x = +-(W/2 + SHEET_OUTSET), z = +-(L/2 + SHEET_OUTSET)) and an
+ * interior wall gets no corner flashing — so a SHEET_OUTSET slit stood open
+ * at each end, showing the frame and the storage room behind it. Each end of
+ * the partition's sheet now runs on to the inside face of that outside
+ * wall's sheet, wherever and as high as that wall is sheeted on the
+ * partition's sheet line (sheetIntervalsAt: an eave-hung band, a hole for an
+ * opening that crosses the partition — past its sheet AND its framing line;
+ * one whose jamb is the partition's bent leaves the piece whole, closing the
+ * corner at that jamb — an open side = no edge piece). From the slab it
+ * carries the partition's base trim, wainscot and Z-trim to the corner; a
+ * hanging piece is plain sheet (the outside wall's own bottom trim finishes
+ * it). Along-axis ranges [c0, c1] on the partition wall, bottom-up.
+ */
+export function storagePartitionEdges(
+  walls: ShellWall[],
+  s: Pick<StructureModel, 'width' | 'length'>,
+): { c0: number; c1: number; y0: number; y1: number }[] {
+  const part = walls.find((w) => w.plane.id === 'partition');
+  if (!part) return [];
+  const halfW = s.width / 2;
+  const halfL = s.length / 2;
+  const SO = SHEET_OUTSET;
+  const out: { c0: number; c1: number; y0: number; y1: number }[] = [];
+  for (const sgn of [-1, 1] as const) {
+    // A cross partition (along X) butts the eave walls; a lengthwise one (along Z) the end walls.
+    const cross = part.plane.along === 'x';
+    const id: WallSide = cross ? (sgn < 0 ? 'left' : 'right') : sgn < 0 ? 'front' : 'back';
+    const other = walls.find((w) => w.plane.id === id);
+    if (!other) continue;
+    const frame = cross ? halfW : halfL;
+    const [c0, c1] = sgn < 0 ? [-(frame + SO), -frame] : [frame, frame + SO];
+    // The partition's own framing line: its sheet is SO off it toward the main room (plane.n).
+    const framing = part.plane.at - (cross ? part.plane.n[2] : part.plane.n[0]) * SO;
+    for (const [y0, y1] of sheetIntervalsAt(other, part.plane.at, framing)) out.push({ c0, c1, y0, y1 });
+  }
+  return out;
+}
+
 export function shellLayout(inp: ShellInput): ShellLayout {
   const s = inp.structure;
   const { width: W, length: L, legHeight: H, peakHeight: peak, enclosure: enc } = s;
@@ -622,6 +713,20 @@ export function shellLayout(inp: ShellInput): ShellLayout {
     const w = newWall({ id: 'partition', along: 'z', at: X0, n: [faces, 0, 0], u: [0, 0, -faces] }, []);
     addRun(w, -halfL, halfL, 0, top(X0), true);
     walls.push(w);
+  }
+
+  // Storage partition edges: its sheet runs on from its framing line to the
+  // inside face of the outside wall it meets (storagePartitionEdges). From the
+  // slab = a normal run (base trim, wainscot + Z-trim to the corner); a
+  // hanging piece is sheet only. The GCH divider (an outside corner with its
+  // own corner trim) is drawn exactly as before.
+  if (storageWall || enc.sidePartition) {
+    const part = walls.find((w) => w.plane.id === 'partition');
+    if (part)
+      for (const e of storagePartitionEdges(walls, s)) {
+        if (e.y0 <= EPS) addRun(part, e.c0, e.c1, 0, e.y1, true);
+        else if (e.y1 - e.y0 > 0.02) part.regions.push({ c0: e.c0, c1: e.c1, y0: e.y0, y1: e.y1, wainscot: false });
+      }
   }
 
   // Corner trims: only where two sheeted edges meet.

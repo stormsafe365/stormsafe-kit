@@ -306,7 +306,7 @@ function DraggableOpening({
       const self = { offset: opening.offset, width: opening.width, sill: opening.sillHeight, height: opening.height };
       if (pressBelongsToSmaller(self, worldToOffset(opening.side, p, structure), p.y, sibs)) return;
     }
-    if (!partTakesPress({ inside: useEditorStore.getState().interiorView, room: interiorRoom(structure), span: openingSpan(opening, structure) })) return;
+    if (!partTakesPress({ inside: useEditorStore.getState().interiorView, room: interiorRoom(structure), span: openingSpan(opening, structure), cut: useEditorStore.getState().interiorCut })) return;
     e.stopPropagation();
     selectOpening(opening.id);
     setActiveWall(opening.side);

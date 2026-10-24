@@ -102,6 +102,114 @@ export interface PartitionWainscot {
   cap: { u0: number; u1: number }[];
 }
 
+/**
+ * One end piece of a storage partition's sheet (classic Look): from the
+ * partition's framing line out to the inside face of the outside wall it
+ * meets. `u` runs along the partition like PartitionWainscot's (world X on an
+ * End Storage cross wall, world Z on a Left / Right lengthwise wall); `at` is
+ * the partition SHEET's plane (z resp. x).
+ */
+export interface PartitionEdge {
+  plane: 'cross' | 'side';
+  at: number;
+  u0: number;
+  u1: number;
+  y0: number;
+  y1: number;
+}
+
+/** [lo, hi] pieces minus [a, b] (vertical extents). */
+function cutSpans(spans: [number, number][], a: number, b: number): [number, number][] {
+  const out: [number, number][] = [];
+  for (const [s, e] of spans) {
+    if (b <= s || a >= e) {
+      out.push([s, e]);
+      continue;
+    }
+    if (a > s) out.push([s, a]);
+    if (b < e) out.push([b, e]);
+  }
+  return out;
+}
+
+/**
+ * Classic twin of the enhanced storagePartitionEdges (owner 10/24/26: "the
+ * partition wall doesn't look connected to the eave side walls"). A storage
+ * partition is sheeted framing line to framing line (End Storage: -W/2..W/2,
+ * Left / Right lengthwise: -L/2..L/2), but the outside wall it butts against
+ * is sheeted SHEET_OUTSET further out and an interior wall gets no corner
+ * flashing, so a SHEET_OUTSET slit stood open at each end (the frame and the
+ * storage room behind it showed through). Each end piece closes it wherever,
+ * and as high as, that outside wall is sheeted on the partition's sheet line:
+ *  - End Storage: the eave side (closed = slab to eave; partial = its
+ *    eave-hung band; open = none; an open-bay band on a carport), minus any
+ *    eave opening that crosses the partition (past its sheet AND framing
+ *    lines — one whose jamb is the partition's bent leaves the piece whole);
+ *  - Left / Right: the end wall (closed = slab to the roofline at the sheet;
+ *    gable-only = the gable; half-closed = the 6' band + gable; open = none),
+ *    minus any end-wall opening that crosses the partition the same way.
+ * [] = no storage partition (the GCH divider keeps its corner flashing).
+ */
+export function storagePartitionEdges(structure: StructureModel, openings: Opening[]): PartitionEdge[] {
+  const { width: W, length: L, legHeight: H, peakHeight, rise, enclosure: enc } = structure;
+  const halfW = W / 2;
+  const halfL = L / 2;
+  const SO = SHEET_OUTSET;
+  const mono = structure.monoDropFt > 0.01;
+  const within = (v: number, r: { start: number; end: number }) => v >= Math.min(r.start, r.end) - 0.02 && v <= Math.max(r.start, r.end) + 0.02;
+  // An opening cuts the piece only when it crosses the partition: its hole runs past the sheet line AND the
+  // partition's framing line (one whose jamb is the partition's bent spans the sheet line only: the piece closes the corner there).
+  const cutBy = (spans: [number, number][], ops: Opening[], center: (o: Opening) => number, at: number, framing: number) => {
+    let out = spans;
+    for (const o of ops) {
+      const c = center(o);
+      const across = (v: number) => c - o.width / 2 < v - 0.01 && c + o.width / 2 > v + 0.01;
+      if (across(at) && across(framing)) out = cutSpans(out, o.sillHeight, o.sillHeight + o.height);
+    }
+    return out.filter(([a, b]) => b - a > 0.02);
+  };
+  const out: PartitionEdge[] = [];
+  if (enc.partitionKind === 'storage' && enc.partitionZ !== null) {
+    const at = enc.partitionZ + (enc.partitionFaces ?? -1) * SO;
+    for (const sd of ['left', 'right'] as const) {
+      const wallH = mono && sd === 'left' ? peakHeight : H;
+      const spans: [number, number][] = [];
+      if (enc.sideZ && !enc.sideOpen[sd] && within(at, enc.sideZ)) {
+        const band = enc.sideBandFt[sd];
+        spans.push([band > 0 ? wallH - Math.min(band, wallH) : 0, wallH]);
+      }
+      if (structure.openBayZ && within(at, structure.openBayZ)) {
+        const bh = Math.min(structure.eavePanelFt[sd], H);
+        if (bh > 0) spans.push([eaveDownBand(H, bh).bottom, H]);
+      }
+      const [u0, u1] = sd === 'left' ? [-(halfW + SO), -halfW] : [halfW, halfW + SO];
+      for (const [y0, y1] of cutBy(spans, openings.filter((o) => o.side === sd), (o) => -halfL + o.offset, at, enc.partitionZ)) out.push({ plane: 'cross', at, u0, u1, y0, y1 });
+    }
+    return out;
+  }
+  if (enc.sidePartition) {
+    const at = enc.sidePartition.x + enc.sidePartition.faces * SO;
+    const topY = mono ? peakHeight - rise * ((at + halfW) / W) : peakHeight - Math.abs(at) * (rise / halfW);
+    for (const end of ['front', 'back'] as const) {
+      const mode = end === 'front' ? enc.front : enc.back;
+      const y0 = mode === 'closed' ? 0 : mode === 'gableOnly' ? H : mode === 'halfClosed' ? H - Math.min(6, H) : null;
+      if (y0 === null || !(topY - y0 > 0.02)) continue;
+      const center = (o: Opening) => (end === 'back' ? halfW - o.offset : -halfW + o.offset);
+      const [u0, u1] = end === 'front' ? [-(halfL + SO), -halfL] : [halfL, halfL + SO];
+      for (const [a, b] of cutBy([[y0, topY]], openings.filter((o) => o.side === end), center, at, enc.sidePartition.x)) out.push({ plane: 'side', at, u0, u1, y0: a, y1: b });
+    }
+  }
+  return out;
+}
+
+/** The along-wall run a storage partition's wainscot covers: its framing lines, out to an end piece that reaches from the slab over the band. */
+function wainscotRun(edges: PartitionEdge[], lo: number, hi: number, wH: number): [number, number] {
+  const full = (e: PartitionEdge) => e.y0 <= 0.01 && e.y1 >= wH - 0.01;
+  const l = edges.find((e) => full(e) && e.u1 <= lo + 1e-6);
+  const r = edges.find((e) => full(e) && e.u0 >= hi - 1e-6);
+  return [l ? l.u0 : lo, r ? r.u1 : hi];
+}
+
 /** [lo, hi] minus the cut ranges; pieces of 0.05 ft or less are dropped (WainscotCap's bar split). */
 function splitRun(lo: number, hi: number, cuts: { a: number; b: number }[]): { u0: number; u1: number }[] {
   let segs = [{ a: Math.min(lo, hi), b: Math.max(lo, hi) }];
@@ -137,22 +245,26 @@ export function storagePartitionWainscot(structure: StructureModel, openings: Op
   const halfW = W / 2;
   const halfL = L / 2;
   const o2 = SHEET_OUTSET + 0.02;
+  // The band runs on over the sheet's end pieces to the outside walls (storagePartitionEdges).
+  const edges = storagePartitionEdges(structure, openings);
   if (enc.partitionKind === 'storage' && enc.partitionZ !== null) {
     const f = enc.partitionFaces ?? -1;
     const ops = openings.filter((o) => o.side === 'partition');
+    const [lo, hi] = wainscotRun(edges, -halfW, halfW, wH);
+    const cm = (lo + hi) / 2;
     const holes: LocalRect[] = ops
       .filter((o) => o.sillHeight < wH - 0.01)
-      .map((o) => ({ u: -halfW + o.offset, v: o.sillHeight + o.height / 2 - wH / 2, w: o.width, h: o.height }));
-    const strips = stripsAround(W, wH, holes).map((st) => ({
-      u0: st.u - st.w / 2,
-      u1: st.u + st.w / 2,
+      .map((o) => ({ u: -halfW + o.offset - cm, v: o.sillHeight + o.height / 2 - wH / 2, w: o.width, h: o.height }));
+    const strips = stripsAround(hi - lo, wH, holes).map((st) => ({
+      u0: cm + st.u - st.w / 2,
+      u1: cm + st.u + st.w / 2,
       y0: wH / 2 + st.v - st.h / 2,
       y1: wH / 2 + st.v + st.h / 2,
     }));
     const cuts = ops
       .filter((o) => o.sillHeight < wH + 0.08 && o.sillHeight + o.height > wH - 0.08)
       .map((o) => ({ a: -halfW + o.offset - o.width / 2, b: -halfW + o.offset + o.width / 2 }));
-    return { plane: 'cross', at: enc.partitionZ + f * o2, wH, strips, cap: splitRun(-halfW, halfW, cuts) };
+    return { plane: 'cross', at: enc.partitionZ + f * o2, wH, strips, cap: splitRun(lo, hi, cuts) };
   }
   if (enc.sidePartition) {
     const { x, faces } = enc.sidePartition;
@@ -160,7 +272,8 @@ export function storagePartitionWainscot(structure: StructureModel, openings: Op
     const xs = x + faces * SHEET_OUTSET;
     const topY = structure.monoDropFt > 0.01 ? peakHeight - rise * ((xs + halfW) / W) : peakHeight - Math.abs(xs) * (rise / halfW);
     if (wH >= topY - 0.02) return null;
-    return { plane: 'side', at: x + faces * o2, wH, strips: [{ u0: -halfL, u1: halfL, y0: 0, y1: wH }], cap: [{ u0: -halfL, u1: halfL }] };
+    const [lo, hi] = wainscotRun(edges, -halfL, halfL, wH);
+    return { plane: 'side', at: x + faces * o2, wH, strips: [{ u0: lo, u1: hi, y0: 0, y1: wH }], cap: [{ u0: lo, u1: hi }] };
   }
   return null;
 }
@@ -170,6 +283,19 @@ export function storagePartitionWainscot(structure: StructureModel, openings: Op
  * Trim): the PDF capture (CaptureHook) skips them when it frames the building.
  */
 export const CAPTURE_IGNORE: Record<string, unknown> = { captureIgnore: true };
+
+/**
+ * A storage partition end piece's sheet material: pushed back by ~1 px of its
+ * own depth slope (nothing face-on, decisive edge-on), like the enhanced
+ * look's interior sheet — the piece touches the outside wall's sheet from
+ * inside, so edge-on from outside it must never win a pixel through it.
+ */
+function withDepthOffset<M extends THREE.Material>(m: M): M {
+  m.polygonOffset = true;
+  m.polygonOffsetFactor = 1;
+  m.polygonOffsetUnits = 1;
+  return m;
+}
 
 const TILE = 3; // feet per texture tile (≈2 ribs/ft)
 const NO_USERDATA: Record<string, unknown> = {};
@@ -355,6 +481,8 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
   const wOut = SHEET_OUTSET + 0.02;
   // Storage partition (End Storage / Left-Right) wainscot band — null when off.
   const storageBand = storagePartitionWainscot(structure, openings, wainscot);
+  // ...and its sheet's end pieces out to the outside walls ([] = none).
+  const partEdges = storagePartitionEdges(structure, openings);
   // Partition wainscot faces the open carport bay — offset its band toward that
   // side so it sits in front of the divider's visible (open-bay) face.
   const partWainZ =
@@ -616,6 +744,33 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
             />
           );
         })()}
+      {/* Storage partition end pieces: its sheet runs on from the framing line
+          to the inside face of the outside wall it meets (no slit at the
+          corner). Depth-offset so, edge-on from outside, the piece touching
+          the outside sheet never rasterizes through it. */}
+      {partEdges.map((e, i) => {
+        const w = e.u1 - e.u0;
+        const h = e.y1 - e.y0;
+        const paint = withDepthOffset(planeMat(tex.walls, w, h, wallDir, wallMetal, false, e.u0, e.y0));
+        const back = withDepthOffset(backMat(w, h, e.u0, e.y0));
+        if (e.plane === 'cross') {
+          const sides = sheetSides([0, 0, 1], [0, 0, enclosure.partitionFaces ?? -1]);
+          return <SheetPlane key={`pedge-${i}`} position={[(e.u0 + e.u1) / 2, (e.y0 + e.y1) / 2, e.at]} w={w} h={h} material={oneSided(paint, sides.paint)} back={oneSided(back, sides.back)} />;
+        }
+        return (
+          <BasisPanel
+            key={`pedge-${i}`}
+            center={[e.at, (e.y0 + e.y1) / 2, (e.u0 + e.u1) / 2]}
+            uVec={[0, 0, 1]}
+            vVec={[0, 1, 0]}
+            w={w}
+            h={h}
+            material={paint}
+            paint={[enclosure.sidePartition?.faces ?? 1, 0, 0]}
+            back={back}
+          />
+        );
+      })}
       {enclosure.partitionZ !== null && enclosure.partitionKind !== 'storage' && (
         <EndWall
           z={enclosure.partitionZ}

@@ -13,9 +13,11 @@ import {
   interiorPose,
   lookDir,
   lookPressStarts,
+  sectionCut,
   walk,
   zoomFov,
   type InteriorRoom,
+  type SectionCut,
   type Vec3,
 } from './interiorView';
 
@@ -61,16 +63,22 @@ const isTyping = (t: EventTarget | null) => {
 /**
  * WALK-IN INTERIOR view (camera preset 'interior', editor store `interiorView`).
  *
- * On entry the camera is placed INSTANTLY at eye height just inside the main
- * room (interiorPose: End Storage looks at the partition, Left/Right storage
- * looks down the main room, a GCH looks from the enclosed garage toward the
- * divider, otherwise from the front gable down the length) with a wide 70°
- * FOV, and the OrbitControls are switched off. While it is on:
+ * On entry the camera is placed INSTANTLY (interiorPose): End Storage (the
+ * program's "Storage wall" tile) and a GCH frame their partition / divider
+ * like the outside views frame a wall — square to it, eye at half its
+ * height, the whole wall in a 60° frame with the 1.18 margin (owner
+ * 10/24/26) — standing back past the main room's end wall when the room is
+ * too short, which is then a SECTION view (that end wall clipped away by one
+ * renderer clipping plane while the eye is beyond it); Left/Right storage
+ * looks down the main room and anything else from the front gable down the
+ * length, at eye height with a wide 70° FOV. The OrbitControls are switched
+ * off. While it is on:
  *   drag   = look around in place (turn the head; nothing moves the eye),
  *   scroll = zoom by FOV (30°–85°), no pan, no dolly,
  *   W/A/S/D + ↑/↓ = step around, ←/→ = turn,
  * and the eye is clamped EVERY frame into the room box (walls − 1', floor
- * + 2', under the roof line − 1'), so it can never leave the building.
+ * + 2', under the roof line − 1'; a framed arrival's box reaches back to its
+ * spot past the end wall, never further), so it never wanders off.
  * Near plane 0.1' while inside, so nothing within reach clips.
  *
  * Leaving (any other preset, the Structure framing, a Look switch, the PDF
@@ -104,9 +112,33 @@ export function InteriorWalk() {
   const resumeRef = useRef<{ walk: WalkState; saved: SavedOrbit | null; key: string } | null>(null);
   const keys = useRef(new Set<string>());
 
+  /**
+   * Section view (framed cross-wall arrival standing back past the room's end
+   * wall): one renderer clipping plane cuts that end wall away while the eye
+   * is beyond it (sectionCut); the renderer's own planes come back the moment
+   * it is not, and always on leaving. Shadows are not clipped (three skips
+   * global planes in the shadow pass), so the room keeps its light.
+   */
+  const cutRef = useRef<{ cut: SectionCut | null; plane: THREE.Plane; saved: THREE.Plane[] | null }>({ cut: null, plane: new THREE.Plane(), saved: null });
+  const applyCut = (cut: SectionCut | null) => {
+    const c = cutRef.current;
+    if (c.cut?.z === cut?.z && c.cut?.keep === cut?.keep) return;
+    if (cut) {
+      if (!c.saved) c.saved = gl.clippingPlanes;
+      c.plane.set(new THREE.Vector3(0, 0, cut.keep), -cut.keep * cut.z);
+      gl.clippingPlanes = [c.plane];
+    } else if (c.saved) {
+      gl.clippingPlanes = c.saved;
+      c.saved = null;
+    }
+    c.cut = cut;
+    useEditorStore.getState().setInteriorCut(cut);
+  };
+
   /** Write the current walk state onto the camera (clamped). */
   const applyCamera = (w: WalkState) => {
     w.pos = clampToInterior(w.pos, w.room, structureRef.current);
+    applyCut(sectionCut(w.room, w.pos));
     camera.position.set(w.pos[0], w.pos[1], w.pos[2]);
     const d = lookDir(w.yaw, w.pitch);
     camera.lookAt(w.pos[0] + d[0], w.pos[1] + d[1], w.pos[2] + d[2]);
@@ -121,7 +153,7 @@ export function InteriorWalk() {
 
   /** Arrival pose for the current building (instant, no fly-through). */
   const placeAtPose = () => {
-    const p = interiorPose(structureRef.current);
+    const p = interiorPose(structureRef.current, camera.aspect);
     const w: WalkState = {
       room: p.room,
       pos: p.pos,
@@ -173,6 +205,7 @@ export function InteriorWalk() {
       : null;
     walkRef.current = null;
     keys.current.clear();
+    applyCut(null); // the section view ends with the walk-in view (a PDF capture never sees it)
     gl.domElement.style.cursor = '';
     const s = savedRef.current;
     savedRef.current = null;

@@ -49,8 +49,18 @@ describe('enhanced shell: End Storage partition', () => {
     expect(part.polys.length).toBe(1);
   });
   it("interior wall: the building's wainscot band + Z-trim line on its main-room face, no corner trims", () => {
-    expect(part.regions.filter((r) => r.wainscot)).toEqual([{ c0: -15, c1: 15, y0: 0, y1: 3, wainscot: true }]);
-    expect(part.cap).toEqual([{ y: 3, c0: -15, c1: 15 }]);
+    // framing line to framing line, plus its end pieces out to the eave sheets (owner 10/24/26: no slit at the corner)
+    const SO = SHEET_OUTSET;
+    expect(part.regions.filter((r) => r.wainscot)).toEqual([
+      { c0: -15, c1: 15, y0: 0, y1: 3, wainscot: true },
+      { c0: -(15 + SO), c1: -15, y0: 0, y1: 3, wainscot: true },
+      { c0: 15, c1: 15 + SO, y0: 0, y1: 3, wainscot: true },
+    ]);
+    expect(part.cap).toEqual([
+      { y: 3, c0: -15, c1: 15 },
+      { y: 3, c0: -(15 + SO), c1: -15 },
+      { y: 3, c0: 15, c1: 15 + SO },
+    ]);
     expect(layout.corners.some((c) => c.end === 'partition')).toBe(false);
     // the outside walls still get their wainscot
     expect(layout.walls.find((w) => w.plane.id === 'front')!.regions.some((r) => r.wainscot)).toBe(true);
@@ -79,17 +89,33 @@ describe('enhanced shell: Left / Right lengthwise partition', () => {
   it('full length, floor to just under the roof at its x, facing the main room', () => {
     const X0 = 3 - SHEET_OUTSET;
     expect(part.plane).toEqual({ id: 'partition', along: 'z', at: X0, n: [-1, 0, 0], u: [0, 0, 1] });
+    const top = wallTopAt(roofSurface(s), X0);
+    const SO = SHEET_OUTSET;
+    // full length, plus its end pieces out to the closed end walls' sheets (slab to the roofline there, like the run)
     expect(part.regions).toEqual([
       { c0: -20, c1: 20, y0: 0, y1: 3, wainscot: true },
-      { c0: -20, c1: 20, y0: 3, y1: wallTopAt(roofSurface(s), X0), wainscot: false },
+      { c0: -20, c1: 20, y0: 3, y1: top, wainscot: false },
+      { c0: -(20 + SO), c1: -20, y0: 0, y1: 3, wainscot: true },
+      { c0: -(20 + SO), c1: -20, y0: 3, y1: top, wainscot: false },
+      { c0: 20, c1: 20 + SO, y0: 0, y1: 3, wainscot: true },
+      { c0: 20, c1: 20 + SO, y0: 3, y1: top, wainscot: false },
     ]);
-    expect(part.cap).toEqual([{ y: 3, c0: -20, c1: 20 }]);
+    expect(part.cap).toEqual([
+      { y: 3, c0: -20, c1: 20 },
+      { y: 3, c0: -(20 + SO), c1: -20 },
+      { y: 3, c0: 20, c1: 20 + SO },
+    ]);
     expect(part.holes).toEqual([]);
   });
-  it('wainscot off: the single full-height sheet, as before', () => {
+  it('wainscot off: the single full-height sheet (+ its two end pieces)', () => {
     const off = build({ wainscot: { enabled: false, heightFt: 3 } }, { mode: 'right', lengthFt: 12 });
     const p = shellLayout(input(off.cfg, off.s)).walls.find((w) => w.plane.id === 'partition')!;
-    expect(p.regions).toEqual([{ c0: -20, c1: 20, y0: 0, y1: wallTopAt(roofSurface(off.s), 3 - SHEET_OUTSET), wainscot: false }]);
+    const top = wallTopAt(roofSurface(off.s), 3 - SHEET_OUTSET);
+    expect(p.regions).toEqual([
+      { c0: -20, c1: 20, y0: 0, y1: top, wainscot: false },
+      { c0: -(20 + SHEET_OUTSET), c1: -20, y0: 0, y1: top, wainscot: false },
+      { c0: 20, c1: 20 + SHEET_OUTSET, y0: 0, y1: top, wainscot: false },
+    ]);
     expect(p.cap).toEqual([]);
   });
 });

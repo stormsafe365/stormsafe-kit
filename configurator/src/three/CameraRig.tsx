@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { useResolvedBuilding } from '@/engine/useResolvedBuilding';
 import { useEditorStore, type CameraPreset } from '@/store/useEditorStore';
+import { fitDistance as fitSpan } from './cameraMath';
 
 /**
  * Drives the camera for the named view presets and auto-frames the building
@@ -49,14 +50,8 @@ export function CameraRig() {
     initialized: boolean;
   } | null>(null);
 
-  /** Distance from `center` needed to fit a span (W×H) given the FOV/aspect. */
-  const fitDistance = (spanW: number, spanH: number) => {
-    const vFov = (camera.fov * Math.PI) / 180;
-    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
-    const distV = spanH / 2 / Math.tan(vFov / 2);
-    const distH = spanW / 2 / Math.tan(hFov / 2);
-    return Math.max(distV, distH) * 1.18; // margin
-  };
+  /** Distance from `center` needed to fit a span (W×H) given the FOV/aspect (cameraMath, 1.18 margin). */
+  const fitDistance = (spanW: number, spanH: number) => fitSpan(spanW, spanH, camera.fov, camera.aspect);
 
   const computePreset = (preset: CameraPreset) => {
     const halfW = W / 2;

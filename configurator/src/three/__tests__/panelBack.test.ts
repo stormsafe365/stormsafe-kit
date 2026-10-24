@@ -245,7 +245,12 @@ describe('storage partitions: painted on the main-room face, back inside the sto
     const onPart = (t: Tri) => t.p.every((p) => Math.abs(p[2] - (zp + f * 0.18)) < 1e-4);
     const { paint, back } = partitionFaces(bs, onPart);
     expect(paint.length).toBeGreaterThan(0);
-    expect(back.length).toBe(paint.length);
+    // the back covers exactly the painted area (the end pieces split the seal grid into more cells: compare areas, not counts)
+    expect(areaByPlane(back.map(({ t }) => t))).toEqual(areaByPlane(paint.map(({ t }) => t)));
+    // ...which runs out to the eave sheets' inside faces (owner 10/24/26: no slit at the corners)
+    const xs = paint.flatMap(({ t }) => t.p.map((p) => p[0]));
+    expect(Math.min(...xs)).toBeCloseTo(-(s.width / 2 + 0.18), 5); // Float32 positions
+    expect(Math.max(...xs)).toBeCloseTo(s.width / 2 + 0.18, 5);
     for (const { t } of paint) expect(t.n[2]).toBeCloseTo(f, 9);
     for (const { t } of back) expect(t.n[2]).toBeCloseTo(-f, 9);
     expect(new Set(paint.map(({ b }) => color(b)))).toEqual(new Set([cfg.colors.walls, cfg.colors.wainscot]));
@@ -265,7 +270,10 @@ describe('storage partitions: painted on the main-room face, back inside the sto
       expect(paint.length).toBeGreaterThan(0);
       for (const { t } of paint) expect(t.n[0]).toBeCloseTo(sp.faces, 9);
       for (const { t } of back) expect(t.n[0]).toBeCloseTo(-sp.faces, 9);
-      expect(back.length).toBe(paint.length);
+      expect(areaByPlane(back.map(({ t }) => t))).toEqual(areaByPlane(paint.map(({ t }) => t)));
+      const zs = paint.flatMap(({ t }) => t.p.map((p) => p[2]));
+      expect(Math.min(...zs)).toBeCloseTo(-(s.length / 2 + 0.18), 5);
+      expect(Math.max(...zs)).toBeCloseTo(s.length / 2 + 0.18, 5);
     }
   });
 

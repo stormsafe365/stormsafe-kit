@@ -32,7 +32,7 @@ export function useResolvedBuilding(): ConfiguratorPipeline {
   }, [config]);
 }
 
-function selectConfig(s: ReturnType<typeof useBuildingStore.getState>): BuildingConfig {
+export function selectConfig(s: ReturnType<typeof useBuildingStore.getState>): BuildingConfig {
   return {
     buildingType: s.buildingType,
     width: s.width,

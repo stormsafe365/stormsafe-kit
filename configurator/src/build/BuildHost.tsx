@@ -24,6 +24,9 @@ import { NO_STORAGE, partitionLocationAllowed, readMainStorage } from './mainSto
 import { gableLeanToOffset3D, offset3DToProgramX, programXTo3DOffset, programXToTyped, typedValueText } from './positionMap';
 import { dimQ } from '@/three/dimLabels';
 import { spreadAutoOverlaps } from '@/engine/autoSpread';
+import { resolveBuilding } from '@/engine/ruleEngine';
+import { deriveStructure } from '@/engine/geometry';
+import { selectConfig } from '@/engine/useResolvedBuilding';
 
 // Cache-bust the pricing iframe on the WEB (CRM embed) so a redeploy shows up
 // without a hard refresh. Skipped for the packaged desktop app, where the page
@@ -1107,6 +1110,15 @@ export default function BuildHost() {
       (window as unknown as Record<string, unknown>).__ssStore = useBuildingStore;
       (window as unknown as Record<string, unknown>).__ssEditor = useEditorStore;
       (window as unknown as Record<string, unknown>).__ssSync = sync;
+      // Frame facts for the program's Dimensioned Layout & Spacing page (owner
+      // 10/30/26): the main bents' knee brace exactly as the 3D draws it (the
+      // knee-brace chip's figures), the leg / peak heights and the single-slope
+      // drop. Synced first, so a print reads the quote as it stands.
+      (window as unknown as Record<string, unknown>).__ssFrameInfo = () => {
+        sync();
+        const s = deriveStructure(resolveBuilding(selectConfig(useBuildingStore.getState())));
+        return { legFt: s.legHeight, peakFt: s.peakHeight, monoDropFt: s.monoDropFt, kneeBrace: s.kneeBrace ?? null };
+      };
 
       // Auto-rotate the 3D to whatever wall you're working on: any time you focus
       // or change a field inside a door/window row, snap the camera to that wall.

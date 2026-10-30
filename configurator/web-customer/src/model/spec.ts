@@ -25,7 +25,7 @@ import {
   type WebOpening,
 } from './design';
 import { PROGRAM_REF } from './positions';
-import { activeWraps, isWideSpan, leanToIsEave, leanToOpeningWalls, pitchRise, wallTakesOpenings, WRAP_SIDES } from './rules';
+import { activeWraps, hoistIncluded, isWideSpan, leanToIsEave, leanToOpeningWalls, pitchRise, wallTakesOpenings, WRAP_SIDES } from './rules';
 
 export interface SpecContext {
   zip: string | null;
@@ -38,7 +38,10 @@ const colorName = (key: string) => colorByKey(key)?.name ?? key;
 
 /** "Roll-up door 10' W × 8' H, White" / "Walk-in door 36" × 80", 6-panel, white" … */
 export function partText(o: WebOpening | WebLeanToOpening): string {
-  if (o.kind === 'rollup') return `Roll-up door ${ftIn(o.w)} W × ${ftIn(o.h)} H, ${rollupColor(o.color).name}`;
+  if (o.kind === 'rollup') {
+    const hoist = hoistIncluded(o.w, o.h) ? ', chain hoist included with this size' : o.hoist ? ', chain hoist' : '';
+    return `Roll-up door ${ftIn(o.w)} W × ${ftIn(o.h)} H, ${rollupColor(o.color).name}${hoist}${o.seal ? ', brush seal' : ''}`;
+  }
   if (o.kind === 'walk') return `Walk-in door ${inchLabel(o.w)} × ${inchLabel(o.h)}, ${walkDoorType(o.style)?.name ?? 'Standard, white'}`;
   if (o.kind === 'window') return `Window ${inchLabel(o.w)} × ${inchLabel(o.h)}, ${windowType(o.style)?.name ?? 'White'}`;
   return `Framed opening (${o.frame === 'window' ? 'window' : 'door'}) ${ftIn(o.w)} W × ${ftIn(o.h)} H, customer-supplied unit`;

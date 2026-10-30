@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react';
 import { ROLLUP_COLORS, WALK_DOORS, WINDOWS, windowType, walkDoorType } from '../model/catalog';
 import type { OpeningKind, WebLeanToOpening, WebOpening } from '../model/design';
 import { Note, Select, Stepper, Segmented, ft, inch } from './ui';
+import { DoorAddOns } from './DoorAddOns';
+import { hoistIncluded } from '../model/rules';
 
 export const KIND_LABEL: Record<OpeningKind, string> = {
   // customer words (walkthroughs 10/16/26: "Roll-up" / "Framed" meant nothing to a first-time buyer)
@@ -21,6 +23,13 @@ export function partTitle(o: WebOpening | WebLeanToOpening): string {
   if (o.kind === 'walk') return `Walk-in door ${inch(o.w)} × ${inch(o.h)}`;
   if (o.kind === 'window') return `Window ${inch(o.w)} × ${inch(o.h)}`;
   return `Opening (no door) ${ft(o.w)} × ${ft(o.h)}`;
+}
+
+/** " · chain hoist · brush seal" on a roll-up door's line (the hoist a size comes with: "chain hoist included"); '' otherwise. */
+export function addOnText(o: WebOpening | WebLeanToOpening): string {
+  if (o.kind !== 'rollup') return '';
+  const hoist = hoistIncluded(o.w, o.h) ? 'chain hoist included' : o.hoist ? 'chain hoist' : '';
+  return [hoist, o.seal ? 'brush seal' : ''].filter(Boolean).map((s) => ` · ${s}`).join('');
 }
 
 export interface PartEditorProps {
@@ -96,6 +105,16 @@ export function PartEditor(p: PartEditorProps) {
               onChange={(color) => run(p.onPatch({ color }))}
             />
           </>
+        )}
+        {o.kind === 'rollup' && (
+          <DoorAddOns
+            w={o.w}
+            h={o.h}
+            hoist={o.hoist === true}
+            seal={o.seal === true}
+            onHoist={(v) => run(p.onPatch({ hoist: v || undefined }))}
+            onSeal={(v) => run(p.onPatch({ seal: v || undefined }))}
+          />
         )}
         {o.kind === 'walk' && (
           <Select label="Door style" value={walkDoorType(o.style)?.key ?? 'std'} options={walkOpts} onChange={(style) => run(p.onPatch({ style }))} />

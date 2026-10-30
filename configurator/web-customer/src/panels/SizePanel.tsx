@@ -169,6 +169,7 @@ export function SizePanel() {
           { value: 'standard', label: `Standard ${rise}:12` },
           { value: '4:12', label: '4:12 (steeper)' },
           { value: '5:12', label: '5:12 (steeper)' },
+          { value: '6:12', label: '6:12 (steepest)' },
         ]}
         onChange={(v) => update((x) => void (x.pitch = v))}
         hint={`Roof rises ${pitchRise(d)}″ for every 12″ across.`}

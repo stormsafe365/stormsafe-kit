@@ -69,7 +69,18 @@ export const panelsLocked = (d: Pick<WebDesign, 'width'>) => isWideSpan(d.width)
 export function pitchRise(d: Pick<WebDesign, 'width' | 'pitch'>): number {
   if (d.pitch === '4:12') return 4;
   if (d.pitch === '5:12') return 5;
+  if (d.pitch === '6:12') return 6;
   return d.width > 31 ? 2 : 3;
+}
+
+/**
+ * A roll-up door size that comes WITH a chain hoist (CCI's chart, the quote program's cciCertHoistIncluded): 14′ and 16′
+ * wide at any height, 12′ wide 12′ tall and up, every other width 13′ tall and up. The other sizes take one as an add-on.
+ */
+export function hoistIncluded(w: number, h: number): boolean {
+  if (w > 12) return true;
+  if (w === 12) return h >= 12;
+  return h >= 13;
 }
 
 /** Truss spacing (ft on center) the quote will use. */

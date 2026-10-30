@@ -14,7 +14,7 @@ import type { LeanToWrapCorner } from '@/types/building';
 
 export type WebBuildingType = 'garage' | 'carport' | 'combo';
 export type WebRoofStyle = 'Vertical' | 'Boxed Eave' | 'Regular';
-export type WebPitch = 'standard' | '4:12' | '5:12';
+export type WebPitch = 'standard' | '4:12' | '5:12' | '6:12';
 export type WebPanels = 'Horizontal' | 'Vertical';
 
 /** End wall (front / back gable). */
@@ -52,6 +52,13 @@ export interface WebOpening {
   chosen?: string;
   /** Roll-up door color key. */
   color?: string;
+  /**
+   * Roll-up door: a chain hoist asked for (owner 10/30/26). Sizes that come with one (rules.hoistIncluded)
+   * show "Included" whatever this says. Missing = not asked.
+   */
+  hoist?: boolean;
+  /** Roll-up door: a brush seal (tops & sides) asked for. Missing = not asked. */
+  seal?: boolean;
   /** Framed opening: a door-type (floor) or window-type (raised) opening. */
   frame?: 'door' | 'window';
 }
@@ -77,6 +84,9 @@ export interface WebLeanToOpening {
   /** See WebOpening.chosen. */
   chosen?: string;
   color?: string;
+  /** See WebOpening.hoist / seal. */
+  hoist?: boolean;
+  seal?: boolean;
   frame?: 'door' | 'window';
 }
 

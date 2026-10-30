@@ -95,7 +95,12 @@ function normalizeParts<T extends WebOpening | WebLeanToOpening>(o: T, impact: b
   delete out.chosen;
   delete out.color;
   delete out.frame;
+  delete out.hoist;
+  delete out.seal;
   if (o.kind === 'rollup') {
+    // chain hoist / brush seal: kept only as a plain yes (missing = not asked)
+    if (o.hoist === true) out.hoist = true;
+    if (o.seal === true) out.seal = true;
     const s = fitRollup(num(o.w, 10), num(o.h, 8), rollFits);
     out.w = s.w;
     out.h = s.h;
@@ -150,7 +155,7 @@ export function normalizeDesign(input: WebDesign, impact: boolean): WebDesign {
   out.enclosedLength = clamp(Math.round(num(d.enclosedLength, 20)), COMBO_MIN_PART, out.length - COMBO_MIN_PART);
 
   out.roofStyle = roofStyleLocked(out) ? 'Vertical' : oneOf(d.roofStyle, ['Vertical', 'Boxed Eave', 'Regular'] as const, 'Vertical');
-  out.pitch = oneOf(d.pitch, ['standard', '4:12', '5:12'] as const, 'standard');
+  out.pitch = oneOf(d.pitch, ['standard', '4:12', '5:12', '6:12'] as const, 'standard');
   out.panels = panelsLocked(out) ? 'Vertical' : oneOf(d.panels, ['Horizontal', 'Vertical'] as const, 'Horizontal');
 
   const w = d.walls ?? DEFAULT_DESIGN.walls;

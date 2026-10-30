@@ -38,6 +38,7 @@ import {
 } from '../model/sheet';
 import { cameraApi } from '../cameraFit';
 import { Note, QtyField, Segmented, Select, Stepper, Toggle, ft } from './ui';
+import { DoorAddOns } from './DoorAddOns';
 
 export type SheetTarget = { mode: 'add'; kind: OpeningKind; wall: WebWall } | { mode: 'edit'; id: string };
 
@@ -90,6 +91,8 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
   const [exactPos, setExactPos] = useState(0);
   const [advanced, setAdvanced] = useState(false);
   const [color, setColor] = useState(editing?.color ?? 'white');
+  const [hoist, setHoist] = useState(editing?.hoist === true);
+  const [seal, setSeal] = useState(editing?.seal === true);
   const [style, setStyle] = useState(editing?.style ?? 'std');
   const [frame, setFrame] = useState<'door' | 'window'>(editing?.frame === 'window' ? 'window' : 'door');
   const [lowerTo, setLowerTo] = useState<number | null>(null);
@@ -143,7 +146,13 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
 
   const make = (id: string, pos: number): WebOpening => {
     const o: WebOpening = { ...(editing ?? {}), id, kind, wall, w, h, sill: kind === 'window' ? (editing?.sill ?? WINDOW_SILL_FT) : 0, pos } as WebOpening;
-    if (kind === 'rollup') o.color = color;
+    if (kind === 'rollup') {
+      o.color = color;
+      if (hoist) o.hoist = true;
+      else delete o.hoist;
+      if (seal) o.seal = true;
+      else delete o.seal;
+    }
     if (kind === 'walk') o.style = style;
     if (kind === 'window') o.style = winStyle;
     if (kind === 'frame') o.frame = frame;
@@ -217,7 +226,7 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
       info: respace ? `The ${NOUN[kind][1]} there are spaced out evenly to make room.` : null,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [d, base, wall, kind, w, h, qty, posMode, exactPos, color, style, winStyle, frame, lowerTo, editing, rollupsThere]);
+  }, [d, base, wall, kind, w, h, qty, posMode, exactPos, color, hoist, seal, style, winStyle, frame, lowerTo, editing, rollupsThere]);
 
   // How many: as many as really fit at this size (addMany.maxQty: the no-overlap rule + the garage-door height rule)
   const startD: WebDesign = useMemo(
@@ -400,6 +409,7 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
           onChange={setFrame}
         />
       )}
+      {kind === 'rollup' && w && h ? <DoorAddOns w={w} h={h} hoist={hoist} seal={seal} onHoist={setHoist} onSeal={setSeal} /> : null}
       {!editing && mostFit >= 1 ? <QtyField value={qty} max={mostFit} onChange={setQty} reason={qty >= mostFit ? qtyWhy : null} /> : null}
 
       {/* ── 2. Position ── */}

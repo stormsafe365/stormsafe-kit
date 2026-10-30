@@ -7,7 +7,7 @@ import { nextFreeId } from '../model/normalize';
 import { freeMainPos, mainSpotOk } from '../model/positions';
 import { isEave, openingWalls, rollupFits, rollupSizes, walkDoorFitsHeight, windowFitsHeight } from '../model/rules';
 import { posToChoice, wallCountLine, wallInfo } from '../model/sheet';
-import { partTitle } from './PartEditor';
+import { addOnText, partTitle } from './PartEditor';
 import { Note, ft } from './ui';
 import { AddParts, KindIcon } from './AddParts';
 import { PartSheet, type SheetTarget } from './PartSheet';
@@ -257,7 +257,10 @@ export function OpeningsPanel() {
                     <KindIcon k={o.kind} />
                     <span className="placed-text">
                       <span className="placed-title">{partTitle(o)}</span>
-                      <span className="placed-sub">{spotWord(d, o)} · tap to change</span>
+                      <span className="placed-sub">
+                        {spotWord(d, o)}
+                        {addOnText(o)} · tap to change
+                      </span>
                     </span>
                   </button>
                   <button

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore } from '../store';
-import { LEANTO_WIDTHS, ROLLUP_COLORS, WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
+import { LEANTO_WIDTHS, ROLLUP_COLORS, WALK_DOORS, WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOWS, WINDOW_SILL_FT, windowType } from '../model/catalog';
 import {
   LEANTO_END_LABEL,
   LEANTO_SIDE_LABEL,
@@ -31,7 +31,7 @@ import {
 import { maxLeanToQty, spreadLeanTo } from '../model/leanToMany';
 import { PartEditor } from './PartEditor';
 import { DoorAddOns } from './DoorAddOns';
-import { Note, QtyField, Segmented, Select, Toggle } from './ui';
+import { Note, QtyField, Segmented, Select, Stepper, Toggle } from './ui';
 
 /** Every whole foot from a to b, as drop-down choices (owner 10/18/26: sizes are drop-downs, like width). */
 const feet = (a: number, b: number) => Array.from({ length: Math.max(0, b - a + 1) }, (_, i) => ({ value: a + i, label: `${a + i}′` }));
@@ -68,7 +68,15 @@ export function newLeanTo(d: WebDesign, side: LeanToSide): WebLeanTo {
  * 8′ × 7′ from the lean-to list, the 3′ × 6′8″ walk-in door, the 30″ × 30″ window, a 4′ × 6′ opening).
  * null = that kind cannot go on this wall (a walk-in door / window needs a 7′+ outer edge).
  */
-function leanToPartSize(d: WebDesign, lt: WebLeanTo, wall: LeanToWall, kind: OpeningKind, rw: number, rh: number): { w: number; h: number; sill: number } | null {
+function leanToPartSize(
+  d: WebDesign,
+  lt: WebLeanTo,
+  wall: LeanToWall,
+  kind: OpeningKind,
+  rw: number,
+  rh: number,
+  pick: { frame: 'door' | 'window'; fw: number; fh: number; win: string } = { frame: 'door', fw: 4, fh: 6, win: 'std' },
+): { w: number; h: number; sill: number } | null {
   const run = leanToWallLength(d, lt, wall);
   if (kind === 'rollup') {
     const s = leanToRollupSizes(lt, wall, run);
@@ -77,9 +85,21 @@ function leanToPartSize(d: WebDesign, lt: WebLeanTo, wall: LeanToWall, kind: Ope
     return w && h ? { w, h, sill: 0 } : null;
   }
   if (kind === 'walk') return lt.lowLeg < 7 ? null : { w: WALK_DOOR_W_FT, h: WALK_DOOR_H_FT, sill: 0 };
-  if (kind === 'window') return lt.lowLeg < 7 ? null : { w: 2.5, h: 2.5, sill: WINDOW_SILL_FT };
-  const w = Math.min(4, run - 2);
-  return w > 0 ? { w, h: Math.max(1, Math.min(6, lt.lowLeg - 1)), sill: 0 } : null;
+  if (kind === 'window') {
+    const t = windowType(pick.win) ?? WINDOWS[0];
+    return lt.lowLeg < 7 ? null : { w: t.wIn / 12, h: t.hIn / 12, sill: WINDOW_SILL_FT };
+  }
+  // an opening: the width / height picked, inside the limits its boxes have (wall − 2′; a door-type one up to the outer
+  // edge − 1′, a window-type one 3′ at most, above the 4′2″ sill: as the lean-to door cards and the page's rules)
+  const maxW = run - 2;
+  if (maxW < 1) return null;
+  const w = Math.max(1, Math.min(pick.fw, maxW));
+  if (pick.frame === 'window') {
+    const maxH = Math.min(3, lt.lowLeg - WINDOW_SILL_FT);
+    return maxH >= 1 ? { w, h: Math.max(1, Math.min(pick.fh, maxH)), sill: WINDOW_SILL_FT } : null;
+  }
+  const maxH = lt.lowLeg - 1;
+  return maxH >= 1 ? { w, h: Math.max(1, Math.min(pick.fh, maxH)), sill: 0 } : null;
 }
 
 /** Add doors / windows to a lean-to: which wall, what, the size (garage doors), how many (as many as fit), Add. */
@@ -90,6 +110,13 @@ function LeanToAdd({ lt, walls, onAdd }: { lt: WebLeanTo; walls: LeanToWall[]; o
   const [kind, setKind] = useState<OpeningKind | null>(null);
   const [rw, setRw] = useState(8);
   const [rh, setRh] = useState(7);
+  // an opening: door-type / window-type + its size; a window: its type; a walk-in door: its style
+  const [frame, setFrame] = useState<'door' | 'window'>('door');
+  const [fw, setFw] = useState(4);
+  const [fh, setFh] = useState(6);
+  const [win, setWin] = useState('std');
+  const [walkStyle, setWalkStyle] = useState('std');
+  const impact = useWebStore((s) => s.impact);
   const [qty, setQty] = useState(1);
   const [color, setColor] = useState('white');
   const [hoist, setHoist] = useState(false);
@@ -97,7 +124,7 @@ function LeanToAdd({ lt, walls, onAdd }: { lt: WebLeanTo; walls: LeanToWall[]; o
   const [done, setDone] = useState<string | null>(null);
   const setPreview = useWebStore((s) => s.setPreview);
   const run = leanToWallLength(d, lt, wall);
-  const size = kind ? leanToPartSize(d, lt, wall, kind, rw, rh) : null;
+  const size = kind ? leanToPartSize(d, lt, wall, kind, rw, rh, { frame, fw, fh, win }) : null;
   const most = size ? maxLeanToQty(d, lt, wall, size.w) : 0;
   const q = Math.max(1, Math.min(qty, most || 1));
   const full = lt.openings.length >= MAX_LEANTO_OPENINGS;
@@ -118,11 +145,12 @@ function LeanToAdd({ lt, walls, onAdd }: { lt: WebLeanTo; walls: LeanToWall[]; o
         if (hoist) o.hoist = true;
         if (seal) o.seal = true;
       }
-      if (kind === 'walk' || kind === 'window') o.style = 'std'; // an impact area shows the rated ones (normalize)
-      if (kind === 'frame') o.frame = 'door';
+      if (kind === 'walk') o.style = walkStyle; // an impact area shows the rated ones (normalize)
+      if (kind === 'window') o.style = win;
+      if (kind === 'frame') o.frame = frame;
       return o;
     });
-  }, [d, lt, wall, kind, size?.w, size?.h, size?.sill, most, full, q, color, hoist, seal]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [d, lt, wall, kind, size?.w, size?.h, size?.sill, most, full, q, color, hoist, seal, walkStyle, win, frame]); // eslint-disable-line react-hooks/exhaustive-deps
   // (only the card that is showing a part clears it: another lean-to's card may be showing one)
   const mine = useRef(false);
   useEffect(() => {
@@ -152,6 +180,9 @@ function LeanToAdd({ lt, walls, onAdd }: { lt: WebLeanTo; walls: LeanToWall[]; o
     setColor('white');
     setHoist(false);
     setSeal(false);
+    setFrame('door');
+    setFw(4);
+    setFh(6);
   };
   const why = !kind
     ? null
@@ -211,6 +242,44 @@ function LeanToAdd({ lt, walls, onAdd }: { lt: WebLeanTo; walls: LeanToWall[]; o
                 setRh(b);
               }}
             />
+          ) : null}
+          {kind === 'frame' ? (
+            <>
+              <Segmented<'door' | 'window'>
+                label="For"
+                value={frame}
+                options={[
+                  { value: 'door', label: 'Door' },
+                  { value: 'window', label: 'Window' },
+                ]}
+                onChange={(v) => {
+                  setFrame(v);
+                  if (v === 'window') setFh((h) => Math.min(h, 3));
+                }}
+              />
+              <div className="part-grid">
+                <Stepper label="Width" value={size ? size.w : fw} min={1} max={Math.max(1, run - 2)} onChange={setFw} />
+                <Stepper
+                  label="Height"
+                  value={size ? size.h : fh}
+                  min={1}
+                  max={Math.max(1, frame === 'window' ? Math.min(3, lt.lowLeg - WINDOW_SILL_FT) : lt.lowLeg - 1)}
+                  onChange={setFh}
+                />
+              </div>
+              <p className="field-hint">An opening is framed and ready for a door or window you supply.</p>
+            </>
+          ) : null}
+          {kind === 'window' && size ? (
+            <Select
+              label="Window"
+              value={win}
+              options={WINDOWS.map((t) => ({ value: t.key, label: `${t.name} ${t.wIn}″ × ${t.hIn}″`, disabled: impact && !t.impact }))}
+              onChange={setWin}
+            />
+          ) : null}
+          {kind === 'walk' && size ? (
+            <Select label="Door style" value={walkStyle} options={WALK_DOORS.map((t) => ({ value: t.key, label: t.name, disabled: impact && !t.impact }))} onChange={setWalkStyle} />
           ) : null}
           {kind === 'rollup' && size ? (
             <>

@@ -209,6 +209,24 @@ export function placeOnWall(d: D, wall: WebWall, w: number, at: PosChoice | numb
   return { pos, moved: Math.abs(pos - want) > 0.05 };
 }
 
+/**
+ * Where a step of the position box lands (− / + or a typed number), from the spot the part is at now (`from`) toward
+ * `to`. The nearest free spot to `to` when that is a move that way; when it is not (`to` is within 1′ of a door or
+ * window, so the nearest free spot is back where the part was: owner 10/31/26, "it keeps going back next to the other
+ * one"), the first free spot past it that way. Same no-overlap rule as everywhere (fitMainPos). null = no room on the wall.
+ */
+export function stepOnWall(d: D, wall: WebWall, w: number, from: number, to: number, excludeId: string | null): Placement | null {
+  const p = placeOnWall(d, wall, w, to, excludeId);
+  const dir = Math.sign(to - from);
+  if (!p || dir === 0 || (p.pos - from) * dir > 0.01) return p;
+  const last = wallLength(d, wall) - w;
+  for (let t = to; t >= 0 && t <= last; t += dir / 8) {
+    const q = fitMainPos(d, wall, w, t, excludeId);
+    if (q !== null && (q - from) * dir > 0.01) return { pos: q, moved: Math.abs(q - to) > 0.05 };
+  }
+  return p;
+}
+
 /** Which button a typed position matches (for reopening a placed part), or null = a custom spot. */
 export function posToChoice(d: Pick<WebDesign, 'type' | 'width' | 'length' | 'enclosedLength'>, wall: WebWall, w: number, pos: number): PosChoice | null {
   for (const c of ['center', 'left', 'right'] as PosChoice[]) if (Math.abs(choiceToWantPos(d, wall, w, c) - pos) < 0.05) return c;

@@ -27,6 +27,7 @@ import {
   fmtFt,
   placeOnWall,
   posToChoice,
+  stepOnWall,
   rollupOptions,
   sizePresets,
   viewerX,
@@ -161,6 +162,8 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
 
   const res: Result = useMemo(() => {
     const out: Result = { next: null, ids: [], refused: null, info: null, tallFix: null, pos: null };
+    // the part(s) placed: a change with How many > 1 keeps the one being changed as the first of them
+    const ids = editing ? [editing.id, ...newIds] : newIds;
     const wallName = WALL_LABEL[wall].toLowerCase();
     if (kind === 'walk' && !walkDoorFitsHeight(d.height)) return { ...out, refused: 'Walk-in doors need walls at least 7′ tall (Size step).' };
     if (kind === 'window' && !windowFitsHeight(d.height, h)) return { ...out, refused: 'Windows need walls at least 7′ tall (Size step).' };
@@ -171,7 +174,7 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
     if (kind === 'frame' && (w > wallLength(d, wall) - 2 || h > (isEave(wall) ? d.height - 1 : d.height))) return { ...out, refused: 'That opening is too big for this wall.' };
 
     // ── change a placed part (as the card did: this door's size rule, then the no-overlap fit) ──
-    if (editing) {
+    if (editing && qty === 1) {
       if (kind === 'rollup' && !rollupFits(base, wall, w, h, rollupsThere + 1)) return { ...out, refused: 'That door size doesn’t fit this wall.' };
       const p = placeOnWall(base, wall, w, at, null);
       if (!p) return { ...out, refused: NO_ROOM };
@@ -203,8 +206,8 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
     if (qty === 1) {
       const p = placeOnWall(start, wall, w, at, null);
       if (p) {
-        next.openings.push(make(newIds[0], p.pos));
-        return { ...out, next, ids: [newIds[0]], pos: p.pos, info: p.moved ? `That spot is taken: it goes in the nearest free spot (${ft(p.pos)} from ${CUSTOMER_REF[wall]}).` : null };
+        next.openings.push(make(ids[0], p.pos));
+        return { ...out, next, ids: [ids[0]], pos: p.pos, info: p.moved ? `That spot is taken: it goes in the nearest free spot (${ft(p.pos)} from ${CUSTOMER_REF[wall]}).` : null };
       }
     }
     // several at once (or no free spot): spread out evenly, with the same doors already there (as before)
@@ -217,11 +220,11 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
         if (o) o.pos = respace.spots[i];
       });
     const spots = free ?? respace!.spots.slice(respace!.existing.length);
-    spots.forEach((pos, i) => next.openings.push(make(newIds[i], pos)));
+    spots.forEach((pos, i) => next.openings.push(make(ids[i], pos)));
     return {
       ...out,
       next,
-      ids: newIds.slice(0, spots.length),
+      ids: ids.slice(0, spots.length),
       pos: spots.length === 1 ? spots[0] : null,
       info: respace ? `The ${NOUN[kind][1]} there are spaced out evenly to make room.` : null,
     };
@@ -233,7 +236,8 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
     () => (lowerTo !== null ? { ...base, openings: base.openings.map((o) => (o.wall === wall && o.kind === 'rollup' && o.h > lowerTo ? { ...o, h: lowerTo } : o)) } : base),
     [base, lowerTo, wall],
   );
-  const mostFit = !editing && w && h ? maxQty(startD, wall, kind, w, h) : 0;
+  // (changing a placed part: base is the design without it, so this counts it too)
+  const mostFit = w && h ? maxQty(startD, wall, kind, w, h) : 0;
   useEffect(() => {
     if (mostFit >= 1 && qty > mostFit) setQty(mostFit);
   }, [mostFit, qty]);
@@ -284,7 +288,14 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
     });
     setPreview(null);
     const wallName = WALL_LABEL[wall].toLowerCase();
-    onDone(editing ? `Saved the ${NOUN[kind][0]} on the ${wallName}.` : `Added ${qty} ${plural(kind, qty)} to the ${wallName}.`, wall);
+    onDone(
+      editing
+        ? qty > 1
+          ? `Saved the ${NOUN[kind][0]} on the ${wallName} and added ${qty - 1} more.`
+          : `Saved the ${NOUN[kind][0]} on the ${wallName}.`
+        : `Added ${qty} ${plural(kind, qty)} to the ${wallName}.`,
+      wall,
+    );
   };
   const remove = () => {
     if (!editing) return;
@@ -410,7 +421,7 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
         />
       )}
       {kind === 'rollup' && w && h ? <DoorAddOns w={w} h={h} hoist={hoist} seal={seal} onHoist={setHoist} onSeal={setSeal} /> : null}
-      {!editing && mostFit >= 1 ? <QtyField value={qty} max={mostFit} onChange={setQty} reason={qty >= mostFit ? qtyWhy : null} /> : null}
+      {mostFit >= 1 ? <QtyField value={qty} max={mostFit} onChange={setQty} reason={qty >= mostFit ? qtyWhy : null} /> : null}
 
       {/* ── 2. Position ── */}
       <h4 className="sheet-step">2. Position</h4>
@@ -442,8 +453,10 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
               max={Math.max(0, face - w)}
               step={0.5}
               onChange={(v) => {
+                // a step that would land beside a neighbour and bounce back goes past it instead (stepOnWall)
+                const s = stepOnWall(base, wall, w, curPos, v, null);
                 setPosMode('exact');
-                setExactPos(v);
+                setExactPos(s ? s.pos : v);
               }}
             />
           ) : null}
@@ -476,7 +489,7 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
           </button>
         )}
         <button type="button" className="btn-primary btn-add" disabled={!res.next} onClick={commit}>
-          {editing ? 'Save' : `Add ${qty > 1 ? `${qty} ` : ''}${qty > 1 ? plural(kind, qty) : SHEET_KIND[kind].toLowerCase()}`}
+          {editing ? (qty > 1 ? `Save and add ${qty - 1} more` : 'Save') : `Add ${qty > 1 ? `${qty} ` : ''}${qty > 1 ? plural(kind, qty) : SHEET_KIND[kind].toLowerCase()}`}
         </button>
       </div>
     </section>

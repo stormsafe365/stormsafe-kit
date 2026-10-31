@@ -4125,3 +4125,31 @@ html.vv-kb .stepnav {
     }
   }
 }
+
+/* every wall shows on the Doors step (owner 10/31/26): an open wall is dimmed and closes in one tap */
+.wallcard.is-open:not(.on) {
+  border-style: dashed;
+  background: transparent;
+}
+.wallcard.is-open:not(.on) .wallcard-name,
+.wallcard.is-open:not(.on) .wallcard-size {
+  opacity: 0.75;
+}
+.openwall {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px dashed var(--border-vis);
+  border-radius: 10px;
+}
+.openwall-text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--sub);
+}
+.openwall-btn {
+  min-height: 44px;
+}
+.openwall .linkish {
+  justify-self: start;
+}

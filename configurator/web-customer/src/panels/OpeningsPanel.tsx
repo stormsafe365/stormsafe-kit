@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore } from '../store';
 import { WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
-import { WALL_LABEL, type OpeningKind, type WebDesign, type WebOpening, type WebWall } from '../model/design';
+import { END_WALL_LABEL, SIDE_WALL_LABEL, WALL_LABEL, type OpeningKind, type WebDesign, type WebOpening, type WebWall } from '../model/design';
 import { nextFreeId } from '../model/normalize';
 import { freeMainPos, mainSpotOk } from '../model/positions';
 import { isEave, openingWalls, rollupFits, rollupSizes, walkDoorFitsHeight, windowFitsHeight } from '../model/rules';
@@ -119,9 +119,23 @@ export function OpeningsPanel() {
   const [sheet, setSheet] = useState<SheetTarget | null>(null);
   // the short "Added ..." line, shown while the design still has the doors / windows it had right after
   const [toast, setToast] = useState<{ text: string; count: number } | null>(null);
-  const shown = WALL_ORDER.filter((w) => (d.type === 'combo' ? true : w !== 'partition') && (walls.includes(w) || d.openings.some((o) => o.wall === w)));
+  // every wall shows (owner 10/31/26: "i want it to show all the walls, that confused me itll confuse others"): an open
+  // one is dimmed and says what it is; picking it offers to close it in (nothing goes on a wall that is not closed)
   const combo = d.type === 'combo';
-  const openWalls = combo ? [] : WALL_ORDER.filter((w) => w !== 'partition' && !walls.includes(w) && !shown.includes(w));
+  const shown = WALL_ORDER.filter((w) => combo || w !== 'partition');
+  /** What an open wall is, in the Walls step's words ('' when it takes doors). */
+  const openWord = (w: WebWall): string => {
+    if (walls.includes(w)) return '';
+    if (combo && w === 'front') return 'open carport end';
+    if (w === 'partition') return '';
+    const v = d.walls[w as 'front' | 'back' | 'left' | 'right'];
+    return (isEave(w) ? SIDE_WALL_LABEL[v as keyof typeof SIDE_WALL_LABEL] : END_WALL_LABEL[v as keyof typeof END_WALL_LABEL]) ?? 'open';
+  };
+  const closeIn = (w: WebWall) => {
+    if (combo || w === 'partition') return;
+    update((x) => void (x.walls[w as 'front' | 'back' | 'left' | 'right'] = 'closed'));
+    setTimeout(() => cameraApi.fit(camWall(w)), 60);
+  };
   // a part tapped on the model: its wall is picked and its sheet opens
   useEffect(() => {
     const o = selectedId ? d.openings.find((k) => k.id === selectedId) : null;
@@ -187,12 +201,12 @@ export function OpeningsPanel() {
             const closed = walls.includes(w);
             const info = wallInfo(d, w);
             return (
-              <button key={w} type="button" role="radio" aria-checked={wallSel === w} className={`wallcard${wallSel === w ? ' on' : ''}`} onClick={() => pickWall(w)}>
+              <button key={w} type="button" role="radio" aria-checked={wallSel === w} className={`wallcard${wallSel === w ? ' on' : ''}${closed ? '' : ' is-open'}`} onClick={() => pickWall(w)}>
                 <WallIcon shape={info.shape} />
                 <span className="wallcard-name">{WALL_LABEL[w]}</span>
                 <span className="wallcard-size">{info.sizeLine}</span>
-                <span className="wallcard-n">{parts.length ? wallCountLine(parts) : 'nothing on it yet'}</span>
-                {!closed ? <span className="wallcard-warn">wall not closed</span> : null}
+                {closed || parts.length ? <span className="wallcard-n">{parts.length ? wallCountLine(parts) : 'nothing on it yet'}</span> : null}
+                {!closed ? <span className="wallcard-warn">{combo && w === 'front' ? 'Open carport end' : openWord(w).toLowerCase() === 'open' ? 'Open wall' : `Open wall: ${openWord(w).toLowerCase()}`}</span> : null}
               </button>
             );
           })}
@@ -201,19 +215,10 @@ export function OpeningsPanel() {
       {combo ? (
         <p className="field-hint">The front end is the open carport end, so it has no wall. Doors go on the divider wall between the garage and the carport, the back end and the sides.</p>
       ) : null}
-      {openWalls.length ? (
-        <p className="field-hint">
-          Open (no wall yet): {openWalls.map((w) => WALL_LABEL[w].toLowerCase()).join(', ')}.{' '}
-          <button type="button" className="linkish" onClick={() => setTab('walls')}>
-            Close a wall in the Walls step
-          </button>{' '}
-          to add to it.
-        </p>
-      ) : null}
 
       {/* ── Step 2: add to that wall ── */}
       <BigStep n={2} title={wallSel ? `Add to the ${wallName}` : 'Then add a door or window'} help={wallSel ? undefined : 'Pick a wall above first.'} dim={!wallSel} />
-      {!walls.length ? (
+      {!walls.length && !wallSel ? (
         <AddParts wall="front" onPick={() => {}} />
       ) : wallSel && walls.includes(wallSel) ? (
         <AddParts
@@ -225,8 +230,20 @@ export function OpeningsPanel() {
             setSheet({ mode: 'add', kind, wall: wallSel });
           }}
         />
+      ) : wallSel && combo && wallSel === 'front' ? (
+        <Note>The front end is the open carport end, so it has no wall. Doors go on the divider wall between the garage and the carport.</Note>
       ) : wallSel ? (
-        <Note>This wall isn’t closed in, so nothing can go on it. Close it in the Walls step, or fix or move what is on it below.</Note>
+        <div className="openwall">
+          <p className="openwall-text">
+            The {wallName} is open right now{openWord(wallSel).toLowerCase() === 'open' ? '' : ` (${openWord(wallSel).toLowerCase()})`}, so nothing can go on it.
+          </p>
+          <button type="button" className="btn-primary openwall-btn" onClick={() => closeIn(wallSel)}>
+            Close in the {wallName}
+          </button>
+          <button type="button" className="linkish" onClick={() => setTab('walls')}>
+            Or change it in the Walls step
+          </button>
+        </div>
       ) : null}
 
       {/* ── Step 3: what is on that wall ── */}

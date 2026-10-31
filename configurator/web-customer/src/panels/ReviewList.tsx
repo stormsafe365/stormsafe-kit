@@ -5,7 +5,7 @@
  */
 import { useWebStore, type TabKey } from '../store';
 import { colorByKey } from '../model/catalog';
-import { LEANTO_SIDE_LABEL, TYPE_LABEL, WALL_LABEL, type WebDesign } from '../model/design';
+import { LEANTO_SIDE_LABEL, TYPE_LABEL, wallLabel, type WebDesign } from '../model/design';
 import { upgradeLines } from '../model/spec';
 import { addOnText, partTitle } from './PartEditor';
 import { ft } from './ui';
@@ -23,16 +23,18 @@ export function reviewRows(d: WebDesign): ReviewRow[] {
   const building = `${TYPE_LABEL[d.type]}${d.width >= 32 ? ' (wide span)' : ''}: ${ft(d.width)} W × ${ft(d.length)} L × ${ft(d.height)} H`;
   const sizeLines = [building];
   if (d.type === 'combo') sizeLines.push(`Closed room ${ft(d.enclosedLength)} long in back, open carport ${ft(d.length - d.enclosedLength)} in front`);
-  const parts = d.openings.map((o) => `${partTitle(o)}${addOnText(o)} · ${WALL_LABEL[o.wall]}`);
+  const parts = d.openings.map((o) => `${partTitle(o)}${addOnText(o)} · ${wallLabel(d, o.wall)}`);
   const lean = d.leanTos.map(
     (lt) =>
       `${LEANTO_SIDE_LABEL[lt.side]}: ${ft(lt.width)} wide, ${lt.enclosure === 'open' ? 'open' : lt.enclosure === 'enclosed' ? 'closed in' : 'some walls closed'}${lt.openings.length ? `, ${lt.openings.length} door${lt.openings.length === 1 ? '' : 's'} / window${lt.openings.length === 1 ? '' : 's'}` : ''}`,
   );
+  // Add-ons: the partition wall too (owner 10/31/26)
+  if (d.storage?.on && d.type !== 'combo') lean.push(`Partition wall: room ${ft(d.storage.depth)} deep at the ${d.storage.end} end`);
   const ups = upgradeLines(d);
   return [
     { key: 'size', label: 'Building', lines: sizeLines },
     { key: 'doors', label: 'Doors & windows', lines: parts.length ? parts : ['None yet'] },
-    { key: 'leantos', label: 'Lean-tos', lines: lean.length ? lean : ['None'] },
+    { key: 'leantos', label: 'Add-ons', lines: lean.length ? lean : ['None'] },
     { key: 'upgrades', label: 'Upgrades', lines: ups.length ? ups : ['None'] },
     { key: 'colors', label: 'Colors', lines: [`Roof ${colorName(d.colors.roof)} · Walls ${colorName(d.colors.walls)} · Trim ${colorName(d.colors.trim)}`] },
   ];

@@ -30,6 +30,7 @@ import {
 } from '../model/rules';
 import { maxLeanToQty, spreadLeanTo } from '../model/leanToMany';
 import { PartEditor } from './PartEditor';
+import { AddonPick } from './AddonPick';
 import { DoorAddOns } from './DoorAddOns';
 import { Note, QtyField, Segmented, Select, Stepper, Toggle } from './ui';
 
@@ -472,23 +473,32 @@ export function LeanTosPanel() {
 
   return (
     <div className="panel-body">
-      {free.length > 0 && (
-        <div className="add-lt">
-          <Select label="Which side?" value={pick} options={free.map((s) => ({ value: s, label: LEANTO_SIDE_LABEL[s] }))} onChange={setSide} />
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={() => {
-              update((x) => void x.leanTos.push(newLeanTo(x, pick)));
-              // show it: the camera turns to that side
-              setTimeout(() => cameraApi.fit(SIDE_VIEW[pick]), 250);
-            }}
-          >
-            + Add lean-to
-          </button>
-        </div>
-      )}
-      {d.leanTos.length === 0 && <p className="empty">No lean-tos yet.</p>}
+      {/* Add-ons (owner 10/31/26, as on the website's Customize page): the lean-to as a picture card with a lime + Add */}
+      <AddonPick
+        pic="leanto"
+        title="Lean-to"
+        text="A roof off the side or end of your building: covered parking, a porch, or a dry spot for equipment."
+        added={d.leanTos.length ? <span className="addon-added">✓ {d.leanTos.length} added</span> : undefined}
+      >
+        {free.length > 0 ? (
+          <div className="add-lt">
+            <Select label="Which side?" value={pick} options={free.map((s) => ({ value: s, label: LEANTO_SIDE_LABEL[s] }))} onChange={setSide} />
+            <button
+              type="button"
+              className="btn-primary addon-add"
+              onClick={() => {
+                update((x) => void x.leanTos.push(newLeanTo(x, pick)));
+                // show it: the camera turns to that side
+                setTimeout(() => cameraApi.fit(SIDE_VIEW[pick]), 250);
+              }}
+            >
+              + Add {d.leanTos.length ? 'another' : 'a'} lean-to
+            </button>
+          </div>
+        ) : (
+          <p className="field-hint">There is a lean-to on every side.</p>
+        )}
+      </AddonPick>
       {d.leanTos.map((lt, i) => (
         <LeanToCard key={lt.id} lt={lt} index={i} />
       ))}

@@ -39,7 +39,9 @@ describe('wall cards', () => {
     expect(wallInfo(d, 'back').sizeLine).toBe('30′ end');
     expect(wallInfo(d, 'left')).toMatchObject({ name: 'Left side', sizeLine: '40′ long side', shape: 'side', lengthFt: 40 });
     expect(wallInfo(d, 'right').sizeLine).toBe('40′ long side');
-    expect(wallInfo(d, 'partition').sizeLine).toBe('30′ divider');
+    // the inside wall: the partition wall (Add-ons) on a garage / carport, the divider on a Garage + Carport
+    expect(wallInfo(d, 'partition')).toMatchObject({ name: 'Partition wall', sizeLine: '30′ partition' });
+    expect(wallInfo({ ...d, type: 'combo' }, 'partition')).toMatchObject({ name: 'Divider wall', sizeLine: '30′ divider' });
   });
   it('count what is on the wall', () => {
     expect(wallCountLine([{ kind: 'rollup' }, { kind: 'rollup' }, { kind: 'window' }])).toBe('2 garage doors, 1 window');

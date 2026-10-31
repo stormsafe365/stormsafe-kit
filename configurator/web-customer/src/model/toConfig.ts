@@ -152,7 +152,8 @@ export function designToConfig(d: WebDesign, ctx: Pick<WebContext, 'county'>): B
       back: 'closed',
       left: 'closed',
       right: 'closed',
-      storage: { mode: 'none', lengthFt: 0 },
+      // the partition wall (Add-ons) = the program's End Storage: 'end' = in from the front, 'endBack' = from the back
+      storage: d.storage?.on && d.type !== 'combo' ? { mode: d.storage.end === 'front' ? 'end' : 'endBack', lengthFt: d.storage.depth } : { mode: 'none', lengthFt: 0 },
     },
     trussSpacingFt: d.upgrades?.oc4 ? 4 : trussSpacingFt(d, ctx.county),
     leanTos,

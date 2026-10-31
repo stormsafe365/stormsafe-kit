@@ -143,6 +143,13 @@ export interface WebDesign {
   wraps: LeanToWrapCorner[];
   /** Upgrades the customer would like (optional in saved states: missing = none). */
   upgrades: WebUpgrades;
+  /**
+   * Add-ons: a partition wall (owner 10/31/26, as on the website's Customize page) - a wall across the building on a frame
+   * line, `depth` ft in from `end`, making a separate room (the program's End Storage). Not on a Garage + Carport (its
+   * divider is already the split). Doors / walk-in doors / roll-ups on it are openings on wall 'partition'. Missing in
+   * saved states from before = none.
+   */
+  storage: { on: boolean; end: 'front' | 'back'; depth: number };
 }
 
 /** Where the visitor is (URL params) — never part of the building. */
@@ -181,6 +188,7 @@ export const DEFAULT_DESIGN: WebDesign = {
   leanTos: [],
   wraps: [],
   upgrades: { insulation: 'none', frame12: false, oc4: false, panels26: false, colorScrews: false, openers: false, angle45: false },
+  storage: { on: false, end: 'back', depth: 10 },
 };
 
 /** The three parts every design started with before 10/16/26 (a 10×8 roll-up, a walk door, a window). */
@@ -232,6 +240,8 @@ export const WALL_LABEL: Record<WebWall, string> = {
   right: 'Right side',
   partition: 'Garage/carport divider wall',
 };
+/** The inside wall's name: the divider on a Garage + Carport, the partition wall (Add-ons) otherwise. */
+export const wallLabel = (d: Pick<WebDesign, 'type'>, w: WebWall) => (w === 'partition' && d.type !== 'combo' ? 'Partition wall' : WALL_LABEL[w]);
 export const LEANTO_SIDE_LABEL: Record<LeanToSide, string> = {
   'Left Eave': 'Left side',
   'Right Eave': 'Right side',

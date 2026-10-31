@@ -72,15 +72,19 @@ interface WebStore {
    */
   preview: WebDesign | null;
   setPreview: (d: WebDesign | null) => void;
+  /** Doors & windows opens on this wall next (the partition wall's "Add a door ... to this wall" button in Add-ons). */
+  doorWall: import('./model/design').WebWall | null;
+  setDoorWall: (w: import('./model/design').WebWall | null) => void;
   /** A part dragged on the model while the sheet was open: its new typed position (the sheet picks it up). */
   previewDrag: { id: string; pos: number; n: number } | null;
 }
 
 /** Normalize with the impact rule of the design's own size (Okaloosa / Okeechobee depend on it). */
 export function settle(d: WebDesign, ctx: WebContext): { design: WebDesign; impact: boolean } {
-  const sized = normalizeDesign(d, false);
+  // (the county sets the frame spacing a partition wall sits on)
+  const sized = normalizeDesign(d, false, ctx.county);
   const impact = impactRequired(ctx, sized);
-  return { design: impact ? normalizeDesign(d, true) : sized, impact };
+  return { design: impact ? normalizeDesign(d, true, ctx.county) : sized, impact };
 }
 
 /** The design is exactly the plain starting building (nothing built yet). */
@@ -134,6 +138,8 @@ export const useWebStore = create<WebStore>((set, get) => ({
   sentAt: null,
   setSent: (sentAt) => set({ sentAt }),
   preview: null,
+  doorWall: null,
+  setDoorWall: (doorWall) => set({ doorWall }),
   setPreview: (d) => set({ preview: d ? settle(d, get().ctx).design : null }),
   previewDrag: null,
 }));

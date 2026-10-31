@@ -39,11 +39,13 @@ const WALL_NAME: Record<WebWall, string> = {
 
 export const fmtFt = (n: number) => `${Number.isInteger(n) ? n : +n.toFixed(2)}′`;
 
-export function wallInfo(d: Pick<WebDesign, 'width' | 'length'>, wall: WebWall): WallInfo {
+export function wallInfo(d: Pick<WebDesign, 'width' | 'length'> & { type?: WebDesign['type'] }, wall: WebWall): WallInfo {
   const len = wallLength(d, wall);
   const shape = isEave(wall) ? 'side' : 'gable';
-  const what = wall === 'partition' ? 'divider' : isEave(wall) ? 'long side' : 'end';
-  return { name: WALL_NAME[wall], sizeLine: `${fmtFt(len)} ${what}`, shape, lengthFt: len };
+  // the partition wall added in Add-ons is the 'Partition wall'; a Garage + Carport's stays its divider
+  const inner = wall === 'partition' && d.type !== undefined && d.type !== 'combo';
+  const what = wall === 'partition' ? (inner ? 'partition' : 'divider') : isEave(wall) ? 'long side' : 'end';
+  return { name: inner ? 'Partition wall' : WALL_NAME[wall], sizeLine: `${fmtFt(len)} ${what}`, shape, lengthFt: len };
 }
 
 /** "1 garage door, 2 windows" (the wall card line once something is on it). */

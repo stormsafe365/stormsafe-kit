@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore } from '../store';
 import { WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
-import { END_WALL_LABEL, SIDE_WALL_LABEL, WALL_LABEL, type OpeningKind, type WebDesign, type WebOpening, type WebWall } from '../model/design';
+import { END_WALL_LABEL, SIDE_WALL_LABEL, wallLabel, type OpeningKind, type WebDesign, type WebOpening, type WebWall } from '../model/design';
 import { nextFreeId } from '../model/normalize';
 import { freeMainPos, mainSpotOk } from '../model/positions';
-import { isEave, openingWalls, rollupFits, rollupSizes, walkDoorFitsHeight, windowFitsHeight } from '../model/rules';
+import { isEave, openingWalls, rollupFits, rollupSizes, storageCrossings, walkDoorFitsHeight, windowFitsHeight } from '../model/rules';
 import { posToChoice, wallCountLine, wallInfo } from '../model/sheet';
 import { addOnText, partTitle } from './PartEditor';
 import { Note, ft } from './ui';
@@ -119,10 +119,21 @@ export function OpeningsPanel() {
   const [sheet, setSheet] = useState<SheetTarget | null>(null);
   // the short "Added ..." line, shown while the design still has the doors / windows it had right after
   const [toast, setToast] = useState<{ text: string; count: number } | null>(null);
+  // sent here from the partition wall card (Add-ons): open on that wall
+  useEffect(() => {
+    const w = useWebStore.getState().doorWall;
+    if (!w) return;
+    useWebStore.getState().setDoorWall(null);
+    setTimeout(() => pickWall(w), 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // every wall shows (owner 10/31/26: "i want it to show all the walls, that confused me itll confuse others"): an open
   // one is dimmed and says what it is; picking it offers to close it in (nothing goes on a wall that is not closed)
   const combo = d.type === 'combo';
-  const shown = WALL_ORDER.filter((w) => combo || w !== 'partition');
+  // (the inside wall: a Garage + Carport's divider, or the partition wall added in Add-ons)
+  const shown = WALL_ORDER.filter((w) => combo || d.storage.on || w !== 'partition');
+  // side doors / windows the partition wall runs through (the program flags these)
+  const crossed = d.storage.on ? storageCrossings(d, d.storage).map((o) => o.id) : [];
   /** What an open wall is, in the Walls step's words ('' when it takes doors). */
   const openWord = (w: WebWall): string => {
     if (walls.includes(w)) return '';
@@ -150,6 +161,9 @@ export function OpeningsPanel() {
   }, [wallSel, shown]);
   const pickWall = (w: WebWall) => {
     setWallSel(w);
+    // the partition wall is inside the building: seen from inside (walls cut away)
+    if (w === 'partition' && !combo) setTimeout(() => useEditorStore.getState().setViewMode('cutaway'), 80);
+    else if (useEditorStore.getState().viewMode === 'cutaway') useEditorStore.getState().setViewMode('exterior');
     setSheet(null);
     setToast(null);
     // let go of a part picked on the model, so tapping it there again picks its wall again
@@ -176,7 +190,7 @@ export function OpeningsPanel() {
   };
 
   const onThisWall = wallSel ? d.openings.filter((o) => o.wall === wallSel) : [];
-  const wallName = wallSel ? WALL_LABEL[wallSel].toLowerCase() : '';
+  const wallName = wallSel ? wallLabel(d, wallSel).toLowerCase() : '';
   const toastText = toast && toast.count === d.openings.length ? toast.text : null;
 
   // ── the sheet: one thing at a time (the list comes back after Add / Save / Cancel) ──
@@ -203,7 +217,7 @@ export function OpeningsPanel() {
             return (
               <button key={w} type="button" role="radio" aria-checked={wallSel === w} className={`wallcard${wallSel === w ? ' on' : ''}${closed ? '' : ' is-open'}`} onClick={() => pickWall(w)}>
                 <WallIcon shape={info.shape} />
-                <span className="wallcard-name">{WALL_LABEL[w]}</span>
+                <span className="wallcard-name">{wallLabel(d, w)}</span>
                 <span className="wallcard-size">{info.sizeLine}</span>
                 {closed || parts.length ? <span className="wallcard-n">{parts.length ? wallCountLine(parts) : 'nothing on it yet'}</span> : null}
                 {!closed ? <span className="wallcard-warn">{combo && w === 'front' ? 'Open carport end' : openWord(w).toLowerCase() === 'open' ? 'Open wall' : `Open wall: ${openWord(w).toLowerCase()}`}</span> : null}
@@ -264,7 +278,9 @@ export function OpeningsPanel() {
                   ? 'This overlaps another opening or sits too close to a corner. Move it.'
                   : o.kind === 'rollup' && !rollupFits(d, o.wall, o.w, o.h, onWall)
                     ? `Too tall for this wall (max ${isEave(o.wall) ? d.height - 2 : onWall > 1 ? d.height - 1 : d.height}′ here).`
-                    : null;
+                    : crossed.includes(o.id)
+                      ? 'The partition wall runs through this. Move it, or change the room depth in Add-ons.'
+                      : null;
               return (
                 <li key={o.id} className={`placed-row${selectedId === o.id ? ' is-selected' : ''}`}>
                   <button type="button" className="placed-main" onClick={() => setSheet({ mode: 'edit', id: o.id })} aria-label={`Change ${partTitle(o)} (${i + 1})`}>

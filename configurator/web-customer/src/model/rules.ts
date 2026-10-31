@@ -87,6 +87,62 @@ export function hoistIncluded(w: number, h: number): boolean {
 export function trussSpacingFt(d: Pick<WebDesign, 'width'>, county: string | null): number {
   return d.width <= 24 && county !== 'Palm Beach' ? 5 : 4;
 }
+/** Spacing actually built: the rule, or 4′ when the customer asked for it (Upgrades) - as the 3D draws it (toConfig). */
+export function builtSpacingFt(d: Pick<WebDesign, 'width'> & { upgrades?: Partial<WebDesign['upgrades']> }, county: string | null): number {
+  return d.upgrades?.oc4 ? 4 : trussSpacingFt(d, county);
+}
+
+// ─── Partition wall (Add-ons; the program's End Storage) ────────────────────
+// The same rules as the website's builder (stormsafe-site builder-src/web-customer/src/model/rules.ts, owner 10/29/26) and
+// the program (aewDepthOptions / aewDefaultDepth / aewEaveConflicts in quote-builder.html).
+
+/** Not on a Garage + Carport (its divider is already the split - the quote's rule). */
+export const storageAllowed = (d: Pick<WebDesign, 'type'>) => d.type !== 'combo';
+export const STORAGE_DEFAULT_FT = 10;
+/** Depths the quote offers: frame lines `spacing` apart from the chosen end, leaving at least one bay (aewDepthOptions). */
+export function storageDepthOptions(length: number, spacing: number, end: 'front' | 'back'): number[] {
+  const out: number[] = [];
+  if (!(length > 0) || !(spacing > 0)) return out;
+  for (let t = spacing; t < length - 0.01; t += spacing) {
+    const dd = Math.round((end === 'front' ? t : length - t) * 100) / 100;
+    if (dd >= spacing - 0.001 && dd <= length - spacing + 0.001 && !out.includes(dd)) out.push(dd);
+  }
+  return out.sort((a, b) => a - b);
+}
+/** The option nearest `want`; a tie goes to the deeper one (the program's aewNearest). */
+export function storageNearest(opts: number[], want: number): number | null {
+  if (!opts.length) return null;
+  let best = opts[0];
+  let bd = Infinity;
+  for (const o of opts) {
+    const dd = Math.abs(o - want);
+    if (dd < bd - 1e-9 || (Math.abs(dd - bd) < 1e-9 && o > best)) {
+      bd = dd;
+      best = o;
+    }
+  }
+  return best;
+}
+/** The quote's default depth: nearest 10′ (or the middle option on a short building) - aewDefaultDepth. */
+export function storageDefaultDepth(opts: number[]): number | null {
+  if (!opts.length) return null;
+  if (opts[opts.length - 1] < STORAGE_DEFAULT_FT) return opts[Math.floor(opts.length / 2)];
+  return storageNearest(opts, STORAGE_DEFAULT_FT);
+}
+/** Where the partition wall stands, in feet from the front end. */
+export const storageZ = (d: Pick<WebDesign, 'length'>, s: { end: 'front' | 'back'; depth: number }) => (s.end === 'front' ? s.depth : d.length - s.depth);
+/**
+ * Side-wall doors / windows the partition wall would run through (the program flags these: "the storage wall runs through
+ * ... move the opening or pick another depth", aewEaveConflicts). A side part's pos is measured from the front end on both
+ * sides (positions.ts), so it is the program's from-the-front span.
+ */
+export function storageCrossings(
+  d: Pick<WebDesign, 'length' | 'openings'>,
+  s: { end: 'front' | 'back'; depth: number },
+): WebDesign['openings'] {
+  const z = storageZ(d, s);
+  return d.openings.filter((o) => (o.wall === 'left' || o.wall === 'right') && z > o.pos + 0.05 && z < o.pos + o.w - 0.05);
+}
 
 /** Framing gauge the quote will use (drawing only here). */
 export function framingGauge(d: Pick<WebDesign, 'width'>, county: string | null): '14-gauge' | '12-gauge' {
@@ -115,18 +171,19 @@ export const isEave = (wall: WebWall) => wall === 'left' || wall === 'right';
 /** Length of a main wall (ft): sides run the building length, ends + divider the width. */
 export const wallLength = (d: Pick<WebDesign, 'width' | 'length'>, wall: WebWall) => (isEave(wall) ? d.length : d.width);
 
-/** Walls a door / window can go on right now (fully sheeted walls). */
-export function openingWalls(d: Pick<WebDesign, 'type' | 'walls'>): WebWall[] {
+/** Walls a door / window can go on right now (fully sheeted walls; the partition wall once it is added). */
+export function openingWalls(d: Pick<WebDesign, 'type' | 'walls'> & { storage?: WebDesign['storage'] }): WebWall[] {
   if (d.type === 'combo') return ['back', 'left', 'right', 'partition'];
   const out: WebWall[] = [];
   if (d.walls.front === 'closed') out.push('front');
   if (d.walls.back === 'closed') out.push('back');
   if (d.walls.left === 'closed') out.push('left');
   if (d.walls.right === 'closed') out.push('right');
+  if (d.storage?.on) out.push('partition'); // the partition wall takes doors too (quote: Partition Wall)
   return out;
 }
 
-export const wallTakesOpenings = (d: Pick<WebDesign, 'type' | 'walls'>, wall: WebWall) => openingWalls(d).includes(wall);
+export const wallTakesOpenings = (d: Pick<WebDesign, 'type' | 'walls'> & { storage?: WebDesign['storage'] }, wall: WebWall) => openingWalls(d).includes(wall);
 
 /**
  * Garage + Carport side walls are sheeted only along the garage (the back

@@ -17,7 +17,7 @@ import {
   LEANTO_WALL_LABEL,
   SIDE_WALL_LABEL,
   TYPE_LABEL,
-  WALL_LABEL,
+  wallLabel,
   WRAP_LABEL,
   type WebDesign,
   type WebLeanTo,
@@ -50,7 +50,7 @@ export function partText(o: WebOpening | WebLeanToOpening): string {
 const sillText = (o: WebOpening | WebLeanToOpening) => (o.sill > 0.05 ? `, sill ${ftIn(o.sill)}` : '');
 
 export function mainOpeningLine(d: WebDesign, o: WebOpening): string {
-  const where = `${WALL_LABEL[o.wall]}, ${ftIn(o.pos)} from the ${PROGRAM_REF[o.wall]} to its near edge`;
+  const where = `${wallLabel(d, o.wall)}, ${ftIn(o.pos)} from the ${PROGRAM_REF[o.wall]} to its near edge`;
   const note = wallTakesOpenings(d, o.wall) ? '' : ' (this wall is not closed: not shown on the model)';
   return `${partText(o)} — ${where}${sillText(o)}${note}`;
 }
@@ -153,6 +153,12 @@ export function buildSpec(d: WebDesign, ctx: SpecContext): string {
     });
   } else {
     L.push('Lean-tos: None');
+  }
+  // Add-ons: the partition wall (the program's End Storage)
+  if (d.storage?.on && d.type !== 'combo') {
+    L.push(
+      `Partition wall: ${ftIn(d.storage.depth)} in from the ${d.storage.end} end, making a room ${ftIn(d.width)} W × ${ftIn(d.storage.depth)} deep (main room ${ftIn(d.length - d.storage.depth)})`,
+    );
   }
   L.push('');
   const loc: string[] = [];

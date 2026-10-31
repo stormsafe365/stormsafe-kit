@@ -57,6 +57,11 @@ import {
   wallLength,
   widthOptions,
   CORNER_CLEAR,
+  builtSpacingFt,
+  storageAllowed,
+  storageDefaultDepth,
+  storageDepthOptions,
+  storageNearest,
 } from './rules';
 import { q8 } from './positions';
 
@@ -143,7 +148,7 @@ function normalizeParts<T extends WebOpening | WebLeanToOpening>(o: T, impact: b
 }
 
 /** Normalize a whole design against the rules. `impact` = impact-rated parts required. */
-export function normalizeDesign(input: WebDesign, impact: boolean): WebDesign {
+export function normalizeDesign(input: WebDesign, impact: boolean, county: string | null = null): WebDesign {
   const d = cloneDesign(input);
   const out: WebDesign = cloneDesign(DEFAULT_DESIGN);
 
@@ -205,6 +210,15 @@ export function normalizeDesign(input: WebDesign, impact: boolean): WebDesign {
     angle45: u.angle45 === true,
   };
 
+  // Add-ons: the partition wall (end storage room) sits on a frame line of the spacing the building is drawn with (the
+  // county's rule or the 4′ upgrade); a building too short for one bay each side has none.
+  const st = (d as Partial<WebDesign>).storage;
+  const end = oneOf(st?.end, ['front', 'back'] as const, 'back');
+  const depths = storageAllowed(out) ? storageDepthOptions(out.length, builtSpacingFt(out, county), end) : [];
+  const wantDepth = num(st?.depth, 0);
+  const depth = depths.length ? (wantDepth > 0 ? storageNearest(depths, wantDepth)! : storageDefaultDepth(depths)!) : 0;
+  out.storage = { on: st?.on === true && depths.length > 0, end, depth: depth || DEFAULT_DESIGN.storage.depth };
+
   // ── Main openings ──
   const seen = new Set<string>();
   const mains: WebOpening[] = [];
@@ -213,7 +227,7 @@ export function normalizeDesign(input: WebDesign, impact: boolean): WebDesign {
     if (!['rollup', 'walk', 'window', 'frame'].includes(raw.kind)) continue;
     const wall = oneOf(raw.wall, MAIN_WALLS, 'front');
     if (raw.wall !== wall) continue;
-    if (wall === 'partition' && out.type !== 'combo') continue; // no divider wall without the carport
+    if (wall === 'partition' && out.type !== 'combo' && !out.storage.on) continue; // no inside wall: no divider, no partition wall
     if (out.type === 'combo' && wall === 'front') continue; // the open carport end
     let id = typeof raw.id === 'string' && /^[A-Za-z0-9_-]{1,32}$/.test(raw.id) ? raw.id : '';
     if (!id || seen.has(id)) id = nextFreeId('o', seen);

@@ -86,12 +86,13 @@ function ViewBar({ menu }: { menu: ReturnType<typeof useViewMenu> }) {
   return (
     <div className="viewbar" role="toolbar" aria-label="3D view">
       <div className="seg seg-sm modes" role="group" aria-label="View mode">
-        {(['exterior', 'structure'] as const).map((m) => (
+        {/* See inside (owner 10/31/26, as on the website): the partition wall's room, walls cut away */}
+        {(['exterior', 'structure', 'cutaway'] as const).map((m) => (
           <button key={m} type="button" aria-pressed={viewMode === m} className={viewMode === m ? 'on' : ''} onClick={() => {
               setViewMode(m);
               if (m === 'structure') setTimeout(() => cameraApi.fit('structure'), 30);
             }}>
-            {m === 'exterior' ? 'Outside' : 'Steel frame'}
+            {m === 'exterior' ? 'Outside' : m === 'structure' ? 'Steel frame' : 'See inside'}
           </button>
         ))}
       </div>
@@ -188,6 +189,16 @@ export function WebViewport() {
             }}
           >
             {viewMode === 'structure' ? 'Show the walls again' : 'See the steel frame'}
+          </button>
+          <button
+            type="button"
+            aria-pressed={viewMode === 'cutaway'}
+            onClick={() => {
+              setViewMode(viewMode === 'cutaway' ? 'exterior' : 'cutaway');
+              menu.pick();
+            }}
+          >
+            {viewMode === 'cutaway' ? 'Show the walls again' : 'See inside'}
           </button>
         </div>
       )}

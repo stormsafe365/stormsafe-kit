@@ -4153,3 +4153,138 @@ html.vv-kb .stepnav {
 .openwall .linkish {
   justify-self: start;
 }
+
+/* ═══ Add-ons step (owner 10/31/26: "lean-tos should be add-ons with then the option to add a lean-to or partition wall
+   like on the customize page"): the website's picture cards - a picture from our 3D, one line, a lime + Add ═══ */
+.addon-pick {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 12px;
+  margin: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border-vis);
+  border-radius: 12px;
+}
+.addon-pick.is-added {
+  border-color: var(--lime);
+}
+.addon-pic {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #eef2f6;
+  display: block;
+}
+.addon-pick-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.addon-pick-title {
+  margin: 0;
+  font: 800 14px/1.2 Orbitron, Inter, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.addon-pick-more {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+.addon-pick-text {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--sub);
+}
+.addon-pick-more > :first-child {
+  margin-top: 12px;
+}
+.btn-primary.addon-add {
+  background: var(--lime);
+  color: var(--lime-ink);
+  border: 0;
+  font-weight: 700;
+  min-height: 42px;
+  padding: 9px 16px;
+  border-radius: 8px;
+}
+.btn-primary.addon-add:hover {
+  background: #b5e352;
+}
+.addon-added {
+  color: var(--lime);
+  font-weight: 700;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.addon-remove {
+  background: none;
+  border: 0;
+  padding: 0 0 0 6px;
+  color: var(--sub);
+  font: 600 12.5px Inter, sans-serif;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  white-space: normal;
+  text-align: left;
+}
+.addon-remove:hover {
+  color: var(--text);
+}
+.addon-pick .upg-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+/* the partition wall's settings once added: a clear drop-down and a real button for doors on that wall */
+.addon-pick .select {
+  background-color: #0b2a35;
+  border: 1.5px solid var(--teal-dim);
+  color: var(--text);
+  font-weight: 600;
+}
+.addon-pick .select:hover {
+  border-color: var(--teal);
+}
+.addon-pick .btn-ghost.addon-doors {
+  width: 100%;
+  margin-top: 10px;
+  background: rgba(34, 211, 200, 0.12);
+  border: 1.5px solid var(--teal);
+  color: var(--teal);
+  font-weight: 700;
+  min-height: 46px;
+  border-radius: 8px;
+  white-space: normal;
+}
+.addon-pick .btn-ghost.addon-doors:hover {
+  background: rgba(34, 211, 200, 0.22);
+  color: #5eeae2;
+}
+.addon-pick .note {
+  margin-top: 10px;
+}
+@media (max-width: 520px) {
+  .addon-pick {
+    grid-template-columns: 1fr;
+  }
+  .addon-pic {
+    max-height: 150px;
+  }
+  /* phones: "Which side?" gets the full width, the + Add button sits under it */
+  .addon-pick .add-lt {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .addon-pick .add-lt .btn-primary {
+    justify-self: start;
+  }
+}

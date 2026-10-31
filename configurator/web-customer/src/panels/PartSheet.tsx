@@ -17,7 +17,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore } from '../store';
 import { ROLLUP_COLORS, WALK_DOORS, WINDOWS, WINDOW_SILL_FT, walkDoorType, windowType } from '../model/catalog';
-import { WALL_LABEL, cloneDesign, type OpeningKind, type WebDesign, type WebOpening, type WebWall } from '../model/design';
+import { wallLabel, cloneDesign, type OpeningKind, type WebDesign, type WebOpening, type WebWall } from '../model/design';
 import { nextFreeId } from '../model/normalize';
 import { maxQty, respaceWithSame, spreadPositions, whyNoMore } from '../model/addMany';
 import { CUSTOMER_REF } from '../model/positions';
@@ -164,7 +164,7 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
     const out: Result = { next: null, ids: [], refused: null, info: null, tallFix: null, pos: null };
     // the part(s) placed: a change with How many > 1 keeps the one being changed as the first of them
     const ids = editing ? [editing.id, ...newIds] : newIds;
-    const wallName = WALL_LABEL[wall].toLowerCase();
+    const wallName = wallLabel(d, wall).toLowerCase();
     if (kind === 'walk' && !walkDoorFitsHeight(d.height)) return { ...out, refused: 'Walk-in doors need walls at least 7′ tall (Size step).' };
     if (kind === 'window' && !windowFitsHeight(d.height, h)) return { ...out, refused: 'Windows need walls at least 7′ tall (Size step).' };
     if (!openingWalls(d).includes(wall)) return { ...out, refused: 'This wall isn’t closed in, so nothing can go on it. Close it in the Walls step.' };
@@ -243,7 +243,7 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
   }, [mostFit, qty]);
   const qtyWhy = !mostFit
     ? null
-    : (whyNoMore(startD, wall, kind, w, h, mostFit + 1, WALL_LABEL[wall].toLowerCase()) ??
+    : (whyNoMore(startD, wall, kind, w, h, mostFit + 1, wallLabel(d, wall).toLowerCase()) ??
       (spreadPositions(startD, wall, w, mostFit + 1) !== null ? `Up to ${mostFit} at a time.` : mostFit === 1 ? 'Only 1 fits on this wall at this size.' : `Only ${mostFit} fit on this wall at this size.`));
 
   // the model shows it as it will be (or the design as it is, when refused)
@@ -287,7 +287,7 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
       x.openings = cloneDesign(next).openings;
     });
     setPreview(null);
-    const wallName = WALL_LABEL[wall].toLowerCase();
+    const wallName = wallLabel(d, wall).toLowerCase();
     onDone(
       editing
         ? qty > 1
@@ -301,7 +301,7 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
     if (!editing) return;
     update((x) => void (x.openings = x.openings.filter((k) => k.id !== editing.id)));
     setPreview(null);
-    onDone(`Took the ${NOUN[kind][0]} off the ${WALL_LABEL[editing.wall].toLowerCase()}.`, editing.wall);
+    onDone(`Took the ${NOUN[kind][0]} off the ${wallLabel(d, editing.wall).toLowerCase()}.`, editing.wall);
   };
 
   const face = wallLength(d, wall);
@@ -341,7 +341,7 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
           options={(['front', 'back', 'left', 'right', 'partition'] as const)
             .filter((x) => walls.includes(x) || x === wall)
             .filter((x) => !(kind === 'window' && x === 'partition'))
-            .map((x) => ({ value: x, label: WALL_LABEL[x], disabled: !walls.includes(x) }))}
+            .map((x) => ({ value: x, label: wallLabel(d, x), disabled: !walls.includes(x) }))}
           onChange={(v) => {
             setWall(v as WebWall);
             setPosMode('center');
@@ -442,7 +442,7 @@ export function PartSheet({ target, onClose, onDone }: { target: SheetTarget; on
             ))}
           </div>
           <p className="field-hint">
-            As seen from outside, facing the {WALL_LABEL[wall].toLowerCase()} ({wallEnds(wall)[0]} on the left).
+            As seen from outside, facing the {wallLabel(d, wall).toLowerCase()} ({wallEnds(wall)[0]} on the left).
           </p>
           <Toggle label="Advanced position" checked={advanced} onChange={setAdvanced} />
           {advanced ? (
@@ -518,7 +518,7 @@ export function WallPreview({ d, wall, picked, refused }: { d: WebDesign; wall: 
   const fs = Math.max(0.9, face * 0.035);
   return (
     <figure className="wallpic">
-      <svg viewBox={`0 0 ${vbW} ${vbH}`} role="img" aria-label={`The ${WALL_LABEL[wall].toLowerCase()} seen from outside`} preserveAspectRatio="xMidYMid meet">
+      <svg viewBox={`0 0 ${vbW} ${vbH}`} role="img" aria-label={`The ${wallLabel(d, wall).toLowerCase()} seen from outside`} preserveAspectRatio="xMidYMid meet">
         <defs>
           <pattern id="wp-hatch" width="1.2" height="1.2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
             <line x1="0" y1="0" x2="0" y2="1.2" stroke="currentColor" strokeWidth="0.25" />

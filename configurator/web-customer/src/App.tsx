@@ -8,6 +8,7 @@ import { SizePanel } from './panels/SizePanel';
 import { WallsPanel } from './panels/WallsPanel';
 import { OpeningsPanel } from './panels/OpeningsPanel';
 import { LeanTosPanel } from './panels/LeanTosPanel';
+import { PartitionWallCard } from './panels/PartitionWallCard';
 import { ColorsPanel } from './panels/ColorsPanel';
 import { SendPanel } from './panels/SendPanel';
 import { UpgradesPanel } from './panels/UpgradesPanel';
@@ -23,7 +24,8 @@ const TABS: Array<{ key: TabKey; label: string; title: string }> = [
   { key: 'size', label: 'Size', title: 'Building type & size' },
   { key: 'walls', label: 'Walls', title: 'Walls' },
   { key: 'doors', label: 'Doors & windows', title: 'Doors & windows' },
-  { key: 'leantos', label: 'Lean-tos', title: 'Lean-tos' },
+  // Add-ons (owner 10/31/26, as on the website's Customize page): a lean-to or a partition wall
+  { key: 'leantos', label: 'Add-ons', title: 'Add-ons' },
   { key: 'upgrades', label: 'Upgrades', title: 'Upgrades' },
   { key: 'colors', label: 'Colors', title: 'Colors' },
   { key: 'send', label: 'Review & send', title: 'Review & send' },
@@ -51,7 +53,7 @@ const STEP_HELP: Record<TabKey, { text: string | ((s: ReturnType<typeof useWebSt
           : 'Tap a wall to change it, or tap Next.',
   },
   doors: { text: 'Go wall by wall: pick a wall, then add a garage door, walk-in door, window or opening to it.' },
-  leantos: { text: 'A lean-to is a lower roof on one side: open for cover, or closed in for storage. Most people skip this.', optional: true },
+  leantos: { text: 'Extras you can add to your building. Tap + Add on the one you want, or skip this step.', optional: true },
   upgrades: { text: 'Not sure? Leave them off; your rep goes over them with you.', optional: true },
   colors: { text: 'Tap Roof, Walls or Trim (edges and corners), then a color.' },
   send: {
@@ -117,7 +119,7 @@ function StepNav() {
   const next = i >= 0 && i < steps.length - 1 ? steps[i + 1] : null;
   // an optional step with nothing added says Skip (walkthroughs 10/16/26: 'do I have to fill this in?')
   const d = useWebStore((s) => s.design);
-  const skipping = (tab === 'leantos' && d.leanTos.length === 0) || (tab === 'upgrades' && !Object.values(d.upgrades || {}).some((v) => v && v !== 'none'));
+  const skipping = (tab === 'leantos' && d.leanTos.length === 0 && !d.storage.on) || (tab === 'upgrades' && !Object.values(d.upgrades || {}).some((v) => v && v !== 'none'));
   // Doors with nothing added: the teal "Add" button is the one to tap, so Next is a quiet outline
   // (re-check 10/16/26: the teal Next was the only teal button on screen, so doors got skipped)
   const quietNext = tab === 'doors' && d.openings.length === 0;
@@ -206,10 +208,10 @@ function Summary() {
 function FramePill() {
   const viewMode = useEditorStore((s) => s.viewMode);
   const setViewMode = useEditorStore((s) => s.setViewMode);
-  if (viewMode !== 'structure') return null;
+  if (viewMode !== 'structure' && viewMode !== 'cutaway') return null;
   return (
     <button type="button" className="frame-pill" onClick={() => setViewMode('exterior')}>
-      Steel frame view · <b>Show the walls</b>
+      {viewMode === 'cutaway' ? 'Inside view' : 'Steel frame view'} · <b>Show the walls</b>
     </button>
   );
 }
@@ -710,7 +712,14 @@ export function App() {
             {tab === 'size' && <SizePanel />}
             {tab === 'walls' && <WallsPanel />}
             {tab === 'doors' && <OpeningsPanel />}
-            {tab === 'leantos' && <LeanTosPanel />}
+            {tab === 'leantos' && (
+              <>
+                <LeanTosPanel />
+                <div className="panel-body">
+                  <PartitionWallCard />
+                </div>
+              </>
+            )}
             {tab === 'upgrades' && <UpgradesPanel />}
             {tab === 'colors' && <ColorsPanel />}
             {tab === 'send' && <SendPanel />}

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useWebStore } from '../store';
-import { LEANTO_WIDTHS, WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
+import { LEANTO_WIDTHS, ROLLUP_COLORS, WALK_DOOR_H_FT, WALK_DOOR_W_FT, WINDOW_SILL_FT } from '../model/catalog';
 import {
   LEANTO_END_LABEL,
   LEANTO_SIDE_LABEL,
@@ -30,6 +30,7 @@ import {
 } from '../model/rules';
 import { maxLeanToQty, spreadLeanTo } from '../model/leanToMany';
 import { PartEditor } from './PartEditor';
+import { DoorAddOns } from './DoorAddOns';
 import { Note, QtyField, Segmented, Select, Toggle } from './ui';
 
 /** Every whole foot from a to b, as drop-down choices (owner 10/18/26: sizes are drop-downs, like width). */
@@ -90,7 +91,11 @@ function LeanToAdd({ lt, walls, onAdd }: { lt: WebLeanTo; walls: LeanToWall[]; o
   const [rw, setRw] = useState(8);
   const [rh, setRh] = useState(7);
   const [qty, setQty] = useState(1);
+  const [color, setColor] = useState('white');
+  const [hoist, setHoist] = useState(false);
+  const [seal, setSeal] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const setPreview = useWebStore((s) => s.setPreview);
   const run = leanToWallLength(d, lt, wall);
   const size = kind ? leanToPartSize(d, lt, wall, kind, rw, rh) : null;
   const most = size ? maxLeanToQty(d, lt, wall, size.w) : 0;
@@ -98,24 +103,55 @@ function LeanToAdd({ lt, walls, onAdd }: { lt: WebLeanTo; walls: LeanToWall[]; o
   const full = lt.openings.length >= MAX_LEANTO_OPENINGS;
   const sizes = kind === 'rollup' ? leanToRollupSizes(lt, wall, run) : null;
   const pairs = sizes ? sizes.widths.flatMap((a) => sizes.heights.map((b) => ({ value: `${a}x${b}`, label: `${a}′ wide × ${b}′ tall` }))) : [];
-  const add = () => {
-    if (!kind || !size || most < 1) return;
+  // the part(s) as they will be added (null = nothing to add yet): shown on the model right away (store.preview)
+  const list: WebLeanToOpening[] | null = useMemo(() => {
+    if (!kind || !size || most < 1 || full) return null;
     const spots = spreadLeanTo(d, lt, wall, size.w, q);
-    if (!spots) return;
+    if (!spots) return null;
     const used = new Set([...d.openings.map((o) => o.id), ...d.leanTos.flatMap((l) => l.openings.map((o) => o.id))]);
-    const list = spots.map((pos) => {
+    return spots.map((pos) => {
       const id = nextFreeId('lo', used);
       used.add(id);
       const o: WebLeanToOpening = { id, kind, wall, w: size.w, h: size.h, sill: size.sill, pos };
-      if (kind === 'rollup') o.color = 'white';
+      if (kind === 'rollup') {
+        o.color = color;
+        if (hoist) o.hoist = true;
+        if (seal) o.seal = true;
+      }
       if (kind === 'walk' || kind === 'window') o.style = 'std'; // an impact area shows the rated ones (normalize)
       if (kind === 'frame') o.frame = 'door';
       return o;
     });
+  }, [d, lt, wall, kind, size?.w, size?.h, size?.sill, most, full, q, color, hoist, seal]); // eslint-disable-line react-hooks/exhaustive-deps
+  // (only the card that is showing a part clears it: another lean-to's card may be showing one)
+  const mine = useRef(false);
+  useEffect(() => {
+    if (!list) {
+      if (mine.current) setPreview(null);
+      mine.current = false;
+      return;
+    }
+    const next: WebDesign = JSON.parse(JSON.stringify(d));
+    const l = next.leanTos.find((x) => x.id === lt.id);
+    if (!l) return;
+    l.openings.push(...(JSON.parse(JSON.stringify(list)) as WebLeanToOpening[]));
+    setPreview(next);
+    mine.current = true;
+  }, [list, d, lt.id, setPreview]);
+  useEffect(() => () => {
+    if (mine.current) setPreview(null);
+  }, [setPreview]);
+  const add = () => {
+    if (!kind || !list) return;
+    setPreview(null);
+    mine.current = false;
     onAdd(list);
     setDone(`Added ${q} ${q === 1 ? LT_SHORT[kind].toLowerCase() : `${LT_SHORT[kind].toLowerCase()}s`} to the ${LEANTO_WALL_LABEL[wall].toLowerCase()}.`);
     setKind(null);
     setQty(1);
+    setColor('white');
+    setHoist(false);
+    setSeal(false);
   };
   const why = !kind
     ? null
@@ -175,6 +211,12 @@ function LeanToAdd({ lt, walls, onAdd }: { lt: WebLeanTo; walls: LeanToWall[]; o
                 setRh(b);
               }}
             />
+          ) : null}
+          {kind === 'rollup' && size ? (
+            <>
+              <Select label="Door color" value={color} options={ROLLUP_COLORS.map((c) => ({ value: c.key, label: c.name }))} onChange={setColor} />
+              <DoorAddOns w={size.w} h={size.h} hoist={hoist} seal={seal} onHoist={setHoist} onSeal={setSeal} />
+            </>
           ) : null}
           {why ? (
             <Note tone="warn">{why}</Note>

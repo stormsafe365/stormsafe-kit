@@ -101,6 +101,16 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
 .summary-toggle .arrow{font-size:15px;transition:transform .25s}
 .summary-toggle.open .arrow{transform:rotate(180deg)}
 .mobile-summary-panel{display:none}
+/* TOTAL ▾ (owner 11/2/26): a compact button at the top right; the summary drops down over the form with its own scroll */
+@media(max-width:768px){
+.summary-toggle{width:fit-content;margin:8px 10px 6px auto;top:6px;padding:7px 12px 7px 14px;gap:10px;justify-content:flex-start;border-radius:9px;background:#081b24;color:#e6eef1;border:1.5px solid var(--t);box-shadow:0 6px 18px rgba(0,0,0,.4);font-size:11px;letter-spacing:.14em}
+.summary-toggle:hover{background:#0b2430}
+.summary-toggle:focus-visible{outline:2px solid var(--t);outline-offset:2px}
+.summary-toggle .st-l{color:var(--t);font-weight:800}
+.summary-toggle #mob-total{font-size:15px;font-weight:800;letter-spacing:0;color:#e6eef1;font-variant-numeric:tabular-nums}
+.summary-toggle .arrow{color:var(--t);font-size:12px}
+.mobile-summary-panel.open{position:fixed;left:8px;right:8px;top:var(--sum-top,56px);max-height:calc(100vh - var(--sum-top,56px) - 10px);overflow:auto;overscroll-behavior:contain;z-index:250;border:1.5px solid var(--t);border-radius:10px;box-shadow:0 18px 50px rgba(0,0,0,.6)}
+}
 .pt-card{background:var(--d3);border:1px solid var(--bv);border-radius:8px;padding:14px;margin-bottom:12px}
 .pt-title{font-family:var(--h);font-size:13px;font-weight:600;color:var(--t);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
 .pt-sub{font-size:15px;color:var(--mt);margin-bottom:10px}
@@ -176,10 +186,10 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
   <span class="hdr-d" id="hdr-d" style="margin-left:8px"></span>
 </div>
 
-<!-- Mobile: sticky summary toggle -->
-<button class="summary-toggle" id="summary-toggle" type="button" onclick="toggleMobileSummary()">
-  <span>VIEW QUOTE SUMMARY &nbsp;<span id="mob-total" style="opacity:.8"></span></span>
-  <span class="arrow">&#9660;</span>
+<!-- Narrow layout (the CRM's 3D Builder pane, phones): TOTAL $ &#9662; drops the quote summary down over the form (owner 11/2/26) -->
+<button class="summary-toggle" id="summary-toggle" type="button" onclick="toggleMobileSummary()" aria-expanded="false" aria-controls="mobile-summary-panel" title="Quote summary, price breakdown, PDF and contract">
+  <span class="st-l">TOTAL</span><span id="mob-total">&mdash;</span>
+  <span class="arrow">&#9662;</span>
 </button>
 
 <!-- Mobile: collapsible summary panel (copy of right panel content) -->
@@ -9112,7 +9122,7 @@ function rcManual(){
     if(paySplitOn(ad,bal)){ var half=Math.round(bal/2); pbalSplitEl.innerHTML='\u26A0 Split: '+fD(half)+' at scheduling, '+fD(bal-half)+(_delivOnly()?' at delivery':' after install'); pbalSplitEl.style.display='block'; }
     else { pbalSplitEl.style.display='none'; }
   }
-  var mobTot=G('mob-total'); if(mobTot) mobTot.textContent=adjTot?('\u2014 '+fD(adjTot)):'';
+  var mobTot=G('mob-total'); if(mobTot) mobTot.textContent=adjTot?fD(adjTot):'\u2014';
   // Plan note from THIS subtotal (it used to keep the last engine pass's figure).
   qPlanNote(pl);
   if(window.PriceLock&&PriceLock.on) PriceLock.afterRc();
@@ -9966,7 +9976,7 @@ function rc(){
 
   // Update mobile total in toggle button
   var mobTot=G('mob-total');
-  if(mobTot) mobTot.textContent=adjTot?('— '+fD(adjTot)):'';
+  if(mobTot) mobTot.textContent=adjTot?fD(adjTot):'\u2014';
   // Re-sync mobile summary if it's open
   // mobile summary shows actual .right panel - no sync needed
 
@@ -16242,6 +16252,7 @@ function toggleMobileSummary(){
   if(isOpen){
     panel.classList.remove('open');
     btn.classList.remove('open');
+    btn.setAttribute('aria-expanded','false');
     // Move .right back to its original position (inside .main)
     var mainEl=document.querySelector('.main');
     if(right && mainEl) mainEl.appendChild(right);
@@ -16249,11 +16260,26 @@ function toggleMobileSummary(){
     // Move the actual .right panel into the summary panel (no cloning = no duplicate IDs)
     if(right && panel) panel.appendChild(right);
     right.style.display='block';
+    // TOTAL ▾ (owner 11/2/26): it drops down under the button, over the form - the form keeps its place (no scroll)
+    var r=btn.getBoundingClientRect();
+    panel.style.setProperty('--sum-top', Math.max(8, Math.round(r.bottom+6))+'px');
+    panel.scrollTop=0;
     panel.classList.add('open');
     btn.classList.add('open');
-    panel.scrollIntoView({behavior:'smooth',block:'start'});
+    btn.setAttribute('aria-expanded','true');
   }
 }
+// a click outside the summary (or Esc) folds it back up; clicks inside it (its buttons, the breakdown) do not
+document.addEventListener('mousedown', function(e){
+  var panel=G('mobile-summary-panel'), btn=G('summary-toggle');
+  if(!panel || !panel.classList.contains('open')) return;
+  if(panel.contains(e.target) || (btn && btn.contains(e.target))) return;
+  toggleMobileSummary();
+}, true);
+document.addEventListener('keydown', function(e){
+  var panel=G('mobile-summary-panel');
+  if(e.key==='Escape' && panel && panel.classList.contains('open')){ toggleMobileSummary(); var b=G('summary-toggle'); if(b) b.focus(); }
+});
 
 function syncMobileSummary(){
   // No-op: mobile summary now shows the actual .right panel (no innerHTML copy)

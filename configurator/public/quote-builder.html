@@ -752,7 +752,10 @@ body{font-family:var(--b),Arial,sans-serif;background:var(--d);font-size:14px;co
 <div class="sec">
   <div class="st">13 — Pricing & Notes</div>
   <div class="row"><label>Discount (%)</label>
-    <div class="pct"><input id="disc" type="number" value="0" min="0" max="100" step="0.5" oninput="rc()"></div>
+    <div style="min-width:0">
+      <div class="pct"><input id="disc" type="number" value="0" min="0" max="100" step="0.5" oninput="discManual();rc()"></div>
+      <div id="disc-sale-note" style="display:none;font-size:11px;margin-top:4px;line-height:1.4;color:#94a3b8"></div>
+    </div>
   </div>
   <div class="row"><label>Additional Discount</label>
     <div style="display:flex;gap:5px;align-items:center">
@@ -9084,6 +9087,7 @@ function rcManual(){
   var holdRowM=G('hold-summary-row'); if(holdRowM) holdRowM.style.display='none'; // never held in INPUT mode (gHold()=0)
   qAdjRow(adjP);
   // Discount / tax / deposit — the SAME money pass as rc() (qMoney)
+  discAutoApply(sub); // CCI sale (a new quote's automatic %)
   var M=qMoney(sub);
   var disc=M.disc, tax=M.tax, agEx=M.agEx, da=M.da, ad=M.ad, ta=M.ta, tot=M.tot;
   var dep=M.dep, bal=M.bal, adjTot=M.adjTot;
@@ -9159,6 +9163,33 @@ function paySplitIntro(){
   return 'Orders with a remaining balance over $15,000 are split into two payments:';
 }
 
+// ── CCI sale (CCI letter 8/6/26 "Updated Sale Information"; owner 11/2/26) ──
+// The Discount % follows the building total before tax (the pre-discount subtotal): over $5K 5%, over $10K 10%,
+// over $15K 15%, over $20K 20%. Automatic on a NEW quote until the rep types a % (then it is theirs). A saved quote
+// reopens with its saved % (the price lock solves on it) and the note offers the sale % when it differs.
+var CCI_SALE=[[20000,20],[15000,15],[10000,10],[5000,5]];
+function cciSalePct(sub){ for(var i=0;i<CCI_SALE.length;i++){ if(sub>CCI_SALE[i][0]) return CCI_SALE[i][1]; } return 0; }
+window._discAuto=true;
+function discManual(){ window._discAuto=false; }
+function discUseSale(){ window._discAuto=true; rc(); }
+function discAutoApply(sub){
+  var el=G('disc'); if(!el) return;
+  var pct=cciSalePct(sub);
+  var cci=(ACTIVE_MFR==='CCI');
+  var held=!!(window.PriceLock&&PriceLock.on);
+  if(window._discAuto && !held){
+    var want=cci?pct:0; // a CCI sale % set by this rule never carries over to another manufacturer
+    if((parseFloat(el.value)||0)!==want) el.value=String(want);
+  }
+  var n=G('disc-sale-note'); if(!n) return;
+  if(!cci){ n.style.display='none'; n.innerHTML=''; return; }
+  var tier=pct?(pct+'% (building over $'+(function(){ for(var i=0;i<CCI_SALE.length;i++){ if(CCI_SALE[i][1]===pct) return (CCI_SALE[i][0]/1000)+'K'; } return ''; })()+')'):'no discount (building $5,000 or less)';
+  var cur=parseFloat(el.value)||0;
+  n.style.display='block';
+  if(window._discAuto && !held){ n.style.color='#94a3b8'; n.innerHTML='CCI sale: <strong style="color:#cbd5e1">'+tier+'</strong> — set automatically from the building total before tax. Type another % to change it.'; }
+  else if(cur!==pct){ n.style.color='#f0883e'; n.innerHTML='CCI sale for this building: <strong>'+tier+'</strong>. <button type="button" onclick="discUseSale()" style="margin-left:4px;font-size:11px;padding:1px 8px;border:1px solid currentColor;border-radius:4px;background:transparent;color:inherit;cursor:pointer;font-weight:700">Use '+pct+'%</button>'; }
+  else { n.style.color='#94a3b8'; n.innerHTML='CCI sale: '+tier+'.'; }
+}
 function qMoney(sub){
   var disc=parseFloat(G('disc').value)||0;
   var tax=parseFloat(G('tax').value)||0;
@@ -9724,6 +9755,7 @@ function rc(){
   var freightP=cciWideOn(w)?Math.round(sub*3)/100:0;
   sub+=freightP;
   if(holdP) sub+=holdP; // reopened-quote price lock (0 unless PriceLock.on)
+  discAutoApply(sub); disc=parseFloat(G('disc').value)||0; // CCI sale (a new quote's automatic %)
   var M=qMoney(sub);
   var da=M.da, ad=M.ad, ta=M.ta, tot=M.tot, grossDep=M.grossDep;
   var addDiscVal=M.addDiscVal, addDiscType=M.addDiscType, addDiscAmount=M.addDiscAmount;
@@ -12445,6 +12477,8 @@ function _restoreQuoteDataImpl(data, opts){
   // Conditional clause (11/2/26): a quote saved without one has none (never carried over from the quote loaded before)
   if(f['ct-cond']===undefined){ var _ccR=G('ct-cond'), _cwR=G('ct-cond-why'); if(_ccR) _ccR.value=''; if(_cwR) _cwR.value=''; }
   if(typeof ctCondUi==='function') ctCondUi();
+  // CCI sale: automatic only for a build that comes without a saved % (a quote saved with one keeps it exactly)
+  window._discAuto=(f.disc===undefined||f.disc===null||String(f.disc)==='');
   // Step 2b: fslean custom-walls sub-panel visibility follows the restored mode
   if(G('btype').value==='fslean' && typeof fsWallsModeChanged==='function'){
     var _fsm=G('fs-walls-mode');
@@ -16152,6 +16186,7 @@ function resetAll(){
   _rvClear(); // a new quote never inherits the previous one's revision state
   ['cn','cp','ce','rep','notes'].forEach(function(id){ G(id).value=''; });
   ['ct-cond','ct-cond-why'].forEach(function(id){ var e=G(id); if(e) e.value=''; }); if(typeof ctCondUi==='function') ctCondUi();
+  window._discAuto=true; // a new quote: the CCI sale % again
   G('disc').value='0'; G('tax').value='6';
   G('city').textContent='—'; G('county').textContent='—'; G('state').textContent='FL';
   ['pt','perm','btype'].forEach(function(id){ G(id).value=''; });

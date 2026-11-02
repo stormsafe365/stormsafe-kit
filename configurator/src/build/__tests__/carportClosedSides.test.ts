@@ -39,7 +39,7 @@ const SIDE_OPTS = ['open', '1panel', '1_5panel', '2panel', '2_5panel', '3panel',
 const ctx: Record<string, unknown> = { ACTIVE_MFR: 'CCI', __f: {}, __el: {}, SIDE_OPTS };
 vm.createContext(ctx);
 vm.runInContext(
-  ['gSidePanels', 'sidePanelLength', 'sideClosurePrice', 'cciUnits', 'cciPanelTiers', 'cciColUp', 'cpJTrim', 'eaveVal', 'cpEaveRows', 'cpAdoptSavedEaves', 'cpWallChanged', 'gWalls']
+  ['gSidePanels', 'sidePanelLength', 'sideClosurePrice', 'cciUnits', 'cciPanelTiers', 'cciColUp', 'cpJTrim', 'eaveVal', 'cpEaveRows', 'cpAdoptSavedEaves', 'cpAdoptWanted', 'cpWallChanged', 'gWalls']
     .map(grabFn).join('') +
     // a DOM-ish G(): __f holds the field values; sp-left / sp-right carry their option lists; rows / notes carry a style
     'function G(id){ if(!(id in __f) && !/-row$|-note$/.test(id)) return null;\n' +
@@ -105,6 +105,19 @@ describe('a closed carport side is charged once, and set in ONE place (4B — Si
     expect(run('cpAdoptSavedEaves(__f); __f["sp-left"]', carport('2panel', 'open', 'Closed'))).toBe('2panel');
     // a row panel value maps 1:1
     expect(run('cpAdoptSavedEaves(__f); __f["sp-right"]', { ...carport('open', 'open', 'Open'), wre: '3_5panel' })).toBe('3_5panel');
+  });
+  it('reopen: only a save from before v3 (9/30/26) takes a hidden-row side into 4B (11/2/26)', () => {
+    // a carport first saved before 10/12 keeps the old side on the hidden row; the rep sets it Open in 4B and saves (v3):
+    // the reopen must not bring the side back (it did: 18x25x8 left closed, saved $2,873 -> reopened $3,286)
+    const take = (data: unknown) => vm.runInContext('cpAdoptWanted(' + JSON.stringify(data) + ')', ctx);
+    expect(take({ version: 3, fields: {} })).toBe(false);
+    expect(take({ version: 4 })).toBe(false);
+    expect(take({ version: '3' })).toBe(false);
+    expect(take({ version: 2 })).toBe(true);
+    expect(take({ fields: {} })).toBe(true); // before 9/30 no version was saved
+    expect(take(null)).toBe(true);
+    // restoreQuoteData asks it before cpAdoptSavedEaves
+    expect(html).toContain("window._cpTook=(G('btype').value==='carport' && cpAdoptWanted(data))?cpAdoptSavedEaves(f):[];");
   });
   it('J-trim (Price Book 2 p2 $60/$70/$85/$95/$110 by 20/25/30/35/40 long): per side with panels, per connected unit', () => {
     const jt = (l: string, r: string, len: string, on = true, mfr = 'CCI') =>

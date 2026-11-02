@@ -9352,6 +9352,11 @@ function cpAdoptSavedEaves(f){
   if(took.length && typeof updateSidePanelNote==='function') updateSidePanelNote();
   return took;
 }
+// Is a reopened carport old enough to hold a side only on the Section-4 row? Only a save from before v3 (9/30/26): v3
+// began inside 8/26–10/12/26, when every save copied 4B into the rows, and since 10/12 the rows are hidden - so on a v3
+// save a row that differs from 4B is stale. Taking it in brought back a side the rep had set to Open in 4B on a quote
+// first saved before 10/12 (found 11/2/26). data.version survives the CRM's Duplicate (its rule overrides do not).
+function cpAdoptWanted(data){ return !((+(data && data.version) || 0) >= 3); }
 // GCH: a Section-4 eave-row choice forwards to the open extension's side panels (gch-left/gch-right). Carport: nothing —
 // its sides are set in 4B only (owner 10/12/26; 8/26–10/12/26 this copied the row into 4B, so one click set both).
 function cpWallChanged(wallId, spId){
@@ -12433,8 +12438,9 @@ function _restoreQuoteDataImpl(data, opts){
   if(f.rs===undefined){ var _rsR=G('rs'); if(_rsR) _rsR.value='Vertical'; }
 
   // Carport sides: ONE control, 4B — Side Panels (owner 10/12/26). A side an older save kept only on the Section-4 eave
-  // row is taken into 4B (cpAdoptSavedEaves); the hidden rows stay as saved (never read on a carport).
-  window._cpTook=(G('btype').value==='carport')?cpAdoptSavedEaves(f):[];
+  // row is taken into 4B (cpAdoptSavedEaves); the hidden rows stay as saved (never read on a carport). Only a save from
+  // before v3 can need that (cpAdoptWanted, 11/2/26).
+  window._cpTook=(G('btype').value==='carport' && cpAdoptWanted(data))?cpAdoptSavedEaves(f):[];
   // J-trim (10/12/26): a carport quote reopens as saved - ticked only when it was saved ticked (quotes saved before had
   // no J-trim); any other type keeps the default (ON) for a later switch to carport.
   var _jtR=G('sp-jtrim'); if(_jtR) _jtR.checked=(G('btype').value==='carport')?!!f['sp-jtrim']:true;

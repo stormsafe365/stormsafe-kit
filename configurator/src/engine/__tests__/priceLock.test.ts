@@ -80,7 +80,9 @@ describe('price lock (quote-builder.html)', () => {
     expect((html.match(/\+gThrAdj\(\)/g) || []).length).toBe(1); // rc
     expect(/var thrPre=preSheetSub\+gThrAdj\(\);/.test(html)).toBe(true);
     expect(/\? thrPre\*0\.10 : 0;/.test(html)).toBe(true);
-    expect(/if\(holdP\) sub\+=holdP;[^\n]*\r?\n\s*var M=qMoney\(sub\);/.test(html)).toBe(true); // the hold is inside the one subtotal
+    // the hold is inside the one subtotal; the CCI sale step (11-02b) sits between and never changes a held quote's %
+    expect(/if\(holdP\) sub\+=holdP;[^\n]*\r?\n\s*discAutoApply\(sub\); disc=parseFloat\(G\('disc'\)\.value\)\|\|0;[^\n]*\r?\n\s*var M=qMoney\(sub\);/.test(html)).toBe(true);
+    expect(/var held=!!\(window\.PriceLock&&PriceLock\.on\);\r?\n\s*if\(window\._discAuto && !held\)\{/.test(html)).toBe(true);
     expect(/holdP:holdP, aewP:aewP/.test(html)).toBe(true); // and published with the pass
     for (const fn of ['async function printQuote(', 'async function printContract(', 'function textQuote(']) {
       const at = html.indexOf(fn);

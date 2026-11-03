@@ -27,6 +27,7 @@ import { spreadAutoOverlaps } from '@/engine/autoSpread';
 import { resolveBuilding } from '@/engine/ruleEngine';
 import { deriveStructure } from '@/engine/geometry';
 import { selectConfig } from '@/engine/useResolvedBuilding';
+import { useProgramBridge } from './programBridge';
 
 // Cache-bust the pricing iframe on the WEB (CRM embed) so a redeploy shows up
 // without a hard refresh. Skipped for the packaged desktop app, where the page
@@ -1095,6 +1096,7 @@ export default function BuildHost() {
         } catch {
           /* ignore transient reads while the program is still booting */
         }
+        useProgramBridge.getState().bump(); // the view box re-reads the program (its wall tools / colours / client info)
       };
       if (typeof win.rc === 'function' && !win.__ssWrapped) {
         const orig = win.rc;
@@ -1107,6 +1109,8 @@ export default function BuildHost() {
       }
       sync();
       poll = window.setInterval(sync, 800);
+      // The view box works the program through its own controls (programBridge).
+      useProgramBridge.getState().setWin(win as unknown as Window);
       (window as unknown as Record<string, unknown>).__ssStore = useBuildingStore;
       (window as unknown as Record<string, unknown>).__ssEditor = useEditorStore;
       (window as unknown as Record<string, unknown>).__ssSync = sync;
@@ -1162,6 +1166,7 @@ export default function BuildHost() {
       iframe.removeEventListener('load', onLoad);
       if (poll) clearInterval(poll);
       if (unsubDrag) unsubDrag();
+      useProgramBridge.getState().setWin(null);
     };
   }, []);
 

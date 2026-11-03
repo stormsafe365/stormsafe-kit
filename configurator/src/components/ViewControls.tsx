@@ -38,9 +38,6 @@ function ViewSettings({ presets }: { presets: typeof PRESETS }) {
   const goToView = useEditorStore((s) => s.goToView);
   const showSpacing = useEditorStore((s) => s.showSpacing);
   const setShowSpacing = useEditorStore((s) => s.setShowSpacing);
-  const renderStyle = useEditorStore((s) => s.renderStyle);
-  const setRenderStyle = useEditorStore((s) => s.setRenderStyle);
-  const enhanced = renderStyle === 'enhanced';
   return (
     <>
       <div>
@@ -77,7 +74,9 @@ function ViewSettings({ presets }: { presets: typeof PRESETS }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-1">
+      {/* The Look switch (Classic / New) is gone (owner 11/3/26: "it shouldnt even give me the old option any more - were far
+          passed that"): the 3D is always the new look (useEditorStore renderStyle defaults to 'enhanced'). */}
+      <div className="grid grid-cols-1 gap-1">
         <button
           type="button"
           onClick={() => setShowSpacing(!showSpacing)}
@@ -88,19 +87,6 @@ function ViewSettings({ presets }: { presets: typeof PRESETS }) {
           }`}
         >
           {showSpacing ? 'Spacing: On' : 'Spacing'}
-        </button>
-
-        {/* View-only look switch: never saved, never priced, never sent to the program. */}
-        <button
-          type="button"
-          onClick={() => setRenderStyle(enhanced ? 'classic' : 'enhanced')}
-          aria-pressed={enhanced}
-          title="Switch the 3D look between Classic and the new render (view only: never saved or priced)"
-          className={`whitespace-nowrap rounded-md border px-1.5 py-1.5 font-head text-[10px] uppercase tracking-wide2 transition-colors ${
-            enhanced ? 'border-teal bg-teal text-dark' : 'border-border-vis bg-dark-3 text-sub hover:border-teal hover:text-teal'
-          }`}
-        >
-          {enhanced ? 'Look: New' : 'Look: Classic'}
         </button>
       </div>
     </>

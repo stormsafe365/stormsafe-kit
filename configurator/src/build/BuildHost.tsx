@@ -28,6 +28,7 @@ import { resolveBuilding } from '@/engine/ruleEngine';
 import { deriveStructure } from '@/engine/geometry';
 import { selectConfig } from '@/engine/useResolvedBuilding';
 import { useProgramBridge } from './programBridge';
+import { SummaryWindow, hookProgramTotal } from './SummaryWindow';
 
 // Cache-bust the pricing iframe on the WEB (CRM embed) so a redeploy shows up
 // without a hard refresh. Skipped for the packaged desktop app, where the page
@@ -1111,6 +1112,8 @@ export default function BuildHost() {
       poll = window.setInterval(sync, 800);
       // The view box works the program through its own controls (programBridge).
       useProgramBridge.getState().setWin(win as unknown as Window);
+      // The program's TOTAL button opens the quote summary as a window you can move anywhere on this page (SummaryWindow).
+      hookProgramTotal(win as unknown as Window);
       (window as unknown as Record<string, unknown>).__ssStore = useBuildingStore;
       (window as unknown as Record<string, unknown>).__ssEditor = useEditorStore;
       (window as unknown as Record<string, unknown>).__ssSync = sync;
@@ -1220,6 +1223,9 @@ export default function BuildHost() {
           <Viewport />
         </div>
       </div>
+
+      {/* The quote summary, movable over the whole page (owner 11/3/26) */}
+      <SummaryWindow />
     </div>
   );
 }

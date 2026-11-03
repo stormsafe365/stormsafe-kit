@@ -5,6 +5,7 @@ import { BuildingModel } from '@/three/BuildingModel';
 import { CameraRig } from '@/three/CameraRig';
 import { InteriorWalk } from '@/three/InteriorWalk';
 import { CaptureHook } from '@/three/CaptureHook';
+import { WallPickRig, pickWallAt } from '@/three/WallPick';
 import { ViewControls } from '@/components/ViewControls';
 import { EnhancedSceneRig } from '@/three/enhanced/EnhancedSceneRig';
 import { useEditorStore } from '@/store/useEditorStore';
@@ -134,8 +135,9 @@ export function Viewport() {
         dpr={[1, 2]}
         camera={{ position: [34, 22, -38], fov: 38, near: 0.5, far: 800 }}
         gl={{ antialias: true, preserveDrawingBuffer: true }}
-        onPointerMissed={() => {
+        onPointerMissed={(e) => {
           if (!useEditorStore.getState().dragging) selectOpening(null);
+          pickWallAt(e); // build page: a plain click on a wall picks it (view box / Section 5)
         }}
       >
         {/* Background, fog, lights, contact shadows + ground grid (per Look). */}
@@ -148,6 +150,7 @@ export function Viewport() {
         <CameraRig />
         <InteriorWalk />
         <CaptureHook />
+        <WallPickRig />
 
         <OrbitControls
           makeDefault

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
+import { BUILDING_GROUP_NAME } from '@/three/WallPick';
 import * as THREE from 'three';
 import { useResolvedBuilding } from '@/engine/useResolvedBuilding';
 import { swatchHex } from '@/config/colors';
@@ -169,7 +170,8 @@ export function BuildingModel() {
   );
 
   return (
-    <group>
+    // named so a click on a wall can find the building (WallPick: build page only)
+    <group name={BUILDING_GROUP_NAME}>
       <Frame
         members={structure.members}
         captureMembers={structure.captureMembers}

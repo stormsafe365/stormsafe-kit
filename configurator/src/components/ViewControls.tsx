@@ -3,6 +3,7 @@ import { useEditorStore, type CameraPreset, type ViewMode } from '@/store/useEdi
 import { useProgramBridge } from '@/build/programBridge';
 import { WallTools } from '@/components/viewbox/WallTools';
 import { ClientPage, ColorsPage } from '@/components/viewbox/InfoPages';
+import '@/components/viewbox/viewbox.css';
 
 const MODES: { value: ViewMode; label: string }[] = [
   { value: 'exterior', label: 'Exterior' },
@@ -19,7 +20,7 @@ const PRESETS: { value: CameraPreset; label: string }[] = [
   { value: 'top', label: 'Top' },
   { value: 'interior', label: 'Interior' },
 ];
-// On the build page the four walls are picked in the Wall tiles (they turn the camera too); the camera row keeps the rest.
+// On the build page the four walls are picked in the Wall cards (they turn the camera too); the camera row keeps the rest.
 const BUILD_PRESETS = PRESETS.filter((p) => p.value === 'iso' || p.value === 'top' || p.value === 'interior');
 
 const PAGES = [
@@ -29,15 +30,17 @@ const PAGES = [
 ] as const;
 type PageKey = (typeof PAGES)[number]['key'];
 
-const headCls = 'mb-1.5 font-head text-[10px] uppercase tracking-wide2 text-sub';
+// The Look switch (Classic / New) is gone (owner 11/3/26: "it shouldnt even give me the old option any more - were far
+// passed that"): the 3D is always the new look (useEditorStore renderStyle defaults to 'enhanced').
 
-/** View mode + camera + Spacing / Look: today's View box controls. */
-function ViewSettings({ presets }: { presets: typeof PRESETS }) {
+/** Without the pricing program (no build page): the plain View box. */
+function PlainViewSettings() {
   const viewMode = useEditorStore((s) => s.viewMode);
   const setViewMode = useEditorStore((s) => s.setViewMode);
   const goToView = useEditorStore((s) => s.goToView);
   const showSpacing = useEditorStore((s) => s.showSpacing);
   const setShowSpacing = useEditorStore((s) => s.setShowSpacing);
+  const headCls = 'mb-1.5 font-head text-[10px] uppercase tracking-wide2 text-sub';
   return (
     <>
       <div>
@@ -57,11 +60,10 @@ function ViewSettings({ presets }: { presets: typeof PRESETS }) {
           ))}
         </div>
       </div>
-
       <div>
         <p className={headCls}>Camera</p>
         <div className="grid grid-cols-3 gap-1">
-          {presets.map((p) => (
+          {PRESETS.map((p) => (
             <button
               key={p.value}
               type="button"
@@ -73,21 +75,59 @@ function ViewSettings({ presets }: { presets: typeof PRESETS }) {
           ))}
         </div>
       </div>
+      <button
+        type="button"
+        onClick={() => setShowSpacing(!showSpacing)}
+        aria-pressed={showSpacing}
+        title="Show every component's size and all spacing / heights on the walls facing you"
+        className={`rounded-md border px-1.5 py-1.5 font-head text-[10px] uppercase tracking-wide2 transition-colors ${
+          showSpacing ? 'border-teal bg-teal text-dark' : 'border-border-vis bg-dark-3 text-sub hover:border-teal hover:text-teal'
+        }`}
+      >
+        {showSpacing ? 'Spacing: On' : 'Spacing'}
+      </button>
+    </>
+  );
+}
 
-      {/* The Look switch (Classic / New) is gone (owner 11/3/26: "it shouldnt even give me the old option any more - were far
-          passed that"): the 3D is always the new look (useEditorStore renderStyle defaults to 'enhanced'). */}
-      <div className="grid grid-cols-1 gap-1">
-        <button
-          type="button"
-          onClick={() => setShowSpacing(!showSpacing)}
-          aria-pressed={showSpacing}
-          title="Show every component's size and all spacing / heights on the walls facing you"
-          className={`rounded-md border px-1.5 py-1.5 font-head text-[10px] uppercase tracking-wide2 transition-colors ${
-            showSpacing ? 'border-teal bg-teal text-dark' : 'border-border-vis bg-dark-3 text-sub hover:border-teal hover:text-teal'
-          }`}
-        >
-          {showSpacing ? 'Spacing: On' : 'Spacing'}
-        </button>
+/** View mode + camera + Spacing, in the design page's look (viewbox.css). */
+function ViewSettings() {
+  const viewMode = useEditorStore((s) => s.viewMode);
+  const setViewMode = useEditorStore((s) => s.setViewMode);
+  const goToView = useEditorStore((s) => s.goToView);
+  const interior = useEditorStore((s) => s.interiorView);
+  const showSpacing = useEditorStore((s) => s.showSpacing);
+  const setShowSpacing = useEditorStore((s) => s.setShowSpacing);
+  return (
+    <>
+      <div>
+        <p className="vb-label">View mode</p>
+        <div className="vb-seg" role="radiogroup" aria-label="View mode">
+          {MODES.map((m) => (
+            <button key={m.value} type="button" role="radio" aria-checked={viewMode === m.value} onClick={() => setViewMode(m.value)} className={viewMode === m.value ? 'on' : ''}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <p className="vb-label">Camera</p>
+        <div className="vb-chips">
+          {BUILD_PRESETS.map((p) => (
+            <button key={p.value} type="button" onClick={() => goToView(p.value)} className={`vb-chip${p.value === 'interior' && interior ? ' on' : ''}`}>
+              {p.label}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setShowSpacing(!showSpacing)}
+            aria-pressed={showSpacing}
+            title="Show every component's size and all spacing / heights on the walls facing you"
+            className={`vb-chip wide${showSpacing ? ' on' : ''}`}
+          >
+            {showSpacing ? 'Spacing: on' : 'Show spacing'}
+          </button>
+        </div>
       </div>
     </>
   );
@@ -95,9 +135,10 @@ function ViewSettings({ presets }: { presets: typeof PRESETS }) {
 
 /**
  * Floating viewport controls. Pure UI for the view itself (it only pokes the editor store; the CameraRig + BuildingModel
- * react). On the build page (the pricing program beside it) it is a carousel (owner 11/2/26): View (+ the wall tools:
- * pick a wall, see / add / edit what is on it) → Colors → Client info, with ‹ › arrows; everything there goes through the
- * program's own controls (programBridge), so the left panel and the price update exactly as if done there.
+ * react). On the build page (the pricing program beside it) it is a carousel (owner 11/2/26) in the customer design
+ * page's look (owner 11/3/26): View (+ the wall tools: pick a wall, add to it, what is on it) → Colors → Client info,
+ * with ‹ › arrows; everything there goes through the program's own controls (programBridge), so the left panel and the
+ * price update exactly as if done there.
  */
 export function ViewControls() {
   const win = useProgramBridge((s) => s.win);
@@ -115,9 +156,6 @@ export function ViewControls() {
     setEditing(null);
   }, [wallPickNonce]);
 
-  const box = 'pointer-events-auto absolute right-4 top-4 rounded-xl border border-border-vis bg-dark-2/95 shadow-lg backdrop-blur';
-
-  // Standalone 3D (no pricing program): today's View box, unchanged.
   let doc: Document | null = null;
   try {
     doc = win && win.document && win.document.getElementById('cn') ? win.document : null;
@@ -126,19 +164,14 @@ export function ViewControls() {
   }
   if (!doc)
     return (
-      <div className={`${box} flex w-[256px] max-w-[calc(100%-2rem)] flex-col gap-2 p-2.5`}>
-        <ViewSettings presets={PRESETS} />
+      <div className="pointer-events-auto absolute right-4 top-4 flex w-[256px] max-w-[calc(100%-2rem)] flex-col gap-2 rounded-xl border border-border-vis bg-dark-2/95 p-2.5 shadow-lg backdrop-blur">
+        <PlainViewSettings />
       </div>
     );
 
   if (!open)
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-expanded={false}
-        className={`${box} flex items-center gap-2 px-3 py-2 font-head text-[10px] uppercase tracking-wide2 text-sub hover:text-teal`}
-      >
+      <button type="button" onClick={() => setOpen(true)} aria-expanded={false} className="vb-folded">
         {PAGES.find((p) => p.key === page)?.label} <span aria-hidden="true">▾</span>
       </button>
     );
@@ -150,17 +183,16 @@ export function ViewControls() {
     setEditing(null);
     setPage(PAGES[(i + d + PAGES.length) % PAGES.length].key);
   };
-  const arrow = 'flex h-7 w-7 items-center justify-center rounded-md border border-border-vis bg-dark-3 text-[15px] text-sub transition-colors hover:border-teal hover:text-teal';
 
   return (
-    <div className={`${box} flex max-h-[calc(100%-2rem)] w-[300px] max-w-[calc(100%-2rem)] flex-col`} aria-label="View box">
-      <div className="flex items-center gap-1.5 border-b border-border px-2.5 py-2">
-        <button type="button" className={arrow} aria-label={'Back to ' + PAGES[(i + PAGES.length - 1) % PAGES.length].label} onClick={() => go(-1)}>
+    <div className="vb" aria-label="View box">
+      <div className="vb-top">
+        <button type="button" className="vb-iconbtn" aria-label={'Back to ' + PAGES[(i + PAGES.length - 1) % PAGES.length].label} onClick={() => go(-1)}>
           ‹
         </button>
-        <div className="flex min-w-0 flex-1 flex-col items-center">
-          <span className="font-head text-[11px] uppercase tracking-wide2 text-text">{PAGES[i].label}</span>
-          <span className="mt-0.5 flex gap-1.5" role="tablist" aria-label="View box pages">
+        <div className="vb-title">
+          <span className="vb-title-t">{PAGES[i].label}</span>
+          <span className="vb-dots" role="tablist" aria-label="View box pages">
             {PAGES.map((p, j) => (
               <button
                 key={p.key}
@@ -172,26 +204,24 @@ export function ViewControls() {
                   setEditing(null);
                   setPage(p.key);
                 }}
-                className={`h-1.5 rounded-full transition-all ${j === i ? 'w-4 bg-teal' : 'w-1.5 bg-border-vis hover:bg-sub'}`}
+                className={`vb-dot${j === i ? ' on' : ''}`}
               />
             ))}
           </span>
         </div>
-        <button type="button" className={arrow} aria-label={'On to ' + PAGES[(i + 1) % PAGES.length].label} onClick={() => go(1)}>
+        <button type="button" className="vb-iconbtn" aria-label={'On to ' + PAGES[(i + 1) % PAGES.length].label} onClick={() => go(1)}>
           ›
         </button>
-        <button type="button" className={arrow} aria-label="Fold the view box away" title="Fold away" onClick={() => setOpen(false)}>
+        <button type="button" className="vb-iconbtn" aria-label="Fold the view box away" title="Fold away" onClick={() => setOpen(false)}>
           –
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-col gap-2 overflow-y-auto p-2.5">
+      <div className="vb-body">
         {page === 'view' && (
           <>
-            {!live && <ViewSettings presets={BUILD_PRESETS} />}
-            <div className={live ? '' : 'border-t border-border pt-2'}>
-              <WallTools doc={doc} editing={live ? editing : null} setEditing={setEditing} />
-            </div>
+            {!live && <ViewSettings />}
+            <WallTools doc={doc} editing={live ? editing : null} setEditing={setEditing} />
           </>
         )}
         {page === 'colors' && <ColorsPage doc={doc} />}

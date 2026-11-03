@@ -120,7 +120,8 @@ describe('CCI freight: 3% at $60,000+ before discounts (62-100 always) - a separ
   it('the price lock: the snapshot keeps the freight; a locked reopen shows it as saved; older 62-100 saves name it', () => {
     expect(html).toContain('return { v:_snapV, frt:r2(+r.freightP||0), pricedAt:');
     expect(html).toContain('lean12ga:1, frtSep:1,');
-    expect(html).toContain("root._frtHold=(pr && pr.frt!=null)?+pr.frt:((data.overrides && data.overrides.frtSep)?null:0);");
+    // an older save: sold = $0, a CCI 62-100 save = $0 (freight inside its saved price), any other = today's rule (owner 11/3/26)
+    expect(html).toContain("root._frtHold=(pr && pr.frt!=null)?+pr.frt:((data.overrides && data.overrides.frtSep)?null:((st.sold || (typeof root.cciWideOn==='function' && root.cciWideOn(parseInt(((root.G && root.G('bw'))||{}).value)||0)))?0:null));");
     expect(html).toContain('  if(window._frtHold!=null && window.PriceLock && PriceLock.on) freightP=window._frtHold;');
     expect(html).toContain("label:'Freight (as originally quoted)', amt:fIn, rules:['cci-freight-sep']");
     expect(html).toContain("'cci-freight-sep': { commit:'11-03'");

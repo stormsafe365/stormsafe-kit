@@ -44,7 +44,7 @@ if (key.startsWith('eyJ')) {
 
 mkdirSync(path.join(out, 'server'), { recursive: true });
 cpSync(path.join(root, 'functions'), path.join(out, 'functions'), { recursive: true });
-cpSync(path.join(root, 'server', 'core.js'), path.join(out, 'server', 'core.js'));
+for (const f of ['core.js', 'lead.js']) cpSync(path.join(root, 'server', f), path.join(out, 'server', f)); // lead.js: website leads (owner 11/4/26)
 writeFileSync(path.join(out, 'server', 'config.js'), `// Written by stage-design-site.mjs. Server side only.\nexport const CONFIG = ${JSON.stringify({ url: url.replace(/\/+$/, ''), key })};\n`);
 
 // 2) headers: no referrer (the link token is in the address), no indexing, no framing

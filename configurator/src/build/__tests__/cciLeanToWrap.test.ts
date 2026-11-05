@@ -29,6 +29,8 @@ import { describe, expect, it } from 'vitest';
  * + a per-unit premium of half of (Boxed-Eave 30' - Vertical 24') at the unit's
  * tier ($300 per 25' unit), height = half of the 26'-30' chart; lean-to lengths
  * round UP to the next 5' column. Every line of B-F now matches Sensei to the cent.
+ * 10-14d reverted the Triple Wide items (side + $200, size premium, 26'-30' height chart) until CCI confirmed; the owner
+ * brought them back 11/5/26 ("Both": Sensei's prices on 26'-30' mains, connection fee included - cciTripleMain).
  */
 
 const html = readFileSync(fileURLToPath(new URL('../../../public/quote-builder.html', import.meta.url)), 'utf8');
@@ -84,10 +86,11 @@ const combos = /standardCombinations:\s*(\{[\s\S]*?\})/.exec(cciBlock)![1];
 
 let code = '';
 for (const v of ['WIDTHS', 'LENGTHS', 'PV', 'PR', 'PB', 'SC', 'EC', 'VERT_SIDE', 'LT_END_P', 'LT_SIDE_P', 'STD_TIERS', 'CCI_LT_CERT_RATE', 'CCI_LT_SIDE_SHORT',
-  'CCI_LT_PANEL', 'CCI_LT_SIDE_FRAC', 'LTS_CONN', 'CCI_COM_CONN', 'LT_WRAP_KEYS', 'LT_WRAP_NAME', 'LT_WRAP_FEE_LBL', 'LT_WRAP_FEE', 'LT_WRAP_SIDES', 'LT_SIDE_SHORT']) code += grabVar(v);
+  'CCI_LT_PANEL', 'CCI_LT_SIDE_FRAC', 'LTS_CONN', 'CCI_COM_CONN', 'LT_WRAP_KEYS', 'LT_WRAP_NAME', 'LT_WRAP_FEE_LBL', 'LT_WRAP_FEE', 'LT_WRAP_SIDES', 'LT_SIDE_SHORT',
+  '_ltNoTriple']) code += grabVar(v);
 code += 'for(var _bpi=0;_bpi<10;_bpi++){ PV[26][_bpi]=PV[25][_bpi]; PV[46][_bpi]=PV[45][_bpi]; }\n'; // the program's 26'/46' row patch
 for (const f of ['eBkt', 'ecLookup', 'vertEndUpcharge', 'cciLtSideSecs', 'cciLtSideClosed', 'cciLtShortSideMsg', 'ltPanelsHorizontal', 'nearestStd',
-  'cciLtSidePanels', 'cciLtMaxPanels', 'cciLtRunSum', 'cciLtSidePartial', 'cciUnits', 'ltBasePrice', 'getLTWalls', 'ltWallsAs', 'ltStorOn', 'ltStorLenOptions', 'ltUnit',
+  'cciLtSidePanels', 'cciLtMaxPanels', 'cciLtRunSum', 'cciLtSidePartial', 'cciUnits', 'ltBasePrice', 'getLTWalls', 'ltWallsAs', 'ltStorOn', 'ltStorLenOptions', 'cciTripleMain', 'ltUnit', 'ltTripleExtra',
   '_ltsInterp', 'cciWideUnits', 'cciWideUnitSum', 'connFeeFor', 'gConnectionFees', 'ltWrapReq', 'ltWrapSetReq', '_ltWrapRd', '_ltWrapReach', 'ltWraps', 'ltWrapOf', 'ltWrapFeeRows',
   'ltWrapFeeTotal', '_ltWrapTxt', '_ltWrapTip', 'ltOverall', 'ltWrapPrintIssue', '_ltWrapLostTxt', 'ltWrapTyping', 'ltWrapGuard', 'ltLenGuard', 'ltWrapRemove',
   'ltWrapClick', 'ltWrapUI']) code += grabFn(f);
@@ -203,19 +206,57 @@ describe('wrap-around lean-tos — Sensei CCI parity (24x40x12, 12-wide lean-tos
     expect(row(open, 'Left Eave').enc).toBe(0);
   });
 
-  it('F (Triple Wide 30x50x14, 12-wide x 12\' lean-tos, Left + Front wrapped): wrapped lengths 62\' / 42\' — the half-of-2W method (10-14 "A3" reverted, 10-14d)', () => {
+  it('F (Triple Wide 30x50x14, 12-wide x 12\' lean-tos, Left + Front wrapped): wrapped lengths 62\' / 42\' — Sensei\'s Triple Wide prices (owner 11/5/26)', () => {
     const f = run({ mw: 30, ml: 50, mh: 14, leans: [{ side: 'Left Eave', l: 50, h: 12 }, { side: 'Front Gable', l: 30, h: 12 }], wraps: 'FL' });
     expect(f.active).toEqual(['FL']);
     expect(row(f, 'Left Eave').wrapLen).toBe(62);
     expect(row(f, 'Front Gable').wrapLen).toBe(42);
-    // 62 → 35+30 units, 42 → 25+20 (Dealer Handbook p6): half of the 24' Vertical chart (Price Book 2 p1 24x35 $4,995 +
-    // 24x30 $4,295; 24x25 $3,595 + 24x20 $2,895), heights half of the 24' 12' row (p2: 35' $840 + 30' $710; 25' $575 + 20'
-    // $430). Sensei's Triple Wide premium ($5,445 / $1,217.50, $3,795 / $917.50) was reverted until CCI confirms (owner 10/14/26).
-    expect([row(f, 'Left Eave').bp, row(f, 'Left Eave').h]).toEqual([4645, 775]);
-    expect([row(f, 'Front Gable').bp, row(f, 'Front Gable').h]).toEqual([3245, 502.5]);
+    // 62 → 35+30 units, 42 → 25+20 (Dealer Handbook p6). Sensei 10/12/26: Left $5,445 / $1,217.50, Front $3,795 / $917.50 =
+    // half of the 24' Vertical chart (4,645 / 3,245) + the per-unit premium (450 + 350 / 300 + 250), heights half of the
+    // 26'-30' chart's 12' row - 10-14 "A3", reverted by 10-14d, back 11/5/26.
+    expect([row(f, 'Left Eave').bp, row(f, 'Left Eave').h]).toEqual([5445, 1217.5]);
+    expect([row(f, 'Front Gable').bp, row(f, 'Front Gable').h]).toEqual([3795, 917.5]);
     expect(f.feeTotal).toBe(300);
-    // side = Price Book 2 p4 $100 + 6 x $25 (Sensei $450 incl. a +$200 = reverted A2); end = the pre-10-14 rule $700 + 2 x $25 (= Sensei)
-    expect([row(f, 'Left Eave').conn, row(f, 'Front Gable').conn]).toEqual([250, 750]);
+    // side = Price Book 2 p4 $100 + 6 x $25 + the Triple Wide $200 = Sensei $450; end = $700 + 2 x $25 = Sensei $750
+    expect([row(f, 'Left Eave').conn, row(f, 'Front Gable').conn]).toEqual([450, 750]);
+  });
+});
+
+describe('Triple Wide (26\'-30\') mains: lean-tos priced like Sensei (owner 11/5/26 "Both")', () => {
+  it('the owner\'s Sensei quote 11/5/26: 26x30x15 main, Right 12x30 lean-to, 8\' low leg, open = size $2,497.50, height $155, side connection $350', () => {
+    const r = run({ mw: 26, ml: 30, mh: 15, leans: [{ side: 'Right Eave', l: 30, h: 8 }] });
+    const x = row(r, 'Right Eave');
+    expect([x.bp, x.h, x.enc, x.conn]).toEqual([2497.5, 155, 0, 350]);
+    // what the rule adds over the 10-14d prices ($2,147.50 + $137.50 + $150): 350 + 17.50 + 200
+    expect(ev(`setup({mw:26, ml:30, mh:15, leans:[{side:'Right Eave', l:30, h:8}]}); return ltTripleExtra();`)).toBe(567.5);
+  });
+  it('10/12/26 Sensei reads on a 30x50 main: 12x30 $2,497.50 + $570 (12\' leg), 12x50 $4,195 + $995, side fee $450 at 50\'', () => {
+    const a = row(run({ mw: 30, ml: 50, mh: 14, leans: [{ side: 'Left Eave', l: 30, h: 12 }] }), 'Left Eave');
+    expect([a.bp, a.h]).toEqual([2497.5, 570]);
+    const b = row(run({ mw: 30, ml: 50, mh: 14, leans: [{ side: 'Left Eave', l: 50, h: 12 }] }), 'Left Eave');
+    expect([b.bp, b.h, b.conn]).toEqual([4195, 995, 450]);
+  });
+  it('26\', 28\' and 30\' mains alike; 24\' and 32\' mains, a wide span and CA unchanged; a gable lean-to keeps $700 + $25 per 5\'', () => {
+    const at = (o: Record<string, unknown>) => ev(`setup(${JSON.stringify({ ml: 30, mh: 15, ...o })}); var u=ltUnit(_LTS[0]); return [u.bp, u.heightAdj, connFeeFor(_LTS[0]._o.side, _LTS[0]._o.l), ltTripleExtra()];`);
+    const L = [{ side: 'Right Eave', l: 30, h: 8 }];
+    for (const mw of [26, 28, 30]) expect(at({ mw, leans: L })).toEqual([2497.5, 155, 350, 567.5]);
+    expect(at({ mw: 24, leans: L })).toEqual([2147.5, 137.5, 150, 0]);
+    const ws = ev(`_G.btype.value='widespan'; setup({mw:30, ml:30, mh:15, leans:[{side:'Right Eave', l:30, h:8}]}); var u=ltUnit(_LTS[0]); var r=[u.bp, ltTripleExtra()]; _G.btype.value='standard'; return r;`);
+    expect(ws).toEqual([2147.5 + 5.5 * 30, 0]); // a 30' WIDE SPAN is not a Triple Wide: the certified adder only, as before
+    expect(at({ mw: 30, leans: [{ side: 'Front Gable', l: 30, h: 8 }] })[2]).toBe(750);
+    const ca = ev(`setup({mfr:'CA', mw:30, ml:30, mh:15, leans:[{side:'Right Eave', l:30, h:8}]}); var u=ltUnit(_LTS[0]); return [u.bp, connFeeFor('Right Eave', 30)];`);
+    expect(ca).toEqual([12 * 30 * 7, 150]); // CA: $7 / sq ft and the CA side fee, unchanged
+  });
+  it('never a lower lean-to price than on a 24\' main (size + height), every width / length / height; wide lean-tos keep their chart', () => {
+    // The 26'-30' height chart is below the 12'-24' one only at 8' (49'-53' columns, never a lean-to unit) and at 15' / 16'
+    // on the 30' column ($2,640 vs $2,665, $2,880 vs $2,905 = $12.50 on a lean-to): Sensei's chart, kept; the size premium
+    // ($350 per 30' unit) keeps the lean-to above its 24'-main price anyway (checked below).
+    const cmp = ev(`var bad=[]; for(var h=7;h<=16;h++){ var n=HU_N[h]||[], m=HU_M[h]||[]; for(var i=0;i<n.length;i++) if((m[i]||0)<(n[i]||0)) bad.push(h+'/'+LENGTHS[i]); } return bad;`);
+    expect(cmp).toEqual(['8/49', '8/51', '8/53', '15/31', '15/33', '16/31', '16/33']);
+    for (const w of [6, 9, 10, 12, 14, 16, 18, 20, 24]) for (const l of [20, 30, 40, 50, 60]) for (const h of [7, 8, 10, 12, 14, 15, 16]) {
+      const p = (mw: number) => ev(`setup({mw:${mw}, ml:50, mh:16, leans:[{side:'Left Eave', w:${w}, l:${l}, h:${h}}]}); var u=ltUnit(_LTS[0]); return u.bp+u.heightAdj;`);
+      expect(p(30), `${w}x${l} at ${h}'`).toBeGreaterThanOrEqual(p(24));
+    }
   });
 });
 
@@ -408,11 +449,12 @@ describe('wrap-around lean-tos — pinned assumptions and pre-existing differenc
   it('connection fees (10-14d): 12′–30′ mains eave = book ($100 at 21′ + $25 / 5′, Price Book 2 p2/p4); gable = the pre-10-14 rule $700 + $25 / 5′ (10-14 "A2" reverted, owner 10/14/26); 32′–60′ mains = Price Book 2 p6 per lean-to, per connected unit past 52′ (owner 10/15/26); 62′–100′ keep the $300 floor', () => {
     const exp: Record<number, number> = { 10: 100, 12: 100, 15: 100, 20: 100, 21: 100, 25: 125, 26: 125, 30: 150, 35: 175, 36: 175, 40: 200, 50: 250, 60: 300 };
     for (const l of Object.keys(exp).map(Number)) expect(ev(`setup({leans:[]}); return connFeeFor('Right Eave', ${l});`)).toBe(exp[l]);
-    for (const l of Object.keys(exp).map(Number)) expect(ev(`setup({mw:30, leans:[]}); return connFeeFor('Right Eave', ${l});`)).toBe(exp[l]); // no Triple Wide + $200
+    for (const l of Object.keys(exp).map(Number)) expect(ev(`setup({mw:30, leans:[]}); return connFeeFor('Right Eave', ${l});`)).toBe(exp[l] + 200); // Triple Wide + $200 (owner 11/5/26)
+    for (const l of Object.keys(exp).map(Number)) expect(ev(`setup({mw:26, leans:[]}); return connFeeFor('Right Eave', ${l});`)).toBe(exp[l] + 200);
     expect(ev(`setup({leans:[]}); return connFeeFor('Front Gable', 24);`)).toBe(725);
     expect(ev(`setup({leans:[]}); return connFeeFor('Front Gable', 12);`)).toBe(700);
     expect(ev(`setup({mw:30, leans:[]}); return connFeeFor('Front Gable', 30);`)).toBe(750);
-    expect(ev(`setup({mw:30, ml:50, leans:[]}); return connFeeFor('Left Eave', 50);`)).toBe(250);
+    expect(ev(`setup({mw:30, ml:50, leans:[]}); return connFeeFor('Left Eave', 50);`)).toBe(450); // Sensei 30x50: $450
     // Price Book 2 p6 "Connection Fee Per Lean-To" (20' $300 ... 52' $500); past 52' per connected unit: 60' = 28'+32', 100' = 48'+52' = $975 (CCI 7/24 correction)
     const p6: Record<number, number> = { 12: 300, 20: 300, 24: 325, 30: 375, 40: 425, 44: 450, 52: 500, 56: 700, 60: 725, 80: 850, 100: 975 };
     for (const l of Object.keys(p6).map(Number)) expect(ev(`setup({mw:40, leans:[]}); return connFeeFor('Left Eave', ${l});`)).toBe(p6[l]);
@@ -423,21 +465,21 @@ describe('wrap-around lean-tos — pinned assumptions and pre-existing differenc
     expect(ev(`setup({mfr:'CA', leans:[]}); return connFeeFor('Front Gable', 24);`)).toBe(725);
   });
 
-  it('Triple Wide 30x50x14 (F): lean-to lines = half of the 2W building (Price Book 2 p1/p2 24\' charts); Sensei\'s Triple Wide lines are a CCI question (10-14 "A3" reverted, 10-14d)', () => {
+  it('Triple Wide 30x50x14 (F): lean-to lines = Sensei\'s (half of the 2W building + the Triple Wide premium, 26\'-30\' height chart; owner 11/5/26)', () => {
     const o = { mw: 30, ml: 50, mh: 14, leans: [{ side: 'Left Eave', l: 50, h: 12 }, { side: 'Front Gable', l: 30, h: 12 }] };
     const sep = run(o), wr = run({ ...o, wraps: 'FL' });
-    // 12x50 = (24x25 $3,595 x 2)/2, 12' height (25' $575 x 2)/2; 12x30 = 24x30 $4,295 / 2, height $710 / 2 (Sensei: 4,195 / 995 / 2,497.50 / 570)
-    expect([row(sep, 'Left Eave').bp, row(sep, 'Left Eave').h, row(sep, 'Front Gable').bp, row(sep, 'Front Gable').h]).toEqual([3595, 575, 2147.5, 355]);
-    expect([row(wr, 'Left Eave').bp, row(wr, 'Left Eave').h, row(wr, 'Front Gable').bp, row(wr, 'Front Gable').h]).toEqual([4645, 775, 3245, 502.5]);
+    // Sensei 10/12/26: 12x50 $4,195 / $995, 12x30 $2,497.50 / $570; wrapped 62' $5,445 / $1,217.50, 42' $3,795 / $917.50
+    expect([row(sep, 'Left Eave').bp, row(sep, 'Left Eave').h, row(sep, 'Front Gable').bp, row(sep, 'Front Gable').h]).toEqual([4195, 995, 2497.5, 570]);
+    expect([row(wr, 'Left Eave').bp, row(wr, 'Left Eave').h, row(wr, 'Front Gable').bp, row(wr, 'Front Gable').h]).toEqual([5445, 1217.5, 3795, 917.5]);
     const lines = (r: Res) => r.rows.reduce((s, x) => s + x.bp + x.h, 0) + r.feeTotal;
-    expect(lines(wr) - lines(sep)).toBeCloseTo(2795, 2); // the wrap: longer units + one $300 corner
+    expect(lines(wr) - lines(sep)).toBeCloseTo(3417.5, 2); // the wrap: longer units + one $300 corner
   });
 
-  it('no Triple Wide premium (10-14 "A3" reverted, owner 10/14/26): a lean-to prices the same on a 24′ and a 26′–30′ main; a wider lean-to never prices lower', () => {
+  it('the Triple Wide premium (owner 11/5/26) is the same for every lean-to width and only on 26′–30′ mains; a wider lean-to never prices lower', () => {
     const bpOn = (mw: number, w: number) => row(run({ mw, ml: 50, mh: 14, leans: [{ side: 'Left Eave', w, l: 50, h: 12 }] }), 'Left Eave').bp;
-    const hOn = (mw: number, w: number) => row(run({ mw, ml: 50, mh: 14, leans: [{ side: 'Left Eave', w, l: 50, h: 12 }] }), 'Left Eave').h;
-    expect(bpOn(30, 12)).toBe(3595);
-    for (const [mw, w] of [[30, 12], [30, 10], [30, 14], [26, 12], [28, 14], [26, 8]]) { expect(bpOn(mw, w)).toBe(bpOn(24, w)); expect(hOn(mw, w)).toBe(hOn(24, w)); }
+    expect(bpOn(30, 12)).toBe(4195);
+    // 50' = two 25' units: + 2 x $300 on every width
+    for (const [mw, w] of [[30, 12], [30, 10], [30, 14], [26, 12], [28, 14], [26, 8]]) expect(bpOn(mw, w) - bpOn(24, w)).toBe(600);
     expect(bpOn(30, 14)).toBeGreaterThan(bpOn(30, 12));
     expect(bpOn(30, 12)).toBeGreaterThan(bpOn(30, 10));
     expect(bpOn(32, 12)).not.toBe(bpOn(24, 12)); // 32'+ mains keep their own (certified) rule

@@ -72,7 +72,7 @@ for (const v of ['WIDTHS', 'LENGTHS', 'SC', 'EC', 'VERT_SIDE', 'LT_END_P', 'LT_S
   'CCI_LT_PANEL', 'CCI_LT_SIDE_FRAC', 'ANCHOR_UNIT']) code += grabVar(v);
 for (const f of ['eBkt', 'ecLookup', 'vertEndUpcharge', 'cciLtSideSecs', 'cciLtSideClosed', 'cciLtShortSideMsg', 'ltPanelsHorizontal', 'nearestStd',
   'cciLtSidePanels', 'cciLtMaxPanels', 'cciLtRunSum', 'cciLtSidePartial', 'cciUnits', 'cciUnitSum', 'cciOC4Leans', 'cciCombo12x4', 'cciColUp', 'cci12x4Row',
-  'gAnchorLegs', 'gAnchors', 'ltSenseiDiffers',
+  'gAnchorLegs', 'gAnchors', 'cciTripleMain', 'ltSenseiDiffers',
   'getLTWalls', 'ltWallsAs', 'ltStorOn', 'ltStorLenOptions', 'getTrussOC', 'ltStorage', 'ltUnit']) code += grabFn(f);
 code += 'var VERT_END=' + vertEnd + ';\nvar _CCI_COMBOS=' + cciCombos + ';\n';
 code += `
@@ -425,6 +425,17 @@ describe('item-7 rep note and the 12GA + 4\' OC combo', () => {
     for (const w of [6, 7, 8, 14, 16, 20]) expect(ctx.price({ w, l: 40, h: 10 }).sensei).not.toBe('');
     for (const mw of [26, 28, 30]) expect(ctx.price({ w: 12, l: 40, h: 10, mw }).sensei).not.toBe('');
     expect(ctx.senseiNote({ w: 14, l: 40, h: 10, type: 'freestanding' })).toBe('');
+  });
+  it('26\'-30\' main (owner 11/5/26: size, leg height and connection fee priced like Sensei): the note stays only for a closed / partial END or a storage room', () => {
+    for (const mw of [26, 28, 30]) {
+      expect(ctx.senseiNote({ w: 12, l: 30, h: 8, mw, back: 'open' })).toBe(''); // the owner's open 12x30 on a 26' main
+      expect(ctx.senseiNote({ w: 12, l: 30, h: 8, mw, back: 'open', side: 'closed' })).toBe(''); // the side wall is Sensei's already
+      expect(ctx.senseiNote({ w: 12, l: 30, h: 8, mw, back: 'q2' })).toBe(`closed end on a ${mw}' (Triple Wide) main`);
+      expect(ctx.senseiNote({ w: 12, l: 30, h: 8, mw, back: 'open', front: 'closed' })).toMatch(/Triple Wide/);
+      expect(ctx.senseiNote({ w: 12, l: 40, h: 8, mw, back: 'open', stor: 'back', slen: 12 })).toMatch(/Triple Wide/);
+    }
+    expect(ctx.senseiNote({ w: 12, l: 30, h: 8, mw: 24 })).toBe(''); // 24' main, closed back: no note (as before)
+    expect(ctx.senseiNote({ w: 14, l: 30, h: 8, mw: 30, back: 'open' })).toBe("14' wide lean-to");
   });
   it('12GA + 4\' OC combined row still applies on ≤24\' mains (lean 4\' OC left out there)', () => {
     expect(ctx.cciCombo12x4('12', '4oc', 24, 'standard', 40)).toBe(840);

@@ -268,7 +268,7 @@ describe('wrap-around lean-tos — rules', () => {
 // ── Drawings: the spacing page's plan corner squares and the "wrap length" bar (dimPlanSVG / dimElevSVG) ──
 let dcode = '';
 for (const v of ['DIM_K', 'DIM_C', '_dimSvgN', 'LT_WRAP_KEYS']) dcode += grabVar(v);
-for (const f of ['dimQ', '_dim8', '_dimFtIn', '_dimIn', '_dimT', '_dimPeakTxt', 'dimElevSVG', 'dimPlanSVG', '_dimWrapCorners', '_dimWrapW']) dcode += grabFn(f);
+for (const f of ['dimQ', '_dim8', '_dimFtIn', '_dimIn', '_dimT', '_dimPeakTxt', 'dimElevSVG', 'dimPlanSVG', '_dimWrapCorners', '_dimWrapW', '_dimLtWallItems']) dcode += grabFn(f);
 dcode += 'this.dimElevSVG=dimElevSVG; this.dimPlanSVG=dimPlanSVG; this._dimWrapCorners=_dimWrapCorners; this._dimWrapW=_dimWrapW;';
 const dctx: any = { console };
 vm.createContext(dctx);

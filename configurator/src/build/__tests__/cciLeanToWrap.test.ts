@@ -87,7 +87,7 @@ for (const v of ['WIDTHS', 'LENGTHS', 'PV', 'PR', 'PB', 'SC', 'EC', 'VERT_SIDE',
   'CCI_LT_PANEL', 'CCI_LT_SIDE_FRAC', 'LTS_CONN', 'CCI_COM_CONN', 'LT_WRAP_KEYS', 'LT_WRAP_NAME', 'LT_WRAP_FEE_LBL', 'LT_WRAP_FEE', 'LT_WRAP_SIDES', 'LT_SIDE_SHORT']) code += grabVar(v);
 code += 'for(var _bpi=0;_bpi<10;_bpi++){ PV[26][_bpi]=PV[25][_bpi]; PV[46][_bpi]=PV[45][_bpi]; }\n'; // the program's 26'/46' row patch
 for (const f of ['eBkt', 'ecLookup', 'vertEndUpcharge', 'cciLtSideSecs', 'cciLtSideClosed', 'cciLtShortSideMsg', 'ltPanelsHorizontal', 'nearestStd',
-  'cciLtSidePanels', 'cciLtMaxPanels', 'cciLtRunSum', 'cciLtSidePartial', 'cciUnits', 'ltBasePrice', 'getLTWalls', 'ltWallsAs', 'ltStorOn', 'ltStorLenOptions', 'ltUnit',
+  'cciLtSidePanels', 'cciLtMaxPanels', 'cciLtRunSum', 'cciLtSidePartial', 'cciUnits', 'ltBasePrice', 'getLTWalls', 'ltWallsAs', 'ltStorOn', 'ltStorLenOptions', 'ltUnit', 'cciWideLean', 'cciLeanCol',
   '_ltsInterp', 'cciWideUnits', 'cciWideUnitSum', 'connFeeFor', 'gConnectionFees', 'ltWrapReq', 'ltWrapSetReq', '_ltWrapRd', '_ltWrapReach', 'ltWraps', 'ltWrapOf', 'ltWrapFeeRows',
   'ltWrapFeeTotal', '_ltWrapTxt', '_ltWrapTip', 'ltOverall', 'ltWrapPrintIssue', '_ltWrapLostTxt', 'ltWrapTyping', 'ltWrapGuard', 'ltLenGuard', 'ltWrapRemove',
   'ltWrapClick', 'ltWrapUI']) code += grabFn(f);

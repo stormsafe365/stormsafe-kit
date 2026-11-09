@@ -73,10 +73,10 @@ for (const v of ['WIDTHS', 'LENGTHS', 'SC', 'EC', 'VERT_SIDE', 'LT_END_P', 'LT_S
 for (const f of ['eBkt', 'ecLookup', 'vertEndUpcharge', 'cciLtSideSecs', 'cciLtSideClosed', 'cciLtShortSideMsg', 'ltPanelsHorizontal', 'nearestStd',
   'cciLtSidePanels', 'cciLtMaxPanels', 'cciLtRunSum', 'cciLtSidePartial', 'cciUnits', 'cciUnitSum', 'cciOC4Leans', 'cciCombo12x4', 'cciColUp', 'cci12x4Row',
   'gAnchorLegs', 'gAnchors', 'ltSenseiDiffers',
-  'getLTWalls', 'ltWallsAs', 'ltStorOn', 'ltStorLenOptions', 'getTrussOC', 'ltStorage', 'ltUnit']) code += grabFn(f);
+  'getLTWalls', 'ltWallsAs', 'ltStorOn', 'ltStorLenOptions', 'getTrussOC', 'ltStorage', 'ltUnit', 'cciWideLean', 'cciLeanCol']) code += grabFn(f);
 code += 'var VERT_END=' + vertEnd + ';\nvar _CCI_COMBOS=' + cciCombos + ';\n';
 code += `
-var ACTIVE_MFR='CCI', PV={}, PR={}, PB={}, HU_N={}, HU_M={}, HU={};
+var ACTIVE_MFR='CCI', PV={}, PR={}, PB={}, HU_N={}, HU_M={}, HU={}, window={};
 var _G={bw:{value:'24'},btype:{value:'standard'},ws:{value:'Horizontal'},rs:{value:'Vertical'},'oc-spacing':{value:'5oc'},foundation:{value:'concrete'}};
 function G(id){ return _G[id]||null; }
 function MFR(){ return {standardCombinations:_CCI_COMBOS}; }
@@ -303,9 +303,9 @@ describe('round 3 · Job 3 confirmations (24x40x14 main, 12x40x10 lean unless no
     for (const w of Object.keys(WB).map(Number)) {
       const p = ctx.price({ w, l: 40, h: 10, stor: 'back', slen: 20 });
       eq(p.stor.outerP, 385); // the side part does not depend on the lean width
-      if (w >= 7 && w <= 12) { eq(p.back, WB[w]); eq(p.stor.total, WB[w] + 385); }
-      // item 7: W6 / W13-24 end price differs, W7 / W8 base differs → rep note, price unchanged
-      if (w >= 9 && w <= 12) expect(p.sensei).toBe(''); else expect(p.sensei).toMatch(/wide lean-to/);
+      if (w >= 7 && w <= 15) { eq(p.back, WB[w]); eq(p.stor.total, WB[w] + 385); } // 13'-15': CCI 11/9/26 (the 18' end) = Sensei
+      // item 7: W6 / W16-24 end price differs (Sensei), W7 / W8 base differs → rep note; W13-15 priced the CCI 11/9/26 way, no note
+      if (w >= 9 && w <= 15) expect(p.sensei).toBe(''); else expect(p.sensei).toMatch(/wide lean-to/);
     }
   });
   it('b) vertical siding: Back $897.50, Side $1,052.50, storage 5-35', () => {
@@ -420,9 +420,11 @@ describe('round 3 · Job 1: mobile home anchors (Sensei "Mobile Home Anchor 30\\
 });
 
 describe('item-7 rep note and the 12GA + 4\' OC combo', () => {
-  it('note only on CCI attached lean widths 6-8 / 13-24 or 26-30 mains — never on W9-12 Standard', () => {
+  it('note only on CCI attached lean widths 6-8 / 16-24 or 26-30 mains (12 and under) — never on W9-15 Standard (13-15: CCI 11/9/26)', () => {
     for (const w of [9, 10, 11, 12]) expect(ctx.price({ w, l: 40, h: 10 }).sensei).toBe('');
-    for (const w of [6, 7, 8, 14, 16, 20]) expect(ctx.price({ w, l: 40, h: 10 }).sensei).not.toBe('');
+    for (const w of [6, 7, 8, 16, 20]) expect(ctx.price({ w, l: 40, h: 10 }).sensei).not.toBe('');
+    for (const w of [13, 14, 15]) expect(ctx.price({ w, l: 40, h: 10 }).sensei).toBe('');
+    expect(ctx.price({ w: 14, l: 40, h: 10, mw: 30 }).sensei).toBe('');
     for (const mw of [26, 28, 30]) expect(ctx.price({ w: 12, l: 40, h: 10, mw }).sensei).not.toBe('');
     expect(ctx.senseiNote({ w: 14, l: 40, h: 10, type: 'freestanding' })).toBe('');
   });
@@ -431,7 +433,7 @@ describe('item-7 rep note and the 12GA + 4\' OC combo', () => {
     expect(ctx.cciCombo12x4('14', '4oc', 24, 'standard', 40)).toBeNull();
   });
   it('round-3 checks counted', () => {
-    expect(r3Checks).toBe(330);
+    expect(r3Checks).toBe(336); // + W13-15 back + storage (CCI 11/9/26 = Sensei's 9/30 reads)
   });
 });
 

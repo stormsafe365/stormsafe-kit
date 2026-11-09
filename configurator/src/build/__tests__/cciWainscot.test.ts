@@ -86,13 +86,13 @@ for (const v of ['WIDTHS', 'LENGTHS', 'SC', 'EC', 'VERT_SIDE', 'LT_END_P', 'LT_S
   'CCI_LT_PANEL', 'CCI_LT_SIDE_FRAC', 'ANCHOR_UNIT', 'LR_STORAGE', 'LR_VERT_ADD', 'CCI_WAIN_END']) code += grabVar(v);
 for (const f of ['eBkt', 'ecLookup', 'vertEndUpcharge', 'cciLtSideSecs', 'cciLtSideClosed', 'cciLtShortSideMsg', 'ltPanelsHorizontal', 'nearestStd',
   'cciLtSidePanels', 'cciLtMaxPanels', 'cciLtRunSum', 'cciLtSidePartial', 'cciUnits', 'cciUnitSum',
-  'getLTWalls', 'ltWallsAs', 'ltStorOn', 'ltStorLenOptions', 'getTrussOC', 'ltStorage', 'ltUnit',
+  'getLTWalls', 'ltWallsAs', 'ltStorOn', 'ltStorLenOptions', 'getTrussOC', 'ltStorage', 'ltUnit', 'cciWideLean', 'cciLeanCol',
   'lrStorageLookup', 'aewUnset', 'aewSpec', 'gAddEndWall',
   'eaveVal', 'wainscotPrintOpt', 'cciWainscotPre', 'cciWainEnd', 'cciWainSide', 'cciWainLeanEnd', 'cciWainscot', 'gWainscot']) code += grabFn(f);
 code += 'var VERT_END=' + vertEnd + ';\nvar _CCI_COMBOS=' + cciCombos + ';\n';
 code += 'var MANUFACTURERS={CA:{wainscotBuckets:' + grabMethod('CA', 'wainscotBuckets') + '},CCI:{wainscotBuckets:' + grabMethod('CCI', 'wainscotBuckets') + ',standardCombinations:_CCI_COMBOS}};\n';
 code += `
-var ACTIVE_MFR='CCI', INPUT_MODE=false, PV={}, PR={}, PB={}, HU_N={}, HU_M={}, HU={};
+var ACTIVE_MFR='CCI', INPUT_MODE=false, PV={}, PR={}, PB={}, HU_N={}, HU_M={}, HU={}, window={};
 function MFR(){ return MANUFACTURERS[ACTIVE_MFR]; }
 var _G={}, _LTS=[];
 function G(id){ return _G[id]||null; }

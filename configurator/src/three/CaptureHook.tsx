@@ -3,6 +3,7 @@ import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useEditorStore, type RenderStyle } from '@/store/useEditorStore';
 import { captureBoxOf } from './captureBox';
+import { fitCameraToPoints } from './captureFit';
 import { applyCaptureTheme, composeLightCapture, type CaptureOptions, type CaptureTheme } from './captureTheme';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -152,31 +153,23 @@ export function CaptureHook() {
           pts.push(...corners);
         });
         const ctlTarget = (controls as unknown as { target?: THREE.Vector3 } | null)?.target;
+        // EXACT fit (captureFit.ts, owner 11/9/26): keeps the view direction, puts the camera where the
+        // building fills the frame to the same margins (0.86 across / 0.84 up) and is centred. The old
+        // 4-step recenter / re-distance loop swung back and forth on an eave view with a lean-to on the
+        // camera's side (its posts are much closer than the main building) and stopped part-way.
         const fitExact = () => {
           if (!pts.length || !ctlTarget) return;
-          for (let k = 0; k < 4; k++) {
-            camera.updateMatrixWorld();
-            let mnx = Infinity, mxx = -Infinity, mny = Infinity, mxy = -Infinity;
-            for (const p of pts) {
-              const q = p.clone().project(camera);
-              mnx = Math.min(mnx, q.x); mxx = Math.max(mxx, q.x);
-              mny = Math.min(mny, q.y); mxy = Math.max(mxy, q.y);
-            }
-            // recenter: pan camera + target so the building is centered in frame
-            const dist = camera.position.distanceTo(ctlTarget);
-            const vh = 2 * dist * Math.tan((camera.fov * Math.PI) / 360);
-            const vw = vh * camera.aspect;
-            const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar(((mnx + mxx) / 2) * (vw / 2));
-            const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1).multiplyScalar(((mny + mxy) / 2) * (vh / 2));
-            camera.position.add(right).add(up);
-            ctlTarget.add(right).add(up);
-            // re-distance: scale so the larger NDC extent lands on the margin
-            const need = Math.max((mxx - mnx) / 2 / 0.86, (mxy - mny) / 2 / 0.84);
-            const dir = camera.position.clone().sub(ctlTarget).normalize();
-            camera.position.copy(ctlTarget.clone().add(dir.multiplyScalar(Math.max(dist * need, 3))));
-            camera.lookAt(ctlTarget);
-            camera.updateMatrixWorld();
-          }
+          camera.updateMatrixWorld();
+          const R = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+          const U = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
+          const F = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 2).negate();
+          const ty = Math.tan((camera.fov * Math.PI) / 360);
+          const fit = fitCameraToPoints(pts, { R, U, F }, ty * camera.aspect, ty);
+          if (!fit) return;
+          camera.position.copy(fit.position);
+          ctlTarget.copy(fit.target);
+          camera.lookAt(ctlTarget);
+          camera.updateMatrixWorld();
         };
 
         for (const v of views) {

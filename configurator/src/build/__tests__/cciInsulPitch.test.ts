@@ -43,7 +43,8 @@ function grabVar(name: string): string {
 const ctx: Record<string, unknown> = { ACTIVE_MFR: 'CCI', __f: {} };
 vm.createContext(ctx);
 vm.runInContext(
-  grabFn('gInsul') + grabFn('insulEndAdd') + grabVar('INSUL_END_ADD_PITCH') +
+  grabFn('gInsul') + grabFn('insulEndAdd') + grabVar('INSUL_END_ADD_PITCH') + grabFn('cciInsulEncLeanAdj') +
+    'var window={}; var document={querySelectorAll:function(){ return []; }}; // no lean-tos here (cciInsulEncLean.test.ts has them)\n' +
     'var INSUL_RATE=1.50; var FS_INS_ROOF_RATE=1.6071, FS_INS_WALL_RATE=1.539; function fsLowSide(){ return 4; }\n' +
     'function G(id){ if(!(id in __f)) return null; return { id:id, value:__f[id], textContent:__f[id], checked:__f[id]===true, style:{}, dataset:{} }; }\n',
   ctx,

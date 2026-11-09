@@ -52,7 +52,7 @@ vm.runInContext(
   [
     'gLeg', 'cciUnits', 'cciUnitSum', 'cciColUp', 'cciWideOn', 'cciWideUnits', 'cciWideUnitSum', 'cciWideHeight', 'cci12GA',
     'halfClosedCost', 'gableOnlyCost', 'ecLookup', 'eBkt', 'gAnchors', 'gAnchorLegs', 'acUnitPrice', 'ltFrameoutPrice',
-    'ltAccFoUnitPrice', 'isEaveSide', 'vertEndUpcharge', 'vertSideUpcharge', 'gVertUpgrade', 'eaveVal', 'gAddEndWall', 'gInsul', 'insulEndAdd',
+    'ltAccFoUnitPrice', 'isEaveSide', 'vertEndUpcharge', 'vertSideUpcharge', 'gVertUpgrade', 'eaveVal', 'gAddEndWall', 'gInsul', 'insulEndAdd', 'cciInsulEncLeanAdj',
     'cciPanelTiers', 'cpJTrim', 'gSidePanels', 'sideClosurePrice', 'sidePanelLength', 'ropUnit', 'cciPBRule', 'cci170OcRule',
     'connFeeFor',
   ].map(grabFn).join('') +
@@ -67,6 +67,7 @@ vm.runInContext(
     'function cciWideEC(w,h){ return -1; }\n' +
     'function _ltsInterp(){ return 0; }\n' +
     'var LTS_CONN=[];\n' +
+    'var document={querySelectorAll:function(){ return []; }}; // no lean-tos here (cciInsulEncLean.test.ts has them)\n' +
     'var SP={ full:{21:110,26:130,31:155,36:175}, halfTrim:{21:220,26:260,31:310,36:350}, tiers:[21,26,31,36] };\n' +
     'function MFR(){ return { shExtThresh:52, shIndexByLength:true, gableOnlyPrice:300, halfGablePrice:900, vertSideCombined:true, sidePanels:SP, panelTier:function(l){ for(var i=0;i<SP.tiers.length;i++){ if(SP.tiers[i]>=l) return SP.tiers[i]; } return 36; } }; }\n' +
     // DOM-ish G(): __f holds field values (county / pt via textContent / value), .fo-loc etc. via el objects

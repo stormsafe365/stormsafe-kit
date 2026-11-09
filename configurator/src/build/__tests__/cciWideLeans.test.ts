@@ -4,12 +4,13 @@ import vm from 'node:vm';
 import { describe, expect, it } from 'vitest';
 
 /**
- * CCI lean-tos WIDER THAN 12' (CCI 11/9/26). CCI hand-corrected order SS-2026-69096 (Michael Bescript): a 30x70x16 12-gauge
+ * CCI 14' lean-tos (CCI 11/9/26). CCI hand-corrected order SS-2026-69096 (Michael Bescript): a 30x70x16 12-gauge
  * in Palm Beach (170 MPH, 4' centers) with two 14x70 lean-tos at 2:12 - Left, 12' low leg, open; Right, 10' low leg, fully
  * enclosed, vertical walls. CCI's numbers (each lean-to): size $7,190, 12 gauge $1,440, leg height $840 (12') / $590 (10'),
- * walls 1,765 + 2,500 (side + two ends); the building's own 12-Gauge line $1,540. The owner (11/9/26) applied it to every
- * CCI lean-to over 12': its own carport unit at the CCI column (14'/16' = 18'), full size / ends / 12 gauge row, the
- * 12'-24' leg-height chart halved. 12' and under stay exactly as before. Run through the program's OWN functions.
+ * walls 1,765 + 2,500 (side + two ends); the building's own 12-Gauge line $1,540. A 13'-15' (the 14' option) CCI lean-to now
+ * prices as its own carport unit at the CCI column (14' = 18'): full size / ends / 12 gauge row, the 12'-24' leg-height
+ * chart halved. 12' and under, and 16'+ (owner 11/9/26: "Keep as today" until CCI prices one), stay exactly as before.
+ * Run through the program's OWN functions.
  */
 
 const html = readFileSync(fileURLToPath(new URL('../../../public/quote-builder.html', import.meta.url)), 'utf8');
@@ -146,7 +147,7 @@ describe("CCI's corrections on order SS-2026-69096 (11/9/26), to the dollar", ()
   });
 });
 
-describe('the rule for every lean-to over 12\'', () => {
+describe('the rule: 13\'-15\' lean-tos (the 14\' option) only', () => {
   it('12\' and under: exactly as before (half of a 2W building, 5\' 12-gauge row) — also at 4\' centers on a 30\' main', () => {
     for (const w of [8, 10, 12]) {
       for (const l of [20, 40, 50, 70]) {
@@ -160,11 +161,24 @@ describe('the rule for every lean-to over 12\'', () => {
     expect(ctx.lean({ w: 12, l: 50, h: 12 }).h).toBe(575);
     expect(ctx.lean({ w: 12, l: 50, h: 12 }).ga).toBe(480);
   });
-  it('14\' and 16\' price at the 18\' column, 20\' at its own; full size, full ends', () => {
-    expect(ctx.lean({ w: 16, l: 70, h: 12 }).bp).toBe(7190);
-    expect(ctx.lean({ w: 20, l: 40, h: 10 }).bp).toBe(4795);          // 20x40 (Price Book 2 p1)
-    expect(ctx.lean({ w: 14, l: 40, h: 10 }).bp).toBe(4095);          // 18x40
-    expect(ctx.lean({ w: 20, l: 40, h: 10, horiz: true, back: 'closed' }).enc).toBe(1130); // 20' end, 10' tall
+  it('14\' prices at the 18\' column; full size, full ends', () => {
+    expect(ctx.lean({ w: 14, l: 40, h: 10 }).bp).toBe(4095);          // 18x40 (Price Book 2 p1)
+    expect(ctx.lean({ w: 13, l: 40, h: 10 }).bp).toBe(4095);
+    expect(ctx.lean({ w: 15, l: 40, h: 10 }).bp).toBe(4095);
+  });
+  it('16\' and 20\': exactly as before (owner 11/9/26 "Keep as today" until CCI prices one), rep note kept', () => {
+    for (const w of [16, 20]) {
+      for (const l of [20, 40, 70]) {
+        for (const h of [10, 12]) {
+          for (const mw of [24, 30]) {
+            const o = { w, l, h, mw, front: 'closed', back: 'gable', side: 'closed' };
+            expect(ctx.lean(o)).toEqual(ctx.old(o));
+            expect(ctx.lean(o).note).toMatch(/wide lean-to/);
+          }
+        }
+      }
+    }
+    expect(ctx.leans([{ w: 16, l: 40, h: 10 }, { w: 20, l: 70, h: 12 }]).drift).toBe(0);
   });
   it('12 gauge over 12\': the 170 MPH 4\' centers row at 4\' centers (4\' OC option, 26\'+ or wide-span main), else the 5\' row', () => {
     expect(ctx.lean({ w: 14, l: 40, h: 10, mw: 24, oc: 5 }).ga).toBe(330);

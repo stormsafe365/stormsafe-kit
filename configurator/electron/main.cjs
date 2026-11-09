@@ -45,6 +45,33 @@ function createWindow() {
 // export hands us the finished HTML; we render it offscreen, printToPDF, prompt
 // for a location, write it, and open it in the default viewer (= the preview).
 let _pdfSeq = 0;
+// Where the Save dialog opens (owner 11/9/26: "id like if it opened to that persons file"): Desktop\QUOTES\<client>\,
+// the client being the part of the file name before "-StormSafe Steel " (the program names files "Client Name-StormSafe
+// Steel QTE (11.9)"). An existing folder with that name (any upper / lower case) is used; a new client gets a new folder,
+// which is removed again if the save is cancelled or goes elsewhere and the folder is still empty. No Desktop\QUOTES
+// folder: the file name only, as before (Windows opens the folder used last time); no client name: Desktop\QUOTES.
+// (The same function is in the CRM app's electron/main.cjs.)
+function clientSavePath(fileName) {
+  const out = { defaultPath: fileName, made: null };
+  try {
+    const quotes = path.join(app.getPath('desktop'), 'QUOTES');
+    if (!fs.existsSync(quotes) || !fs.statSync(quotes).isDirectory()) return out;
+    const i = fileName.indexOf('-StormSafe Steel ');
+    const client = (i > 0 ? fileName.slice(0, i) : '').replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim().replace(/[. ]+$/, '');
+    if (!client) { out.defaultPath = path.join(quotes, fileName); return out; }
+    const key = client.toLowerCase();
+    const hit = fs.readdirSync(quotes, { withFileTypes: true })
+      .find((d) => d.isDirectory() && d.name.replace(/\s+/g, ' ').trim().toLowerCase() === key);
+    const dir = path.join(quotes, hit ? hit.name : client);
+    if (!hit) { fs.mkdirSync(dir); out.made = dir; }
+    out.defaultPath = path.join(dir, fileName);
+  } catch { /* keep the file name only */ }
+  return out;
+}
+function dropIfEmpty(dir) {
+  if (!dir) return;
+  try { if (fs.readdirSync(dir).length === 0) fs.rmdirSync(dir); } catch { /* ignore */ }
+}
 ipcMain.handle('ss:save-pdf', async (_evt, { html, suggestedName }) => {
   const tmpHtml = path.join(os.tmpdir(), 'ss-print-' + process.pid + '-' + (++_pdfSeq) + '.html');
   let pdfWin = null;
@@ -60,13 +87,15 @@ ipcMain.handle('ss:save-pdf', async (_evt, { html, suggestedName }) => {
       pageSize: 'Letter',
     });
     const parent = BrowserWindow.getFocusedWindow() || mainWindow;
+    const where = clientSavePath(suggestedName || 'StormSafe.pdf');
     const { canceled, filePath } = await dialog.showSaveDialog(parent, {
       title: 'Save PDF',
-      defaultPath: suggestedName || 'StormSafe.pdf',
+      defaultPath: where.defaultPath,
       filters: [{ name: 'PDF Document', extensions: ['pdf'] }],
     });
-    if (canceled || !filePath) return { ok: false, canceled: true };
+    if (canceled || !filePath) { dropIfEmpty(where.made); return { ok: false, canceled: true }; }
     fs.writeFileSync(filePath, pdf);
+    if (where.made && path.dirname(filePath).toLowerCase() !== where.made.toLowerCase()) dropIfEmpty(where.made);
     shell.openPath(filePath); // open in the default PDF viewer for preview
     return { ok: true, filePath };
   } catch (e) {

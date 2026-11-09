@@ -181,12 +181,12 @@ describe('Galvalume (code OR hex)', () => {
 });
 
 describe('glass, slats, environment', () => {
-  it('glass: #aab4ba, 0.35 / 0.08 / 1.25, opacity 0.78, keepTransparent (ShellGroup)', () => {
+  it('glass: warm tan #a88d63 (Sensei windows, owner 11/9/26), 0.1 / 0.25 / 0.5, opacity 0.94, keepTransparent (ShellGroup)', () => {
     const g = getEnhancedMaterial({ surface: 'glass' });
-    expect(g.color.getHexString()).toBe('aab4ba');
-    expect([g.metalness, g.roughness, g.envMapIntensity]).toEqual([0.35, 0.08, 1.25]);
+    expect(g.color.getHexString()).toBe('a88d63');
+    expect([g.metalness, g.roughness, g.envMapIntensity]).toEqual([0.1, 0.25, 0.5]);
     expect(g.transparent).toBe(true);
-    expect(g.opacity).toBeCloseTo(0.78, 12);
+    expect(g.opacity).toBeCloseTo(0.94, 12);
     expect(g.userData.keepTransparent).toBe(true);
   });
 

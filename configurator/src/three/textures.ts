@@ -8,12 +8,16 @@ export type DoorStyle = 'std' | '6panel' | '9lite' | 'diamond';
 
 /**
  * Procedurally drawn walk-through DOOR FACE (one slab, no tiling) — the panel
- * layout per style + the slab color (white or black). Mirrors the 2D elevation
- * door drawing in quote-builder.html so the 3D matches the quote:
- *  - std     : smooth slab, two faint recessed panels
- *  - 6panel  : 3×2 grid of raised panels
- *  - 9lite   : top-half 3×3 glass lites + two lower panels
- *  - diamond : solid slab with a centered 10×10 diamond window (upper third)
+ * layout per style + the slab color (white or black). Laid out from CCI's
+ * "Walk Through Door Options" sheet (photos of the real doors) and the Sensei
+ * drawings the owner sent 11/9/26:
+ *  - std     : a completely smooth slab
+ *  - 6panel  : colonial 6-panel — two SHORT panels at the top, two TALL
+ *              panels in the middle, two medium panels at the bottom, each
+ *              a raised (beveled) panel
+ *  - 9lite   : top-half 3×3 glass lites + two lower raised panels
+ *  - diamond : smooth slab with a 10"×10" glass square turned 45° (a diamond)
+ *              in the upper part, white frame, tan glass like the windows
  * Mapped 1:1 onto the door plane (canvas aspect ≈ the 36×80 door).
  */
 export function createDoorTexture(style: DoorStyle, dark: boolean): THREE.CanvasTexture {
@@ -22,7 +26,6 @@ export function createDoorTexture(style: DoorStyle, dark: boolean): THREE.Canvas
   const base = dark ? '#1f1f1f' : '#f4f1ec';
   const panel = dark ? '#2c2c2c' : '#d8d4cc';
   const line = dark ? '#0a0a0a' : '#b8b3aa';
-  const glass = dark ? '#9eb6c6' : '#c8dfe8';
 
   const canvas = document.createElement('canvas');
   canvas.width = W;
@@ -46,43 +49,90 @@ export function createDoorTexture(style: DoorStyle, dark: boolean): THREE.Canvas
       ctx.strokeRect(x, y, w, h);
     }
   };
+  // Door glass: the same warm tan as the windows (WINDOW_GLASS), lighter top-left.
+  const glassFill = (x: number, y: number, w: number, h: number) => {
+    const g = ctx.createLinearGradient(x, y, x + w, y + h);
+    g.addColorStop(0, '#cdb68c');
+    g.addColorStop(1, '#8c734c');
+    return g;
+  };
+
+  // A raised panel: shaded bevel (light top / left, dark bottom / right) round a flat field.
+  const raised = (x: number, y: number, w: number, h: number) => {
+    const b = Math.max(4, Math.min(w, h) * 0.12);
+    const hi = dark ? '#3a3a3a' : '#ffffff';
+    const lo = dark ? '#0d0d0d' : '#bdb7ad';
+    const quad = (pts: number[], fill: string) => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0], pts[1]);
+      for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+    };
+    quad([x, y, x + w, y, x + w - b, y + b, x + b, y + b], hi); // top
+    quad([x, y, x + b, y + b, x + b, y + h - b, x, y + h], hi); // left
+    quad([x + w, y, x + w, y + h, x + w - b, y + h - b, x + w - b, y + b], lo); // right
+    quad([x, y + h, x + b, y + h - b, x + w - b, y + h - b, x + w, y + h], lo); // bottom
+    rect(x + b, y + b, w - 2 * b, h - 2 * b, panel);
+    ctx.strokeStyle = line;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, w, h);
+  };
 
   if (style === '6panel') {
-    const gap = iw * 0.06;
-    const pw = (iw - gap) / 2;
-    const ph = (ih - gap * 2) / 3;
-    for (let r = 0; r < 3; r++)
-      for (let c = 0; c < 2; c++) rect(ix + c * (pw + gap), iy + r * (ph + gap), pw, ph, panel, line);
+    // CCI 6-panel (door sheet photo, % of the slab): panels 23% wide, 20% side
+    // margins, 14% centre stile; rows top 8-17% (short), 23-54% (tall),
+    // 62-87% (medium).
+    const pw = W * 0.23;
+    const xs = [W * 0.2, W - W * 0.2 - pw];
+    const rows: Array<[number, number]> = [
+      [0.08, 0.17],
+      [0.23, 0.54],
+      [0.62, 0.87],
+    ];
+    for (const [t, b] of rows) for (const x of xs) raised(x, H * t, pw, H * (b - t));
   } else if (style === '9lite') {
     const liteH = ih * 0.5;
     const gap = iw * 0.025;
     const lW = (iw - gap * 2) / 3;
     const lH = (liteH - gap * 2) / 3;
-    rect(ix, iy, iw, liteH, glass);
+    rect(ix, iy, iw, liteH, dark ? '#111111' : '#ffffff');
+    for (let r = 0; r < 3; r++)
+      for (let c = 0; c < 3; c++) {
+        const gx = ix + c * (lW + gap) + gap * 0.5;
+        const gy = iy + r * (lH + gap) + gap * 0.5;
+        ctx.fillStyle = glassFill(gx, gy, lW - gap, lH - gap);
+        ctx.fillRect(gx, gy, lW - gap, lH - gap);
+      }
+    const by = iy + liteH + ih * 0.06;
+    const bh = ih - liteH - ih * 0.1;
+    const bw = iw * 0.36;
+    raised(ix + iw * 0.08, by, bw, bh);
+    raised(ix + iw * 0.92 - bw, by, bw, bh);
+  } else if (style === 'diamond') {
+    // A 10"x10" glass square turned 45°: half-diagonal 7.07" of the 36" slab
+    // (= 0.196 W), centred ~15" down from the top, like the Sensei door.
+    const cx = W / 2;
+    const cy = H * 0.19;
+    const r = W * 0.196;
+    const diamond = (rr: number) => {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - rr);
+      ctx.lineTo(cx + rr, cy);
+      ctx.lineTo(cx, cy + rr);
+      ctx.lineTo(cx - rr, cy);
+      ctx.closePath();
+    };
+    diamond(r);
+    ctx.fillStyle = dark ? '#2a2a2a' : '#ffffff'; // the window's frame
+    ctx.fill();
     ctx.strokeStyle = line;
     ctx.lineWidth = 2;
-    for (let r = 0; r < 3; r++)
-      for (let c = 0; c < 3; c++) ctx.strokeRect(ix + c * (lW + gap), iy + r * (lH + gap), lW, lH);
-    const by = iy + liteH + ih * 0.04;
-    const bh = ih - liteH - ih * 0.04;
-    const bw = (iw - gap) / 2;
-    for (let c = 0; c < 2; c++) rect(ix + c * (bw + gap), by, bw, bh, panel, line);
-  } else if (style === 'diamond') {
-    // Solid slab + a centered diamond (rotated square) glass window, upper third.
-    const cx = ix + iw / 2;
-    const cy = iy + ih * 0.26;
-    const r = Math.min(iw, ih) * 0.16;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - r);
-    ctx.lineTo(cx + r, cy);
-    ctx.lineTo(cx, cy + r);
-    ctx.lineTo(cx - r, cy);
-    ctx.closePath();
-    ctx.fillStyle = glass;
-    ctx.fill();
-    ctx.strokeStyle = dark ? '#cfcfcf' : '#9aa0a7';
-    ctx.lineWidth = 5; // proud window frame
     ctx.stroke();
+    diamond(r - 9);
+    ctx.fillStyle = glassFill(cx - r, cy - r, 2 * r, 2 * r);
+    ctx.fill();
   }
   // std — a completely SOLID slab (the real CCI standard door is flat, no
   // panels), so nothing is drawn over the base fill. The frame/casing is the

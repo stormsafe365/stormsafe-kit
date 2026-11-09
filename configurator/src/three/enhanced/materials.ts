@@ -133,8 +133,12 @@ export const ENHANCED_MATERIAL_PARAMS = {
     galvalume: { metalness: 0.8, roughness: 0.5, envMapIntensity: 0.4 },
     normalScale: 0.35,
   },
-  /** Window glass (lab M.glass; same values as the builder's classic glass). */
-  glass: { color: '#aab4ba', metalness: 0.35, roughness: 0.08, envMapIntensity: 1.25, opacity: 0.78 },
+  /**
+   * Window glass: warm tan like the Sensei windows the owner sent 11/9/26
+   * (was the lab's pale blue-grey #aab4ba, metal 0.35, env 1.25, 78%), a soft
+   * sheen and mostly opaque so it reads as glass in front of a dim room.
+   */
+  glass: { color: '#a88d63', metalness: 0.1, roughness: 0.25, envMapIntensity: 0.5, opacity: 0.94 },
   /**
    * Structural frame, bare Galvalume (HANDOFF Step 8: metalness ~0.85,
    * roughness ~0.45; lab M.frame). The lab's env 0.6 washes the thin tubes out

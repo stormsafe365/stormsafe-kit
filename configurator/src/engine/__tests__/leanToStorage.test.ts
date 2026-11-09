@@ -92,16 +92,19 @@ describe('storage section — engine (deriveStructure)', () => {
   });
 
   it('a partition door: no knee brace or post across it in the partition bent; without the storage section it moves no framing', () => {
-    const withDoor = build(leanTo({ storage: { end: 'front', lengthFt: 7 }, openings: [rollUp()] }));
+    const withDoor = build(leanTo({ storage: { end: 'front', lengthFt: 7 }, openings: [rollUp({ heightFt: 9 })] }));
     const noDoor = build(leanTo({ storage: { end: 'front', lengthFt: 7 } }));
-    // Roll-up 10 wide, centre 6 ft from the outer edge (x = -21): x -26..-16, y 0..8.
+    // Roll-up 10 wide x 9 tall, centre 6 ft from the outer edge (x = -21): x -26..-16, y 0..9.
+    // The 4' knee brace (foot ~7.6 on the outer post at x = -27) crosses it.
     expect(inPlaneZ(noDoor, -13, 'brace')).toHaveLength(1);
     expect(inPlaneZ(withDoor, -13, 'brace')).toHaveLength(0);
     for (const m of inPlaneZ(withDoor, -13, 'leg')) {
       const x = m.start[0];
       const inside = x > -26 + 0.01 && x < -16 - 0.01;
-      if (inside) expect(Math.min(m.start[1], m.end[1])).toBeGreaterThanOrEqual(8 - 0.01);
+      if (inside) expect(Math.min(m.start[1], m.end[1])).toBeGreaterThanOrEqual(9 - 0.01);
     }
+    // An 8' roll-up there: the brace climbs past its top (+ clearance) before reaching its edge, so it stays.
+    expect(inPlaneZ(build(leanTo({ storage: { end: 'front', lengthFt: 7 }, openings: [rollUp()] })), -13, 'brace')).toHaveLength(1);
     // Orphan partition opening (no storage section): framing identical to no opening at all.
     expect(JSON.stringify(build(leanTo({ openings: [rollUp()] })).members)).toBe(JSON.stringify(build(leanTo()).members));
   });

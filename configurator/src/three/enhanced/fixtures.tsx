@@ -15,7 +15,7 @@ import {
 import { useOpenAmount } from '../useOpenAmount';
 import { chamferFillGeometry, chamferFrameGeometry, chamferPanelGeometry, cut45Leg } from '../cut45Geometry';
 import { useEnhancedMaterials } from './ShellMeshes';
-import { FIXTURE, panelCenterZ, rollUpClipY, trimCenterZ, walkDoorPivotZ } from './fixtureLayout';
+import { FIXTURE, WINDOW_WHITE, panelCenterZ, rollUpClipY, trimCenterZ, walkDoorPivotZ, windowGrid } from './fixtureLayout';
 import { frameOutTrimBars, type FrameOutTrim } from '@/engine/frameOutFraming';
 
 /**
@@ -43,7 +43,10 @@ import { frameOutTrimBars, type FrameOutTrim } from '@/engine/frameOutFraming';
  *    swings toward so it clears the jamb trim.
  *  - window: double-hung; the upper sash is fixed on the outer track, the
  *    lower sash rides the inner track and slides up (h/2 - 0.06) behind it;
- *    sill below. Glass = the P4 glass material (keepTransparent).
+ *    sill below. The unit (frame, sashes, grid bars) is white vinyl, black
+ *    for a black window; each sash has the Sensei grid (windowGrid: 30×30 =
+ *    2×2, 36"+ tall = 3×2; owner 11/9/26). Glass = the warm tan glass
+ *    material (keepTransparent).
  *  - frame-out: a see-through hole with the trim U (+ a bottom bar when it
  *    sits up the wall). Main building: the classic faint 8% pane (no shadow,
  *    keepTransparent); lean-to: an invisible click plane only. On an OPEN
@@ -285,25 +288,50 @@ export function EnhancedFixture(p: EnhancedFixtureProps) {
     );
   } else if (isGlass) {
     const glass = mat({ surface: 'glass' });
+    // The window unit itself — frame, sashes, grid bars — is white vinyl (a black window: its black).
+    const vinyl = mat({ surface: 'trim', color: p.color || WINDOW_WHITE });
     const half = h / 2;
     const sashBars = (y0: number, z: number) => (
       <>
-        <Box size={[w, F.sashRail, F.sashBarD]} pos={[0, y0 + half - F.sashRail / 2, z]} material={trim} />
-        <Box size={[w, F.sashRail, F.sashBarD]} pos={[0, y0 + F.sashRail / 2, z]} material={trim} />
-        <Box size={[F.sashStile, half, F.sashBarD]} pos={[-w / 2 + F.sashStile / 2, y0 + half / 2, z]} material={trim} />
-        <Box size={[F.sashStile, half, F.sashBarD]} pos={[w / 2 - F.sashStile / 2, y0 + half / 2, z]} material={trim} />
+        <Box size={[w, F.sashRail, F.sashBarD]} pos={[0, y0 + half - F.sashRail / 2, z]} material={vinyl} />
+        <Box size={[w, F.sashRail, F.sashBarD]} pos={[0, y0 + F.sashRail / 2, z]} material={vinyl} />
+        <Box size={[F.sashStile, half, F.sashBarD]} pos={[-w / 2 + F.sashStile / 2, y0 + half / 2, z]} material={vinyl} />
+        <Box size={[F.sashStile, half, F.sashBarD]} pos={[w / 2 - F.sashStile / 2, y0 + half / 2, z]} material={vinyl} />
       </>
     );
+    // Grid bars over one sash's glass (windowGrid: 2 or 3 across, 2 down), splitting the
+    // glass seen inside the frame (x) and between that sash's rails (y0..y1) evenly.
+    const { cols, rows } = windowGrid(h);
+    const gx0 = -w / 2 + Math.max(F.winFrame, F.sashStile);
+    const gx1 = -gx0;
+    const gridBars = (y0: number, y1: number, z: number) => (
+      <>
+        {Array.from({ length: cols - 1 }, (_, i) => (
+          <Box key={`gv${i}`} size={[F.muntin, y1 - y0, F.muntinD]} pos={[gx0 + ((gx1 - gx0) * (i + 1)) / cols, (y0 + y1) / 2, z]} material={vinyl} />
+        ))}
+        {Array.from({ length: rows - 1 }, (_, i) => (
+          <Box key={`gh${i}`} size={[gx1 - gx0, F.muntin, F.muntinD]} pos={[0, y0 + ((y1 - y0) * (i + 1)) / rows, z]} material={vinyl} />
+        ))}
+      </>
+    );
+    const fz = faceZ - F.winFrameD / 2 + 0.005;
     unit = (
       <>
+        {/* Window frame: fixed, all round the opening, just inside the J-trim. */}
+        <Box size={[w, F.winFrame, F.winFrameD]} pos={[0, half - F.winFrame / 2, fz]} material={vinyl} />
+        <Box size={[w, F.winFrame, F.winFrameD]} pos={[0, -half + F.winFrame / 2, fz]} material={vinyl} />
+        <Box size={[F.winFrame, h, F.winFrameD]} pos={[-w / 2 + F.winFrame / 2, 0, fz]} material={vinyl} />
+        <Box size={[F.winFrame, h, F.winFrameD]} pos={[w / 2 - F.winFrame / 2, 0, fz]} material={vinyl} />
         {/* Upper sash: fixed, outer track. */}
         <Box size={[w, half, F.glassT]} pos={[0, half / 2, faceZ + F.upperSashZ]} material={glass} onPointerDown={p.onPointerDown} />
         {sashBars(0, faceZ + F.upperSashZ + 0.01)}
-        {/* Lower sash: inner track, slides up behind the upper sash. */}
+        {gridBars(F.sashRail, half - F.winFrame, faceZ + F.upperSashZ + 0.02)}
+        {/* Lower sash: inner track, slides up behind the upper sash (its grid rides with it). */}
         <group ref={sashRef}>
           <Box size={[w, half, F.glassT]} pos={[0, -half / 2, faceZ + F.lowerSashZ]} material={glass} onPointerDown={p.onPointerDown} />
           {sashBars(-half, faceZ + F.lowerSashZ + 0.01)}
-          <Box size={[w, F.meetingLip.h, F.meetingLip.d]} pos={[0, F.meetingLip.y, faceZ + F.meetingLip.z]} material={trim} />
+          {gridBars(-half + F.winFrame, -F.sashRail, faceZ + F.lowerSashZ + 0.02)}
+          <Box size={[w, F.meetingLip.h, F.meetingLip.d]} pos={[0, F.meetingLip.y, faceZ + F.meetingLip.z]} material={vinyl} />
         </group>
         {/* Sill below. */}
         <Box size={[w + 2.2 * tw, tw * 0.7, tp + 0.08]} pos={[0, -h / 2 - tw * 0.45, faceZ + tp * 0.4]} material={trim} />

@@ -1623,17 +1623,19 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       }
     };
 
-    // Knee brace at the outer post (same proportions as the main bent's): from
-    // the post, braceLen below the low eave, up to the rafter braceLen along it
-    // toward the main wall. A ladder post skips it, like the main building.
-    // On a DOUBLED outer post the brace springs from the inboard (second) post,
-    // so it never passes through that post; a single post is unchanged.
+    // Knee brace at the outer post: the SAME manufacturer rule as the main
+    // bents (kneeBrace.ts; owner 11/9/26 "corner bracing too large" — it was
+    // still the old generic 3' down + 3' along the rafter, ~4.2' of steel).
+    // CCI prices a lean-to as half of a building twice its width (handbook
+    // p.26), so the rule reads that width; drawn at 45°, its tip on the
+    // lean-to rafter toward the main wall. A ladder post skips it, like the
+    // main building. On a DOUBLED outer post the brace springs from the
+    // inboard (second) post, so it never passes through that post.
     const outerStyle = legStyleFor(lw, lh);
-    const kneeLen = Math.min(3, lh * 0.45);
-    const ltRafterLen = Math.hypot(lw, connH - lh);
-    const tKnee = ltRafterLen > 0 ? Math.min(0.5, kneeLen / ltRafterLen) : 0;
     const kneeFootC = outerStyle === 'double' ? outerC - sOut * DOUBLE_D : outerC;
-    const kneeTipC = kneeFootC + (innerC - outerC) * tKnee;
+    const ltKnee = kneeBrace45(kneeBraceFt(config.manufacturer, 2 * lw, lh), kneeFootC, -sOut, roofY);
+    // Never past the middle of the lean-to rafter (a very narrow lean-to).
+    const kneeOk = Math.abs(ltKnee.tip[0] - kneeFootC) <= Math.abs(innerC - outerC) / 2;
     // Outer base rail(s): at the wall, plus one under the second post of a doubled / ladder post.
     const railCs =
       outerStyle === 'ladder'
@@ -1647,8 +1649,8 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
       if (!mainLegAt(run)) pushPost(run, innerC, sOut); // inner post, only where no main leg stands
       pushPost(run, outerC, -sOut); // outer post (low, away from the building)
       members.push(member('rafter', P(run, innerC, connH), P(run, outerC, lh)));
-      if (outerStyle !== 'ladder' && kneeLen > 0.05 && tKnee > 0) {
-        members.push(member('brace', P(run, kneeFootC, roofY(kneeFootC) - kneeLen), P(run, kneeTipC, roofY(kneeTipC))));
+      if (outerStyle !== 'ladder' && kneeOk) {
+        members.push(member('brace', P(run, kneeFootC, ltKnee.foot[1]), P(run, ltKnee.tip[0], ltKnee.tip[1])));
       }
       // LONGITUDINAL base rail along the OUTER (low-leg) wall only: an attached
       // lean-to is a roof extension that SHARES the main building's wall on the

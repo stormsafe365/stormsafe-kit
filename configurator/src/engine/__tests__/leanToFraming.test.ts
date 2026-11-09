@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveBuilding } from '../ruleEngine';
 import { deriveStructure, legStyleFor, type Member } from '../geometry';
+import { kneeBraceFt } from '../kneeBrace';
 import { DEFAULT_CONFIG } from '@/config/constants';
 import type { LeanTo, LeanToOpening, Opening } from '@/types/building';
 
@@ -210,17 +211,21 @@ describe('lean-to knee braces are real (not on the rafter line)', () => {
         (m) => m.kind === 'brace' && (near(acrossOf(m.start), outerC) || near(acrossOf(m.end), outerC)),
       );
       expect(ltBraces.length).toBe(lt.trussOffsets.length);
-      const braceLen = Math.min(3, lh * 0.45);
+      // The manufacturer rule (kneeBrace.ts, owner 11/9/26) on the lean-to's own
+      // post, width read as twice the lean-to's (CCI prices it as half of one):
+      // 8' post -> a 4' brace at 45°, r = 4/√2 down AND along.
+      const r = kneeBraceFt(DEFAULT_CONFIG.manufacturer, 24, lh) / Math.SQRT2;
+      expect(r).toBeCloseTo(4 / Math.SQRT2, 9);
       for (const b of ltBraces) {
-        // Starts on the outer post braceLen below the low eave...
+        // Starts on the outer post...
         expect(acrossOf(b.start)).toBeCloseTo(outerC, 6);
-        expect(b.start[1]).toBeCloseTo(lh - braceLen, 6);
-        // ...ends ON the rafter line, about braceLen inboard of the outer post.
+        // ...ends ON the rafter line, r inboard of the outer post...
         const t = (acrossOf(b.end) - innerC) / (outerC - innerC);
         expect(b.end[1]).toBeCloseTo(connH + (lh - connH) * t, 6);
-        const inboard = Math.abs(acrossOf(b.end) - outerC);
-        expect(inboard).toBeGreaterThan(braceLen * 0.9);
-        expect(inboard).toBeLessThan(braceLen * 1.01);
+        expect(Math.abs(acrossOf(b.end) - outerC)).toBeCloseTo(r, 6);
+        // ...and r higher than its foot (45°): 4 ft of steel, not the old ~4.2 (3' down + 3' along).
+        expect(b.end[1] - b.start[1]).toBeCloseTo(r, 6);
+        expect(Math.hypot(acrossOf(b.end) - acrossOf(b.start), b.end[1] - b.start[1])).toBeCloseTo(4, 6);
         // Same bent plane (constant run coordinate).
         expect(runOf(b.start)).toBeCloseTo(runOf(b.end), 6);
         // Not collinear with the rafter (inner, connH) -> (outer, lh).
@@ -317,14 +322,15 @@ describe('a doubled (15ft+) outer post: the knee brace springs from the inboard 
     expect(ltBraces.length).toBe(s.leanTos[0].trussOffsets.length);
     const connH = 16 + 2;
     const roofAt = (x: number) => connH + (16 - connH) * ((x - 15) / 12);
+    const r = 4 / Math.SQRT2; // 16' post: a 4' brace at 45° (kneeBrace.ts)
     for (const b of ltBraces) {
       expect(b.start[0]).toBeCloseTo(outerX - 0.4, 6);
-      expect(b.start[1]).toBeCloseTo(roofAt(outerX - 0.4) - 3, 6);
       // Entirely inboard of (or on) the second post: it never passes through a post.
       expect(Math.max(b.start[0], b.end[0])).toBeLessThanOrEqual(outerX - 0.4 + 1e-6);
-      // Tip on the rafter, ~3ft inboard of the foot.
+      // Tip on the rafter, r inboard of the foot and r above it.
       expect(b.end[1]).toBeCloseTo(roofAt(b.end[0]), 6);
-      expect(b.start[0] - b.end[0]).toBeGreaterThan(2.7);
+      expect(b.start[0] - b.end[0]).toBeCloseTo(r, 6);
+      expect(b.start[1]).toBeCloseTo(roofAt(b.end[0]) - r, 6);
     }
   });
 

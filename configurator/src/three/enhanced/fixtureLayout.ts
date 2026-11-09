@@ -27,13 +27,22 @@ export const FIXTURE = {
   /** Roll-up bottom rail (door color) and lift handle. */
   rail: { h: 0.2, d: 0.11, zOff: -0.04, up: 0.11 },
   handle: { w: 0.5, h: 0.07, d: 0.05, zOff: 0.02, up: 0.42 },
-  /** Double-hung window: glass + sash bars, upper sash on the outer track, lower on the inner. */
+  /**
+   * Double-hung window: glass + sash bars, upper sash on the outer track, lower
+   * on the inner. The unit (frame, sashes, grids) is white vinyl — black for a
+   * black window — inside the trim-colored J-trim (owner 11/9/26: "like
+   * Sensei's"): a ~1.3" frame all round, ~1" sash rails, thin grid bars.
+   */
   glassT: 0.03,
   upperSashZ: -0.03,
   lowerSashZ: -0.085,
-  sashRail: 0.06,
-  sashStile: 0.05,
+  sashRail: 0.085,
+  sashStile: 0.07,
   sashBarD: 0.04,
+  winFrame: 0.11,
+  winFrameD: 0.03,
+  muntin: 0.04,
+  muntinD: 0.012,
   meetingLip: { h: 0.05, d: 0.03, z: -0.055, y: -0.02 },
   /** Walk-door knob height off the leaf bottom (the classic 36"). */
   knobUp: 3.0,
@@ -70,6 +79,18 @@ export const trimCenterZ = (faceZ: number) => faceZ + FIXTURE.trimLift + FIXTURE
 export function walkDoorPivotZ(impact: boolean | undefined, faceZ: number): number {
   const front = faceZ - FIXTURE.panelGap;
   return impact ? front : front - FIXTURE.panelDepth;
+}
+
+/** A white window unit (frame, sashes, grids); a black window passes its own color. */
+export const WINDOW_WHITE = '#f5f5f2';
+
+/**
+ * Window grid, per sash (owner 11/9/26, from the Sensei drawings she sent):
+ * a 30"×30" window is the "4 grid" = 2 panes across × 2 down in EACH sash; a
+ * 30"×36" (any window 36" or taller) is the "6 grid" = 3 across × 2 down.
+ */
+export function windowGrid(heightFt: number): { cols: number; rows: number } {
+  return { cols: heightFt >= 2.95 ? 3 : 2, rows: 2 };
 }
 
 /** World Y of a roll-up's clip plane: just above the opening top (sill + height). */

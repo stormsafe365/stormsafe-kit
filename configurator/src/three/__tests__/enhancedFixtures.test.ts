@@ -28,6 +28,8 @@ import {
   rollUpClipY,
   trimCenterZ,
   walkDoorPivotZ,
+  WINDOW_WHITE,
+  windowGrid,
 } from '../enhanced/fixtureLayout';
 import { disposeEnhancedMaterials, getEnhancedMaterial, materialKey } from '../enhanced/materials';
 import { eaveSurfaces, gableSurfaces, resolveWalls } from '../LeanToSiding';
@@ -371,5 +373,19 @@ describe('enhanced fixture world placement matches the classic wall transform on
       const face = new THREE.Vector3(0, 0, fixtureFaceZ(side)).applyQuaternion(q).add(centre);
       expect(trimOuter.clone().sub(face).dot(out)).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('windows like the Sensei drawings (owner 11/9/26)', () => {
+  it('grid per sash: 30x30 = the "4 grid" (2 across x 2 down), 30x36 and taller = the "6 grid" (3 x 2)', () => {
+    expect(windowGrid(2.5)).toEqual({ cols: 2, rows: 2 });
+    expect(windowGrid(3)).toEqual({ cols: 3, rows: 2 });
+    expect(windowGrid(4)).toEqual({ cols: 3, rows: 2 });
+  });
+  it('the window unit (frame, sashes, grid bars) is white vinyl unless the window is black; the J-trim and sill keep the trim color', () => {
+    const fixtures = src('../enhanced/fixtures.tsx');
+    expect(fixtures).toContain("const vinyl = mat({ surface: 'trim', color: p.color || WINDOW_WHITE });");
+    expect(WINDOW_WHITE).toMatch(/^#f[0-9a-f]{5}$/i);
+    expect(FIXTURE.muntin).toBeLessThan(FIXTURE.sashStile);
   });
 });

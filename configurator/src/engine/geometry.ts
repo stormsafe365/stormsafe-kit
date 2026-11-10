@@ -1606,14 +1606,16 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
 
     // A lean-to post at across coordinate `c` (inboard direction `inb` along the
     // across axis): single, or doubled / laddered by the main leg rule on its
-    // own height, the extra chord `depth` inboard rising to the rafter.
-    const pushPost = (run: number, c: number, inb: number) => {
+    // own height, the extra chord `depth` inboard rising to the rafter. `top2`
+    // overrides that second chord's top (the INNER post's second chord stands
+    // inside the main building, where there is no lean-to rafter to meet).
+    const pushPost = (run: number, c: number, inb: number, top2?: number) => {
       const top = roofY(c);
       members.push(member('leg', P(run, c, 0), P(run, c, top)));
       const style = legStyleFor(lw, top);
       if (style === 'single') return;
       const c2 = c + inb * (style === 'ladder' ? ladderDepth(top) : DOUBLE_D);
-      members.push(member('leg', P(run, c2, 0), P(run, c2, roofY(c2))));
+      members.push(member('leg', P(run, c2, 0), P(run, c2, top2 ?? roofY(c2))));
       if (style === 'ladder') {
         const rungs = Math.max(3, Math.round(top / 3));
         for (let i = 1; i < rungs; i++) {
@@ -1646,7 +1648,14 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
 
     for (let i = 0; i < runPos.length; i++) {
       const run = runPos[i];
-      if (!mainLegAt(run)) pushPost(run, innerC, sOut); // inner post, only where no main leg stands
+      // Inner post, only where no main leg stands. Doubled (15'+ at the wall),
+      // its second post goes INTO the main building, behind the main wall's
+      // sheeting like every main leg's second post, up to the connection
+      // height. It used to go 0.4' OUT into the lean-to: a bare post standing
+      // outside the main wall at a lean-to end that misses a main frame (owner
+      // 11/10/26: "why did a truss randomly appear on the main building's
+      // outside wall"). Drawing only.
+      if (!mainLegAt(run)) pushPost(run, innerC, -sOut, connH);
       pushPost(run, outerC, -sOut); // outer post (low, away from the building)
       members.push(member('rafter', P(run, innerC, connH), P(run, outerC, lh)));
       if (outerStyle !== 'ladder' && kneeOk) {

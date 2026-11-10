@@ -168,13 +168,18 @@ describe('lean-to inner posts: never a duplicate of a main leg', () => {
     for (const z of s.framePositionsZ) expect(legsAtX(s, -15, z).length).toBe(1);
   });
 
-  it('a 15ft+ off-grid inner post is doubled into the lean-to (toward the outer wall)', () => {
+  // Owner 11/10/26 ('a truss randomly appeared on the main building's outside wall'): the second post goes INTO the
+  // main building behind the sheeting (like the main legs' second posts), up to the connection height - it used to
+  // stand 0.4' out in the lean-to (x = 15.4), visible outside the main wall at a lean-to end.
+  it('a 15ft+ off-grid inner post is doubled INSIDE the main building (never out in the lean-to)', () => {
     // 30x40x20, lean-to low 16 at 2:12 -> connH 18; starts 3ft back (off the grid).
     const s = build({ width: 30, length: 40, legHeight: 20 }, [leanTo({ lengthFt: 22, offsetFt: 3, lowLegHeightFt: 16 })]);
     const zA = -20 + 3;
     expect(legsAtX(s, 15, zA).length).toBe(1);
     expect(topOf(legsAtX(s, 15, zA)[0])).toBeCloseTo(18, 6);
-    expect(legsAtX(s, 15.4, zA).length).toBe(1);
+    expect(legsAtX(s, 15.4, zA).length).toBe(0);
+    expect(legsAtX(s, 14.6, zA).length).toBe(1);
+    expect(topOf(legsAtX(s, 14.6, zA)[0])).toBeCloseTo(18, 6);
   });
 
   it('gable lean-to: inner posts along the main gable wall, except at the main corner legs', () => {

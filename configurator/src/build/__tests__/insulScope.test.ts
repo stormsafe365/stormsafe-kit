@@ -64,25 +64,25 @@ describe('insulation row says what is insulated', () => {
     set('CCI', 'roof', []);
     expect(ctx.insulRowLabel()).toBe(ROOF);
   });
-  it("Michael's quote: the building + the Right lean-to's outer wall, not the lean-to roof or ends", () => {
+  it("Michael's quote: incl. the Right lean-to's outer wall only (not the lean-to roof or ends)", () => {
     set('CCI', 'roof-walls', michael);
-    expect(ctx.insulRowLabel()).toBe(FULL + ' (building + Right lean-to outer wall; not lean-to roof or ends)');
+    expect(ctx.insulRowLabel()).toBe(FULL + ' (incl. Right lean-to outer wall only)');
   });
   it('open lean-tos only (or CA, GCH, roof only): main building only, lean-tos not insulated', () => {
     set('CCI', 'roof-walls', [{ side: 'Left Eave', w: 12, l: 70, low: 12 }]);
-    expect(ctx.insulRowLabel()).toBe(FULL + ' (main building only; lean-tos not insulated)');
+    expect(ctx.insulRowLabel()).toBe(FULL + ' (main building only, not lean-tos)');
     set('CA', 'roof-walls', michael);
-    expect(ctx.insulRowLabel()).toBe(FULL + ' (main building only; lean-tos not insulated)');
+    expect(ctx.insulRowLabel()).toBe(FULL + ' (main building only, not lean-tos)');
     set('CCI', 'roof-walls', michael, 'gch');
-    expect(ctx.insulRowLabel()).toBe(FULL + ' (main building only; lean-tos not insulated)');
+    expect(ctx.insulRowLabel()).toBe(FULL + ' (main building only, not lean-tos)');
     set('CCI', 'roof', michael);
-    expect(ctx.insulRowLabel()).toBe(ROOF + ' (main building; lean-tos not insulated)');
+    expect(ctx.insulRowLabel()).toBe(ROOF + ' (main building only, not lean-tos)');
   });
   it('both sides enclosed; a gable lean-to enclosed adds nothing; no insulation = no scope', () => {
     set('CCI', 'roof-walls', [{ side: 'Left Eave', w: 12, l: 70, low: 10, closed: true }, { side: 'Right Eave', w: 12, l: 70, low: 10, closed: true }]);
-    expect(ctx.insulScope()).toBe('building + Left & Right lean-to outer walls; not lean-to roof or ends');
+    expect(ctx.insulScope()).toBe('incl. Left & Right lean-to outer walls only');
     set('CCI', 'roof-walls', [{ side: 'Front Gable', w: 12, l: 30, low: 10, closed: true }]);
-    expect(ctx.insulScope()).toBe('main building only; lean-tos not insulated');
+    expect(ctx.insulScope()).toBe('main building only, not lean-tos');
     set('CCI', 'none', michael);
     expect(ctx.insulScope()).toBe('');
   });

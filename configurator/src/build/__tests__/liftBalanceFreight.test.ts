@@ -112,7 +112,8 @@ describe('CCI freight: 3% at $60,000+ before discounts (62-100 always) - a separ
     expect(run('cciFreightLabel()', {})).toBe('Freight — 3% (not taxed, due at installation)');
   });
   it('never in the building price: not discounted, not taxed, not in the deposit', () => {
-    expect(html).toContain('  var freightP=cciFreightOn(w,sub)?Math.round(sub*3)/100:0;');
+    // CA freight (book 7/16/26 §6, 11/16/26) rides the same separate line: caFreightOn, min $1,750 or 3%
+    expect(html).toContain("  var freightP=cciFreightOn(w,sub)?Math.round(sub*3)/100:(caFreightOn()?Math.max(CA_FREIGHT_MIN, Math.round((sub-connFeeTotal)*3)/100):0);");
     expect(html).not.toContain('  sub+=freightP;');
     expect(html).toContain('      var rest=(+r0.anchorP||0)+(+r0.adjP||0); // (freight is not in sub since 11/3/26)');
     expect(html).toContain('Total with Freight');

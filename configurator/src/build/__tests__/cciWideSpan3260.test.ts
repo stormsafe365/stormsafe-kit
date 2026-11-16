@@ -70,9 +70,10 @@ vm.runInContext(
   ['EXT_SH', 'CCI_WIDE_SC', 'CCI_WIDE_EC', 'CCI_WIDE_H'].map(grabVar).join('') +
     grabArr('EXT_L') +
     grabArr('CCI_COM_12GA') +
-    ['cciWideOn', 'cciWideUnits', 'cciWideUnitSum', 'cciWideHeight', 'cciWideSCBothSides', 'cciWideEC', 'gLeg', 'scLookup', 'scPairLookup', 'cciCom12GA', 'cciUnits']
+    ['cciWideOn', 'cciWideUnits', 'cciWideUnitSum', 'cciWideHeight', 'cciWideSCBothSides', 'cciWideEC', 'gLeg', 'scLookup', 'scPairLookup', 'cciCom12GA', 'cciUnits', 'caColUp', 'caWideUnits', 'caWideUnitSum']
       .map(grabFn)
       .join('') +
+    'var MANUFACTURERS = { CA: { wideSpanCombinations: ' + grabMfr('CA', 'wideSpanCombinations') + ' } };\n' +
     'function G(id){ return (id in __f) ? { value: __f[id] } : null; }\n' +
     'var CCI = { commercialBase: ' + grabMfr('CCI', 'commercialBase') + ', commercialBaseFn: ' + grabMfr('CCI', 'commercialBaseFn') +
     ', shIndexByLength: true, shExtThresh: 52 };\n' +
@@ -222,15 +223,20 @@ describe('everything else unchanged', () => {
     expect(legs(70, 110, 20)).toBe(35375);
     expect(sidePair(70, 110, 20)).toBe(23045);
   });
-  it('CA wide span keeps its extended charts (straight line past 100)', () => {
+  it('CA wide span (CA book 7/16/26 4B / 4D, owner 11/16/26): by LENGTH; past 52\' per section of the base combination', () => {
     run('setMfr("CA")');
-    const row = run('EXT_SH[16]') as number[];
-    const rate = (row[row.length - 1] - row[row.length - 2]) / 5;
-    expect(legs(40, 110, 16)).toBe(Math.round(row[row.length - 1] + rate * 10));
-    const eb = run('EXT_BSC[16]') as number[];
-    const ebRate = (eb[eb.length - 1] - eb[eb.length - 2]) / 5;
-    expect(sidePair(40, 110, 16)).toBe(2 * Math.round(Math.round(eb[eb.length - 1] + ebRate * 10) / 2));
-    run('setMfr("CCI")');
+    try {
+      // 110' = the 112' combination 53 + 33 + 29 roof rows = 52' + 32' + 28' frames, each at its own column
+      expect(legs(40, 110, 16)).toBe(6020 + 3785 + 3340);
+      expect(sidePair(40, 110, 16)).toBe(5305 + 3265 + 2855);
+      // within the book: the frame length rounded UP to the 4' column (not the width); 8' is the base height
+      expect(legs(40, 21, 14)).toBe(1845);
+      expect(legs(56, 30, 12)).toBe(1380);
+      expect(legs(40, 30, 8)).toBe(0);
+      expect(sidePair(56, 30, 12)).toBe(2110);
+    } finally {
+      run('setMfr("CCI")');
+    }
   });
   it('CCI tall standard width (30 wide, 18 tall) keeps EXT_SH (85-100 Sensei rows, straight line past 100)', () => {
     const row = run('EXT_SH[18]') as number[];

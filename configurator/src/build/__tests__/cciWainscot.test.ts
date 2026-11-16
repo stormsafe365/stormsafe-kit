@@ -88,7 +88,7 @@ for (const f of ['eBkt', 'ecLookup', 'vertEndUpcharge', 'cciLtSideSecs', 'cciLtS
   'cciLtSidePanels', 'cciLtMaxPanels', 'cciLtRunSum', 'cciLtSidePartial', 'cciUnits', 'cciUnitSum',
   'getLTWalls', 'ltWallsAs', 'ltStorOn', 'ltStorLenOptions', 'getTrussOC', 'ltStorage', 'ltUnit', 'cciWideLean', 'cciLeanCol',
   'lrStorageLookup', 'aewUnset', 'aewSpec', 'gAddEndWall',
-  'eaveVal', 'wainscotPrintOpt', 'cciWainscotPre', 'cciWainEnd', 'cciWainSide', 'cciWainLeanEnd', 'cciWainscot', 'gWainscot']) code += grabFn(f);
+  'eaveVal', 'wainscotPrintOpt', 'cciWainscotPre', 'cciWainEnd', 'cciWainSide', 'cciWainLeanEnd', 'cciWainscot', 'gWainscot', 'caColUp']) code += grabFn(f);
 code += 'var VERT_END=' + vertEnd + ';\nvar _CCI_COMBOS=' + cciCombos + ';\n';
 code += 'var MANUFACTURERS={CA:{wainscotBuckets:' + grabMethod('CA', 'wainscotBuckets') + '},CCI:{wainscotBuckets:' + grabMethod('CCI', 'wainscotBuckets') + ',standardCombinations:_CCI_COMBOS}};\n';
 code += `
@@ -326,12 +326,13 @@ describe('print panel (+25%) — not in Sensei: today\'s behaviour, the whole wa
 });
 
 describe('unchanged paths', () => {
-  // The CA bucket rule exactly as it was (MANUFACTURERS.CA.wainscotBuckets, any height, walls ignored).
-  const caRef = (l: number, print: boolean) => { // CA buckets are by length only
-    const cols = [20, 24, 28, 32, 36, 40, 44, 48, 52], vals = [300, 350, 400, 450, 500, 550, 600, 650, 700];
-    let c = 0;
-    for (let i = 0; i < cols.length; i++) { if (cols[i] <= l) c = i; else break; }
-    return Math.round(vals[c] * (print ? 1.25 : 1));
+  // CA (owner 11/16/26 "CA pricing is NOT up to date"): the Master Price Book 7/16/26 §4H "Wainscot: 20' $300 · 25' $350 ·
+  // 30' $400 · 35' $450 · 40' $500" by length, the frame rounded UP; past 40' +$50 per 5' (estimate - no book column). Any
+  // height, walls ignored, as before. (It was the withdrawn 7/15/26 4' grid read rounding DOWN.)
+  const caRef = (l: number, print: boolean) => {
+    const cols = [20, 25, 30, 35, 40], vals = [300, 350, 400, 450, 500];
+    const v = l <= 40 ? vals[cols.findIndex((c) => c >= l)] : 500 + 50 * Math.ceil((l - 40) / 5);
+    return Math.round(v * (print ? 1.25 : 1));
   };
   it('CA: the bucket price for every size / height / wall set / print (partitions and lean-tos add nothing)', () => {
     let n = 0;
@@ -348,9 +349,11 @@ describe('unchanged paths', () => {
     expect(ctx.wain({ mfr: 'CA', w: 24, l: 40, horiz: true })).toBe(0);
     expect(ctx.wain({ mfr: 'CA', w: 24, l: 40, wain: false })).toBe(0);
   });
-  it('CA: gWainscot still ends with the byte-identical bucket lines', () => {
+  it('CA: gWainscot ends with the book bucket lines (CA rounded UP; any other manufacturer reaching here as before)', () => {
     expect(html.replace(/\r\n/g, '\n')).toContain(
-      "  var _wb=MFR().wainscotBuckets(w), _wc=0;\n  for(var _wi=0;_wi<_wb.cols.length;_wi++){if(_wb.cols[_wi]<=l)_wc=_wi;else break;}\n  return Math.round(_wb.vals[_wc]*(wainscotPrintOpt()?1.25:1));\n}\nfunction gWalls(){");
+      "  var _wb=MFR().wainscotBuckets(w), _wc=0, _wv;\n  if(ACTIVE_MFR==='CA'){ _wv=(l<=40)?_wb.vals[caColUp(_wb.cols,l)]:500+50*Math.ceil((l-40)/5); }");
+    expect(html.replace(/\r\n/g, '\n')).toContain(
+      "  else { for(var _wi=0;_wi<_wb.cols.length;_wi++){if(_wb.cols[_wi]<=l)_wc=_wi;else break;} _wv=_wb.vals[_wc]; }\n  return Math.round(_wv*(wainscotPrintOpt()?1.25:1));\n}\nfunction gWalls(){");
   });
   it('CCI Free-Standing Lean-To main (not sampled) keeps the rule it had before 10/5', () => {
     // under 17': the brochure BOTH SIDES bucket for the length, walls ignored

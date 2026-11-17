@@ -220,7 +220,7 @@ describe('F36 - CCI opener by door WIDTH (memo 3/9/26)', () => {
 
 describe('F10 / F11 - CCI up to 170 MPH on 24\' and narrower = 4\' OC (Price Book 2 p1/p2, Dealer Handbook p30)', () => {
   const r = (f: Record<string, unknown>, w = 24, bt = 'standard', mfr = 'CCI') => run(`cci170OcRule(${w}, '${bt}')`, f, mfr);
-  it('hi-wind county or Commercial / Risk Cat 2 property; never Palm Beach (own rule), 26\'+, wide span, free-standing, CA', () => {
+  it('hi-wind county or Commercial / Risk Cat 2 property; never Palm Beach (own rule), 26\'+, wide span, free-standing', () => {
     expect(r({ county: 'Lee', pt: 'res' })).toBe('hw');
     expect(r({ county: 'Collier', pt: '' }, 24, 'carport')).toBe('hw');
     expect(r({ county: 'Polk', pt: 'com' }, 22)).toBe('com');
@@ -230,12 +230,13 @@ describe('F10 / F11 - CCI up to 170 MPH on 24\' and narrower = 4\' OC (Price Boo
     expect(r({ county: 'Lee', pt: 'res' }, 26)).toBe('');
     expect(r({ county: 'Lee', pt: 'res' }, 24, 'widespan')).toBe('');
     expect(r({ county: 'Lee', pt: 'res' }, 12, 'fslean')).toBe('');
-    expect(r({ county: 'Lee', pt: 'com' }, 24, 'standard', 'CA')).toBe('');
+    // CA joins the rule in 11-17a (CA 11/17/26: 170 MPH = 4' OC only) - see ca170Oc.test.ts
+    expect(r({ county: 'Lee', pt: 'com' }, 24, 'standard', 'CA')).toBe('com');
   });
   it('wired into the Palm Beach 4\' OC lock, its override and the price lock', () => {
     expect(html).toContain("var lock=((cciPBRule() && w>0 && w<=24 && bt!=='widespan') || !!cci170OcRule(w, bt)) && !window._fu14Ovr;");
     expect(html).toContain("var _oc170N=cci170OcRule(w, G('btype').value);");
-    expect(html).toContain("if(opts.lock && !ov.fu14 && c.oc170 && (f['oc-spacing']||'5oc')!=='4oc' && !ov.oc170Rule){ root._fu14Ovr=true; gf.fu14=true; }");
+    expect(html).toContain("if(opts.lock && !ov.fu14 && c.oc170 && (f['oc-spacing']||'5oc')!=='4oc' && !(c.cci?ov.oc170Rule:ov.ca170Rule)){ root._fu14Ovr=true; gf.fu14=true; }");
     expect(html).toContain('pbRule:1, cpOnce:1, book1012:1, oc170Rule:1,');
   });
 });

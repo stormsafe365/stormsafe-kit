@@ -52,6 +52,12 @@ export interface WallOverrides {
    */
   leftBandFt?: number;
   rightBandFt?: number;
+  /**
+   * Band (ft from the eave DOWN) of a partially closed END drawn as 'halfClosed': the program's "1/4 Closed" /
+   * "3/4 Closed" ends (11-20a) = that fraction of the wall height. Unset = the classic "Half Closed (6' Panel)".
+   */
+  frontBandFt?: number;
+  backBandFt?: number;
 }
 
 /**

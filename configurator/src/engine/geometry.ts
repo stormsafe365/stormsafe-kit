@@ -86,6 +86,14 @@ export interface Enclosure {
    * 0 = no band (side is fully closed, or open per sideOpen).
    */
   sideBandFt: { left: number; right: number };
+  /** 'halfClosed' end band (ft from the eave down) per end; unset / 0 = the classic 6' panel (11-20a: 1/4 / 3/4 Closed). */
+  endBandFt?: { front: number; back: number };
+}
+
+/** The sheeted band of a 'halfClosed' end, ft from the eave down: its own band (1/4 / 3/4 Closed) or the classic 6'. */
+export function endBandFor(enc: Pick<Enclosure, 'endBandFt'>, end: 'front' | 'back', H: number): number {
+  const b = enc.endBandFt ? enc.endBandFt[end] : 0;
+  return Math.min(b > 0 ? b : 6, H);
 }
 
 export interface TrussLine {
@@ -935,12 +943,14 @@ function deriveEnclosure(
   ov?: WallOverrides,
 ): Enclosure {
   const openMode: EndSheeting = openEndGable ? 'gableOnly' : 'open';
+  // 1/4 / 3/4 Closed ends (11-20a): only set when the program sent a band, so every other enclosure is unchanged
+  const eb = ov && ((ov.frontBandFt ?? 0) > 0 || (ov.backBandFt ?? 0) > 0) ? { endBandFt: { front: ov.frontBandFt ?? 0, back: ov.backBandFt ?? 0 } } : {};
   const noOpen = { left: false, right: false };
   const noBand = { left: 0, right: 0 };
   switch (type) {
     case 'carport':
       // Program Wall Options can CLOSE (or gable/half-close) a carport end.
-      return { type, sideZ: null, front: ov?.front ?? openMode, back: ov?.back ?? openMode, partitionZ: null, sideOpen: noOpen, sideBandFt: noBand };
+      return { type, sideZ: null, front: ov?.front ?? openMode, back: ov?.back ?? openMode, partitionZ: null, sideOpen: noOpen, sideBandFt: noBand, ...eb };
     case 'garage':
       // Program Wall Options can open / gable-only / half-close either end,
       // fully open either eave side, or partially close a side with eave-down
@@ -953,6 +963,7 @@ function deriveEnclosure(
         partitionZ: null,
         sideOpen: { left: !!ov?.leftOpen, right: !!ov?.rightOpen },
         sideBandFt: { left: ov?.leftBandFt ?? 0, right: ov?.rightBandFt ?? 0 },
+        ...eb,
       };
     case 'utility': {
       const encLen = Math.max(4, Math.min(L, enclosedLengthFt));
@@ -974,6 +985,7 @@ function deriveEnclosure(
           partitionZ: split ? halfL - encLen : null,
           sideOpen: noOpen,
           sideBandFt: noBand,
+          ...eb,
         };
       }
       return {
@@ -984,6 +996,7 @@ function deriveEnclosure(
         partitionZ: split ? -halfL + encLen : null,
         sideOpen: noOpen,
         sideBandFt: noBand,
+        ...eb,
       };
     }
   }
@@ -1437,16 +1450,16 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
   const sideSheetH = (sd: 'left' | 'right') =>
     enclosure.sideOpen[sd] ? 0 : enclosure.sideBandFt[sd] > 0 ? Math.min(enclosure.sideBandFt[sd], wallHFor(sd)) : wallHFor(sd);
   const sideWallArea = enclosure.sideZ ? (sideSheetH('left') + sideSheetH('right')) * sideSpan : 0;
-  const endArea = (mode: EndSheeting) =>
+  const endArea = (mode: EndSheeting, end: 'front' | 'back') =>
     mode === 'closed'
       ? W * H + gableTriangle
       : mode === 'gableOnly'
         ? gableTriangle
         : mode === 'halfClosed'
-          ? W * Math.min(6, H) + gableTriangle // 6' band below the eave + gable
+          ? W * endBandFor(enclosure, end, H) + gableTriangle // the band below the eave (6' or 1/4 / 3/4 Closed) + gable
           : 0;
   const endWallArea =
-    endArea(enclosure.front) + endArea(enclosure.back) + (enclosure.partitionZ !== null ? W * H + gableTriangle : 0) +
+    endArea(enclosure.front, 'front') + endArea(enclosure.back, 'back') + (enclosure.partitionZ !== null ? W * H + gableTriangle : 0) +
     (sidePart ? L * roofYAt(sidePart.x) : 0);
 
   // --- Per-wall layouts for the editor + opening placement ---

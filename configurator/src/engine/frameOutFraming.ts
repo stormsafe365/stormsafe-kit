@@ -1,5 +1,5 @@
 import type { LeanToOpening, Opening, WallSide } from '@/types/building';
-import type { Enclosure, LeanToStructure, Member, MemberKind, Vec3 } from './geometry';
+import { endBandFor, type Enclosure, type LeanToStructure, type Member, type MemberKind, type Vec3 } from './geometry';
 import { leanToWallSettings, type LeanToWallSettings } from './leanToFixtures';
 
 /**
@@ -93,7 +93,7 @@ export function mainWallSheetSpan(s: MainWallCtx, side: WallSide, offset: number
   if (side === 'partition') return [0, roof];
   const mode = side === 'front' ? enc.front : enc.back;
   if (mode === 'closed') return [0, roof];
-  if (mode === 'halfClosed') return [H - Math.min(6, H), roof];
+  if (mode === 'halfClosed') return [H - endBandFor(enc, side, H), roof];
   if (mode === 'gableOnly') return roof - H > 0.02 ? [H, roof] : null;
   return null;
 }

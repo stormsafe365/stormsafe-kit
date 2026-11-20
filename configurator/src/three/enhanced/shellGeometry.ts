@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ROOF_LIFT, SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
+import { ROOF_LIFT, SHEET_OUTSET, endBandFor, type StructureModel } from '@/engine/geometry';
 import type { BuildingColors, Opening, PanelOrientation, Wainscot, WallSide } from '@/types/building';
 import { TRIM_LIFT } from '../lappedBox';
 import { eaveDownBand, stripsAround, type LocalRect } from '../Siding';
@@ -670,17 +670,18 @@ export function shellLayout(inp: ShellInput): ShellLayout {
     zs: -1 | 1,
     mode: 'closed' | 'gableOnly' | 'open' | 'halfClosed',
     holes: WallHole[],
+    bandFt: number = SHELL.halfClosedBandFt,
   ) => {
     if (mode === 'open') return;
     const w = newWall({ id, along: 'x', at: Z0, n: [0, 0, zs], u: [zs, 0, 0] }, holes);
     if (mode === 'closed') addRun(w, -halfW, halfW, 0, yLow, true);
-    else if (mode === 'halfClosed') addRun(w, -halfW, halfW, H - Math.min(SHELL.halfClosedBandFt, H), yLow, false);
+    else if (mode === 'halfClosed') addRun(w, -halfW, halfW, H - Math.min(bandFt, H), yLow, false);
     else if (mode === 'gableOnly' && gablePoly) w.bottom.push({ y: yLow, c0: -halfW, c1: halfW });
     if (gablePoly) w.polys.push(gablePoly);
     walls.push(w);
   };
-  endWall('front', -(halfL + SO), -1, enc.front, holesFor('front', (o) => -halfW + o.offset));
-  endWall('back', halfL + SO, 1, enc.back, holesFor('back', (o) => halfW - o.offset));
+  endWall('front', -(halfL + SO), -1, enc.front, holesFor('front', (o) => -halfW + o.offset), endBandFor(enc, 'front', H));
+  endWall('back', halfL + SO, 1, enc.back, holesFor('back', (o) => halfW - o.offset), endBandFor(enc, 'back', H));
   // Partition (utility / GCH split): faces the open bay, which lies past the
   // enclosed span's end (classic partition-corner rule).
   let openSign: -1 | 1 = 1;

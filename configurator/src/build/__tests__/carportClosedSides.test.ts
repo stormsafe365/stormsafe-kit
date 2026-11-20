@@ -39,7 +39,7 @@ const SIDE_OPTS = ['open', '1panel', '1_5panel', '2panel', '2_5panel', '3panel',
 const ctx: Record<string, unknown> = { ACTIVE_MFR: 'CCI', __f: {}, __el: {}, SIDE_OPTS };
 vm.createContext(ctx);
 vm.runInContext(
-  ['gSidePanels', 'sidePanelLength', 'sideClosurePrice', 'cciUnits', 'cciPanelTiers', 'cciColUp', 'cpJTrim', 'eaveVal', 'cpEaveRows', 'cpAdoptSavedEaves', 'cpAdoptWanted', 'cpWallChanged', 'gWalls']
+  ['endFrac', 'partialEndCost', 'gSidePanels', 'sidePanelLength', 'sideClosurePrice', 'cciUnits', 'cciPanelTiers', 'cciColUp', 'cpJTrim', 'eaveVal', 'cpEaveRows', 'cpAdoptSavedEaves', 'cpAdoptWanted', 'cpWallChanged', 'gWalls']
     .map(grabFn).join('') +
     // a DOM-ish G(): __f holds the field values; sp-left / sp-right carry their option lists; rows / notes carry a style
     'function G(id){ if(!(id in __f) && !/-row$|-note$/.test(id)) return null;\n' +

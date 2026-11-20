@@ -51,7 +51,7 @@ vm.createContext(ctx);
 vm.runInContext(
   [
     'gLeg', 'cciUnits', 'cciUnitSum', 'cciColUp', 'cciWideOn', 'cciWideUnits', 'cciWideUnitSum', 'cciWideHeight', 'cci12GA',
-    'halfClosedCost', 'gableOnlyCost', 'ecLookup', 'eBkt', 'gAnchors', 'gAnchorLegs', 'acUnitPrice', 'ltFrameoutPrice',
+    'halfClosedCost', 'endFrac', 'partialEndCost', 'gableOnlyCost', 'ecLookup', 'eBkt', 'gAnchors', 'gAnchorLegs', 'acUnitPrice', 'ltFrameoutPrice',
     'ltAccFoUnitPrice', 'isEaveSide', 'vertEndUpcharge', 'vertSideUpcharge', 'gVertUpgrade', 'eaveVal', 'gAddEndWall', 'gInsul', 'insulEndAdd', 'cciInsulEncLeanAdj',
     'cciPanelTiers', 'cpJTrim', 'gSidePanels', 'sideClosurePrice', 'sidePanelLength', 'ropUnit', 'cciPBRule', 'cci170OcRule',
     'connFeeFor',

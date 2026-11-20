@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo } from 'react';
 import * as THREE from 'three';
-import { ROOF_LIFT, SHEET_OUTSET, type StructureModel } from '@/engine/geometry';
+import { ROOF_LIFT, SHEET_OUTSET, endBandFor, type StructureModel } from '@/engine/geometry';
 import type { BuildingColors, Opening, PanelOrientation, Wainscot, WallSide } from '@/types/building';
 import { swatchHex, isMetallic, printPanelKey } from '@/config/colors';
 import { createCorrugatedTexture, type RibDirection } from './textures';
@@ -192,7 +192,7 @@ export function storagePartitionEdges(structure: StructureModel, openings: Openi
     const topY = mono ? peakHeight - rise * ((at + halfW) / W) : peakHeight - Math.abs(at) * (rise / halfW);
     for (const end of ['front', 'back'] as const) {
       const mode = end === 'front' ? enc.front : enc.back;
-      const y0 = mode === 'closed' ? 0 : mode === 'gableOnly' ? H : mode === 'halfClosed' ? H - Math.min(6, H) : null;
+      const y0 = mode === 'closed' ? 0 : mode === 'gableOnly' ? H : mode === 'halfClosed' ? H - endBandFor(enc, end, H) : null;
       if (y0 === null || !(topY - y0 > 0.02)) continue;
       const center = (o: Opening) => (end === 'back' ? halfW - o.offset : -halfW + o.offset);
       const [u0, u1] = end === 'front' ? [-(halfL + SO), -halfL] : [halfL, halfL + SO];
@@ -671,6 +671,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           peak={peakHeight}
           apexX={mono ? -halfW : 0}
           mode={enclosure.front}
+          bandFt={endBandFor(enclosure, 'front', H)}
           holes={gableHoles('front', H)}
           wallStripMat={(w, h, au, av) => planeMat(tex.walls, w, h, wallDir, wallMetal, false, au, av)}
           gableMat={shapeMat(tex.walls, wallDir, wallMetal)}
@@ -691,6 +692,7 @@ export function Siding({ structure, openings, wallOrientation, roofOrientation, 
           peak={peakHeight}
           apexX={mono ? -halfW : 0}
           mode={enclosure.back}
+          bandFt={endBandFor(enclosure, 'back', H)}
           holes={gableHoles('back', H)}
           wallStripMat={(w, h, au, av) => planeMat(tex.walls, w, h, wallDir, wallMetal, false, au, av)}
           gableMat={shapeMat(tex.walls, wallDir, wallMetal)}
@@ -842,6 +844,7 @@ function EndWall({
   peak,
   apexX = 0,
   mode,
+  bandFt,
   holes,
   wallStripMat,
   gableMat,
@@ -860,6 +863,8 @@ function EndWall({
   /** X of the roof peak — 0 for a gable; −W/2 for a single-slope end wall. */
   apexX?: number;
   mode: 'closed' | 'gableOnly' | 'open' | 'halfClosed';
+  /** 'halfClosed' band, ft from the eave down (default the classic 6'; 1/4 / 3/4 Closed ends, 11-20a). */
+  bandFt?: number;
   /** Openings on this wall (centered local coords) to cut from the rect 0..H. */
   holes: LocalRect[];
   /** Fresh material per cut strip; (w, h, anchorU, anchorV) world-anchors ribs. */
@@ -900,8 +905,9 @@ function EndWall({
       {mode === 'halfClosed' &&
         // "Half Closed (6' Panel)": a 6-ft sheeting band hanging from the eave
         // DOWN, open below — cut around any opening that reaches up into it.
+        // 1/4 / 3/4 Closed (11-20a): the same band at that fraction of the wall height (bandFt).
         (() => {
-          const B = Math.min(6, H);
+          const B = Math.min(bandFt && bandFt > 0 ? bandFt : 6, H);
           const bandHoles = holes
             .filter((ho) => H / 2 + ho.v + ho.h / 2 > H - B + 0.01)
             .map((ho) => ({ ...ho, v: ho.v - (H - B) / 2 }));

@@ -919,7 +919,9 @@ function syncFromBuilder(win: BuilderWindow) {
   // the swap: program "Right Eave Side" is the internal 'left' (-X) wall and
   // vice versa — same convention as component placement (SIDE_MAP).
   const endMap = (v: string): EndSheeting | undefined =>
-    v === 'Open' ? 'open' : v === 'Closed' ? 'closed' : v === 'Gable Only' ? 'gableOnly' : v === 'Half Closed' ? 'halfClosed' : undefined;
+    v === 'Open' ? 'open' : v === 'Closed' ? 'closed' : v === 'Gable Only' ? 'gableOnly' : v === 'Half Closed' || v === '1/4 Closed' || v === '3/4 Closed' ? 'halfClosed' : undefined;
+  // 1/4 / 3/4 Closed ends (11-20a): the halfClosed band at that fraction of the wall height; Half Closed keeps its 6'.
+  const endBand = (v: string): number | undefined => (v === '1/4 Closed' ? h * 0.25 : v === '3/4 Closed' ? h * 0.75 : undefined);
   const isGarage = bt === 'standard' || bt === 'widespan';
   // Partial eave-side closure ("1panel"/"q2"/…) → band ft via the same rule as
   // the GCH/carport sides; 'Closed'/'Open' are NOT bands.
@@ -971,6 +973,8 @@ function syncFromBuilder(win: BuilderWindow) {
       rightOpen: isGarage && val('wle') === 'Open',
       leftBandFt: isGarage ? sideBand(val('wre')) : undefined,
       rightBandFt: isGarage ? sideBand(val('wle')) : undefined,
+      frontBandFt: isGarage || endsFromRows ? endBand(fg) : undefined,
+      backBandFt: isGarage || endsFromRows ? endBand(bg) : undefined,
     };
   })();
   const curOv = st.wallOverrides;
@@ -980,7 +984,9 @@ function syncFromBuilder(win: BuilderWindow) {
     curOv.leftOpen !== ov.leftOpen ||
     curOv.rightOpen !== ov.rightOpen ||
     curOv.leftBandFt !== ov.leftBandFt ||
-    curOv.rightBandFt !== ov.rightBandFt
+    curOv.rightBandFt !== ov.rightBandFt ||
+    curOv.frontBandFt !== ov.frontBandFt ||
+    curOv.backBandFt !== ov.backBandFt
   ) {
     st.setWallOverrides(ov);
   }

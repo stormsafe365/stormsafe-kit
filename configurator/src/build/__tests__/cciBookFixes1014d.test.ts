@@ -118,6 +118,23 @@ describe('F09 - CCI ground (mobile home) anchors included with a certified struc
   });
 });
 
+describe("11-20c - CCI ends 17'+ on 12'-30' wide = Sensei: the end chart at max(18', the width) + its vertical end add", () => {
+  it("Sensei 11/20/26 readings (12' reads as 18')", () => {
+    const e = (w: number, h: number) => run('ecLookup(' + w + ', ' + h + ')', {}, 'CCI');
+    expect(e(12, 17)).toBe(2165); // EC[18][17] 1,895 + 270
+    expect(e(12, 18)).toBe(2300);
+    expect(e(12, 20)).toBe(2570);
+    expect(e(14, 17)).toBe(2165); // 13'-18' already read the 18' column
+    expect(e(20, 18)).toBe(2650);
+    expect(e(24, 18)).toBe(3350);
+    expect(e(24, 20)).toBe(3740);
+    expect(e(26, 18)).toBe(3120);
+    expect(e(30, 17)).toBe(3630);
+    expect(e(30, 18)).toBe(3760);
+    expect(e(30, 20)).toBe(4020);
+  });
+});
+
 describe('F15 - CCI half closed end = half the end wall at every width (Dealer Handbook p24)', () => {
   it('Sensei commercial Half End 40x12 $1,797.50 / 50x12 $2,097.50 / 60x12 $2,397.50; 22x13 = the old $900 point', () => {
     expect(run('halfClosedCost()', { bw: '40', bh: '12' })).toBe(1797.5);

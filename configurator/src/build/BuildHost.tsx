@@ -919,9 +919,13 @@ function syncFromBuilder(win: BuilderWindow) {
   // the swap: program "Right Eave Side" is the internal 'left' (-X) wall and
   // vice versa — same convention as component placement (SIDE_MAP).
   const endMap = (v: string): EndSheeting | undefined =>
-    v === 'Open' ? 'open' : v === 'Closed' ? 'closed' : v === 'Gable Only' ? 'gableOnly' : v === 'Half Closed' || v === '1/4 Closed' || v === '3/4 Closed' ? 'halfClosed' : undefined;
+    v === 'Open' ? 'open' : v === 'Closed' ? 'closed' : v === 'Gable Only' ? 'gableOnly' : v === 'Half End' ? 'halfEnd'
+      : v === 'Half Closed' || v === '1/4 Closed' || v === '1/2 Closed' || v === '3/4 Closed' || v === 'Extended Gable' ? 'halfClosed' : undefined;
   // 1/4 / 3/4 Closed ends (11-20a): the halfClosed band at that fraction of the wall height; Half Closed keeps its 6'.
-  const endBand = (v: string): number | undefined => (v === '1/4 Closed' ? h * 0.25 : v === '3/4 Closed' ? h * 0.75 : undefined);
+  // 11-20b: 1/2 Closed = half the wall; Extended Gable = ONE 3' panel below the gable (CCI Dealer Handbook p14: "one panel down on
+  // each side and ... the gable to meet those side panels").
+  const endBand = (v: string): number | undefined =>
+    v === '1/4 Closed' ? h * 0.25 : v === '1/2 Closed' ? h * 0.5 : v === '3/4 Closed' ? h * 0.75 : v === 'Extended Gable' ? Math.min(3, h) : undefined;
   const isGarage = bt === 'standard' || bt === 'widespan';
   // Partial eave-side closure ("1panel"/"q2"/…) → band ft via the same rule as
   // the GCH/carport sides; 'Closed'/'Open' are NOT bands.

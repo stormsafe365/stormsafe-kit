@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo } from 'react';
 import * as THREE from 'three';
-import { ROOF_LIFT, SHEET_OUTSET, endBandFor, type StructureModel } from '@/engine/geometry';
+import { ROOF_LIFT, SHEET_OUTSET, endBandFor, halfEndOpening, type StructureModel } from '@/engine/geometry';
 import type { BuildingColors, Opening, PanelOrientation, Wainscot, WallSide } from '@/types/building';
 import { swatchHex, isMetallic, printPanelKey } from '@/config/colors';
 import { createCorrugatedTexture, type RibDirection } from './textures';
@@ -192,7 +192,7 @@ export function storagePartitionEdges(structure: StructureModel, openings: Openi
     const topY = mono ? peakHeight - rise * ((at + halfW) / W) : peakHeight - Math.abs(at) * (rise / halfW);
     for (const end of ['front', 'back'] as const) {
       const mode = end === 'front' ? enc.front : enc.back;
-      const y0 = mode === 'closed' ? 0 : mode === 'gableOnly' ? H : mode === 'halfClosed' ? H - endBandFor(enc, end, H) : null;
+      const y0 = mode === 'closed' || mode === 'halfEnd' ? 0 : mode === 'gableOnly' ? H : mode === 'halfClosed' ? H - endBandFor(enc, end, H) : null;
       if (y0 === null || !(topY - y0 > 0.02)) continue;
       const center = (o: Opening) => (end === 'back' ? halfW - o.offset : -halfW + o.offset);
       const [u0, u1] = end === 'front' ? [-(halfL + SO), -halfL] : [halfL, halfL + SO];
@@ -862,7 +862,7 @@ function EndWall({
   peak: number;
   /** X of the roof peak — 0 for a gable; −W/2 for a single-slope end wall. */
   apexX?: number;
-  mode: 'closed' | 'gableOnly' | 'open' | 'halfClosed';
+  mode: 'closed' | 'gableOnly' | 'open' | 'halfClosed' | 'halfEnd';
   /** 'halfClosed' band, ft from the eave down (default the classic 6'; 1/4 / 3/4 Closed ends, 11-20a). */
   bandFt?: number;
   /** Openings on this wall (centered local coords) to cut from the rect 0..H. */
@@ -885,12 +885,19 @@ function EndWall({
   const sides = sheetSides([0, 0, 1], [0, 0, paintZ]);
   return (
     <group>
-      {mode === 'closed' && (
+      {(mode === 'closed' || mode === 'halfEnd') && (
         // Rectangular wall 0..H, cut into strips around openings so doors and
         // framed openings are REAL holes (you see through a frame-out, a door
         // sits in a void) instead of sheeting covering the opening.
+        // Half End (11-20b): the same wall with its open middle as one more hole (corner strips + header stay).
         <>
-          {stripsAround(W, H, holes).map((st, i) => (
+          {stripsAround(
+            W,
+            H,
+            mode === 'halfEnd' && halfEndOpening(W, H).w > 0 && halfEndOpening(W, H).h > 0
+              ? [...holes, { u: 0, v: -H / 2 + halfEndOpening(W, H).h / 2, w: halfEndOpening(W, H).w, h: halfEndOpening(W, H).h }]
+              : holes,
+          ).map((st, i) => (
             <SheetPlane
               key={`r-${i}`}
               position={[st.u, H / 2 + st.v, z]}

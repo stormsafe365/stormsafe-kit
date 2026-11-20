@@ -29,7 +29,8 @@ export type FoundationType = 'concrete' | 'footers' | 'gravel' | 'asphalt' | 'gr
 export type OpenEnd = 'front' | 'back';
 
 /** How a gable end is sheeted. */
-export type EndSheeting = 'closed' | 'open' | 'gableOnly' | 'halfClosed';
+/** 'halfEnd' (11-20b, Sensei "Half End"): 1' corner strips full height + a 1' header below the eave + the gable, open middle. */
+export type EndSheeting = 'closed' | 'open' | 'gableOnly' | 'halfClosed' | 'halfEnd';
 
 /**
  * Per-wall sheeting overrides from the program's Wall Options (section 4).

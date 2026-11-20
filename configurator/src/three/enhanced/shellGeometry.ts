@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ROOF_LIFT, SHEET_OUTSET, endBandFor, type StructureModel } from '@/engine/geometry';
+import { ROOF_LIFT, SHEET_OUTSET, endBandFor, halfEndOpening, type StructureModel } from '@/engine/geometry';
 import type { BuildingColors, Opening, PanelOrientation, Wainscot, WallSide } from '@/types/building';
 import { TRIM_LIFT } from '../lappedBox';
 import { eaveDownBand, stripsAround, type LocalRect } from '../Siding';
@@ -668,13 +668,16 @@ export function shellLayout(inp: ShellInput): ShellLayout {
     id: WallSide,
     Z0: number,
     zs: -1 | 1,
-    mode: 'closed' | 'gableOnly' | 'open' | 'halfClosed',
+    mode: 'closed' | 'gableOnly' | 'open' | 'halfClosed' | 'halfEnd',
     holes: WallHole[],
     bandFt: number = SHELL.halfClosedBandFt,
   ) => {
     if (mode === 'open') return;
-    const w = newWall({ id, along: 'x', at: Z0, n: [0, 0, zs], u: [zs, 0, 0] }, holes);
-    if (mode === 'closed') addRun(w, -halfW, halfW, 0, yLow, true);
+    // Half End (11-20b): a closed end with its open middle cut out as one big hole (the frame stays sheeted)
+    const ho = halfEndOpening(W, H);
+    const allHoles = mode === 'halfEnd' && ho.w > 0 && ho.h > 0 ? [...holes, { c: 0, w: ho.w, y0: 0, y1: ho.h }] : holes;
+    const w = newWall({ id, along: 'x', at: Z0, n: [0, 0, zs], u: [zs, 0, 0] }, allHoles);
+    if (mode === 'closed' || mode === 'halfEnd') addRun(w, -halfW, halfW, 0, yLow, true);
     else if (mode === 'halfClosed') addRun(w, -halfW, halfW, H - Math.min(bandFt, H), yLow, false);
     else if (mode === 'gableOnly' && gablePoly) w.bottom.push({ y: yLow, c0: -halfW, c1: halfW });
     if (gablePoly) w.polys.push(gablePoly);

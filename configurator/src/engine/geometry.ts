@@ -90,6 +90,13 @@ export interface Enclosure {
   endBandFt?: { front: number; back: number };
 }
 
+/** Sensei's "Half End" (11-20b): the end sheeted as a frame - corner strips (ft) full height + a header (ft) below the eave. */
+export const HALF_END = { stripFt: 1, headerFt: 1 };
+/** The open middle of a 'halfEnd' wall: width and height (ft) for a W x H end. */
+export function halfEndOpening(W: number, H: number): { w: number; h: number } {
+  return { w: Math.max(0, W - 2 * HALF_END.stripFt), h: Math.max(0, H - Math.min(HALF_END.headerFt, H)) };
+}
+
 /** The sheeted band of a 'halfClosed' end, ft from the eave down: its own band (1/4 / 3/4 Closed) or the classic 6'. */
 export function endBandFor(enc: Pick<Enclosure, 'endBandFt'>, end: 'front' | 'back', H: number): number {
   const b = enc.endBandFt ? enc.endBandFt[end] : 0;
@@ -1457,7 +1464,9 @@ export function deriveStructure(resolved: ResolvedBuilding): StructureModel {
         ? gableTriangle
         : mode === 'halfClosed'
           ? W * endBandFor(enclosure, end, H) + gableTriangle // the band below the eave (6' or 1/4 / 3/4 Closed) + gable
-          : 0;
+          : mode === 'halfEnd'
+            ? W * H - halfEndOpening(W, H).w * halfEndOpening(W, H).h + gableTriangle // the frame + gable (11-20b)
+            : 0;
   const endWallArea =
     endArea(enclosure.front, 'front') + endArea(enclosure.back, 'back') + (enclosure.partitionZ !== null ? W * H + gableTriangle : 0) +
     (sidePart ? L * roofYAt(sidePart.x) : 0);

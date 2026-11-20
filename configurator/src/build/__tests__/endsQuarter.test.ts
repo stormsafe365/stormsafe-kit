@@ -74,17 +74,18 @@ describe('wired into the program', () => {
     expect(html.split('<option value="1/4 Closed">1/4 Closed (top &frac14; + gable)</option>').length - 1).toBe(2);
     expect(html.split('<option value="3/4 Closed">3/4 Closed (top &frac34; + gable)</option>').length - 1).toBe(2);
   });
-  it('priced in gWalls; CA vertical = the same fraction of its vertical end add, CCI $0', () => {
+  it('priced in gWalls; vertical = the same fraction of the vertical end add, CCI and CA (11-20b; 11-20a charged CCI $0)', () => {
     expect(html).toContain("  else if(endFrac(fgv)) t += partialEndCost(fgv); // 1/4 / 3/4 Closed (11-20a)");
     expect(html).toContain("  else if(endFrac(bgv)) t += partialEndCost(bgv); // 1/4 / 3/4 Closed (11-20a)");
-    expect(html).toContain("  if(_gvC){ if(endFrac(fgv)) t+=Math.round(vertEndUpcharge(w)*endFrac(fgv)*100)/100;");
+    expect(html).toContain("  [fgv,bgv].forEach(function(v){ var f=endFrac(v)||((v==='Half Closed'&&!_gvC)?0.5:0); if(f) t+=Math.round(vertEndUpcharge(w)*f*100)/100; });");
   });
   it('named on the quote PDF and the contract ("Front End 1/4 Closed", "Each End 3/4 Closed")', () => {
-    expect(html).toContain("    if(fq && bq) rows+=row('Each End '+pq[1]+' Closed ('+wallStyle+')', 2, pp, Math.round(pp*200)/100);");
-    expect(html).toContain("    else if(fq) row('Front End '+pq[1]+' Closed ('+wallStyle+')', 1, pp, pp);");
+    expect(html).toContain("    if(fq && bq) rows+=row('Each '+pq[1]+' ('+wallStyle+')', 2, pp, Math.round(pp*200)/100);");
+    expect(html).toContain("    else if(fq) row('Front '+pq[1]+' ('+wallStyle+')', 1, pp, pp);");
+    expect(html).toContain("[['1/4 Closed','End 1/4 Closed'],['1/2 Closed','End 1/2 Closed'],['3/4 Closed','End 3/4 Closed'],['Half End','Half End'],['Extended Gable','Extended Gable']]");
   });
   it('the elevation drawings hang the band at 1/4 / 3/4 of the wall (Half Closed keeps 6\')', () => {
-    expect(html).toContain("var _hcBandFt=(wallOpen==='1/4 Closed')?wallH_ft*0.25:((wallOpen==='3/4 Closed')?wallH_ft*0.75:6);");
+    expect(html).toContain("var _hcBandFt=(wallOpen==='1/4 Closed')?wallH_ft*0.25:((wallOpen==='1/2 Closed')?wallH_ft*0.5:((wallOpen==='3/4 Closed')?wallH_ft*0.75:((wallOpen==='Extended Gable')?Math.min(3,wallH_ft):6)));");
     expect(html).toContain('var panelDropPx=Math.min(_hcBandFt*sc, wallH*0.9);');
   });
 });

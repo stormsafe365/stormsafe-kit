@@ -92,7 +92,7 @@ export function mainWallSheetSpan(s: MainWallCtx, side: WallSide, offset: number
   const roof = mainRoofAt(s, x);
   if (side === 'partition') return [0, roof];
   const mode = side === 'front' ? enc.front : enc.back;
-  if (mode === 'closed') return [0, roof];
+  if (mode === 'closed' || mode === 'halfEnd') return [0, roof]; // halfEnd: a frame-out sits in its sheeted strips like a closed end
   if (mode === 'halfClosed') return [H - endBandFor(enc, side, H), roof];
   if (mode === 'gableOnly') return roof - H > 0.02 ? [H, roof] : null;
   return null;

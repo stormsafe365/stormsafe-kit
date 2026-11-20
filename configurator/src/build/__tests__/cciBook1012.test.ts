@@ -111,7 +111,7 @@ describe('gable-only ends: $225 (12-24) / $300 (26-30) + vertical gable add $50 
     expect(run('gableOnlyCost()', { ...b('60', 'Vertical'), btype: 'widespan' })).toBe(900);
   });
   it('a CCI gable-only end no longer takes the whole vertical END upcharge', () => {
-    expect(html).toContain("if(fgv==='Closed'||(fgv==='Gable Only'&&_gvC)) t+=vertEndUpcharge(w);");
+    expect(html).toContain("if(fgv==='Closed'||((fgv==='Gable Only'||fgv==='Extended Gable')&&_gvC)) t+=vertEndUpcharge(w);"); // + CA Extended Gable (11-20b)
   });
 });
 

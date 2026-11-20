@@ -126,7 +126,7 @@ describe('F15 - CCI half closed end = half the end wall at every width (Dealer H
     expect(run('halfClosedCost()', { bw: '22', bh: '13' })).toBe(900);
     expect(run('halfClosedCost()', { bw: '12', bh: '8' })).toBe(342.5);
     expect(run('halfClosedCost()', { bw: '30', bh: '16' })).toBe(1465);
-    expect(run('halfClosedCost()', { bw: '24', bh: '18' })).toBe(1880); // 17'+: half the program's tall end ($3,760)
+    expect(run('halfClosedCost()', { bw: '24', bh: '18' })).toBe(1675); // 17'+: half of EC[24][18] 2,990 + 360 = Sensei's Half End $1,675 (11-20c; was half a width-blind $3,760)
     expect(run('halfClosedCost()', { bw: '40', bh: '12' }, 'CA')).toBe(900); // CA: its flat price (MFR stub), unchanged
   });
 });
@@ -165,7 +165,7 @@ describe('F18 / F19 / F37 - vertical adds (Price Book 2 p2/p4)', () => {
     const b = { btype: 'standard', bw: '20', bl: '40', bh: '10', ws: 'Vertical', 'add-end-wall': 'yes' };
     expect(run('gAddEndWall()', b)).toBe(1430);
     expect(run('gAddEndWall()', { ...b, ws: 'Horizontal' })).toBe(1130);
-    expect(run('gAddEndWall()', { ...b, bh: '18' })).toBe(3760);
+    expect(run('gAddEndWall()', { ...b, bh: '18' })).toBe(2350 + 300); // 17'+: EC[20][18] + the vertical end add (Sensei 11/20/26 rule, 11-20c; was a width-blind 3,760)
     expect(run('gAddEndWall()', b, 'CA')).toBe(1130);
   });
   it('F37 13\'-17\' wide (and 7\'/8\' lean-tos at 2W): the 18\' column $270 (14\' read $210, 16\' $240)', () => {

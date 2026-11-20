@@ -72,9 +72,11 @@ describe('Extended Gable', () => {
     expect(run('extGableCost()', { bw: '30' }, 300)).toBe(600);
     expect(run('extGableCost()', { bw: '13' }, 225)).toBe(450); // odd widths round up like every end
   });
-  it("CCI 32'+ = the handbook: 3 x the gable + one panel (36' tier $175) - not confirmed", () => {
-    expect(run('extGableCost()', { bw: '40' }, 600)).toBe(3 * 600 + 175);
-    expect(run('extGableCost()', { bw: '60' }, 900)).toBe(3 * 900 + 175);
+  it("CCI 32'+ = 2 x the gable too (Sensei 11/20/26 36x56x14 commercial $1,200; 11-20c - the handbook's 3 x gable + panel read $1,975)", () => {
+    expect(run('extGableCost()', { bw: '36' }, 600)).toBe(1200);
+    expect(run('extGableCost()', { bw: '40' }, 600)).toBe(1200);
+    expect(run('extGableCost()', { bw: '60' }, 900)).toBe(1800);
+    expect(run('extGableCost()', { bw: '70' }, 1050)).toBe(2100); // 62'-100' gable $1,050-$1,500 - not sampled
   });
   it('CA (book 4H): gable + the panel that covers the end + frame 75 / 100 / 200 / 400 - not confirmed', () => {
     expect(run('extGableCost()', { bw: '24' }, 225, 'CA')).toBe(225 + 130 + 75);

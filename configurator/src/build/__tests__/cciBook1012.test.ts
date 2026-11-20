@@ -98,7 +98,11 @@ describe('gable-only ends: $225 (12-24) / $300 (26-30) + vertical gable add $50 
     expect(run('gableOnlyCost()', b('12', 'Horizontal'))).toBe(225);
     expect(run('gableOnlyCost()', b('26', 'Horizontal'))).toBe(300);
     expect(run('gableOnlyCost()', b('30', 'Vertical'))).toBe(385);
-    expect(run('gableOnlyCost()', b('24', 'Vertical', '18'))).toBe(225); // 17'+ priced orientation-blind
+    // 17'+ (CCI walls vertical there): the vertical gable add too - Sensei 11/20/26 24x40x18 $275, 30x40x17 / 26x40x18 $385 (11-20c)
+    expect(run('gableOnlyCost()', b('24', 'Vertical', '18'))).toBe(275);
+    expect(run('gableOnlyCost()', b('24', 'Horizontal', '18'))).toBe(275);
+    expect(run('gableOnlyCost()', b('30', 'Vertical', '17'))).toBe(385);
+    expect(run('gableOnlyCost()', b('26', 'Vertical', '18'))).toBe(385);
   });
   it('CA unchanged; CCI 32-60 = Price Book 2 p6 "Gable End" $600 / $750 / $900 per end (10-14d, audit F16; was $300)', () => {
     expect(run('gableOnlyCost()', b('24', 'Vertical'), 'CA')).toBe(225);

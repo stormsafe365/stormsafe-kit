@@ -40,7 +40,7 @@ type Ctx = {
 };
 const ctx = vm.createContext({}) as unknown as Ctx;
 vm.runInContext(
-  grabFn('cciDoorCertified') + grabFn('cciLatchNote') + grabFn('cciDoorCounts') + grabFn('cciWalkMissing') + grabFn('ovlPrintBlock') +
+  grabFn('cciDoorCertified') + grabFn('cciLatchNote') + grabFn('cciFoWalkable') + grabFn('cciDoorCounts') + grabFn('cciWalkMissing') + grabFn('ovlPrintBlock') +
   "var ACTIVE_MFR='CCI', INPUT_MODE=false, CCI_WALK_MSG='walk msg', __dom={}, __toasts=[], __ovl='';" +
   "function wrap(e){ return { querySelector:function(c){ return e.q[c]!=null?{value:e.q[c]}:null; } }; }" +
   "var document={ querySelectorAll:function(s){ return (__dom[s]||[]).map(wrap); } };" +

@@ -142,11 +142,20 @@ describe('sheet details', () => {
     expect(run('cciWideOn(70)')).toBe(false);
     run('ACTIVE_MFR="CCI"');
   });
-  it('site specific plans: 5% capped at $6,500 for 62-100 wide (CCI letter); uncapped below', () => {
+  it('site specific plans: 5%, min $175 (FL), capped at $6,500 at every width (CCI letters 4/30/26 + 11/24/26)', () => {
     run('__bw="70"');
     expect(run('CCI.planCostFn("Site Specific Plans", 164625, false)')).toBe(6500);
     expect(run('CCI.planCostFn("Site Specific Plans", 60000, false)')).toBe(3000);
     run('__bw="60"');
-    expect(run('CCI.planCostFn("Site Specific Plans", 164625, false)')).toBe(8232);
+    expect(run('CCI.planCostFn("Site Specific Plans", 164625, false)')).toBe(6500); // 11-24a: was 8232 (no cap below 62)
+    run('__bw="24"');
+    expect(run('CCI.planCostFn("Site Specific Plans", 200000, false)')).toBe(6500);
+    expect(run('CCI.planCostFn("Site Specific Plans", 13395, false)')).toBe(670);
+    expect(run('CCI.planCostFn("Site Specific Plans", 3000, false)')).toBe(175);
+  });
+  it('generic (stamped / sealed) plans $350 at every width (CCI letter 11/24/26)', () => {
+    for (const w of ['12', '24', '30', '32', '40', '60', '70']) { run('__bw="' + w + '"'); expect(run('CCI.planCostFn("Generic Plans", 20000, false)')).toBe(350); }
+    expect(run('CCI.planCostFn("Master Files", 20000, false)')).toBe(0);
+    expect(run('CCI.planCostFn("No Permit Required", 20000, false)')).toBe(0);
   });
 });

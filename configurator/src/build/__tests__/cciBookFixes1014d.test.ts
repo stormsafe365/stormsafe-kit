@@ -209,9 +209,10 @@ describe('F31 - CCI insulation end walls on 32\'-60\' (Dealer Handbook p22: + 3\
   });
 });
 
-describe('F32 - CCI generic plans $250 on 32\'-60\' (Permitting Requirements p1)', () => {
+describe('F32 - CCI generic plans (Permitting Requirements p1 $175 / $250 at 32\'-60\'; since the CCI letter 11/24/26 $350 at every width)', () => {
   it('the plan fee', () => {
-    expect(html).toContain("if(planType==='Generic Plans'){ var _gpW=parseInt((G('bw')||{}).value)||0; if(_gpW%2===1) _gpW++; return (_gpW>=32 && _gpW<=60) ? 250 : 175; }");
+    expect(html).toContain("if(planType==='Generic Plans') return 350;");
+    expect(html).not.toContain('? 250 : 175;');
   });
 });
 

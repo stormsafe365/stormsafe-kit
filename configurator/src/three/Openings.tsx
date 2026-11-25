@@ -16,6 +16,7 @@ import { ftIn, inchLabel, kneeBraceDetail, kneeBraceTitle, roofLengthLabel } fro
 import { useOpenAmount } from './useOpenAmount';
 import { OpenFrameOutTrim, OpeningHitPlane } from './OpeningFixture';
 import { partitionSpacingVisible } from './spacingVisibility';
+import { gchEaveEnclosed, gchGapLabel } from './gchSpacing';
 import { interiorRoom, openingSpan, partTakesPress } from './interiorView';
 import { chamferFillGeometry, chamferFrameGeometry, chamferPanelGeometry, cut45Leg } from './cut45Geometry';
 import { EnhancedFixture } from './enhanced/fixtures';
@@ -830,8 +831,12 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
 
   // Spacing chain: every corner/edge stop; label each GAP (openings get a size chip instead).
   const r3 = (v: number) => Math.round(v * 96) / 96; // the 1/8" grid every spot is on (10/6/26)
+  // GCH eave (owner 11/25/26: "its only showing me the spacing from the window to the back gable end but not from the window
+  // to the front of the enclosed portion" / "its also not showing how much is enclosed"): the enclosed bay's edge joins the
+  // chain, the open-bay gap reads "open", and the enclosed bay gets its own "8' enclosed" line.
+  const enc = gchEaveEnclosed(side, structure);
   const stops = Array.from(
-    new Set([0, span, ...items.flatMap((o) => [r3(o.offset - o.width / 2), r3(o.offset + o.width / 2)])]),
+    new Set([0, span, ...(enc ? [enc.a, enc.b] : []), ...items.flatMap((o) => [r3(o.offset - o.width / 2), r3(o.offset + o.width / 2)])]),
   ).sort((a, b) => a - b);
   const isOpening = (a: number, b: number) =>
     items.some((o) => Math.abs(o.offset - o.width / 2 - a) < 0.02 && Math.abs(o.offset + o.width / 2 - b) < 0.02);
@@ -840,6 +845,9 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
     const a = stops[i], b = stops[i + 1];
     if (b - a > 1 / 192 && !isOpening(a, b)) gaps.push([a, b]); // every gap down to 1/8", so the chain adds up
   }
+  const gapLabel = (a: number, b: number) => (enc ? gchGapLabel(a, b, enc) : ftIn(b - a));
+  // the enclosed bay's own line, unless one chain gap already is the whole bay (then that gap says "enclosed")
+  const encLine = enc && !gaps.some(([a, b]) => Math.abs(a - enc.a) < 0.02 && Math.abs(b - enc.b) < 0.02);
   const gapY = Math.min(1.3, eave * 0.25);
   // Knee brace (owner 10/14/26) on the END views: the main bents' brace as drawn
   // (structure.kneeBrace — manufacturer length at 45°), at the far end of the wall
@@ -851,8 +859,11 @@ function WallSpacing({ side, openings, structure }: { side: WallSide; openings: 
   return (
     <group>
       {gaps.map(([a, b], i) => (
-        <Measure key={`g${i}`} a={pt(a, gapY)} b={pt(b, gapY)} mid={pt((a + b) / 2, gapY)} label={ftIn(b - a)} />
+        <Measure key={`g${i}`} a={pt(a, gapY)} b={pt(b, gapY)} mid={pt((a + b) / 2, gapY)} label={gapLabel(a, b)} />
       ))}
+      {encLine && enc && (
+        <Measure a={pt(enc.a, (gapY + allY) / 2)} b={pt(enc.b, (gapY + allY) / 2)} mid={pt((enc.a + enc.b) / 2, (gapY + allY) / 2)} label={`${ftIn(enc.b - enc.a)} enclosed`} />
+      )}
       {items.map((o) => {
         const top = o.sillHeight + o.height;
         const chipY = gable ? top + 0.6 : Math.min(eave - 0.35, top + 0.6);
